@@ -1,0 +1,1887 @@
+﻿/*ARCLMCR FOR WIN32 SINCE 2023.09.11.KEIICHIKUTOMI.*/
+/*LAST CHANGE:2023.10.12.*/
+
+int arclmCR(struct arclmframe *af,int idinput,int laps,double arclength);
+double *rotationvct(double **rmtx);
+double **rotationmtx(double *rvct);
+double **spinmtx(double *rvct);
+double **spinfittermtx(double *eform);
+double **projectionmtx(double *eform,double *edisp,double **G);
+double **jacobimtx(double *edisp,double *estress,double **M);
+double **assemshelltmtx(double **estiff,double *eform,double *edisp,double *estress,double **T);
+void symmetricmtx(double **estiff,int msize);
+void updaterotation(double *ddisp,double *gvct,int nnode);
+void updateforce(double *pvct,double *ddisp,int nnode);
+double *extractshelldisplacement(struct oshell shell,double *ddisp);
+double *extractshelllocalcoord(struct oshell shell,double *gdisp);
+void extractdeformation(double *eform,double *edisp,int nnod);
+void initialformCR(struct onode *nodes,double *ddisp,int nnode);
+void LDLmode(struct gcomponent *gmtx,struct oconf *confs,long int *m,int bucklingflag,double **mode,double *norm,double *dm,long int msize);
+double shellvolume(struct oshell shell,double** drccos,double area);
+double equilibriumcurvature(double *weight,double *ddisp,double *lastddisp,double pfactor,double lastpfactor,double *up,int msize);
+
+int arclmCR(struct arclmframe *af,int idinput,int laps,double arclength)
+{
+  DWORDLONG memory0,memory1,memory2;
+  FILE *fin,*fout,*fonl,*ffig,*ffig2,*fbcl,*fene;         /*FILE 8 BYTES*/
+  char dir[]=DIRECTORY;                                       /*DATA DIRECTORY*/
+  char s[80],string[400],inpname[50],fname[50];
+
+  int i,ii,jj;
+  int nnode,nelem,nshell,nsect,nreact,nconstraint;
+  int nlap;                                                   /*LAP COUNT*/
+  long int loffset,msize,fnode,nline;
+  long int time;
+  /***GLOBAL MATRIX***/
+  struct gcomponent ginit={0,0,0.0,NULL};
+  struct gcomponent *gmtx,*g,*p;/*GLOBAL MATRIX*/
+  double gg;
+  /***GLOBAL VECTOR***/
+  double *dreact;
+  double *ddisp,*gvct,*iform,*evct,*pvct,*tarf,*truef,*ue,*up,*weight;
+  double *ddisp2,*gvct2,*re,*rp;
+  /***FOR SHELL ELEMENT***/
+  double *gdisp,*edisp;                     /*DEFORMED COORDINATION OF ELEMENT*/
+  double *gform,*eform;                      /*INITIAL COORDINATION OF ELEMENT*/
+  double *gstress,*estress;                        /*INTERNAL FORCE OF ELEMENT*/
+  double *gforce,*eforce;                          /*EXTERNAL FORCE OF ELEMENT*/
+  double *shellstress;                        /*σx,σy,τxy,Mx,My,Mxy OF ELEMENT*/
+  double Ep,Eb,Ee,Pu=0.0;                           /*STRAIN ENERGY OF ELEMENT*/
+  double **Ke,**Kt,**DBe,**drccos,**T,**Tt;                           /*MATRIX*/
+  double area;
+  /***FOR ARC-LENGTH INCREMENTAL***/
+  int iteration;
+  int maxiteration=20;
+  double residual;
+  double tolerance=0.00001;
+  int bucklingflag=0;
+  double determinant,sign;
+  double arcsum,arcsign;
+  double lambda,pfactor=0.0;
+  double upue,upup;
+  double volume;
+  /*ARCLENGTH CONTROL*/
+  double k1,k,S;
+  /***FOR BISECSYLVESTER & EXTENDED SYSTEM***/
+  double eps=1e-5;
+  double LL,LR;
+  double sum;
+  double lastsign;
+  double lastlambda,lastpfactor;
+  double *lastddisp,*lastpvct,*lastpivot;
+  double **mode;/*NORMALIZED LDL-MODE*/
+  double *norm,*dm;/*NORM & PIVOT OF LDL-MODE*/
+  long int *m;
+  int *loffset2;
+
+  clock_t t0,t1,t2;
+
+  struct osect *sects;
+  struct onode *nodes;
+  struct onode *ninit;
+  struct owire elem;
+  struct owire *elems;
+  struct oshell shell;
+  struct oshell *shells;
+  struct oconf *confs;
+  struct memoryelem *melem;
+  struct memoryshell *mshell;
+  long int mainoff;
+  long int *constraintmain;
+
+  memory0=availablephysicalmemoryEx("INITIAL:");   /*MEMORY AVAILABLE*/
+
+  fin=fgetstofopen(dir,"r",idinput);              /*OPEN INPUT FILE*/
+  strcpy(inpname, (wdraw.childs+1)->inpfile);
+  char *dot =strrchr(inpname, '.');
+  *dot = '\0';
+  snprintf(fname, sizeof(fname), "%s.%s", inpname, "otp");
+  fout=fopen(fname,"w");
+  snprintf(fname, sizeof(fname), "%s.%s", inpname, "onl");
+  fonl=fopen(fname,"w");
+  snprintf(fname, sizeof(fname), "%s.%s", inpname, "fig");
+  ffig=fopen(fname,"w");
+  snprintf(fname, sizeof(fname), "%s.%s", inpname, "fig2");
+  ffig2=fopen(fname,"w");
+  snprintf(fname, sizeof(fname), "%s.%s", inpname, "bcl");
+  fbcl=fopen(fname,"w");
+  snprintf(fname, sizeof(fname), "%s.%s", inpname, "ene");
+  fene=fopen(fname,"w");
+
+  t0=clock();                                                   /*CLOCK BEGIN.*/
+
+  inputinitII(fin,&nnode,&nelem,&nshell,&nsect,&nconstraint); /*INPUT INITIAL.*/
+
+  msize=6*nnode;                                      /*SIZE OF GLOBAL MATRIX.*/
+
+  free(af->sects);
+  free(af->nodes);
+  free(af->ninit);
+  free(af->elems);
+  free(af->shells);
+  free(af->confs);
+  free(af->ddisp);
+  free(af->melem);
+  free(af->mshell);
+  free(af->constraintmain);
+
+  sects=(struct osect *)malloc(nsect*sizeof(struct osect));
+  nodes=(struct onode *)malloc(nnode*sizeof(struct onode));
+  ninit=(struct onode *)malloc(nnode*sizeof(struct onode));
+  elems=(struct owire *)malloc(nelem*sizeof(struct owire));
+  shells=(struct oshell *)malloc(nshell*sizeof(struct oshell));
+  confs=(struct oconf *)malloc(msize*sizeof(struct oconf));
+  ddisp=(double *)malloc(msize*sizeof(double));
+  melem=(struct memoryelem *)malloc(nelem*sizeof(struct memoryelem));
+  mshell=(struct memoryshell *)malloc(nshell*sizeof(struct memoryshell));
+  constraintmain=(long int *)malloc(msize*sizeof(long int));
+
+  af->sects=sects;
+  af->nodes=nodes;
+  af->ninit=ninit;
+  af->elems=elems;
+  af->shells=shells;
+  af->confs=confs;
+  af->ddisp=ddisp;
+  af->melem=melem;
+  af->mshell=mshell;
+  af->constraintmain=constraintmain;
+
+  gmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
+														 /*DIAGONALS OF GLOBAL MATRIX.*/
+  gvct=(double *)malloc(msize*sizeof(double));           /*INCREMENTAL GLOBAL VECTOR.*/
+  iform=(double *)malloc(msize*sizeof(double));          /*INITIAL GLOBAL VECTOR.*/
+  evct=(double *)malloc(msize*sizeof(double));           /*UNBALANCED INTERNAL FORCE VECTOR.*/
+  pvct=(double *)malloc(msize*sizeof(double));           /*BASE EXTERNAL FORCE VECTOR.*/
+  tarf=(double *)malloc(msize*sizeof(double));           /*TARGET EXTERNAL FORCE VECTOR.*/
+  truef=(double *)malloc(msize*sizeof(double));          /*INTERNAL FORCE VECTOR.*/
+  ue=(double *)malloc(msize*sizeof(double));
+  up=(double *)malloc(msize*sizeof(double));
+  weight=(double *)malloc((msize+1)*sizeof(double));          /*ARC-LENGTH WEIGHT.*/
+
+  lastddisp=(double *)malloc(msize*sizeof(double));
+  lastpvct=(double *)malloc(msize*sizeof(double));           /*BASE FORCE VECTOR.*/
+  lastpivot=(double *)malloc(msize*sizeof(double));          /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
+
+  for(i=0;i<msize;i++)
+  {
+	(gmtx+i)->down=NULL;
+	*(gvct+i)=0.0;
+	*(evct+i)=0.0;
+	*(pvct+i)=0.0;
+	*(tarf+i)=0.0;
+	*(truef+i)=0.0;
+	*(ue+i)=0.0;
+	*(up+i)=0.0;
+	*(weight+i)=0.0;
+	*(constraintmain+i)=i;
+  }
+
+  inputtexttomemory(fin,af);
+  nnode=af->nnode;
+  nelem=af->nelem;
+  nshell=af->nshell;
+  nsect=af->nsect;
+  nreact=af->nreact;
+  nconstraint=af->nconstraint;
+
+  initialformCR(nodes,ddisp,nnode);     
+  /*ASSEMBLAGE FORMATION.*/
+  initialformCR(nodes,iform,nnode);           /*ASSEMBLAGE FORMATION.*/
+  initialelem(elems,melem,nelem);             /*ASSEMBLAGE ELEMENTS.*/
+  initialshell(shells,mshell,nshell);         /*ASSEMBLAGE ELEMENTS.*/
+
+#if 0
+  dreact=(double *)malloc(nreact*sizeof(double));       /*REACTION.*/
+  af->dreact=dreact;
+  initialreact(fin,dreact,nreact);     /*ASSEMBLAGE LONG REACTIONS.*/
+#endif
+
+  for(ii=1;ii<=msize;ii++)
+  {
+	if(*(constraintmain+ii)!=ii)
+	{
+	  (confs+ii)->iconf=(signed char)1;
+	}
+  }
+
+
+
+  GetAsyncKeyState(VK_LBUTTON);                   /*CLEAR KEY LEFT.*/
+  GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
+  if(globaldrawflag==1)
+  {
+	drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);                     /*DRAW GLOBAL AXIS.*/
+  }
+
+  nlap=1;
+  iteration=1;
+  residual=0.0;
+
+  /*ARC-LENGTH METHOD SETTING.*/
+  fnode=171;
+
+  for(i=0;i<nnode;i++)
+  {
+	if((nodes+i)->code==fnode)
+	{
+	  *(weight+6*i+2)=1.0;
+	}
+  }
+  *(weight+msize)=1.0;
+
+  assemconf(confs,pvct,1.0,nnode);
+
+  while(nlap<=laps)
+  {
+
+	fprintf(fonl,"LAP:%5ld/%5ld ITERATION:%5ld\n",nlap,laps,iteration);
+	af->nlaps=nlap;
+	/*setincrement((wmenu.childs+2)->hwnd,laps,nlap,20,iteration);*/
+
+
+	if(iteration==1)
+	{
+	  sprintf(string,"LAP:%5ld/%5ld",nlap,laps);
+	  errormessage(string);
+	  fprintf(fout,"\"DISPLACEMENT\"\n");
+	  outputdisp(ddisp,fout,nnode,nodes);                    /*FORMATION OUTPUT.*/
+	  fprintf(fout,"\"REACTION\"\n");
+	  outputdisp(truef,fout,nnode,nodes);                    /*FORMATION OUTPUT.*/
+	  fprintf(fout,"\"STRESS\"\n");
+	  fprintf(fene,"\"STRAIN ENERGY\"\n");
+	  clearwindow(*(wdraw.childs+1));
+	}
+
+
+	for(i=1;i<=msize;i++)/*MATRIX INITIALIZATION.*/
+	{
+	  g=(gmtx+(i-1))->down;   /*NEXT OF DIAGONAL.*/
+	  while(g!=NULL) 	      /*CLEAR ROW.*/
+	  {
+		p=g;
+		g=g->down;
+		free(p);
+	  }
+
+	  ginit.m=(unsigned short int)i;
+	  *(gmtx+(i-1))=ginit;
+	  *(truef+(i-1))=0.0;			 /*GLOBAL VECTOR INITIALIZATION.*/
+	  *(pvct+(i-1))=0.0;
+	}
+	comps=msize; /*INITIAL COMPONENTS=DIAGONALS.*/
+
+	volume=0.0;
+
+	for(i=1;i<=nshell;i++)
+	{
+	  inputshell(shells,mshell,i-1,&shell);
+	  shell.sect=(shells+i-1)->sect;                      /*READ SECTION DATA.*/
+
+	  for(ii=0;ii<shell.nnod;ii++)
+	  {
+		inputnode(iform,shell.node[ii]);
+	  }
+	  gform=extractshelldisplacement(shell,iform);                      /*{Xg}*/
+	  eform=extractshelllocalcoord(shell,gform);                        /*{Xe}*/
+
+	  for(ii=0;ii<shell.nnod;ii++)
+	  {
+		inputnode(ddisp,shell.node[ii]);
+	  }
+	  gdisp=extractshelldisplacement(shell,ddisp);                   /*{Xg+Ug}*/
+	  edisp=extractshelllocalcoord(shell,gdisp);                     /*{Xe+Ue}*/
+
+	  extractdeformation(eform,edisp,shell.nnod);                       /*{Ue}*/
+
+	  drccos=shelldrccos(shell,&area);                                /*DRCCOS*/
+	  volume+=shellvolume(shell,drccos,area);                         /*VOLUME*/
+
+
+	  T=transmatrixIII(drccos,shell.nnod);         /*TRANSFORMATION MATRIX[T].*/
+
+	  if(iteration==1)
+	  {
+		DBe=(double **)malloc(18*sizeof(double *));
+		for(ii=0;ii<18;ii++)
+		{
+		  *(DBe+ii)=(double *)malloc(18*sizeof(double));
+		  for(jj=0;jj<18;jj++)
+		  {
+			*(*(DBe+ii)+jj)=0.0;                                          /*INITIAL.*/
+		  }
+		}
+	  }
+	  else
+	  {
+		DBe=NULL;
+	  }
+
+	  Ke=assemshellemtx(shell,drccos,DBe);        /*ELASTIC MATRIX OF SHELL[K].*/
+
+	  estress=matrixvector(Ke,edisp,6*shell.nnod);/*ELEMENT INTERNAL FORCE{Qe}=[K]{Ue}.*/
+
+	  if(iteration==1)
+	  {
+		Ee=0.0;
+		Ep=0.0;
+		Eb=0.0;
+		for(ii=0;ii<shell.nnod;ii++)                   /*UPDATE STRAIN ENERGY.*/
+		{
+		  for(jj=0;jj<2;jj++)
+		  {
+			Ep+=0.5**(edisp+6*ii+jj)**(estress+6*ii+jj);
+		  }
+		  for(jj=2;jj<5;jj++)
+		  {
+			Eb+=0.5**(edisp+6*ii+jj)**(estress+6*ii+jj);
+		  }
+		  Ee+=0.5**(edisp+6*ii+5)**(estress+6*ii+5);
+		}
+		Ee+=Ep+Eb;
+		fprintf(fene,"CODE:%5ld %12.9f %12.9f %12.9f\n",shell.code,Ep,Eb,Ee);
+
+		shellstress=matrixvector(DBe,edisp,6*shell.nnod);
+		for(ii=0;ii<shell.nnod;ii++)                          /*UPDATE STRESS.*/
+		{
+		  for(jj=0;jj<6;jj++)
+		  {
+			shell.stress[ii][jj]=*(shellstress+6*ii+jj);
+		  }
+		}
+		outputshellstress(shell,shellstress,fout);
+		free(shellstress);
+		freematrix(DBe,18);
+	  }
+
+	  Kt=assemshelltmtx(Ke,eform,edisp,estress,T);	  /*TANGENTIAL MATRIX[Kt].*/
+										  /*PROJECTION of estress[Pt][Ht]{Qe}.*/
+	  Kt=transformationIII(Kt,T,6*shell.nnod);
+	  symmetricmtx(Kt,6*shell.nnod);      /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+	  /*assemgstiffnessII(gmtx,Kt,&shell);*/
+	  assemgstiffnessIIwithDOFelimination(gmtx,Kt,&shell,constraintmain);
+									 /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+	  eforce=assemshellpvct(shell,drccos);/*ELEMENT EXTERNAL FORCE{Fe}.*/
+	  for(ii=0;ii<1;ii++)
+	  {
+		sprintf(string," %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",*(eforce+(6*ii+0)),*(eforce+(6*ii+1)),*(eforce+(6*ii+2)),*(eforce+(6*ii+3)),*(eforce+(6*ii+4)),*(eforce+(6*ii+5)));
+		errormessage(string);
+	  }
+
+	  Tt=matrixtranspose(T,6*shell.nnod);/*[Tt].*/
+	  gstress=matrixvector(Tt,estress,6*shell.nnod); /*GLOBAL INTERNAL FORCE{Qg}.*/
+	  gforce=matrixvector(Tt,eforce,6*shell.nnod);   /*GLOBAL EXTERNAL FORCE{Fg}.*/
+
+
+	  for(ii=0;ii<shell.nnod;ii++)
+	  {
+		for(jj=0;jj<6;jj++)
+		{
+		  loffset=6*(shell.node[ii]->loff)+jj;
+		  *(truef+loffset)+=*(gstress+6*ii+jj);
+		  *(pvct+loffset)+=*(gforce+6*ii+jj);
+		}
+	  }
+
+	  freematrix(drccos,3);
+	  freematrix(T,18);
+	  freematrix(Tt,18);
+	  freematrix(Ke,18);
+	  freematrix(Kt,18);
+
+	  free(estress);
+	  free(gstress);
+	  free(eforce);
+	  free(gforce);
+	  free(eform);
+	  free(gform);
+	  free(edisp);
+	  free(gdisp);
+
+	  if(iteration==1 && (wdraw.childs+1)->hdcC!=NULL)   /*DRAW DEFORMED ELEMENT.*/
+	  {
+		drawglobalshell((wdraw.childs+1)->hdcC,
+						(wdraw.childs+1)->vparam,
+						*af,shell,255,255,255,
+								  255,255,255,0,ONSCREEN/*,i*/);
+	  }
+
+	}
+
+	for (ii = 0; ii < msize; ii++)
+	{
+		if (*(constraintmain + ii) != ii)
+		{
+			loffset = *(constraintmain + ii);
+			*(truef + loffset) += *(truef + ii);
+			*(truef + ii) = 0.0;
+			*(pvct + loffset) += *(pvct + ii);
+			*(pvct + ii) = 0.0;
+		}
+	}
+
+	overlayhdc(*(wdraw.childs+1),SRCPAINT);                  /*UPDATE DISPLAY.*/
+
+	sprintf(string,"%12.5f",volume);
+	errormessage(string);
+
+	residual=0.0;
+	for(i=0;i<msize;i++)
+	{
+	  *(up+i)=*(pvct+i);
+	  *(evct+i)=*(tarf+i)-*(truef+i);            /*evct:UNBALANCED FORCE -{E}.*/
+	  if((confs+i)->iconf==1) *(evct+i)=0.0;
+	  residual+=*(evct+i)**(evct+i);
+	  *(ue+i)=*(evct+i);
+	}
+	if(fonl!=NULL)
+	{
+	  fprintf(fonl,"\"TRUE FORCE {F-dF}:AFTER MODIFY CONF\"\n");
+	  for(i=0;i<nnode;i++)
+	  {
+		fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,*(truef+(6*i+0)),*(truef+(6*i+1)),*(truef+(6*i+2)),*(truef+(6*i+3)),*(truef+(6*i+4)),*(truef+(6*i+5)));
+	  }
+	  fprintf(fonl,"\"UNBALANCED FORCE {dF}\"\n");
+	  for(i=0;i<nnode;i++)
+	  {
+		fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,*(evct+(6*i+0)),*(evct+(6*i+1)),*(evct+(6*i+2)),*(evct+(6*i+3)),*(evct+(6*i+4)),*(evct+(6*i+5)));
+	  }
+	  fprintf(fonl,"RESIDUAL=%12.9f\n",residual);
+	}
+
+	/*LDL DECOMPOSITION BIGIN*/
+
+	nline=croutludecomposition_arclength(gmtx,
+								 up,ue,confs,
+								 6*nnode,
+								 &determinant,&sign,iteration);  /*[K]{U_p}={P}*/
+
+	sprintf(string,"{ITRRATION}=%5ld {RESIDUAL}=%.5E {SIGN}=%.1f",iteration,residual,sign);
+	fprintf(fonl,"%s\n",string);
+	errormessage(string);
+
+	/*LDL DECOMPOSITION FAILED*/
+	if(sign<0.0)
+	{
+	  for(ii=1;ii<=msize;ii++)
+	  {
+		gg=0.0;
+		gread(gmtx,ii,ii,&gg);
+
+		if(gg<0.0)
+		{
+		  sprintf(string,"INSTABLE TERMINATION AT NODE %ld.",
+					  (nodes+int((ii-1)/6))->code);
+		  errormessage(" ");
+		  errormessage(string);
+		  if(fonl!=NULL) fprintf(fonl,"%s\n",string);
+		}
+	  }
+
+	  fclose(fin);
+	  fclose(fout);
+	  fclose(fonl);
+	  fclose(ffig);
+	  fclose(ffig2);
+	  fclose(fbcl);
+	  fclose(fene);
+
+
+	  gfree(gmtx,nnode);  /*FREE GLOBAL MATRIX.*/
+	  free(gvct);
+	  free(evct);
+	  free(pvct);
+	  free(truef);
+	  free(tarf);
+	  free(ue);
+	  free(up);
+	  free(weight);
+
+	  return 1;
+	}
+#if 0
+	/*PIN-POINTING BIGIN*/
+	if(bucklingflag>0)
+	{
+		/*FOR DIRECTIONAL DERIVATIVE OF TANGENTIAL STIFFNESS MATRIX*/
+		errormessage("PIN-POINTING BIGIN.");
+		fprintf(fbcl,"ITERATION:%d\n",iteration);
+
+		LDLmode(gmtx,confs,m,bucklingflag,mode,norm,dm,msize);
+		for(i=0;i<bucklingflag;i++)
+		{
+		  fprintf(fbcl,"mode=%5ld norm=%12.9f dm=%12.9f\n",*(m+i),*(norm+i),*(dm+i));
+		}
+		fprintf(fbcl,"\"LDL EIGEN VECTOR:\"\n");
+		for(i=0;i<nnode;i++)
+		{
+		  fprintf(fbcl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,
+		  *(*(mode+0)+(6*i+0)),*(*(mode+0)+(6*i+1)),*(*(mode+0)+(6*i+2)),
+		  *(*(mode+0)+(6*i+3)),*(*(mode+0)+(6*i+4)),*(*(mode+0)+(6*i+5)));
+		}
+
+		ddisp2=(double *)malloc(6*nnode*sizeof(double));
+		gvct2=(double *)malloc(6*nnode*sizeof(double));
+		for(i=0;i<msize;i++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
+		{
+		  *(gvct2+i)=eps**(*(mode+0)+i);
+		  *(ddisp2+i)=*(ddisp+i);
+		}
+		updaterotation(ddisp2,gvct2,nnode);
+
+		re=(double *)malloc(msize*sizeof(double));
+		rp=(double *)malloc(msize*sizeof(double));
+		for(i=0;i<msize;i++)
+		{
+		  *(re+i)=0.0;
+		  *(rp+i)=0.0;
+		}
+
+		for(i=1;i<=nshell;i++)
+		{
+		fprintf(fbcl,"SHELL:%5ld\n",i);
+		  inputshell(shells,mshell,i-1,&shell);
+		  shell.sect=(shells+i-1)->sect;                      /*READ SECTION DATA.*/
+
+		  for(ii=0;ii<shell.nnod;ii++)
+		  {
+			inputnode(iform,shell.node[ii]);
+		  }
+		  gform=extractshelldisplacement(shell,iform);                  /*{Xg}*/
+		  eform=extractshelllocalcoord(shell,gform);                    /*{Xe}*/
+
+		  for(ii=0;ii<shell.nnod;ii++)
+		  {
+			inputnode(ddisp2,shell.node[ii]);
+		  }
+		  gdisp=extractshelldisplacement(shell,ddisp2);              /*{Xg+Ug}*/
+		  edisp=extractshelllocalcoord(shell,gdisp);                 /*{Xe+Ue}*/
+
+		  extractdeformation(eform,edisp,shell.nnod);                   /*{Ue}*/
+
+		  drccos=shelldrccos(shell,&area);                                  /*DRCCOS*/
+		  T=transmatrixIII(drccos,shell.nnod);     /*TRANSFORMATION MATRIX[T].*/
+
+		  Ke=assemshellemtx(shell,drccos,NULL);  /*ELASTIC MATRIX OF SHELL[K].*/
+
+		  estress=matrixvector(Ke,edisp,6*shell.nnod);          /*{Fe}=[K]{Ue}*/
+										 /*estress:ELEMENT INTERNAL FORCE{Fe}.*/
+		  Kt=assemshelltmtx(Ke,eform,edisp,estress,T);
+													  /*TANGENTIAL MATRIX[Kt].*/
+		  Kt=transformationIII(Kt,T,6*shell.nnod);
+
+		  symmetricmtx(Kt,6*shell.nnod);
+										  /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+		  loffset2=(int *)malloc(18*sizeof(int));
+		  for(ii=0;ii<3;ii++)
+		  {
+			for(jj=0;jj<6;jj++)
+			{
+			  *(loffset2+(6*ii+jj))=6*(shell.node[ii]->loff)+jj;
+			}
+		  }
+
+		  fprintf(fbcl,"OFFSET:\n");
+		  for(ii=0;ii<18;ii++)
+		  {
+			fprintf(fbcl,"%5ld ",*(loffset2+ii));
+		  }
+		  fprintf(fbcl,"\n");
+
+		  for(ii=0;ii<18;ii++)
+		  {
+			for(jj=0;jj<18;jj++)
+			{
+			   *(re+*(loffset2+ii))+=*(*(Kt+ii)+jj)**(ue+*(loffset2+jj));
+			   *(rp+*(loffset2+ii))+=*(*(Kt+ii)+jj)**(up+*(loffset2+jj));
+			}
+		  }
+
+		  fprintf(fbcl,"\"rp:\"\n");
+		  for(ii=0;ii<nnode;ii++)
+		  {
+			fprintf(fbcl,"NODE:%5ld %12.15f %12.15f %12.15f %12.15f %12.15f %12.15f\n",(nodes+ii)->code,
+			*(rp+(6*ii+0)),*(rp+(6*ii+1)),*(rp+(6*ii+2)),
+			*(rp+(6*i+3)),*(rp+(6*ii+4)),*(rp+(6*ii+5)));
+		  }
+		  fprintf(fbcl,"\"re:\"\n");
+		  for(ii=0;ii<nnode;ii++)
+		  {
+			fprintf(fbcl,"NODE:%5ld %12.15f %12.15f %12.15f %12.15f %12.15f %12.15f\n",(nodes+ii)->code,
+			*(re+(6*ii+0)),*(re+(6*ii+1)),*(re+(6*ii+2)),
+			*(re+(6*ii+3)),*(re+(6*ii+4)),*(re+(6*ii+5)));
+		  }
+
+		  freematrix(drccos,3);
+		  freematrix(T,18);
+		  freematrix(Ke,18);
+		  freematrix(Kt,18);
+		  free(loffset2);
+		  free(estress);
+		  free(eform);
+		  free(gform);
+		  free(edisp);
+		  free(gdisp);
+		}
+
+		fprintf(fbcl,"\"rp:\"\n");
+		for(i=0;i<nnode;i++)
+		{
+		  fprintf(fbcl,"NODE:%5ld %12.15f %12.15f %12.15f %12.15f %12.15f %12.15f\n",(nodes+i)->code,
+		  *(rp+(6*i+0)),*(rp+(6*i+1)),*(rp+(6*i+2)),
+		  *(rp+(6*i+3)),*(rp+(6*i+4)),*(rp+(6*i+5)));
+		}
+		fprintf(fbcl,"\"re:\"\n");
+		for(i=0;i<nnode;i++)
+		{
+		  fprintf(fbcl,"NODE:%5ld %12.15f %12.15f %12.15f %12.15f %12.15f %12.15f\n",(nodes+i)->code,
+		  *(re+(6*i+0)),*(re+(6*i+1)),*(re+(6*i+2)),
+		  *(re+(6*i+3)),*(re+(6*i+4)),*(re+(6*i+5)));
+		}
+
+		for(i=0;i<msize;i++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
+		{
+		  *(re+i)-=*(evct+i);
+		  *(rp+i)-=*(pvct+i);
+		  if((confs+i)->iconf!=0)
+		  {
+			*(re+i)=0.0;
+			*(rp+i)=0.0;
+		  }
+		}
+
+		fprintf(fbcl,"\"rp:\"\n");
+		for(i=0;i<nnode;i++)
+		{
+		  fprintf(fbcl,"NODE:%5ld %12.15f %12.15f %12.15f %12.15f %12.15f %12.15f\n",(nodes+i)->code,
+		  *(rp+(6*i+0)),*(rp+(6*i+1)),*(rp+(6*i+2)),
+		  *(rp+(6*i+3)),*(rp+(6*i+4)),*(rp+(6*i+5)));
+		}
+		fprintf(fbcl,"\"re:\"\n");
+		for(i=0;i<nnode;i++)
+		{
+		  fprintf(fbcl,"NODE:%5ld %12.15f %12.15f %12.15f %12.15f %12.15f %12.15f\n",(nodes+i)->code,
+		  *(re+(6*i+0)),*(re+(6*i+1)),*(re+(6*i+2)),
+		  *(re+(6*i+3)),*(re+(6*i+4)),*(re+(6*i+5)));
+		}
+
+		/*upue=*(dm+0)/(*(norm+0)**(norm+0)); */
+		fprintf(fbcl,"PIN-POINTED EIGENVALUE=%12.9f\n",upue);
+
+		/*upue*=eps;*/
+		upue=0;
+		upup=0;
+		fprintf(fonl,"upue=%12.15f upup=%12.15f\n",upue,upup);
+		for(i=0;i<msize;i++)
+		{
+		  if((confs+i)->iconf==0)
+		  {
+			upup+=*(rp+i)**(*(mode+0)+i);
+			upue+=*(re+i)**(*(mode+0)+i);
+		  }
+		}
+
+		free(ddisp2);
+		free(gvct2);
+		free(re);
+		free(rp);
+
+		fprintf(fonl,"upue=%12.15f upup=%12.15f\n",upue,upup);
+		upue+=eps**(dm+0)/(*(norm+0)**(norm+0));
+
+		lambda=-upue/upup;
+		fprintf(fonl,"LAMBDA=%12.9f\n",lambda);
+
+
+
+
+	  /*NEW TARGET*/
+	  pfactor+=lambda;
+	  for(ii=0;ii<=msize;ii++)
+	  {
+		if((confs+ii)->iconf!=1)
+		{
+		  *(gvct+ii)=*(up+ii)*lambda+*(ue+ii);/*gvct:{δU_e+δΛU_p}*/
+		  *(tarf+ii)=pfactor**(pvct+ii);/*tarf:{P+dP}*/
+		}
+	  }
+	}
+#endif
+#if 0
+	if(bucklingflag>0)/*bisecsylvester*/
+	{
+	  errormessage("BISEC BIGIN.");
+	  fprintf(fbcl,"\nBISEC LAP:%d/%d ITERATION:%d\n",nlap,laps,iteration);
+	  fprintf(fbcl,"{LR}= %12.9f {LL}= %12.9f {LR-LL}= %12.9f\n",LR,LL,LR-LL);
+	  if(sign>lastsign)
+	  {
+		LR=lambda;
+	  }
+	  else
+	  {
+		LL=lambda;
+	  }
+	  lambda=0.5*(LL+LR);
+
+	  if(LR-LL<eps)
+	  {
+		bucklingflag==0;
+		sum=0.0;
+		for(i=0;i<msize;i++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
+		{
+		  if((confs+i)->iconf==0)
+		  {
+			sum+=*(ue+i)**(ue+i);
+		  }
+		}
+		sum=sqrt(sum);
+		for(i=0;i<msize;i++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
+		{
+		  if((confs+i)->iconf==0)
+		  {
+			*(*(mode+0)+i)=*(ue+i)/sum;
+		  }
+		}
+        fprintf(fbcl,"\"LDL EIGEN VECTOR:\"\n");
+		for(i=0;i<nnode;i++)
+		{
+		  fprintf(fbcl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,
+		  *(*(mode+0)+(6*i+0)),*(*(mode+0)+(6*i+1)),*(*(mode+0)+(6*i+2)),
+		  *(*(mode+0)+(6*i+3)),*(*(mode+0)+(6*i+4)),*(*(mode+0)+(6*i+5)));
+		}
+		freematrix(mode,bucklingflag);
+		free(m);
+		free(norm);
+		free(dm);
+	  }
+	  /*NEW TARGET*/
+	  pfactor+=lambda*arcsign;                        /*pfactor:{Λ+dΛ}*/
+	  for(ii=0;ii<msize;ii++)
+	  {
+		if((confs+ii)->iconf!=1)
+		{
+		  *(ddisp+ii)=*(lastddisp+ii);
+		  *(gvct+ii)=*(up+ii)*lambda*arcsign;             /*gvct:{dΛUp}*/
+		  *(tarf+ii)=pfactor**(pvct+ii);                 /*tarf:{P+dP}*/
+		}
+
+	  }
+	}
+#endif
+#if 0
+	/*BUCKLING DITECTED*/
+	if(sign>lastsign && bucklingflag==0 && nlap!=1)/*前のlapからのpivotの符号変化が検出された場合座屈点精算(PIN-POINTING)開始*/
+	{
+	  errormessage("BUCKLING DITECTED.");
+	  bucklingflag=sign-lastsign;
+	  fprintf(fbcl,"\nBUCKLING DITECTED LAP:%d/%d ITERATION:%d\n",nlap,laps,iteration);
+
+	  m=(long int *)malloc(bucklingflag*sizeof(long int));
+	  jj=0;
+	  for(ii=0;ii<msize;ii++)
+	  {
+		if((confs+ii)->iconf==0 && *(lastpivot+ii)*((gmtx+ii)->value)<0)
+		{
+		  *(m+jj)=ii;
+		  jj++;
+		  fprintf(fbcl,"m=%5ld\n",ii);
+		}
+	  }
+
+	  mode=(double **)malloc(bucklingflag*sizeof(double *));/*LDL BUCKLING MODE*/
+	  for(ii=0;ii<bucklingflag;ii++)
+	  {
+		  *(mode+ii)=(double *)malloc(msize*sizeof(double));
+	  }
+	  norm=(double *)malloc(bucklingflag*sizeof(double));/*NORM OF LDL MODE*/
+	  dm=(double *)malloc(bucklingflag*sizeof(double));/*DIAGONAL PIVOT VALUE*/
+
+	  /*
+	  LL=0.0;
+	  LR=2*lastlambda;
+	  lambda=0.5*(LL+LR);
+	  */
+
+	  /*NEW TARGET*/
+	  pfactor=lastpfactor;                        /*pfactor:{Λ}*/
+	  for(ii=0;ii<msize;ii++)
+	  {
+		*(ddisp+ii)=*(lastddisp+ii);
+		*(gvct+ii)=0.0;
+		*(tarf+ii)=pfactor**(lastpvct+ii);              /*tarf:{P}*/
+	  }
+	}
+#endif
+
+
+
+	/*PREDICTOR CALCULATION*/
+	if(iteration==1 && bucklingflag==0)
+	{
+	  /*ARCLENGTH CONTROL*/
+	  if(nlap==1)
+	  {
+		S=arclength;
+	  }
+	  if(nlap==2)
+	  {
+		k1=equilibriumcurvature(weight,ddisp,lastddisp,pfactor,lastpfactor,up,msize);
+		S=arclength;
+	  }
+	  if(nlap>=3)
+	  {
+		k=equilibriumcurvature(weight,ddisp,lastddisp,pfactor,lastpfactor,up,msize);
+		S=arclength*sqrt(k1/k);
+		if(S>arclength)S=arclength;
+	  }
+	  /*INCREMENTAL CALCULATION*/
+	  arcsum=*(weight+msize)**(weight+msize);
+	  for(ii=0;ii<msize;ii++)
+	  {
+		if((confs+ii)->iconf!=1 && *(weight+ii)!=0)
+		{
+		  if(nlap==1)
+		  {
+			*(weight+ii)=1.0/abs(*(up+ii));
+		  }
+		  arcsum+=*(weight+ii)**(weight+ii)**(up+ii)**(up+ii);/*SCALING DISPLACEMENT.*/
+		}
+	  }
+	  lambda=S/sqrt(arcsum);/*LOAD FACTOR.*/
+	  fprintf(fonl,"ARCSUM=%12.9f ",arcsum);
+	  fprintf(fonl,"LAMBDA=%12.9f ",lambda);
+
+	  /*SIGN OF PREDICTOR VECTOR*/
+	  if(nlap==1)
+	  {
+		arcsign=1.0;
+	  }
+	  else
+	  {
+		arcsign=(pfactor-lastpfactor);
+		for(ii=0;ii<msize;ii++)
+		{
+		  arcsign+=(*(ddisp+ii)-*(lastddisp+ii))**(up+ii);
+		}
+		arcsign/=abs(arcsign);
+	  }
+	  fprintf(fonl,"ARCSIGN=%12.5f\n",arcsign);
+	  lambda*=arcsign;
+	  /*MEMORY OF PREDICTOR*/
+	  for(ii=0;ii<msize;ii++)
+	  {
+		*(lastddisp+ii)=*(ddisp+ii);
+		*(lastpvct+ii)=*(pvct+ii);
+		*(lastpivot+ii)=(gmtx+ii)->value;
+	  }
+	  lastlambda=lambda;
+	  lastpfactor=pfactor;
+	  /*NEW TARGET*/
+	  pfactor+=lambda;/*pfactor:{Λ+dΛ}*/
+	  for(ii=0;ii<msize;ii++)
+	  {
+		if((confs+ii)->iconf!=1)
+		{
+		  *(gvct+ii)=lambda**(up+ii);/*gvct:{dΛUp}*/
+		  *(tarf+ii)=pfactor**(pvct+ii);/*tarf:{P+dP}*/
+		}
+	  }
+	}
+
+
+
+	/*CORRECTOR CALCULATION*/
+	if(iteration!=1 && bucklingflag==0)
+	{
+	  /*MINIMUM RESIDUAL QUANTITIES METHOD*/
+	  upue=0.0;
+	  upup=*(weight+msize)**(weight+msize);
+	  for(ii=0;ii<=msize;ii++)
+	  {
+		if((confs+ii)->iconf!=1)
+		{
+		  upue+=*(weight+ii)**(weight+ii)**(up+ii)**(ue+ii);/*U_p*G*δU_e*/
+		  upup+=*(weight+ii)**(weight+ii)**(up+ii)**(up+ii);/*U_p*G*U_p*/
+		}
+	  }
+	  lambda=-upue/upup;
+	  fprintf(fonl,"upue=%12.9f upup=%12.9f\n",upue,upup);
+	  fprintf(fonl,"LAMBDA=%12.9f\n",lambda);
+	  /*NEW TARGET*/
+	  pfactor+=lambda;/*pfactor:{Λ+dΛ}*/
+	  for(ii=0;ii<=msize;ii++)
+	  {
+		if((confs+ii)->iconf!=1)
+		{
+		  *(gvct+ii)=lambda**(up+ii)+*(ue+ii);/*gvct:{δU_e+δΛU_p}*/
+		  *(tarf+ii)=pfactor**(pvct+ii);/*tarf:{P+dP}*/
+		}
+	  }
+	}
+
+	for(ii=0;ii<msize;ii++)
+	{
+	  if(*(constraintmain+ii)!=ii)
+	  {
+		mainoff = *(constraintmain+ii);
+		*(gvct+ii) = *(gvct+mainoff);
+	  }
+	}
+
+	updaterotation(ddisp,gvct,nnode);                      /*FORMATION UPDATE.*/
+	/*updateforce(pvct,gvct,nnode);*/
+
+
+	if(fonl!=NULL)
+	{
+	  fprintf(fonl,"\"NEW TARGET FORCE\"\n");
+	  for(i=0;i<nnode;i++)
+	  {
+		fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,
+		*(tarf+(6*i+0)),*(tarf+(6*i+1)),*(tarf+(6*i+2)),
+		*(tarf+(6*i+3)),*(tarf+(6*i+4)),*(tarf+(6*i+5)));
+	  }
+	  fprintf(fonl,"\"NEW TARGET FORM\"\n");
+	  for(i=0;i<nnode;i++)
+	  {
+		fprintf(fonl,"NODE:%5ld %16.12f %16.12f %16.12f %16.12f %16.12f %16.12f\n",(nodes+i)->code,
+		*(ddisp+(6*i+0)),*(ddisp+(6*i+1)),*(ddisp+(6*i+2)),
+		*(ddisp+(6*i+3)),*(ddisp+(6*i+4)),*(ddisp+(6*i+5)));
+	  }
+	}
+	for(ii=0;ii<nnode;ii++)
+	{
+	  if(iteration==1)
+	  {
+		if((nodes+ii)->code==fnode && ffig2!=NULL)
+		{
+		  fprintf(ffig2,"LAP: %3d / %3d NODE %3d {Fz}= %18.12f {U}= %16.12f {RESISUAL}= %16.12f {DETERMINANT}= %16.12f {SIGN}= %5.0f {BUCKLINGFLAG}= %1d\n",
+				  nlap,laps,(nodes+ii)->code,*(tarf+(6*ii+2)),*(ddisp+6*ii+2)-*(iform+6*ii+2),residual,determinant,sign,bucklingflag);
+		}
+	  }
+	  if((nodes+ii)->code==fnode && ffig!=NULL)
+	  {
+		fprintf(ffig,"LAP: %3d / %3d ITERATION: %2d NODE %3d {Fz}= %18.12f {U}= %16.12f {RESISUAL}= %16.12f {DETERMINANT}= %16.12f {SIGN}= %5.0f {BUCKLINGFLAG}= %1d\n",
+				  nlap,laps,iteration,(nodes+ii)->code,*(tarf+(6*ii+2)),*(ddisp+6*ii+2)-*(iform+6*ii+2),residual,determinant,sign,bucklingflag);
+	  }
+	}
+
+
+	/***FOR ARC-LENGTH INCREMENTAL***/
+	if( (residual<tolerance || iteration>maxiteration)&& iteration!=1 && bucklingflag==0)
+	{
+	  nlap++;
+	  iteration=0;
+	}
+	if(residual<tolerance && iteration!=1 && bucklingflag>0 && fabs(*(dm+0))<tolerance)
+	{
+	  nlap++;
+	  iteration=0;
+	  bucklingflag=0;
+	  freematrix(mode,bucklingflag);
+	  free(norm);
+	  free(dm);
+	  free(m);
+	}
+	iteration++;
+
+
+
+	while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
+	{
+      if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
+	  {
+		gfree(gmtx,nnode);  /*FREE GLOBAL MATRIX.*/
+		free(gvct);
+		free(pvct);
+		free(truef);
+		free(tarf);
+		free(ue);
+		free(up);
+
+		errormessage(" ");
+
+		if(fonl!=NULL) fprintf(fonl,"ABORTED.\n");
+
+		fclose(fin);
+		fclose(fout);
+		fclose(fonl);
+		fclose(ffig);
+		fclose(ffig2);
+		fclose(fbcl);
+		fclose(fene);
+
+		laptime("\0",t0);
+		return 1;
+      }
+	  t2=clock();
+	  time=(t2-t1)/CLK_TCK;
+      if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
+	}
+
+  }                                        /*REPEAT UNTIL INSTABLE.*/
+
+  if((wdraw.childs+1)->hdcC!=NULL && ddisp!=NULL)                 /*DRAW LAST FRAME.*/
+  {
+    clearwindow(*(wdraw.childs+1));
+	for(i=1;i<=nelem;i++)
+	{
+	  inputelem(elems,melem,i-1,&elem);
+      for(ii=0;ii<=1;ii++) /*COPY HINGE DATA.*/
+      {
+		for(jj=0;jj<=5;jj++)
+        {
+		  (elems+i-1)->iconf[ii][jj]=elem.iconf[ii][jj];
+		}
+      }
+
+	  inputnode(ddisp,elem.node[0]);
+	  inputnode(ddisp,elem.node[1]);
+
+	  drawglobalwire((wdraw.childs+1)->hdcC,
+					 (wdraw.childs+1)->vparam,
+					 *af,elem,255,255,255,
+							  255,255,255,0,ONSCREEN/*,i*/);
+	}
+	for(i=1;i<=nshell;i++)
+	{
+	  shell=*(shells+i-1);                     /*READ ELEMENT DATA.*/
+
+	  for(ii=0;ii<shell.nnod;ii++)
+	  {
+		inputnode(ddisp,shell.node[ii]);
+	  }
+	  if(globaldrawflag==1)
+	  {
+		drawglobalshell((wdraw.childs+1)->hdcC,
+					   (wdraw.childs+1)->vparam,
+					   *af,shell,255,255,255,
+							   255,255,255,0,ONSCREEN);
+	  }
+	}
+	overlayhdc(*(wdraw.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
+  }
+
+  fclose(fin);
+  fclose(fout);
+  fclose(fonl);
+  fclose(ffig);
+  fclose(ffig2);
+  fclose(fbcl);
+  fclose(fene);
+
+  gfree(gmtx,nnode);  /*FREE GLOBAL MATRIX.*/
+
+  /*af->eigenvec=(double **)malloc(1*sizeof(double *));
+  *((af->eigenvec)+0)=gvct;*/
+
+  errormessage(" ");
+  laptime("\0",t0);
+  errormessage("COMPLETED.");
+
+  if(fonl!=NULL) fclose(fonl);
+
+  return 0;
+}/*arclmCR*/
+
+double *rotationvct(double **rmtx)
+{
+  double c,s;
+  double *rvct;
+  double theta;
+  rvct=(double *)malloc(3*sizeof(double));
+  c=*(*(rmtx+0)+0)+*(*(rmtx+1)+1)+*(*(rmtx+2)+2)-1;                         /*2cos(theta)*/
+  s=sqrt((*(*(rmtx+2)+1)-*(*(rmtx+1)+2))*(*(*(rmtx+2)+1)-*(*(rmtx+1)+2))
+		+(*(*(rmtx+0)+2)-*(*(rmtx+2)+0))*(*(*(rmtx+0)+2)-*(*(rmtx+2)+0))
+		+(*(*(rmtx+1)+0)-*(*(rmtx+0)+1))*(*(*(rmtx+1)+0)-*(*(rmtx+0)+1)));  /*2sin(theta)>0*/
+
+  if(s!=0.0)
+  {
+	if(c>0.0)/*0<=theta<PI/2*/
+	{
+	  theta=atan(s/c);
+	}
+	else if(c<0.0)/*PI/2<theta<=PI*/
+	{
+	  theta=atan(s/c)+PI;
+	}
+	else/*theta=PI/2*/
+	{
+	  theta=PI/2.0;
+	}
+
+	*(rvct+0)=theta*((*(*(rmtx+2)+1)-*(*(rmtx+1)+2)))/s;
+	*(rvct+1)=theta*((*(*(rmtx+0)+2)-*(*(rmtx+2)+0)))/s;
+	*(rvct+2)=theta*((*(*(rmtx+1)+0)-*(*(rmtx+0)+1)))/s;
+
+  }
+  else if(s==0.0 && c>0.0)/*theta=0*/
+  {
+
+	*(rvct+0)=0.0;
+	*(rvct+1)=0.0;
+	*(rvct+2)=0.0;
+
+  }
+  else if(s==0.0 && c<0.0)/*theta=PI*/
+  {
+
+	*(rvct+0)=0.5*sqrt(*(*(rmtx+0)+0)+1);
+	if(*(rvct+0)!=0)
+	{
+	  *(rvct+1)=0.5**(*(rmtx+0)+1)/(*(rvct+0));
+	  *(rvct+2)=0.5**(*(rmtx+0)+2)/(*(rvct+0));
+	}
+	else
+	{
+	  *(rvct+1)=0.5*sqrt(*(*(rmtx+1)+1)+1);
+	  if(*(rvct+1)!=0)
+	  {
+		*(rvct+2)=0.5**(*(rmtx+1)+2)/(*(rvct+1));
+	  }
+	  else
+	  {
+		*(rvct+2)=0.5*sqrt(*(*(rmtx+2)+2)+1);
+	  }
+	}
+
+  }
+  return rvct;
+}
+
+double **rotationmtx(double *rvct)
+{
+  int i;
+  double **rmtx;
+  double *n;
+  double theta;
+
+  n=(double *)malloc(3*sizeof(double));
+  rmtx=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(rmtx+i)=(double *)malloc(3*sizeof(double));
+  }
+  theta=sqrt(*(rvct+0)**(rvct+0)+*(rvct+1)**(rvct+1)+*(rvct+2)**(rvct+2));
+  if(theta!=0.0)
+  {
+	for(i=0;i<3;i++)
+	{
+	  *(n+i)=*(rvct+i)/theta;
+	}
+
+	*(*(rmtx+0)+0)= cos(theta)       +(1-cos(theta))**(n+0)**(n+0);
+	*(*(rmtx+0)+1)=-sin(theta)**(n+2)+(1-cos(theta))**(n+0)**(n+1);
+	*(*(rmtx+0)+2)= sin(theta)**(n+1)+(1-cos(theta))**(n+0)**(n+2);
+	*(*(rmtx+1)+0)= sin(theta)**(n+2)+(1-cos(theta))**(n+1)**(n+0);
+	*(*(rmtx+1)+1)= cos(theta)       +(1-cos(theta))**(n+1)**(n+1);
+	*(*(rmtx+1)+2)=-sin(theta)**(n+0)+(1-cos(theta))**(n+1)**(n+2);
+	*(*(rmtx+2)+0)=-sin(theta)**(n+1)+(1-cos(theta))**(n+2)**(n+0);
+	*(*(rmtx+2)+1)= sin(theta)**(n+0)+(1-cos(theta))**(n+2)**(n+1);
+	*(*(rmtx+2)+2)= cos(theta)       +(1-cos(theta))**(n+2)**(n+2);
+  }
+  else
+  {
+	*(*(rmtx+0)+0)=1.0;
+	*(*(rmtx+0)+1)=0.0;
+	*(*(rmtx+0)+2)=0.0;
+	*(*(rmtx+1)+0)=0.0;
+	*(*(rmtx+1)+1)=1.0;
+	*(*(rmtx+1)+2)=0.0;
+	*(*(rmtx+2)+0)=0.0;
+	*(*(rmtx+2)+1)=0.0;
+	*(*(rmtx+2)+2)=1.0;
+  }
+  free(n);
+  return rmtx;
+}
+
+double **spinmtx(double *rvct)
+{
+  int i;
+  double **smtx;
+
+  smtx=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(smtx+i)=(double *)malloc(3*sizeof(double));
+  }
+
+  *(*(smtx+0)+0)=0.0;
+  *(*(smtx+0)+1)=-*(rvct+2);
+  *(*(smtx+0)+2)=*(rvct+1);
+  *(*(smtx+1)+0)=*(rvct+2);
+  *(*(smtx+1)+1)=0.0;
+  *(*(smtx+1)+2)=-*(rvct+0);
+  *(*(smtx+2)+0)=-*(rvct+1);
+  *(*(smtx+2)+1)=*(rvct+0);
+  *(*(smtx+2)+2)=0.0;
+
+  return smtx;
+}
+
+double **spinfittermtx(double *eform)
+{
+  int i,j;
+  double A,len;
+  double x1,x2,y1,y2;
+  double **G;
+
+  G=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(G+i)=(double *)malloc(18*sizeof(double));
+	for(j=0;j<18;j++)
+	{
+	  *(*(G+i)+j)=0.0;
+	}
+  }
+
+  x1=*(eform+6)-*(eform+0);
+  y1=*(eform+7)-*(eform+1);
+  x2=*(eform+12)-*(eform+0);
+  y2=*(eform+13)-*(eform+1);
+  A=0.5*(x1*y2-x2*y1);
+  len=sqrt(x1*x1+y1*y1);
+
+  *(*(G+0)+2)=0.5*(*(eform+12)-*(eform+6))/A;
+  *(*(G+1)+2)=0.5*(*(eform+13)-*(eform+7))/A;
+  *(*(G+2)+1)=-1/len;
+
+  *(*(G+0)+8)=0.5*(*(eform+0)-*(eform+12))/A;
+  *(*(G+1)+8)=0.5*(*(eform+1)-*(eform+13))/A;
+  *(*(G+2)+7)= 1/len;
+
+  *(*(G+0)+14)=0.5*(*(eform+6)-*(eform+0))/A;
+  *(*(G+1)+14)=0.5*(*(eform+7)-*(eform+1))/A;
+
+  return G;
+}
+
+double **projectionmtx(double *eform,double *edisp,double **G)
+{
+  int i,j,a,b;
+  double *node;
+  double **P,**Gu,**S,**SGu;
+
+  P=(double **)malloc(18*sizeof(double *));
+  for(i=0;i<18;i++)
+  {
+	*(P+i)=(double *)malloc(18*sizeof(double));
+  }
+
+  node=(double *)malloc(3*sizeof(double));
+
+  Gu=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(Gu+i)=(double *)malloc(3*sizeof(double));
+  }
+
+  for(a=0;a<3;a++)
+  {
+	for(i=0;i<3;i++)
+	{
+	  *(node+i)=*(eform+6*a+i)+*(edisp+6*a+i);
+	}
+	S=spinmtx(node);
+	for(b=0;b<3;b++)
+	{
+	  for(i=0;i<3;i++)
+	  {
+		for(j=0;j<3;j++)
+		{
+		  *(*(Gu+i)+j)=*(*(G+i)+6*b+j);
+		}
+	  }
+	  SGu=matrixmatrix(S,Gu,3);
+	  for(i=0;i<3;i++)
+	  {
+		for(j=0;j<3;j++)
+		{
+		  *(*(P+6*a+3+i)+6*b+j)=-*(*(Gu+i)+j);
+		  *(*(P+6*a+i)+6*b+3+j)=0.0;
+		  if(a==b && i==j)
+		  {
+			*(*(P+6*a+i)+6*b+j)=2.0/3.0;
+			*(*(P+6*a+3+i)+6*b+3+j)=1.0;
+		  }
+		  else if(i==j)
+		  {
+			*(*(P+6*a+i)+6*b+j)=-1.0/3.0;
+			*(*(P+6*a+3+i)+6*b+3+j)=0.0;
+		  }
+		  else
+		  {
+			*(*(P+6*a+i)+6*b+j)=0.0;
+			*(*(P+6*a+3+i)+6*b+3+j)=0.0;
+		  }
+		  *(*(P+6*a+i)+6*b+j)+=*(*(SGu+i)+j);
+
+		}
+	  }
+	  freematrix(SGu,3);
+	}
+	freematrix(S,3);
+  }
+  free(node);
+  freematrix(Gu,3);
+  return P;
+}
+
+double **jacobimtx(double *edisp,double *estress,double **M)
+{
+  DWORDLONG memory0,memory1,memory2;
+  int n,i,j;
+  double theta,eta,mu,dot;
+  double *thetavct,*mvct;
+  double **thetaspin,**thetaspin2,**mspin,**mtheta,**mtheta2;
+  double **H,**Ha,**Ma;
+
+
+  H=(double **)malloc(18*sizeof(double *));
+  for(i=0;i<18;i++)
+  {
+	*(H+i)=(double *)malloc(18*sizeof(double));
+	for(j=0;j<18;j++)
+	{
+	 *(*(H+i)+j)=0.0;
+	}
+  }
+
+  mtheta=(double **)malloc(3*sizeof(double *));                    /*{ma}{θat}*/
+  for(i=0;i<3;i++)
+  {
+	*(mtheta+i)=(double *)malloc(3*sizeof(double));
+  }
+
+  thetavct=(double *)malloc(3*sizeof(double));
+  mvct=(double *)malloc(3*sizeof(double));
+
+  for(n=0;n<3;n++)
+  {
+	theta=0.0;
+	dot=0.0;
+	for(i=0;i<3;i++)
+	{
+	  *(thetavct+i)=*(edisp+6*n+3+i);
+	  *(mvct+i)=*(estress+6*n+3+i);
+	  theta+=*(thetavct+i)**(thetavct+i);
+	  dot+=*(thetavct+i)**(mvct+i);
+	}
+	theta=sqrt(theta);
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		 *(*(mtheta+i)+j)=*(mvct+i)**(thetavct+j);
+	  }
+	}
+	
+	if(theta<PI/30.0)
+	{
+	  eta=1.0/12.0+pow(theta,2)/720.0+pow(theta,4)/30240.0+pow(theta,6)/1209600.0;
+	  mu=1.0/360.0+pow(theta,2)/7560.0+pow(theta,4)/201600.0+pow(theta,6)/5987520.0;
+	}
+	else
+	{
+	  eta=(1.0-0.5*theta*(1.0/tan(0.5*theta)))/pow(theta,2);
+	  mu=(theta*theta+4.0*cos(theta)+theta*sin(theta)-4.0)
+		 /(4.0*pow(theta,4)*sin(0.5*theta)*sin(0.5*theta));
+	}
+	thetaspin=spinmtx(thetavct);
+	thetaspin2=matrixmatrix(thetaspin,thetaspin,3);
+	mspin=spinmtx(mvct);
+	mtheta2=matrixmatrix(thetaspin2,mtheta,3);
+	Ha=(double **)malloc(3*sizeof(double *));
+	for(i=0;i<3;i++)
+	{
+	  *(Ha+i)=(double *)malloc(3*sizeof(double));
+	}
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Ha+i)+j)=-0.5**(*(thetaspin+i)+j)+eta**(*(thetaspin2+i)+j);
+		if(i==j)*(*(Ha+i)+j)+=1.0;
+		*(*(mtheta2+i)+j)*=mu;
+		*(*(mtheta2+i)+j)+=eta*(*(*(mtheta+j)+i)-2.0**(*(mtheta+i)+j))-0.5**(*(mspin+i)+j);
+		if(i==j)*(*(mtheta2+i)+j)+=eta*dot;
+	  }
+	}
+
+	Ma=matrixmatrix(mtheta2,Ha,3);
+
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(H+6*n+3+i)+6*n+3+j)=*(*(Ha+i)+j);
+		*(*(M+6*n+3+i)+6*n+3+j)=*(*(Ma+i)+j);
+		if(i==j)*(*(H+6*n+i)+6*n+j)=1.0;
+	  }
+	}
+	freematrix(thetaspin,3);
+	freematrix(thetaspin2,3);
+	freematrix(mspin,3);
+	freematrix(mtheta2,3);
+	freematrix(Ma,3);
+	freematrix(Ha,3);
+  }
+  free(thetavct);
+  free(mvct);
+  freematrix(mtheta,3);
+  return H;
+}
+
+double **assemshelltmtx(double **estiff,double *eform,double *edisp,double *estress,double **T)
+{
+  DWORD memory0,memory1,memory2;
+  int i,j,n;
+  double **G,**P,**H;
+  double **HP,**PtHt;
+  double *nm,**spinnm,*pstress;
+  double **Fnm,**Fn,**FnG,**GtFnt;
+  double **tstiff,**gstiff1,**gstiff2,**gstiff3;
+
+
+  tstiff=(double **)malloc(18*sizeof(double *));                              /*[M]*/
+  for(i=0;i<18;i++)
+  {
+	*(tstiff+i)=(double *)malloc(18*sizeof(double));
+  }
+
+  gstiff3=(double **)malloc(18*sizeof(double *));                              /*[M]*/
+  for(i=0;i<18;i++)
+  {
+	*(gstiff3+i)=(double *)malloc(18*sizeof(double));
+	for(j=0;j<18;j++)
+	{
+	  *(*(gstiff3+i)+j)=0.0;
+	}
+  }
+
+
+  G=spinfittermtx(eform);                             /*SPIN-FITTER MATRIX[G].*/
+  P=projectionmtx(eform,edisp,G);                            /*PROJECTION MATRIX[P].*/
+  H=jacobimtx(edisp,estress,gstiff3);              /*JACOBIAN MATRIX OF ROTATION[H].*/
+  HP=matrixmatrix(H,P,18);                                            /*[H][P]*/
+  PtHt=matrixtranspose(HP,18);
+  pstress=matrixvector(PtHt,estress,18);           /*projected estress {Fp}*/
+  for (i=0;i<18;i++)
+  {
+	*(estress+i)=*(pstress+i);
+  }
+  free(pstress);
+
+  nm=(double *)malloc(3*sizeof(double));           /*projected estress of each node {n}&{m}*/
+
+  Fnm=(double **)malloc(18*sizeof(double *));                          /*[Fnm]*/
+  for(i=0;i<18;i++)
+  {
+	*(Fnm+i)=(double *)malloc(3*sizeof(double));
+  }
+  Fn=(double **)malloc(18*sizeof(double *));                            /*[Fn]*/
+  for(i=0;i<18;i++)
+  {
+	*(Fn+i)=(double *)malloc(3*sizeof(double));
+  }
+
+  for(n=0;n<3;n++)
+  {
+	for(i=0;i<3;i++)
+	{
+	  *(nm+i)=*(estress+6*n+i);
+	}
+	spinnm=spinmtx(nm);
+	for(i=0;i<3;i++)                                    
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Fnm+6*n+i)+j)=*(*(spinnm+i)+j);
+		*(*(Fn+6*n+i)+j)=*(*(spinnm+i)+j);
+	  }
+	}
+	freematrix(spinnm,3);
+
+	for(i=0;i<3;i++)
+	{
+	  *(nm+i)=*(estress+6*n+3+i);
+	}
+	spinnm=spinmtx(nm);
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Fnm+6*n+3+i)+j)=*(*(spinnm+i)+j);
+		*(*(Fn+6*n+3+i)+j)=0.0;
+	  }
+	}
+	freematrix(spinnm,3);
+  }
+
+
+  estiff=transformationIII(estiff,HP,18);                  /*[Pt][Ht][K][H][P]*/
+
+  gstiff1=matrixmatrixIII(Fnm,G,18,3,18);                           /*[Fnm][G]*/
+
+  FnG=matrixmatrixIII(Fn,G,18,3,18);                                 /*[Fn][G]*/
+  GtFnt=matrixtranspose(FnG,18);                                   /*[Gt][Fnt]*/
+  gstiff2=matrixmatrix(GtFnt,P,18);                             /*[Gt][Fnt][P]*/
+
+  gstiff3=transformationIII(gstiff3,P,18);                        /*[Pt][M][P]*/
+
+  for(i=0;i<18;i++)
+  {
+	for(j=0;j<18;j++) 
+	{
+	  *(*(tstiff+i)+j)=*(*(estiff+i)+j)-*(*(gstiff1+i)+j)-*(*(gstiff2+i)+j)+*(*(gstiff3+i)+j);
+	}
+  }
+
+
+  free(nm);
+
+  freematrix(G,3);
+  freematrix(P,18);
+  freematrix(H,18);
+  freematrix(PtHt,18);
+  freematrix(HP,18);
+  freematrix(Fnm,18);
+  freematrix(Fn,18);
+
+  freematrix(gstiff1,18);
+  freematrix(FnG,18);
+  freematrix(GtFnt,18);
+  freematrix(gstiff2,18);
+  freematrix(gstiff3,18);
+  return tstiff;
+}
+
+void symmetricmtx(double **estiff,int msize)
+{
+  int i,j;
+  for(i=0;i<msize;i++)
+  {
+	for(j=0;j<i;j++) 
+	{
+	  *(*(estiff+i)+j)=0.5*(*(*(estiff+i)+j)+*(*(estiff+j)+i));
+	  *(*(estiff+j)+i)=*(*(estiff+i)+j);
+	}		
+  }
+  return;
+}
+
+void updaterotation(double *ddisp,double *gvct,int nnode)
+/*FORMATION UPDATE IF ROTATION IS FINITE.*/
+{
+  int i,j;
+  long int loff;
+  double *rvctR,*rvctL,*rvct;
+  double **rmtxR,**rmtxL,**rmtx;
+  rvctR=(double *)malloc(3*nnode*sizeof(double));
+  rvctL=(double *)malloc(3*nnode*sizeof(double));
+  for(i=0;i<nnode;i++)
+  {
+	for(j=0;j<3;j++)
+	{
+	  loff=6*i+j;
+	  *(ddisp+loff)+=*(gvct+loff);
+	}
+	for(j=0;j<3;j++)
+	{
+	  loff=6*i+3+j;
+	  *(rvctR+j)=*(ddisp+loff);
+	  *(rvctL+j)=*(gvct+loff);
+	}
+	rmtxR=rotationmtx(rvctR);
+	rmtxL=rotationmtx(rvctL);
+	rmtx=matrixmatrix(rmtxL,rmtxR,3);
+	rvct=rotationvct(rmtx);
+	for(j=0;j<3;j++)
+	{
+	  loff=6*i+3+j;
+	  *(ddisp+loff)=*(rvct+j);
+	}
+	freematrix(rmtxR,3);
+	freematrix(rmtxL,3);
+	freematrix(rmtx,3);
+	free(rvct);
+  }
+  free(rvctR);
+  free(rvctL);
+  return;
+}/*updaterotation*/
+
+void updateforce(double *pvct,double *ddisp,int nnode)
+/*FORMATION UPDATE IF ROTATION IS FINITE.*/
+{
+  int i,j;
+  long int loff;
+  double *rvctR,*rvctL,*rvct;
+  double **rmtxR,**rmtxL,**rmtx;
+  rvctR=(double *)malloc(3*nnode*sizeof(double));
+  rvctL=(double *)malloc(3*nnode*sizeof(double));
+  for(i=0;i<nnode;i++)
+  {
+	for(j=0;j<3;j++)
+	{
+	  loff=6*i+j;
+	  *(rvctR+j)=*(pvct+loff);
+	  *(rvctL+j)=*(ddisp+loff+3);
+	}
+	rmtxR=rotationmtx(rvctR);
+	rmtxL=rotationmtx(rvctL);
+	rmtx=matrixmatrix(rmtxL,rmtxR,3);
+	rvct=rotationvct(rmtx);
+	for(j=0;j<3;j++)
+	{
+	  loff=6*i+j;
+	  *(pvct+loff)=*(rvct+j);
+	}
+	freematrix(rmtxR,3);
+	freematrix(rmtxL,3);
+	freematrix(rmtx,3);
+	free(rvct);
+  }
+  free(rvctR);
+  free(rvctL);
+  return;
+}/*updateforce*/
+
+double *extractshelldisplacement(struct oshell shell,double *ddisp)
+/*EXTRACT ELEMENT DEFORMATION{dU} FROM GLOBAL VECTOR.*/
+{
+  long int i,loffset;
+  int n,nnod;
+  double *d;
+
+  nnod=shell.nnod;
+  d=(double *)malloc(6*nnod*sizeof(double));
+  if(d==NULL)
+  {
+	errormessage("EXTRACTDISPLACEMENT:MEMORY INSUFFICIENT.");
+	return NULL;
+  }
+  for(n=0;n<nnod;n++)
+  {
+	for(i=0;i<6;i++)
+	{
+	  loffset=6*(shell.node[n]->loff)+i;
+	  *(d+6*n+i)=*(ddisp+loffset);
+	}
+  }
+  return d;
+}/*extractshelldisplacement*/
+
+double *extractshelllocalcoord(struct oshell shell,double *gdisp)
+/*EXTRACT LOCAL ELEMENT DEFORMATION FROM GLOBAL.*/
+/*UPDATE PSUEDO-ROTATION VECTOR*/
+{
+  long int i,loffset;
+  int n,nnod;
+  double *d,*r,*c,*td,*tr,*edisp;
+  double **drccos,**trmtx,**rmtx;
+
+  nnod=shell.nnod;
+
+  edisp=(double *)malloc(6*nnod*sizeof(double));
+
+  c=(double *)malloc(3*sizeof(double));
+  d=(double *)malloc(3*sizeof(double));
+  r=(double *)malloc(3*sizeof(double));
+
+  drccos=shelldrccos(shell,NULL);
+
+  for(i=0;i<3;i++)
+  {
+	*(c+i)=0.0;
+	for(n=0;n<nnod;n++)
+	{
+	  *(c+i)+=*(gdisp+6*n+i)/nnod;
+	}
+  }
+  /*CENTER*/
+  for(n=0;n<nnod;n++)
+  {
+	for(i=0;i<3;i++)
+	{
+	  *(d+i)=*(gdisp+6*n+i)-*(c+i);
+	  *(r+i)=*(gdisp+6*n+3+i);
+	}
+
+	td=matrixvector(drccos,d,3);
+	/*EACH NODE FROM CENTER*/
+
+	rmtx=rotationmtx(r);
+	/*rmtx:Ra*/
+	trmtx=matrixmatrix(drccos,rmtx,3);
+	tr=rotationvct(trmtx);
+
+	for(i=0;i<3;i++)
+	{
+	  *(edisp+6*n+i)  =*(td+i);
+	  *(edisp+6*n+3+i)=*(tr+i);
+	}
+	free(td);
+	free(tr);
+	freematrix(rmtx,3);
+	freematrix(trmtx,3);
+  }
+
+
+  free(c);
+  free(d);
+  free(r);
+  freematrix(drccos,3);
+
+  return edisp;
+}/*extractshelllocalcoord*/
+
+void extractdeformation(double *eform,double *edisp,int nnod)
+/*EXTRACT LOCAL ELEMENT DEFORMATION FROM GLOBAL.*/
+/*UPDATE PSUEDO-ROTATION VECTOR*/
+{
+  int n,i;
+  double *r,*rinit,*rvct;
+  double **rmtx,**rh,**rt,**rtt;
+
+  r    =(double *)malloc(3*sizeof(double));
+  rinit=(double *)malloc(3*sizeof(double));
+
+  for(n=0;n<nnod;n++)
+  {
+	for(i=0;i<3;i++)
+	{
+	  *(r+i)    =*(edisp+6*n+3+i);
+	  *(rinit+i)=*(eform+6*n+3+i);
+	}
+
+	rh=rotationmtx(r);
+	rt=rotationmtx(rinit);
+	rtt=matrixtranspose(rt,3);
+	rmtx=matrixmatrix(rh,rtt,3);
+	rvct=rotationvct(rmtx);
+
+	for(i=0;i<3;i++)
+	{
+	  *(edisp+6*n+i)  -=*(eform+6*n+i);
+	  *(edisp+6*n+3+i) =*(rvct+i);
+	}
+
+	freematrix(rh,3);
+	freematrix(rt,3);
+	freematrix(rtt,3);
+	freematrix(rmtx,3);
+	free(rvct);
+  }
+
+  free(r);
+  free(rinit);
+  return;
+}
+
+void initialformCR(struct onode *nodes,double *ddisp,int nnode)
+/*INITIAL FORMATION INTO DISPLACEMENT.WITHOUT NODE CODE.*/
+{
+  int i;
+
+  for(i=0;i<nnode;i++)
+  {
+	*(ddisp+6*i+0)=(nodes+i)->d[0];
+	*(ddisp+6*i+1)=(nodes+i)->d[1];
+	*(ddisp+6*i+2)=(nodes+i)->d[2];
+	*(ddisp+6*i+3)=0.01;
+	*(ddisp+6*i+4)=0.01;
+	*(ddisp+6*i+5)=0.01;
+  }
+
+  return;
+}/*initialformCR*/
+
+void LDLmode(struct gcomponent *gmtx,struct oconf *confs,long int *m,int bucklingflag,double **mode,double *norm,double *dm,long int msize)
+{
+  double data;
+  double LDLnorm;
+  struct gcomponent *gcomp1;
+  long int i,j,k;
+  long int ii;
+  for(i=0;i<bucklingflag;i++)
+  {
+	ii=*(m+i);
+	*(dm+i)=(gmtx+ii)->value;
+	LDLnorm=0.0;
+	for(j=msize-1;j>=0;j--)                                 /*BACKWARD.*/
+	{
+	  if(j==ii)
+	  {
+		*(*(mode+i)+j)=1.0;
+	  }
+	  else
+	  {
+		*(*(mode+i)+j)=0.0;
+	  }
+
+	  if((confs+j)->iconf==0)
+	  {
+		data=*(*(mode+i)+j);
+		gcomp1=(gmtx+j); /*DIAGONAL.*/
+		while(gcomp1->down!=NULL) /*DOWNWARD.*/
+		{
+		  gcomp1=gcomp1->down;
+		  k=gcomp1->m;
+		  if((confs+k-1)->iconf==0) /*FREE*/
+		  {
+			data-=(gcomp1->value)*(*(*(mode+i)+k-1));
+		  }
+		}
+		*(*(mode+i)+j)=data;
+		LDLnorm+=data*data;
+	  }
+	}
+	*(norm+i)=sqrt(LDLnorm);
+	for(j=0;j<msize;j++)                                 /*BACKWARD.*/
+	{
+	  *(*(mode+i)+j)/=*(norm+i);
+	}
+
+  }
+  return;
+}
+
+double shellvolume(struct oshell shell,double** drccos,double area)
+{
+  double volume;
+  struct onode node=*(shell.node[0]);
+
+  volume=( *(*(drccos+2)+0)*node.d[GX]
+		  +*(*(drccos+2)+1)*node.d[GY]
+		  +*(*(drccos+2)+2)*node.d[GZ] )*area/3.0;
+  return volume;
+}/*shellvolume*/
+
+double equilibriumcurvature(double *weight,double *ddisp,double *lastddisp,double pfactor,double lastpfactor,double *up,int msize)
+{
+	int i;
+	double *vct,*lastvct;
+	double cos,dot,len,lastlen,curvature;
+	char string[40];
+	vct=(double *)malloc((msize+1)*sizeof(double));
+	lastvct=(double *)malloc((msize+1)*sizeof(double));
+	dot=pfactor-lastpfactor;
+	len=1.0;
+	lastlen=(pfactor-lastpfactor)*(pfactor-lastpfactor);
+	for(i=0;i<msize;i++)
+	{
+	  *(vct+i)=*(weight+i)**(up+i);
+	  *(lastvct+i)=*(weight+i)*(*(ddisp+i)-*(lastddisp+i));
+	   dot+=*(vct+i)**(lastvct+i);
+	   len+=*(vct+i)**(vct+i);
+	   lastlen+=*(lastvct+i)**(lastvct+i);
+	}
+	cos=abs(dot/sqrt(len*lastlen));
+	curvature=acos(cos)/sqrt(lastlen);
+	free(vct);
+	free(lastvct);
+	return curvature;
+}

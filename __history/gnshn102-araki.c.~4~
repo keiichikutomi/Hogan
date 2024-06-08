@@ -1,0 +1,2786 @@
+/*=========================================================*/
+/*   PROGRAM GUNBASHIRA SHINDOU 002                        */
+/*     6 D.O.F. 3D FRAME WITH POINT MASS                   */
+/*     GRAVITY LOADED.                                     */
+/*     HISENKEI OUTOU KAISEKI                              */
+/*   CODED BY JUN SATO                                     */
+/*   DATE:FORTRAN SINSE 1993. 9.17                         */
+/*        C       SINSE 1998.10.10                         */
+/*                                                         */
+/*   BASSUI FROM:                                          */
+/*   'ZAKU001'  ,BASED ON 'Y6FRAMEB' BY YOSHINOBU FUJITANI */
+/*   'D24PE3..9',BY TSUNETA OCHI                           */
+/*=========================================================*/
+
+/*#define MAXLAP 6005*/ /*6000x0.010 FOR KOKUJI HACHINOHE UD*/
+/*#define MAXLAP 2005*/ /*2000x0.010 FOR KOKUJI UD*/
+/*#define MAXLAP 1205*/ /*1200x0.010 FOR KANSOKU UD*/
+/*#define MAXLAP 116*/  /* 116x0.010 FOR EL CENTRO UD*/
+/*#define MAXLAP 4005*/ /*FOR E-DEFENSE*/
+#define MAXLAP 3005 /*3000x0.020 FOR HAKUSHIMA*/
+/*#define MAXLAP 605*/  /*600x0.100 FOR HAKUSHIMA TEST*/
+/*#define MAXLAP 1*/
+/*#define FLOORS 2*/ /*INCLUDING GL,RFL*/
+#define FLOORS 8 /*INCLUDING GL,RFL FOR HAKUSHIMA*/
+#define DAMPING 0.020                                /*DAMPING RATE*/  /*S=0.02, RC=0.03*/
+/*#define DAMPING 0.010*/               /*DAMPING RATE FOR KAMISATO*/
+#define OUTPUTNNODE 5                  /*OUTPUT NODECODE*/  /*araki*/
+/*#define OUTPUTNELEM 32*/                  /*OUTPUT ELEMCODE*/  /*araki*/
+#define OUTPUTNELEM 6
+
+struct accdata{long int ndata;
+               double dt;
+               double *a;};                    /*ACCELERATION DATA.*/
+struct structrigid{int ielem,floor;
+                   double x,y;
+                   double K[2];};                   /*SIZE 50 BYTES*/
+
+int gnshn101(struct arclmframe *af);
+double *inputacceleration(FILE *fin,
+                          long int *ndata,double *dt);
+double assemmass(struct gcomponent *mmtx,
+                 long int nnode,
+                 struct oconf *confs,double *nmass);
+double accelerationincrement(struct accdata acc,
+                             double ddt,long int lap);
+void assemaccel(double *gvct,
+                double dacc[],
+                long int nnode,struct arclmframe *af);
+/*double newmarkbeta(struct gcomponent *gmtx,
+                   struct gcomponent *cmtx,
+                   struct gcomponent *mmtx,
+                   double *gacc,
+                   struct oconf *confs,
+                   int nnode,
+                   double *u, double *ud, double *udd,
+                   double *du,double *dud,double *dudd,
+                   double ddt,double beta);         */ //Default
+double newmarkbeta(struct gcomponent *gmtx,
+                   struct gcomponent *cmtx,
+                   struct gcomponent *mmtx,
+                   double *gacc,
+                   struct oconf *confs,
+                   int nnode,
+                   double *u, double *ud, double *udd,
+                   double *du,double *dud,double *dudd,
+                   double ddt,double beta,
+                   FILE *ftxt);                                      /*araki for Hakushima*/
+void floorvalues(FILE *fout,FILE *ftxt,
+                 struct arclmframe *af,double *ddisp,double dacc[]);
+/*double *stresstransform(struct owire *elem,double *estress);*/     //Default
+double *stresstransform(FILE *fout,struct owire *elem,double *estress);     /*araki for Hakushima*/
+
+/*EXTERNAL PARAMETERS*/
+extern FILE *globalfile; /*GLOBAL FILE.*/
+
+double ddispmax=0.0;               /*mihara for maxd*/
+double sumshearmax=0.0;            /*mihara for maxq*/
+double **estressmtx,**funcmtx;     /*mihara for maxd,maxq*/
+int    mhoko=0,flagsumshearmax=0;  /*mihara for maxd,maxq*/
+double **iniform;                  /*mihara*/
+int    yieldelemscount=0,yieldelemsmax=0;          /*araki for maxy*/
+
+int gnshn101(struct arclmframe *af)
+/*DYNAMIC RESPONSE ANALYSIS.*/
+/*NODE MASSES ARE ALREADY SUMMED IN EXTRACTION.*/
+/*GRAVITY LOADED ANALYSIS IS ALREADY DONE BY ARCLM.*/
+{
+  DWORD memory0,memory1,memory2;
+
+  FILE *fin,*fout,*ftxt,*ferr;                       /*FILE 8 BYTES*/
+  FILE *fmaxd,*fmaxq;                        /*Mihara for Hakushima*/
+  FILE *ffes;                                 /*araki for Hakushima*/
+  FILE *fmaxy;                                /*araki for Hakushima*/
+  double *ddisp,*dreact;
+  struct memoryelem *melem;
+  char dir[]=DIRECTORY;                            /*DATA DIRECTORY*/
+  char s[80],string[4000];
+  int i,j,ii,jj,iii,jjj;
+  int nnode,nelem,nsect,nreact;
+  long int nlap,laps;
+  long int loffset,msize;
+  long int time;
+  struct gcomponent ginit={0,0,0.0,NULL};
+  struct gcomponent *gmtx,*g,*p;                /*GLOBAL MATRIX [K]*/
+  /*double *gvct;*/                                 /*GLOBAL VECTOR*/
+  double **drccos,**tmatrix,**estiff,*estress,**e,**t;
+ // double **estiffforcmtx;      /*MATRIX OF ELEMENT for [C] by araki*/
+  double *gdisp,*edisp;
+  double determinant,func[2];
+  clock_t t0,t1,t2;
+  struct onode *nodes,*mnode;
+  struct owire elem,*elems;
+  struct oconf *confs=NULL;
+  struct osect esect;
+  double *nmass;
+ // int    outputnnode=5,outputnelem=3; /*araki for output*/
+  int    nodeflag[OUTPUTNNODE]={116,242,377,505,631};      /*OUTPUT NODECODE*/  /*araki*/
+  //int    nodeflag[OUTPUTNNODE]={505,545,569,601,631};      /*OUTPUT NODECODE*/
+  //int    nodeflag[OUTPUTNNODE]={101};                      /*OUTPUT NODECODE for qtst*/
+
+  //int    elemflag[OUTPUTNELEM]={1296,1411,1421};           /*OUTPUT ELEMCODE*/  /*araki*/
+  //int    elemflag[OUTPUTNELEM]={1004,1411,2423,2425,1421,1051};          /*OUTPUT ELEMCODE*/
+  //int    elemflag[OUTPUTNELEM]={1053,1063,1096,1109,1315,2437};          /*OUTPUT ELEMCODE*/
+  int    elemflag[OUTPUTNELEM]={1053,1063,1096,1315,1421,2437};          /*OUTPUT ELEMCODE*/
+  //int    elemflag[OUTPUTNELEM]={1319,1343,1338,1331,1421,1312,1341,1333,1321,1304,1003,1004};          /*OUTPUT ELEMCODE*/
+  //int    elemflag[OUTPUTNELEM]={1005,1006,1007,1008};         /*OUTPUT ELEMCODE*/
+  //int    elemflag[OUTPUTNELEM]={1001};
+  /*int    elemflag[OUTPUTNELEM]={1286,1396,1390,1384,1298,1379,1374,1368,2437,
+                                2439,1312,1341,1333,1321,1304,
+                                1296,1405,2429,2432,1411,1365,1357,1416,
+                                1319,1343,1338,1331,1421,
+                                1001,1002,1003,1004};       */   /*OUTPUT ELEMCODE*/
+  double sumreact;                                             /*araki for Hakushima*/
+  /*** 12.06.07 araki for Hakushima *******************************************/
+  FILE *fotpd,*fotpq,*fotpy;                        /*OUTPUT IN OHX, OHY STYLE*/
+  int m,n;
+  double *stresslong,*displong,*reactlong;               /*{fL},{UL}+{Uo},{RL}*/
+  struct owire lelem;
+  /****************************************************************************/
+
+  FILE *fxacc,*fyacc,*fzacc;
+  long int ndata[3];
+  double ddt,dacc[3],tacc[3],tvel[3],tdis[3],afact;
+  double pacc[3],pvel[3],pdis[3];
+  double *gacc;
+  double *u,*ud,*udd,*du,*dud,*dudd;                      /*VECTORS*/
+  double Wit,Wkt,Wet,Wpt,Wot,*wk[3],*wo[3];                /*ENERGY*/
+  struct accdata acc[3];
+  struct gcomponent *mmtx;                        /*MASS MATRIX [M]*/
+
+  int neig=NEIGEN,ncount;
+  double **evct,*eigen;                /*EIGEN VECTORS,EIGEN VALUES*/
+  double eps=1.0E-16,data,d;
+  double h1=DAMPING,w1,T1,Ti;
+  double h2=DAMPING,w2,T2,data1,data2;  /*RAYLEIGH DAMPING by araki*/
+  struct gcomponent *cmtx,*mtx1,*mtx2;                 /*MATRIX [C]*/
+  double mtotal;
+
+  /*DEIGAB TEST*/
+  double A[MSIZE][MSIZE],B[MSIZE][MSIZE],W[7][MSIZE],E[MSIZE],V[MSIZE][MSIZE];
+
+  memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
+
+  /*INPUT FILE*/
+  fin=fgetstofopen(dir,"r",ID_INPUTFILE);
+  /*fin=NULL;*/
+
+  /*GET YIELD SURFACE*/
+  if(fin!=NULL)
+  {
+    inputinit(fin,&(af->nnode),&(af->nelem),&(af->nsect));
+    for(i=0;i<(af->nsect);i++) readsect(fin,(af->sects+i));
+
+    /*
+    sprintf(string,"Surface\n");
+    for(i=0;i<(af->nsect);i++)
+    {
+      sprintf(s,"SECT %d Nmax= %8.3f ",
+              (af->sects+i)->code,(af->sects+i)->fmax[0]);
+      strcat(string,s);
+      if(!((i+1)%3)) strcat(string,"\n");
+    }
+    MessageBox(NULL,string,"GNSHN101",MB_OK);
+    */
+
+    fclose(fin);
+    fin=NULL;
+  }
+
+  /*OUTPUT FILE*/
+  fout=fgetstofopen("\0","w",ID_OUTPUTFILE);
+  /*fout=NULL;*/                                                //Default
+  globalfile=fout;
+
+  ferr=fopen("gnshn.txt","w");                             /*ERROR FILE*/
+  /*ferr=NULL;*/
+
+  ftxt=fopen("gnshn.huk","w");                     /*HUKUGENRYOKU GRAPH*/
+  /*ftxt=NULL;*/
+
+  /*ffes=fopen("gnshn.fes","w");   */                              /*FACTS*/
+
+  if(ftxt!=NULL)
+  {
+    fprintf(ftxt,"   LAP");
+    fprintf(ftxt,"         dPz           D           V         Acc");
+    for(i=0;i<OUTPUTNNODE;i++)
+      fprintf(ftxt,"      NODE%2d",nodeflag[i]); /*OUTPUT DISPLACEMENT OF NODE*/  /*araki*/
+    for(i=0;i<FLOORS;i++) fprintf(ftxt,"          Dx%d          Dy%d",
+                                  i+1,i+1);
+    for(i=0;i<FLOORS-1;i++) fprintf(ftxt,"          Qx%d          Qy%d",
+                                    i+1,i+1);
+    /*for(i=0;i<FLOORS-1;i++) fprintf(ftxt,"   SumLoadx%2d   SumLoady%2d",
+                                    i+1,i+1);         */                   /*** araki for hakushima ***/
+    fprintf(ftxt,"         R");
+    fprintf(ftxt,"      Accx      Accy");
+    fprintf(ftxt,"        Vx        Vy");
+    fprintf(ftxt,"        Dx        Dy");
+    fprintf(ftxt,"          Wk       Wk+We    Wk+We+Wp");
+    fprintf(ftxt,"\n");
+  }
+
+  t0=clock();                                        /*CLOCK BEGIN.*/
+
+  /*ACCCELERATION DATA INPUT*/
+
+  /*Tsuzuki X*/
+  /*fxacc=fopen("elcnns.dat","r");*/ /*X*/
+  /*fxacc=fopen("phs00_564.txt","r");*/ /*X*/
+  /*fxacc=fopen("JmaKobeNS.txt","r");*/ /*X*/
+  /*fxacc=fopen("JMA_Kobe_E_NS.txt","r");*/ /*X E-defense*/
+  fxacc=fopen("TAT95000NS.txt","r"); /*X E-defense*/
+  /*fxacc=fopen("HcnhEW.txt","r");*/ /*X*/
+  /*fxacc=fopen("TohkNS.txt","r");*/ /*X*/
+
+  /*** Kokuji for Hakushima ***/
+  /*fxacc=fopen("993_Ko_Hachinohe_EW.dat","r");*/ /*X*/
+  /*fxacc=fopen("994_Ko_Tohoku_NS.dat","r");*/    /*X*/
+  /*fxacc=fopen("995_Ko_Kobe_NS.dat","r");*/      /*X*/
+  /*fxacc=fopen("996_Ko_Hachinohe_UD.dat","r");*/ /*X*/
+  /*fxacc=fopen("997_Ko_Tohoku_UD.dat","r");*/    /*X*/
+  /*fxacc=fopen("998_Ko_Kobe_UD.dat","r");*/      /*X*/
+  /*fxacc=fopen("851_Si_Hachinohe_EW.dat","r");*/ /*X*/
+  /*fxacc=fopen("852_Si_Tohoku_NS.dat","r");*/    /*X*/
+  /*fxacc=fopen("853_Si_Kobe_NS.dat","r");*/      /*X*/
+  /*fxacc=fopen("626_Ko_Takatori_NS.dat","r");*/  /*X*/
+  /*fxacc=fopen("636_Ko_Takatori_UD.dat","r");*/  /*X*/
+  /***************************/
+
+  /*fxacc=NULL;*/ /*X*/
+
+  /*Tsuzuki Y*/
+  /*fyacc=fopen("elcnew.dat","r");*/ /*Y*/
+  /*fyacc=fopen("elcnns.dat","r");*/ /*Y*/               //araki
+  /*fyacc=fopen("tancho.dat","r");*/ /*Y*/
+  /*fyacc=fopen("ohuku.dat","r");*/ /*Y*/
+  /*fyacc=fopen("JmaKobeEW.txt","r");*/ /*Y*/
+  /*fyacc=fopen("JmaKobeNS.txt","r");*/ /*Y*/               //araki
+  /*fyacc=fopen("JMA_Kobe_E_EW.txt","r");*/ /*Y E-defense*/
+  /*fyacc=fopen("TAT95000EW.txt","r");*/ /*Y E-defense*/
+  /*fyacc=fopen("TAT95000NS.txt","r");*/ /*Y*/
+  /*fyacc=fopen("TaftEW.txt","r");*/ /*Y*/               //araki
+  /*fyacc=fopen("HcnhEW.dat","r");*/ /*Y*/               //araki
+  /*fyacc=fopen("tohoku_ns.dat","r");*/ /*Y*/               //araki
+
+
+  /*** Kokuji for Hakushima ***/
+  /*fyacc=fopen("993_Ko_Hachinohe_EW.dat","r");*/ /*Y*/
+  /*fyacc=fopen("994_Ko_Tohoku_NS.dat","r");*/    /*Y*/
+  /*fyacc=fopen("995_Ko_Kobe_NS.dat","r");*/      /*Y*/
+  /*fyacc=fopen("996_Ko_Hachinohe_UD.dat","r");*/ /*Y*/
+  /*fyacc=fopen("997_Ko_Tohoku_UD.dat","r");*/    /*Y*/
+  /*fyacc=fopen("998_Ko_Kobe_UD.dat","r");*/      /*Y*/
+  /*fyacc=fopen("851_Si_Hachinohe_EW.dat","r");*/ /*Y*/
+  /*fyacc=fopen("852_Si_Tohoku_NS.dat","r");*/    /*Y*/
+  /*fyacc=fopen("853_Si_Kobe_NS.dat","r");*/      /*Y*/
+  /*fyacc=fopen("626_Ko_Takatori_NS.dat","r");*/  /*Y*/
+  /*fyacc=fopen("636_Ko_Takatori_UD.dat","r");*/  /*Y*/
+  /***************************/
+
+  fyacc=NULL; /*Y*/
+
+  /*Tsuzuki Z*/
+  /*fzacc=fopen("94-ElcnUD.txt","r");*/ /*Z*/
+  /*fzacc=fopen("JmaKobeUD.txt","r");*/ /*Z*/
+  /*fzacc=fopen("94-TaftUD.txt","r");*/ /*Z*/
+  /*fzacc=fopen("kokuji_hachinohe_ud.txt","r");*/ /*Z*/
+  /*fzacc=fopen("kokuji_tohoku_ud.txt","r"); /*Z*/
+  /*fzacc=fopen("kokuji_jmakobe_ud.txt","r");*/ /*Z*/
+  /*fzacc=fopen("JMA_Kobe_E_UD.txt","r");*/ /*Z E-defense*/
+  /*fzacc=fopen("TAT95000UD.txt","r");*/ /*Z E-defense*/
+
+  /*fzacc=fopen("997_Ko_Tohoku_UD.dat","r");*/    /*Z*/
+
+  fzacc=NULL; /*Z*/
+
+  if(fxacc==NULL)
+  MessageBox(NULL,"X:No File.","Gnshn",MB_OK);
+  if(fyacc==NULL)
+  MessageBox(NULL,"Y:No File.","Gnshn",MB_OK);
+  if(fzacc==NULL)
+  MessageBox(NULL,"Z:No File.","Gnshn",MB_OK);
+
+  acc[0].a=inputacceleration(fxacc,&(acc[0].ndata),&(acc[0].dt));
+  acc[1].a=inputacceleration(fyacc,&(acc[1].ndata),&(acc[1].dt));
+  acc[2].a=inputacceleration(fzacc,&(acc[2].ndata),&(acc[2].dt));
+
+  /*ACCELERATION OUTPUT*/
+  /*if(fout!=NULL)
+  {
+    fprintf(fout,"\n");
+    for(i=0;i<acc[0].ndata;i++)
+    {
+      fprintf(fout,"%5d %7.3f %11.5f\n",i+1,i*acc[0].dt,*(acc[0].a+i));
+    }
+    fprintf(fout,"\n");
+    for(i=0;i<acc[1].ndata;i++)
+    {
+      fprintf(fout,"%5d %7.3f %11.5f\n",i+1,i*acc[1].dt,*(acc[1].a+i));
+    }
+  }*/
+
+  ddt=0.02;                                  /*TIME INCREMENT[sec]*/
+  /*ddt=0.1; */                                 /*TIME INCREMENT[sec]*/  /*** hakushima test ***/
+  /*ddt=0.005;*/                /*TIME INCREMENT FOR E-DEFENSE[sec]*/
+  /*EL CENTRO:dt=0.02[sec],ddt=0.005[sec],4000[laps]=20[sec]*/
+  if(fout!=NULL) fprintf(fout,"TIME INCREMENT ddt = %.5f\n",ddt);
+
+  /*Tsuzuki afact*/
+  /*afact=0.2;*/ /*KOKUJI LEVEL 1*/
+  /*afact=1.0;*/ /*KOKUJI LEVEL 2*/
+  /*afact=1.0;*/ /*LEVEL 3*/
+  /*afact=25.0/ 92.065;*/ /*JMA KOBE NS LEVEL 1*/
+  /*afact=25.0/170.592;*/ /*TAKATORI NS+EW E-defense LEVEL 1*/
+  /*afact=225.0/341.0;*/  /*EL CENTRO NS LEVEL 1*/ //araki
+  /*afact=450.0/341.0;*/  /*EL CENTRO NS LEVEL 2*/
+  /*afact=50.0/ 92.065;*/ /*JMA KOBE NS LEVEL 2*/
+  /*afact=25.0/ 92.065;*/ /*JMA KOBE NS LEVEL 1*/  //araki
+  /*afact=50.0/106.583;*/ /*JMA KOBE NS+EW LEVEL 2*/
+  /*afact=50.0/103.801;*/ /*JMA KOBE NS+EW E-defense LEVEL 2*/
+  /*afact=50.0/170.592;*/ /*TAKATORI NS+EW E-defense LEVEL 2*/
+  /*afact=60.0/170.592;*/ /*TAKATORI NS+EW E-defense LEVEL 3.1*/
+  /*afact=75.0/170.592;*/ /*TAKATORI NS+EW E-defense LEVEL 3.1*/
+  /*afact=25.0/149.843;*/ /*TAKATORI NS LEVEL 1*/ //araki
+  afact=50.0/149.843; /*TAKATORI NS LEVEL 2*/     //araki
+  /*afact=25.0/ 17.371;*/ /*TAFT EW LEVEL 1*/     //araki
+  /*afact=50.0/ 17.371;*/ /*TAFT EW LEVEL 2*/     //araki
+  /*afact=2.879;*/ /*TAFT EW LEVEL 2*/
+  /*afact=50.0/ 36.990;*/ /*HACHINOHE EW LEVEL 2*/
+  /*afact=25.0/ 36.990;*/ /*HACHINOHE EW LEVEL 1*/
+  /*afact=50.0/ 36.659;*/ /*TOHOKU NS LEVEL 2*/
+  /*afact=25.0/ 36.659;*/ /*TOHOKU NS LEVEL 1*/
+
+
+  if(fout!=NULL) fprintf(fout,"ACCELERATION FACTOR = %.5f\n",afact);
+
+  afact*=0.01; /*ACCELERATION FACTOR [cm/sec2] INTO [m/sec2]*/
+
+  /*COUNT TOTAL LAPS*/
+  for(i=0;i<3;i++)
+  {
+    if(acc[i].a==NULL) ndata[i]=0;
+    else
+    {
+      ndata[i]=(long int)((acc[i].ndata-1)*(acc[i].dt)/ddt)+1;
+    }
+  }
+  laps=0;
+  if(ndata[0]>0)      laps=ndata[0];
+  else if(ndata[1]>0) laps=ndata[1];
+  else if(ndata[2]>0) laps=ndata[2];
+  if(ndata[1]>0 && laps>0 && ndata[1]<laps) laps=ndata[1];
+  if(ndata[2]>0 && laps>0 && ndata[2]<laps) laps=ndata[2];
+
+  if(laps>MAXLAP) laps=MAXLAP;
+  sprintf(string,"LAPS=%d",laps);
+  MessageBox(NULL,string,"Gnshn",MB_OK);
+
+  nnode=af->nnode;
+  nelem=af->nelem;
+  nsect=af->nsect;
+  nreact=af->nreact;
+
+  nodes=af->nodes;
+  elems=af->elems;
+  confs=af->confs;
+  nmass=af->nmass;
+
+////////////////////////////////////////////////////////////////////////////////
+  if(fxacc!=NULL)      mhoko=0;                                       /*mihara*/
+  else if(fyacc!=NULL) mhoko=1;
+  else if(fzacc!=NULL) mhoko=2;
+
+  estressmtx=(double **)malloc(nelem*sizeof(double *));
+  for(i=1;i<=nelem;i++)
+  {
+	*(estressmtx+i-1)=(double *)malloc(12*sizeof(double));
+	for(j=1;j<=12;j++)
+	{
+	  *(*(estressmtx+i-1)+j-1)=0.0;                                 /*INITIAL.*/
+	}
+  }
+
+  funcmtx=(double **)malloc(nelem*sizeof(double *));
+  for(i=1;i<=nelem;i++)
+  {
+	*(funcmtx+i-1)=(double *)malloc(2*sizeof(double));
+	for(j=1;j<=2;j++)
+	{
+	  *(*(funcmtx+i-1)+j-1)=0.0;                                    /*INITIAL.*/
+	}
+  }
+
+  iniform=(double **)malloc(nnode*sizeof(double *));
+  for(i=1;i<=nnode;i++)
+  {
+	*(iniform+i-1)=(double *)malloc(3*sizeof(double));
+	for(j=1;j<=3;j++)
+	{
+	  *(*(iniform+i-1)+j-1)=0.0;                                 /*INITIAL.*/
+	}
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+for(i=0;i<nelem;i++)
+{
+  for(ii=0;ii<OUTPUTNELEM;ii++)        /*OUTPUT STRESS OF ELEM*/ /*araki*/
+  {
+    if((elems+i)->code==elemflag[ii])
+    {
+      if(ferr!=NULL) fprintf(ferr,"ELEM %d Mx= %14.5f\n",(elems+i)->code,(elems+i)->stress[0][4]);
+    }
+  }
+}
+#endif
+
+#if 0
+for(i=0;i<nelem;i++)
+{
+  for(ii=0;ii<OUTPUTNELEM;ii++)        /*OUTPUT STRESS OF ELEM*/ /*araki*/
+  {
+    if((elems+i)->code==elemflag[ii])
+    {
+      if(ferr!=NULL) fprintf(ferr,"MELEM %d Mx= %14.5f\n",
+                             (af->melem+i)->code,
+                             (af->melem+i)->stress[0][4]);
+    }
+  }
+}
+#endif
+
+  sprintf(string,"NODES=%d ELEMS=%d SECTS=%d",nnode,nelem,nsect);
+  errormessage(string);
+  if(fout!=NULL) fprintf(fout,"%s\n",string);
+
+  msize=6*nnode;                           /*SIZE OF GLOBAL MATRIX.*/
+
+  ncount=0;
+  for(iii=0;iii<msize;iii++)
+  {
+    if((confs+iii)->iconf!=1) ncount++;
+  }
+  sprintf(string,"MATRIX DIMENSION=%d",ncount);
+  MessageBox(NULL,string,"Gnshn",MB_OK);
+
+  gmtx=(struct gcomponent *)          /*DIAGONALS OF GLOBAL MATRIX.*/
+        malloc(msize*sizeof(struct gcomponent));
+  gacc=mallocdoublevector(msize);                    /*ACCEL VECTOR*/
+  if(gmtx==NULL|| gacc==NULL) return 0;
+  for(i=0;i<msize;i++)
+  {
+    (gmtx+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
+  }
+
+#if 1 /*FOR PRORORTION TO INITIAL STIFFNESS, OCCASIONAL STIFFNESS II.*/
+  cmtx=(struct gcomponent *)             /*DIAGONALS OF MATRIX [C].*/
+        malloc(msize*sizeof(struct gcomponent));
+  if(cmtx==NULL) return 0;
+  for(i=0;i<msize;i++)
+  {
+    (cmtx+i)->down=NULL;               /*MATRIX [C] INITIALIZATION.*/
+  }
+#endif
+
+  evct=(double **)malloc(neig*sizeof(double *));    /*EIGEN VECTORS*/
+  eigen=(double *)malloc(neig*sizeof(double));       /*EIGEN VALUES*/
+  if(evct==NULL || eigen==NULL) return 0;
+  for(i=0;i<neig;i++)
+  {
+    *(evct+i)=(double *)malloc(msize*sizeof(double));
+    for(j=0;j<msize;j++) *(*(evct+i)+j)=0.0;
+  }
+
+  /*DISPLACEMENT VECTORS.*/
+  u   =mallocdoublevector(msize);
+  ud  =mallocdoublevector(msize);
+  udd =mallocdoublevector(msize);
+  du  =mallocdoublevector(msize);
+  dud =mallocdoublevector(msize);
+  dudd=mallocdoublevector(msize);
+  if(u ==NULL || ud ==NULL || udd ==NULL ||
+     du==NULL || dud==NULL || dudd==NULL) return 0;
+  for(i=0;i<msize;i++)
+  {
+    *(u   +i)=0.0;
+    *(ud  +i)=0.0;
+    *(udd +i)=0.0;
+    *(du  +i)=0.0;
+    *(dud +i)=0.0;
+    *(dudd+i)=0.0;
+  }
+
+  mmtx=(struct gcomponent *)            /*DIAGONALS OF MASS MATRIX.*/
+        malloc(msize*sizeof(struct gcomponent));
+  if(mmtx==NULL) return 0;
+  for(i=0;i<msize;i++)
+  {
+    (mmtx+i)->m=(unsigned short int)(i+1);
+    (mmtx+i)->n=(unsigned short int)(i+1);
+    (mmtx+i)->value=0.0;
+    (mmtx+i)->down=NULL;
+  }
+
+  ddisp=(double *)malloc(6*nnode*sizeof(double));
+  af->ddisp=ddisp;                     /*DISPLACEMENT:6 DIRECTIONS.*/
+
+  /*melem=(struct memoryelem *)
+          malloc(nelem*sizeof(struct memoryelem));*/
+  /*af->melem=melem;*/              /*CODE,12 BOUNDARIES,12 STRESS.*/
+  melem=af->melem;
+
+  initialform(nodes,ddisp,nnode);           /*ASSEMBLAGE FORMATION.*/
+
+  mnode=(struct onode *)malloc(nnode*sizeof(struct onode));
+  for(i=0;i<nnode;i++)
+  {
+    *(mnode+i)=*(nodes+i);
+  }
+
+  for(i=0;i<nnode;i++)
+  {
+    *(*(iniform+i)+0)=(nodes+i)->d[0]; /*mihara*/
+    *(*(iniform+i)+1)=(nodes+i)->d[1];
+    *(*(iniform+i)+2)=(nodes+i)->d[2];
+  }
+
+  initialelem(elems,melem,nelem);        /*ASSEMBLAGE ELEMENTS.*/
+  /*for(i=0;i<nelem;i++) inputelem(elems,melem,i,(elems+i));*/  //Default
+
+  dreact=(double *)malloc(nreact*sizeof(double));  /*REACTION FILE.*/
+  af->dreact=dreact;
+  initialreact(fin,dreact,nreact);     /*ASSEMBLAGE LONG REACTIONS.*/
+
+#if 1
+    /*** 12.06.07 araki for Hakushima *****************************************/
+    /*{fL}*/
+    stresslong=(double *)malloc(12*nelem*sizeof(double));
+    if(stresslong==NULL) return 0;
+    for(i=0;i<nelem;i++)
+    {
+      inputelem(elems,melem,i,&lelem);        /*READ ELEMENT DATA.*/
+      for(n=0;n<=1;n++){
+        for(j=0;j<6;j++){
+          /* *(stresslong+12*i+j+6*n)=(elems+i)->stress[n][j];*/
+          *(stresslong+12*i+j+6*n)=lelem.stress[n][j];
+        }
+      }
+    }
+
+    /*{UL}+{Uo}*/
+    displong=(double *)malloc(6*nnode*sizeof(double));
+    if(displong==NULL) return 0;
+    for(i=0;i<nnode;i++)
+    {
+      for(j=0;j<6;j++){
+        *(displong+6*i+j)=*(ddisp+6*i+j);
+      }
+    }
+
+    /*{RL}*/
+    reactlong=(double *)malloc(nreact*sizeof(double));
+    if(reactlong==NULL) return 0;
+    for(i=0;i<nreact;i++)
+    {
+       *(reactlong+i)=*(af->dreact+i);
+    }
+    /**************************************************************************/
+#endif
+
+  GetAsyncKeyState(VK_LBUTTON);                   /*CLEAR KEY LEFT.*/
+  GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
+
+  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,
+                 0,0,255);                      /*DRAW GLOBAL AXIS.*/
+
+  if(wsurf.hwnd!=NULL)
+  {
+    drawyieldsurface((wsurf.childs+1)->hdcC,
+                     (wsurf.childs+1)->vparam,
+                     SURFACEX,SURFACEY,SURFACEZ,NULL);
+    overlayhdc(*(wsurf.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
+  }
+  af->fsurface=fopen("canbin.sfc","wb+");      /*STRESS ON SURFACE.*/
+
+  /*ELEMENT ENERGY WITHOUT GRAVITY.*/
+  for(i=0;i<nelem;i++)
+  {
+    (elems+i)->Ee[0]=0.0;
+    (elems+i)->Ee[1]=0.0;
+    (elems+i)->Ep[0]=0.0;
+    (elems+i)->Ep[1]=0.0;
+  }
+
+  /*GLOBAL ENERGY.*/
+  wk[0]=(double *)malloc(nnode*sizeof(double));
+  wk[1]=(double *)malloc(nnode*sizeof(double));
+  wk[2]=(double *)malloc(nnode*sizeof(double));
+  wo[0]=(double *)malloc(nnode*sizeof(double));
+  wo[1]=(double *)malloc(nnode*sizeof(double));
+  wo[2]=(double *)malloc(nnode*sizeof(double));
+  for(ii=0;ii<3;ii++)
+  {
+    for(jj=0;jj<nnode;jj++)
+    {
+      *(wk[ii]+jj)=0.0;
+      *(wo[ii]+jj)=0.0;
+    }
+  }
+
+  for(ii=0;ii<3;ii++)
+  {
+    tacc[ii]=0.0;
+    tvel[ii]=0.0;
+    tdis[ii]=0.0;
+  }
+
+  /*ASSEMBLAGE MASS MATRIX.*/
+  mtotal=assemmass(mmtx,nnode,confs,nmass);
+  if(fout!=NULL) fprintf(fout,"TOTAL MASS = %12.5f\n",mtotal);
+
+/*
+if(fout!=NULL) fprintf(fout,"[M]\n");
+for(ii=1;ii<=12;ii++)
+{
+  if(fout!=NULL) fprintf(fout,"C=%2d ",(confs+ii-1)->iconf);
+
+  for(jj=1;jj<=12;jj++)
+  {
+    gread(mmtx,ii,jj,&data);
+    if(fout!=NULL) fprintf(fout," %12.5E",data);
+  }
+  if(fout!=NULL) fprintf(fout,"\n");
+}
+*/
+
+  /*MEMORIES.*/
+  drccos =mallocdoublematrix(3);
+  estiff =mallocdoublematrix(12);
+  tmatrix=mallocdoublematrix(12);
+  e      =mallocdoublematrix(12);
+  t      =mallocdoublematrix(12);
+  estress=mallocdoublevector(12);
+  gdisp  =mallocdoublevector(12);
+  edisp  =mallocdoublevector(12);
+ // estiffforcmtx =mallocdoublematrix(12);  /*araki*/
+
+if(ferr!=NULL) fprintf(ferr,"    TIME");
+for(i=0;i<nelem;i++)                    /*OUTPUT STRESS OF ELEM*/ /*araki*/
+{
+  for(ii=0;ii<OUTPUTNELEM;ii++)
+  {
+    if((elems+i)->code==elemflag[ii])
+    {
+      if(ferr!=NULL)
+      {
+        fprintf(ferr,"     N:ELEM%d",elemflag[ii]);
+        fprintf(ferr,"    Qx:ELEM%d",elemflag[ii]);
+        fprintf(ferr,"    Qy:ELEM%d",elemflag[ii]);
+        fprintf(ferr,"    Mz:ELEM%d",elemflag[ii]);
+        fprintf(ferr,"    Mx:ELEM%d",elemflag[ii]);
+        fprintf(ferr,"    My:ELEM%d",elemflag[ii]);
+        fprintf(ferr,"  func:ELEM%d",elemflag[ii]);
+      }
+    }
+  }
+}
+if(ferr!=NULL) fprintf(ferr,"\n");
+
+
+
+
+
+#if 1 /*FOR PRORORTION TO INITIAL STIFFNESS.*/
+	for(i=1;i<=msize;i++) /*INITIALIZATION.*/
+	{
+	  g=(cmtx+(i-1))->down; /*NEXT OF DIAGONAL.*/
+	  while(g!=NULL) /*CLEAR ROW.*/
+	  {
+	    p=g;
+	    g=g->down;
+	    free(p);
+	  }
+	  ginit.m=(unsigned short int)i;
+	  /*ginit.n=(unsigned short int)i;*/
+	  *(cmtx+(i-1))=ginit;
+	}
+  for(i=0;i<nelem;i++) /*TEST*/      /*ASSEMBLAGE DAMPING MATRIX.*/
+  {
+    inputelem(elems,melem,i,&elem);          /*READ ELEMENT DATA.*/
+
+    for(ii=0;ii<=1;ii++)
+    {
+      for(jj=0;jj<=5;jj++)
+      {
+        (elems+i)->iconf[ii][jj]=elem.iconf[ii][jj];
+      }
+    }
+
+    inputnode(ddisp,elem.node[0]);                         /*HEAD*/
+    inputnode(ddisp,elem.node[1]);                         /*TAIL*/
+
+    /*elem.sect=(elems+i)->sect;*/               /*READ SECTION DATA.*/
+esect=*((elems+i)->sect);
+elem.sect=&esect;
+/*elem.sect->area=0.0;*/
+
+    directioncosineII(elem.node[0]->d[0],
+                      elem.node[0]->d[1],
+                      elem.node[0]->d[2],
+                      elem.node[1]->d[0],
+                      elem.node[1]->d[1],
+                      elem.node[1]->d[2],
+                      elem.cangle,
+                      drccos);                         /*[DRCCOS]*/
+
+    transmatrixII(drccos,tmatrix);       /*TRANSFORMATION MATRIX.*/
+    assememtxII(elem,estiff);        /*ELASTIC MATRIX OF ELEMENT.*/
+    estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
+    /*estiff=assempmtx(elem,estiff);*/      /*ADD PLASTIC MATRIX.*/
+    transformationII(estiff,tmatrix,e,t);        /*[K]=[Tt][k][T]*/
+/*sprintf(string,"Pass 0 ELEM %d ESTIFF1 = %.5E",elem.code,*(*(estiff+0)+0));*/
+/*MessageBox(NULL,string,"Gnshn",MB_OK);*/
+    assemgstiffness(cmtx,estiff,&elem);             /*ASSEMBLAGE.*/
+  }
+/*MessageBox(NULL,"Pass 1","Gnshn",MB_OK);*/
+
+T1=0.78; /*FOR E-DEFENSE*[sec]*/
+/*T1=0.74210;*/ /*FOR HAKUSHIMA Y*/
+/*T1=0.19261;*/ /*FOR HAKUSHIMA X*/
+w1=2.0*PI/T1;
+  for(ii=1;ii<=msize;ii++)
+  {
+    for(jj=1;jj<=ii;jj++)
+    {
+      gread(cmtx,ii,jj,&data);
+      data*=(2.0*h1/w1);
+/*MessageBox(NULL,"Pass 2","Gnshn",MB_OK);*/
+      gwrite(cmtx,ii,jj,data);
+    }
+  }
+  sprintf(string,"DAMPING MATRIX %ld COMPS ASSEMBLED.",comps);
+  laptime(string,t0);
+#endif
+
+
+
+
+  for(nlap=1;nlap<=laps;nlap++)
+  {
+	/*af->nlaps=nlap;*/
+	af->nlaps=1;
+
+        yieldelemscount=0;   /*araki for yieldmax*/
+
+	sprintf(string,"LAP:%d/%d",nlap,laps);
+	errormessage(string);
+	if(fout!=NULL) fprintf(fout,"%s\n",string);
+	if(ftxt!=NULL) fprintf(ftxt," %5d",nlap);
+        /*if(ffes!=NULL) fprintf(ffes,"%s\n",string);*/   /* araki for hakushima */
+
+	setlaps((wmenu.childs+2)->hwnd,nlap,laps);
+
+	memory1=availablephysicalmemory("REMAIN:");  /*MEMORY AVAILABLE*/
+
+	for(i=1;i<=msize;i++)           /*GLOBAL MATRIX INITIALIZATION.*/
+	{
+	  g=(gmtx+(i-1))->down; /*NEXT OF DIAGONAL.*/
+	  while(g!=NULL) /*CLEAR ROW.*/
+	  {
+		p=g;
+		g=g->down;
+		free(p);
+	  }
+
+	  ginit.m=(unsigned short int)i;
+	  /*ginit.n=(unsigned short int)i;*/
+
+	  *(gmtx+(i-1))=ginit;
+	}
+	comps=msize; /*INITIAL COMPONENTS=DIAGONALS.*/
+
+	laptime("ASSEMBLING GLOBAL MATRIX.",t0);
+
+	for(i=0;i<nelem;i++)                /*ASSEMBLAGE GLOBAL MATRIX.*/
+	{
+	  inputelem(elems,melem,i,&elem);          /*READ ELEMENT DATA.*/
+
+/*
+if(nlap==118 && elem.code==1054) globalfile=ferr;
+else                             globalfile=NULL;
+*/
+
+	  for(ii=0;ii<=1;ii++)
+	  {
+		for(jj=0;jj<=5;jj++)
+		{
+		  (elems+i)->iconf[ii][jj]=elem.iconf[ii][jj];
+		}
+	  }
+
+	  inputnode(ddisp,elem.node[0]);                         /*HEAD*/
+	  inputnode(ddisp,elem.node[1]);                         /*TAIL*/
+
+	  elem.sect=(elems+i)->sect;               /*READ SECTION DATA.*/
+
+	  if((wdraw.childs+1)->hdcC!=NULL)     /*DRAW DEFORMED ELEMENT.*/
+	  {
+		drawglobalwire((wdraw.childs+1)->hdcC,
+					   (wdraw.childs+1)->vparam,
+					   *af,elem,255,255,255,
+								255,255,255,0,ONSCREEN);
+	  }
+
+	  directioncosineII(elem.node[0]->d[0],
+						elem.node[0]->d[1],
+						elem.node[0]->d[2],
+						elem.node[1]->d[0],
+						elem.node[1]->d[1],
+						elem.node[1]->d[2],
+						elem.cangle,
+						drccos);                         /*[DRCCOS]*/
+
+	  transmatrixII(drccos,tmatrix);       /*TRANSFORMATION MATRIX.*/
+	  assememtxII(elem,estiff);        /*ELASTIC MATRIX OF ELEMENT.*/
+	  estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
+	  estiff=assempmtx(elem,estiff);          /*ADD PLASTIC MATRIX.*/
+          //estiffforcmtx=copygcompmatrix(estiff,12);
+	  transformationII(estiff,tmatrix,e,t);        /*[K]=[Tt][k][T]*/
+
+	  assemgstiffness(gmtx,estiff,&elem);             /*ASSEMBLAGE.*/
+	}
+	sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
+	laptime(string,t0);
+
+	overlayhdc(*(wdraw.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
+
+	for(i=0;i<3;i++)
+	{
+	  if(acc[i].a==NULL) dacc[i]=0.0;
+	  else
+	  {
+		dacc[i]=accelerationincrement(acc[i],ddt,nlap);
+		dacc[i]*=afact;
+	  }
+
+	  pacc[i]=tacc[i];
+	  pvel[i]=tvel[i];
+	  pdis[i]=tdis[i];
+
+	  tacc[i]+=dacc[i];                      /*GROUND ACCELERATION.*/
+	  tvel[i]+=ddt*(pacc[i]+tacc[i])/2.0;  /*TOTAL GROUND VELOCITY.*/
+	  tdis[i]+=ddt*(pdis[i]+tvel[i])/2.0;    /*GROUND DISPLACEMENT.*/
+	}
+	if(fout!=NULL) fprintf(fout,"ACCELERATION=%.8f,%.8f,%.8f\n"
+						   ,dacc[0]
+						   ,dacc[1]
+						   ,dacc[2]);
+
+	assemaccel(gacc,dacc,nnode,af);          /*ACCELERATION VECTOR.*/
+
+/*
+if(fout!=NULL) fprintf(fout,"[K]\n");
+for(ii=1;ii<=msize;ii++)
+{
+  for(jj=1;jj<=msize;jj++)
+  {
+	gread(gmtx,ii,jj,&data);
+	if(fout!=NULL) fprintf(fout," %12.5E",data);
+  }
+  if(fout!=NULL) fprintf(fout,"\n");
+}
+*/
+
+	/*EIGEN PERIOD*/
+	if(nlap==1)
+	{
+
+#if 0
+
+	  mtx1=copygcompmatrix(gmtx,msize);
+	  mtx2=copygcompmatrix(mmtx,msize);
+
+/*
+if(fout!=NULL) fprintf(fout,"[A]\n");
+for(ii=int(msize/2)+1;ii<=msize;ii++)
+{
+  for(jj=int(msize/2)+1;jj<=msize;jj++)
+  {
+	gread(mtx1,ii,jj,&data);
+	if(fout!=NULL) fprintf(fout," %12.5E",data);
+  }
+  if(fout!=NULL) fprintf(fout,"\n");
+}
+*/
+/*
+if(fout!=NULL) fprintf(fout,"[B-1]\n");
+for(ii=1;ii<=12;ii++)
+{
+  gread(mtx2,ii,ii,&data);
+  if(data!=0.0) sprintf(string,"Diagonal %ld=%.5E",ii,1/data);
+  else          sprintf(string,"Diagonal %ld=%.5E",ii,0.0);
+  if(fout!=NULL) fprintf(fout,"%s\n",string);
+  errormessage(string);
+}
+*/
+/*
+iii=0;
+for(ii=0;ii<msize;ii++)
+{
+  if((confs+ii)->iconf!=1)
+  {
+	jjj=0;
+	for(jj=0;jj<msize;jj++)
+	{
+	  if((confs+jj)->iconf!=1)
+	  {
+		gread(gmtx,ii+1,jj+1,&data);
+		A[iii][jjj]=data;
+		gread(mmtx,ii+1,jj+1,&data);
+		B[iii][jjj]=data;
+
+		jjj++;
+	  }
+	}
+
+	iii++;
+  }
+}
+*/
+/*
+if(fout!=NULL) fprintf(fout,"[A]\n");
+for(ii=0;ii<MSIZE;ii++)
+{
+  for(jj=0;jj<MSIZE;jj++)
+  {
+	if(fout!=NULL) fprintf(fout," %12.5E",A[ii][jj]);
+  }
+  if(fout!=NULL) fprintf(fout,"\n");
+}
+if(fout!=NULL) fprintf(fout,"[B]\n");
+for(ii=0;ii<MSIZE;ii++)
+{
+  for(jj=0;jj<MSIZE;jj++)
+  {
+	if(fout!=NULL) fprintf(fout," %12.5E",B[ii][jj]);
+  }
+  if(fout!=NULL) fprintf(fout,"\n");
+}
+*/
+/*
+MessageBox(NULL,"DEIGAB BEGIN.","Gnshn",MB_OK);
+
+deigab(A,B,MSIZE,MSIZE,-neig,neig,eps,W,E,V);
+for(i=0;i<neig;i++)
+{
+  if(fout!=NULL) fprintf(fout,"DEIGAB EIGEN VALUE %ld=%.5f\n",(i+1),E[i]);
+}
+
+sprintf(string,"DEIGAB EIGEN 1,%d=%.5E,%.5E",neig,E[0],E[neig-1]);
+if(fout!=NULL) fprintf(fout,"%s\n",string);
+MessageBox(NULL,string,"Gnshn",MB_OK);
+*/
+
+/*
+if(fout!=NULL) fprintf(fout,"DEIGAB [B-1][A]{X}=Lamda{X}\n");
+iii=0;
+for(ii=0;ii<msize;ii++)
+{
+  if((confs+ii)->iconf!=1)
+  {
+	data=0.0;
+	jjj=0;
+	for(jj=0;jj<msize;jj++)
+	{
+	  if((confs+jj)->iconf!=1)
+	  {
+		gread(gmtx,ii+1,jj+1,&d);
+		if((mmtx+ii)->value!=0.0) data+=d/((mmtx+ii)->value)*V[0][jjj];
+
+		jjj++;
+	  }
+	}
+	sprintf(string,"%12.5E = %12.5E",data,E[0]*V[0][iii]);
+	if(fout!=NULL) fprintf(fout,"%s\n",string);
+
+	iii++;
+  }
+}
+*/
+
+MessageBox(NULL,"DEIGABGENERAL BEGIN.","Gnshn",MB_OK);
+	  deigabgeneral(mtx1,mtx2,confs,msize,-neig,neig,eps,eigen,evct);
+	  laptime("EIGEN COMPLETED.",t0);
+MessageBox(NULL,"DEIGABGENERAL END.","Gnshn",MB_OK);
+
+
+
+/*[B-1][A]*/
+/*
+for(ii=1;ii<=msize;ii++)
+{
+  gread(mtx2,ii,ii,&d);
+  for(jj=1;jj<=ii;jj++)
+  {
+	gread(mtx1,ii,jj,&data);
+	if(d!=0.0 && data!=0.0)
+	{
+	  data/=d;
+	  gwrite(mtx1,ii,jj,data);
+	}
+  }
+}
+MessageBox(NULL,"DEIGRSSTANDARD BEGIN.","Gnshn",MB_OK);
+deigrsstandard(mtx1,confs,msize,-neig,neig,eps,eigen,evct);
+MessageBox(NULL,"DEIGRSSTANDARD END.","Gnshn",MB_OK);
+*/
+
+	  /*
+	  sprintf(string,"EIGEN 1=%.5E",*(eigen+0));
+	  errormessage(string);
+	  if(fout!=NULL) fprintf(fout,"%s\n",string);
+	  MessageBox(NULL,string,"Gnshn",MB_OK);
+	  */
+
+/*
+if(fout!=NULL) fprintf(fout,"DEIGABGENERAL {X}\n");
+for(ii=0;ii<msize;ii++)
+{
+  data=*(*(evct+0)+ii);
+  sprintf(string,"{X%d}=%12.5E",ii,data);
+  if(fout!=NULL) fprintf(fout,"%s\n",string);
+}
+if(fout!=NULL) fprintf(fout,"DEIGABGENERAL [B-1][A]{X}=Lamda{X}\n");
+for(ii=0;ii<msize;ii++)
+{
+  data=0.0;
+
+  for(jj=0;jj<msize;jj++)
+  {
+	gread(gmtx,ii+1,jj+1,&d);
+	if((mmtx+ii)->value!=0.0) data+=d/((mmtx+ii)->value)*(*(*(evct+0)+jj));
+  }
+
+  sprintf(string,"%12.5E = %12.5E",data,*(eigen+0)*(*(*(evct+0)+ii)));
+  if(fout!=NULL) fprintf(fout,"%s\n",string);
+}
+*/
+
+	  if(fout!=NULL) fprintf(fout,"\n");
+	  for(i=0;i<neig;i++)
+	  {
+		if(fout!=NULL) fprintf(fout,"DEIGABGENERAL EIGEN VALUE %ld=%.5f\n",(i+1),*(eigen+i));
+		if(*(eigen+i)>0.0)
+		{
+		  Ti=2.0*PI/sqrt(*(eigen+i));
+		  sprintf(string,"PERIOD T%ld=%.5f [sec]",(i+1),Ti);
+		  if(fout!=NULL) fprintf(fout,"%s\n",string);
+		  /*errormessage(string);*/
+		  MessageBox(NULL,string,"Gnshn",MB_OK);
+		}
+		else
+		{
+		  if(fout!=NULL) fprintf(fout,"ERROR:EIGEN VALUE NEGATIVE.\n");
+		}
+
+		if(fout!=NULL) fprintf(fout,"\nDEIGABGENERAL EIGEN VECTOR %ld\n",(i+1));
+		for(ii=0;ii<nnode;ii++)
+		{
+		  if(fout!=NULL) fprintf(fout,"%4ld %11.7f %11.7f %11.7f %11.7f %11.7f %11.7f\n",
+								 (nodes+ii)->code,
+								 *(*(evct+i)+6*ii+0),
+								 *(*(evct+i)+6*ii+1),
+								 *(*(evct+i)+6*ii+2),
+								 *(*(evct+i)+6*ii+3),
+								 *(*(evct+i)+6*ii+4),
+								 *(*(evct+i)+6*ii+5));
+		}
+	  }
+	  fclose(fout);
+
+/*
+for(i=0;i<neig;i++)
+{
+  if(E[i]<=0.0) return 1;
+  Ti=2.0*PI/sqrt(E[i]);
+  sprintf(string,"PERIOD T%ld=%.5E [sec]",(i+1),Ti);
+  if(fout!=NULL) fprintf(fout,"%s\n",string);
+  errormessage(string);
+}
+*/
+
+	  if(*(eigen+0)<=0.0) return 1;
+	  w1=sqrt(*(eigen+0));
+	  /*w1=sqrt(E[0]);*/
+	  T1=2.0*PI/w1;
+
+#endif
+
+/*T1=0.24422;*/ /*[sec]*/
+/*T1=0.78;*/ /*FOR E-DEFENSE[sec]*/
+/*T1=0.479;*/ /*FOR HAKONE[sec]*/
+/*T1=0.8;*/ /*FOR HAKONE[sec]*/
+/*T1=7.464;*/ /*FOR HAKONE[sec]*/
+/*T1=3.96572;*/ /*FOR KAMISATO[sec]*/
+/*T1=0.61208;*/ /*FOR sajigym[sec]*/
+/*T1=2.25066;*/ /*FOR HAKUSHIMA[sec]*/
+/*T1=2.66564;*/ /*FOR HAKUSHIMA 77_07[sec]*/
+/*T1=0.19261;*/ /*FOR HAKUSHIMA X[sec]*/
+/*T1=0.74210;*/ /*FOR HAKUSHIMA Y[sec]*/
+/*T1=0.34306;*/ /*FOR HAKUSHIMA Z[sec]*/
+
+T1=0.70369; /*FOR HAKUSHIMA X[sec]*/      /*Tsuzuki X•ûŒüT1‚Í‚±‚ê‚ð‘I‘ð*/
+/*T2=0.37197;*/ /*FOR HAKUSHIMA X[sec]*/  /*RAYLEIGH DAMPING by araki*/
+/*T1=0.19297;*/ /*FOR HAKUSHIMA Y[sec]*/  /*Tsuzuki Y•ûŒüT1‚Í‚±‚ê‚ð‘I‘ð*/
+
+w1=2.0*PI/T1;
+/*w2=2.0*PI/T2;*/                         /*RAYLEIGH DAMPING by araki*/
+	}
+
+        /*** araki for hakushima ***/
+        #if 0
+       	if(h1==0.0) cmtx=NULL;
+	else
+	{
+	  cmtx=copygcompmatrix(gmtx,msize);
+	  for(ii=1;ii<=msize;ii++)
+	  {
+		/*for(jj=1;jj<=msize;jj++)*/
+		for(jj=1;jj<=ii;jj++)
+		{
+		  gread(cmtx,ii,jj,&data);
+		  data*=(2.0*h1/w1);
+		  gwrite(cmtx,ii,jj,data);
+		}
+	  }
+	}
+        if(fout!=NULL)
+        {
+          fprintf(fout,"STIFFNESS-PROPORTIONAL DAMPING\n");
+          fprintf(fout,"T1=%.5f w1=%.5f h1=%.5f\n",T1,w1,h1);
+        }
+        #endif
+        #if 0
+        if(h1==0.0) cmtx=NULL;
+	else
+	{
+	  cmtx=copygcompmatrix(mmtx,msize);
+	  for(ii=1;ii<=msize;ii++)
+	  {
+		/*for(jj=1;jj<=msize;jj++)*/
+		for(jj=1;jj<=ii;jj++)
+		{
+		  gread(cmtx,ii,jj,&data);
+		  data*=(2.0*h1*w1);
+		  gwrite(cmtx,ii,jj,data);
+		}
+	  }
+	}
+        if(fout!=NULL)
+        {
+          fprintf(fout,"MASS-PROPORTIONAL DAMPING\n");
+          fprintf(fout,"T1=%.5f w1=%.5f h1=%.5f\n",T1,w1,h1);
+        }
+        #endif
+        #if 0                                   /*RAYLEIGH DAMPING by araki*/
+      //  cmtx=(struct gcomponent *)             /*DIAGONALS OF MATRIX [C].*/
+      // malloc(msize*sizeof(struct gcomponent));
+      //  if(cmtx==NULL) return 0;
+      //  for(i=0;i<msize;i++)
+      //  {
+      //    (cmtx+i)->down=NULL;               /*MATRIX [C] INITIALIZATION.*/
+      //  }
+        if(h1==0.0 && h2==0.0) cmtx=NULL;
+	else
+	{
+          mtx1=copygcompmatrix(mmtx,msize);
+	  mtx2=copygcompmatrix(gmtx,msize);
+	  cmtx=copygcompmatrix(mmtx,msize);
+	  for(ii=1;ii<=msize;ii++)
+	  {
+		/*for(jj=1;jj<=msize;jj++)*/
+		for(jj=1;jj<=ii;jj++)
+		{
+		  gread(mtx1,ii,jj,&data1);
+		  data1*=(2.0*w1*w2*(h1*w2-h2*w1)/(w2*w2-w1*w1));
+                  gread(mtx2,ii,jj,&data2);
+                  data2*=(2.0*(h2*w2-h1*w1)/(w2*w2-w1*w1));
+		  gwrite(cmtx,ii,jj,data1+data2);
+		}
+	  }
+	}
+        if(fout!=NULL)
+        {
+          fprintf(fout,"RAYLEIGH DAMPING\n");
+          fprintf(fout,"T1=%.5f w1=%.5f h1=%.5f\n",T1,w1,h1);
+          fprintf(fout,"T2=%.5f w2=%.5f h2=%.5f\n",T2,w2,h2);
+        }
+        #endif
+        /****/
+
+/***araki for hakushima***/
+#if 0
+if(nlap==1)
+{
+if(gmtx!=NULL)
+{
+  if(fout!=NULL) fprintf(fout,"[G]\n");
+  for(ii=1537;ii<=1542;ii++)
+  {
+	for(jj=1537;jj<=1542;jj++)
+	{
+	  gread(gmtx,ii,jj,&data);
+	  if(fout!=NULL) fprintf(fout," %12.5E",data);
+	}
+	if(fout!=NULL) fprintf(fout,"\n");
+  }
+}
+if(mmtx!=NULL)
+{
+  if(fout!=NULL) fprintf(fout,"[M]\n");
+  for(ii=1537;ii<=1542;ii++)
+  {
+	for(jj=1537;jj<=1542;jj++)
+	{
+	  gread(mmtx,ii,jj,&data);
+	  if(fout!=NULL) fprintf(fout," %12.5E",data);
+	}
+	if(fout!=NULL) fprintf(fout,"\n");
+  }
+}
+if(cmtx!=NULL)
+{
+  if(fout!=NULL) fprintf(fout,"[C]\n");
+  for(ii=1537;ii<=1542;ii++)
+  {
+	for(jj=1537;jj<=1542;jj++)
+	{
+	  gread(cmtx,ii,jj,&data);
+	  if(fout!=NULL) fprintf(fout," %12.5E",data);
+	}
+	if(fout!=NULL) fprintf(fout,"\n");
+  }
+}
+}
+#endif
+/****/
+
+	/*NEWMARK'S BETA PROCESS.*/
+	laptime("NEWMARK'S BETA.",t0);
+	/*determinant=newmarkbeta(gmtx,cmtx,mmtx,gacc,confs,nnode,
+							u,ud,udd,du,dud,dudd,
+							ddt,(1.0/4.0));  */
+        determinant=newmarkbeta(gmtx,cmtx,mmtx,gacc,confs,nnode,
+							u,ud,udd,du,dud,dudd,
+							ddt,(1.0/4.0),ftxt);      /*araki for Hakushima*/
+
+	sprintf(string,"DETERMINANT=%.5E COMPS=%ld",determinant,comps);
+	errormessage(string);
+	if(fout!=NULL) fprintf(fout,"%s\n",string);
+
+	/*
+	safety=nlap*dsafety;
+	sprintf(string,"SAFETY FACTOR=%.5f",safety);
+	errormessage(string);
+	if(fout!=NULL) fprintf(fout,"%s\n",string);
+	*/
+
+	if(determinant<=0.0)
+	{
+	  errormessage(" ");
+	  errormessage("INSTABLE TERMINATION.");
+	  if(fout!=NULL) fprintf(fout,"INSTABLE TERMINATION.\n");
+
+	  laptime("\0",t0);
+
+	  fclose(fin);
+
+	  gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
+	  free(gacc);
+	  /*free(confs);*/
+	  freematrix(drccos,3);
+	  freematrix(estiff, 12);
+	  freematrix(tmatrix,12);
+	  freematrix(e,12);
+	  freematrix(t,12);
+	  freematrix(estressmtx,nelem);       /*mihara*/
+	  freematrix(funcmtx,nelem);          /*mihara*/
+	  freematrix(iniform,nnode);          /*mihara*/
+	  free(estress);
+	  free(gdisp);
+	  free(edisp);
+
+	  memory2=availablephysicalmemory("REMAIN:");
+	  sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory2));
+	  errormessage(string);
+
+	  return 1;
+	}
+
+	laptime("OUTPUT INTO FILE.",t0);
+
+	if(fout!=NULL) fprintf(fout,"\"DISPLACEMENT\"\n");
+	outputdisp(du,fout,nnode,nodes);  /*INCREMENTAL DISPLACEMENT.*/
+	/*while(!GetAsyncKeyState(VK_LBUTTON))
+	;*/                                   /*LEFT CLICK TO CONTINUE.*/
+
+if(ferr!=NULL) fprintf(ferr," %7.5f",((double)nlap)*ddt);
+
+	if(fout!=NULL) fprintf(fout,"\"STRESS\"\n");
+	for(i=0;i<nelem;i++)                    /*STRESS OUTPUT,UPDATE.*/
+	{
+	  inputelem(elems,melem,i,&elem);
+
+	  inputnode(ddisp,elem.node[0]);
+	  inputnode(ddisp,elem.node[1]);
+
+	  elem.sect=(elems+i)->sect;               /*READ SECTION DATA.*/
+
+	  elemstressII(estress,
+				   &elem,du,melem,fout,
+				   drccos,tmatrix,estiff,gdisp,edisp,func,ftxt);
+          /*estress=elemstress(&elem,du,melem,fout,func);*/
+
+	  for(ii=0;ii<12;ii++) *(*(estressmtx+i)+ii)=*(estress+ii); /*mihara for maxq,maxd*/
+	  for(ii=0;ii<2;ii++)  *(*(funcmtx+i)+ii)=*(func+ii);       /*mihara for maxq,maxd*/
+
+          for(ii=0;ii<2;ii++)          /*araki for yieldmax*/
+          {
+            if(func[ii]>=pow(RADIUS,EXPONENT)) yieldelemscount++;
+          }
+
+
+/*for(ii=0;ii<12;ii++)
+{
+if(fout!=NULL) fprintf(fout,"%10.3f",*(*(estressmtx+i)+ii));
+}*/
+
+
+  for(ii=0;ii<OUTPUTNELEM;ii++)         /*OUTPUT STRESS OF ELEM*/ /*araki*/
+  {
+    if((elems+i)->code==elemflag[ii])
+    {
+	  outputstress(elem,estress,fout,func);
+	  if(ferr!=NULL) fprintf(ferr," %14.5f",elem.stress[0][0]);
+          if(ferr!=NULL) fprintf(ferr," %14.5f",elem.stress[0][1]);
+          if(ferr!=NULL) fprintf(ferr," %14.5f",elem.stress[0][2]);
+          if(ferr!=NULL) fprintf(ferr," %14.5f",elem.stress[0][3]);
+          if(ferr!=NULL) fprintf(ferr," %14.5f",elem.stress[0][4]);
+          if(ferr!=NULL) fprintf(ferr," %14.5f",elem.stress[0][5]);
+          if(ferr!=NULL) fprintf(ferr," %14.5f",func[0]);
+          }
+        }
+	  (elems+i)->Ee[0]=elem.Ee[0];
+	  (elems+i)->Ee[1]=elem.Ee[1];
+	  (elems+i)->Ep[0]=elem.Ep[0];
+	  (elems+i)->Ep[1]=elem.Ep[1];
+	}
+	if(wsurf.hwnd!=NULL)
+	{
+	  drawyieldsurface((wsurf.childs+1)->hdcC,
+					   (wsurf.childs+1)->vparam,
+					   SURFACEX,SURFACEY,SURFACEZ,
+					   af->fsurface);
+	  overlayhdc(*(wsurf.childs+1),SRCPAINT);     /*UPDATE DISPLAY.*/
+	}
+	/*while(!GetAsyncKeyState(VK_LBUTTON))
+	;*/                                   /*LEFT CLICK TO CONTINUE.*/
+
+	if(fout!=NULL) fprintf(fout,"\"REACTION\"\n");
+	outputreaction(gmtx,du,nodes,confs,dreact,fout,nnode);
+
+	updateform(ddisp,du,nnode);                 /*FORMATION UPDATE.*/
+
+        /*** araki for mxy *********************************************/
+        if(yieldelemscount>yieldelemsmax)
+        {
+          yieldelemsmax=yieldelemscount;
+          fmaxy=fopen("gnshn.mxy","w");
+          /*** 12.06.07 araki for Hakushima ***************************/
+          fotpy=fopen("gnshn.oty","w");
+          /************************************************************/
+
+          sprintf(string,"LAP:%d/%d",nlap,laps);
+		  if(fmaxy!=NULL) fprintf(fmaxy,"%s\n",string);
+
+		  if(fmaxy!=NULL) fprintf(fmaxy,"\"STRESS\"\n");
+                  /*** 12.06.07 araki for Hakushima ***************************/
+                  if(fotpy!=NULL)
+                  {
+                    fprintf(fotpy,"\n\n");
+                    fprintf(fotpy,"** FORCES OF MEMBER\n\n");
+                    fprintf(fotpy,"  NO   KT NODE         N        Q1        Q2");
+                    fprintf(fotpy,"        MT        M1        M2\n\n");
+                  }
+                  /************************************************************/
+		  for(ii=0;ii<nelem;ii++)
+		  {
+			/*inputelem(elems,melem,ii,&elem);
+
+			inputnode(ddisp,elem.node[0]);
+			inputnode(ddisp,elem.node[1]);
+
+			elem.sect=(elems+ii)->sect;
+
+			elemstressII(estress,&elem,du,melem,fmaxy,
+						 drccos,tmatrix,estiff,gdisp,edisp,func,ftxt);
+
+			outputstress(elem,estress,fmaxy,func);*/
+
+		    inputelem(elems,melem,ii,&elem);
+
+			inputnode(ddisp,elem.node[0]);
+			inputnode(ddisp,elem.node[1]);
+
+			elem.sect=(elems+ii)->sect;
+
+			outputstress(elem,*(estressmtx+ii),fmaxy,*(funcmtx+ii));
+                        /*** 12.06.07 araki for Hakushima *********************/
+                        /*outputstress02(elem,estress,stresslong,ii,fotpy,func);*/
+                        /******************************************************/
+		  }
+
+		  if(fmaxy!=NULL) fprintf(fmaxy,"\"REACTION\"\n");
+		  /*outputreactionwithoutupdate(gmtx,du,nodes,confs,dreact,fmaxy,NULL,nnode,mhoko);*/
+
+		  if(fmaxy!=NULL) fprintf(fmaxy,"\"CURRENT FORM\"\n");
+		  for(ii=0;ii<nnode;ii++)
+		  {
+			sprintf(string,"NODE:%5ld {U}=",(nodes+ii)->code);
+			for(jj=0;jj<6;jj++)
+			{
+			  loffset=6*ii+jj;
+			  sprintf(s," %14.5f",*(ddisp+loffset));
+			  strcat(string,s);
+			}
+			if(fmaxy!=NULL) fprintf(fmaxy,"%s\n",string);
+		  }
+                  /*** 12.06.07 araki for Hakushima ***************************/
+                  /*OUTPUT NODE DISPLACEMENT IN OHX,OHY STYLE.*/
+                  if(fotpy!=NULL) fprintf(fotpy,"\n\n");
+                  /*outputdisp02(ddisp,displong,fotpy,nnode,nodes);*/  /*INCREMENTAL DISPLACEMENT.*/
+                  if(fotpy!=NULL) fprintf(fotpy,"\n\n");
+
+                  /*OUTPUT REACTIONS IN OHX,OHY STYLE.*/
+                  if(fotpy!=NULL){
+                    fprintf(fotpy,"** REACTION\n\n");
+                    fprintf(fotpy,"  NO  DIRECTION              R    NC\n\n");
+                  }
+                  /*outputreaction02(gmtx,du,nodes,confs,dreact,reactlong,fotpy,nnode);*/
+                  /************************************************************/
+
+		  if(fmaxy!=NULL) fclose(fmaxy);
+                  /***** 12.06.07 araki for Hakushima ***************************/
+                  if(fotpy!=NULL) fclose(fotpy);
+                  /**************************************************************/
+
+        }
+        /**********************************************************************/
+
+	if(fout!=NULL) fprintf(fout,"\"CURRENT FORM\"\n");
+	for(ii=0;ii<nnode;ii++)
+	{
+
+  for(jjj=0;jjj<OUTPUTNNODE;jjj++)        /*OUTPUT DISPLACEMENT OF NODE*/ /*araki*/
+  {
+    if((nodes+ii)->code==nodeflag[jjj])
+    {
+
+	  sprintf(string,"NODE:%5ld(%5ld) {U}=",(nodes+ii)->code,ii);
+	  for(jj=0;jj<6;jj++)
+	  {
+		loffset=6*ii+jj;
+		sprintf(s," %14.5f",*(ddisp+loffset));
+		strcat(string,s);
+	  }
+	  if(fout!=NULL) fprintf(fout,"%s\n",string);
+	  /*if(ferr!=NULL) fprintf(ferr," %14.5f",*(ddisp+6*ii+2)-12.85);*/    /*NODE403: Z=12.85m for sajigym*/
+	  /*if(ferr!=NULL) fprintf(ferr," %14.5f",*(ddisp+6*ii+mhoko));  */
+
+	  /*if(ftxt!=NULL) fprintf(ftxt," %12.5E %12.5E %12.5E",
+                                                       *(ddisp+6*ii+0),*(ddisp+6*ii+1),*(ddisp+6*ii+2));*/    /*** araki for qtst ***/
+
+          if(ftxt!=NULL) fprintf(ftxt," %12.5E",
+                                 *(ddisp+6*ii+mhoko)-*(*(iniform+ii)+mhoko));   /*** araki for hakushima ***/
+
+	  /*if((nodes+ii)->code==247)*/ /*fprintf(ferr,"\n");*/
+     }
+   }
+	}
+fprintf(ferr,"\n"); /**araki**/
+
+	/*CALCULATE FLOOR DISPLACEMENT,FLOOR HUKUGENRYOKU.*/
+
+	/*floorvalues(ffes,ftxt,af,ddisp,dacc);*/  /*** araki fo hakushima ***/
+	floorvalues(NULL,ftxt,af,ddisp,dacc);  //Default
+
+	/*if(ftxt!=NULL) fprintf(ftxt,"\n");*/
+        
+        if(ftxt!=NULL)                /*araki for Hakushima*/
+        {
+          /*outputreactionwithoutupdate(gmtx,du,nodes,confs,dreact,NULL,ftxt,nnode,mhoko);*/      /*Reaction*/
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+	/*OUTPUT AT DMAX OR QMAX.*/                                       /*mihara*/
+/*#if 0*/
+	for(i=0;i<nnode;i++)                                      /*OUTPUT AT DMAX*/
+	{
+	  /*if((nodes+i)->code==377)*/ /*for hakushima77*/
+          /*if((nodes+i)->code==101)*/ /*for qtst*/
+          if((nodes+i)->code==631) /*for hakushima77 test*/
+	  {
+		if(fabs(*(ddisp+6*i+mhoko)-(*(*(iniform+i)+mhoko))/*(nodes+i)->d[mhoko])*/)>ddispmax)
+		{
+		  ddispmax=fabs(*(ddisp+6*i+mhoko)-(*(*(iniform+i)+mhoko))/*(nodes+i)->d[mhoko])*/);
+
+		  fmaxd=fopen("gnshn.mxd","w");
+                  /*** 12.06.07 araki for Hakushima ***************************/
+                  fotpd=fopen("gnshn.otd","w");
+                  /************************************************************/
+
+                 // ffes =fopen("gnshn.fes","w");             /*OUTPUT FACTS*/ /*araki*/
+
+		  sprintf(string,"LAP:%d/%d",nlap,laps);
+		  if(fmaxd!=NULL) fprintf(fmaxd,"%s\n",string);
+                 // if(ffes!=NULL)  fprintf(ffes,"%s\n",string);    /*OUTPUT FACTS*/ /*araki*/
+                 // floorvalues(ffes,NULL,af,ddisp,dacc);
+
+		  if(fmaxd!=NULL) fprintf(fmaxd,"\"STRESS\"\n");
+                  /*** 12.06.07 araki for Hakushima ***************************/
+                  if(fotpd!=NULL)
+                  {
+                    fprintf(fotpd,"\n\n");
+                    fprintf(fotpd,"** FORCES OF MEMBER\n\n");
+                    fprintf(fotpd,"  NO   KT NODE         N        Q1        Q2");
+                    fprintf(fotpd,"        MT        M1        M2\n\n");
+                  }
+                  /************************************************************/
+		  for(ii=0;ii<nelem;ii++)
+		  {
+			/*inputelem(elems,melem,ii,&elem);
+
+			inputnode(ddisp,elem.node[0]);
+			inputnode(ddisp,elem.node[1]);
+
+			elem.sect=(elems+ii)->sect;
+
+			elemstressII(estress,&elem,du,melem,fmaxd,
+						 drccos,tmatrix,estiff,gdisp,edisp,func,ftxt);
+
+			outputstress(elem,estress,fmaxd,func);*/
+
+		    inputelem(elems,melem,ii,&elem);
+
+			inputnode(ddisp,elem.node[0]);
+			inputnode(ddisp,elem.node[1]);
+
+			elem.sect=(elems+ii)->sect;
+
+			outputstress(elem,*(estressmtx+ii),fmaxd,*(funcmtx+ii));
+                        /*** 12.06.07 araki for Hakushima *********************/
+                        /*outputstress02(elem,estress,stresslong,ii,fotpd,func);*/
+                        /******************************************************/
+		  }
+
+		  if(fmaxd!=NULL) fprintf(fmaxd,"\"REACTION\"\n");
+                  /*outputreactionwithoutupdate(gmtx,du,nodes,confs,dreact,fmaxd,NULL,nnode,mhoko);*/
+
+		  if(fmaxd!=NULL) fprintf(fmaxd,"\"CURRENT FORM\"\n");
+		  for(ii=0;ii<nnode;ii++)
+		  {
+			sprintf(string,"NODE:%5ld {U}=",(nodes+ii)->code);
+			for(jj=0;jj<6;jj++)
+			{
+			  loffset=6*ii+jj;
+			  sprintf(s," %14.5f",*(ddisp+loffset));
+			  strcat(string,s);
+			}
+			if(fmaxd!=NULL) fprintf(fmaxd,"%s\n",string);
+		  }
+
+                  /*** 12.06.07 araki for Hakushima ***************************/
+                  /*OUTPUT NODE DISPLACEMENT IN OHX,OHY STYLE.*/
+                  if(fotpd!=NULL) fprintf(fotpd,"\n\n");
+                  /*outputdisp02(ddisp,displong,fotpd,nnode,nodes);*/  /*INCREMENTAL DISPLACEMENT.*/
+                  if(fotpd!=NULL) fprintf(fotpd,"\n\n");
+
+                  /*OUTPUT REACTIONS IN OHX,OHY STYLE.*/
+                  if(fotpd!=NULL){
+                    fprintf(fotpd,"** REACTION\n\n");
+                    fprintf(fotpd,"  NO  DIRECTION              R    NC\n\n");
+                  }
+                  /*outputreaction02(gmtx,du,nodes,confs,dreact,reactlong,fotpd,nnode);*/
+                  /************************************************************/
+
+		  if(fmaxd!=NULL) fclose(fmaxd);
+                  /*** 12.06.07 araki for Hakushima ***************************/
+                  if(fotpd!=NULL) fclose(fotpd);
+                  /************************************************************/
+                 // if(ffes!=NULL)  fclose(ffes);
+		}
+	  }
+	}
+
+	if(mhoko==0 || mhoko==1)                          /*UD UNDER CONSTRUCTION.*/
+	{
+	  if(flagsumshearmax)                                     /*OUTPUT AT QMAX*/
+	  {
+		fmaxq=fopen("gnshn.mxq","w");
+                ffes =fopen("gnshn.fes","w");             /*OUTPUT FACTS*/ /*araki*/
+                /*** 12.06.07 araki for Hakushima ***************************/
+                fotpq=fopen("gnshn.otq","w");
+                /************************************************************/
+
+		sprintf(string,"LAP:%d/%d",nlap,laps);
+		if(fmaxq!=NULL) fprintf(fmaxq,"%s\n",string);
+                if(ffes!=NULL)  fprintf(ffes,"%s\n",string);    /*OUTPUT FACTS*/ /*araki*/
+                floorvalues(ffes,NULL,af,ddisp,dacc);
+
+		if(fmaxq!=NULL) fprintf(fmaxq,"\"STRESS\"\n");
+                /*** 12.06.07 araki for Hakushima ***************************/
+                if(fotpq!=NULL)
+                {
+                  fprintf(fotpq,"\n\n");
+                  fprintf(fotpq,"** FORCES OF MEMBER\n\n");
+                  fprintf(fotpq,"  NO   KT NODE         N        Q1        Q2");
+                  fprintf(fotpq,"        MT        M1        M2\n\n");
+                }
+                /************************************************************/
+		for(ii=0;ii<nelem;ii++)
+		{
+		  /*inputelem(elems,melem,ii,&elem);
+
+		  inputnode(ddisp,elem.node[0]);
+		  inputnode(ddisp,elem.node[1]);
+
+		  elem.sect=(elems+ii)->sect;
+
+		  elemstressII(estress,&elem,du,melem,fmaxq,
+					   drccos,tmatrix,estiff,gdisp,edisp,func,ftxt);
+
+		  outputstress(elem,estress,fmaxq,func);*/
+
+		  inputelem(elems,melem,ii,&elem);
+
+		  inputnode(ddisp,elem.node[0]);
+		  inputnode(ddisp,elem.node[1]);
+
+		  elem.sect=(elems+ii)->sect;
+
+		  outputstress(elem,*(estressmtx+ii),fmaxq,*(funcmtx+ii));
+                  /*** 12.06.07 araki for Hakushima *********************/
+                  /*outputstress02(elem,estress,stresslong,ii,fotpq,func);*/
+                  /******************************************************/
+		}
+
+		if(fmaxq!=NULL) fprintf(fmaxq,"\"REACTION\"\n");
+                /*outputreactionwithoutupdate(gmtx,du,nodes,confs,dreact,fmaxq,NULL,nnode,mhoko);*/
+
+		if(fmaxq!=NULL) fprintf(fmaxq,"\"CURRENT FORM\"\n");
+		for(ii=0;ii<nnode;ii++)
+		{
+		  sprintf(string,"NODE:%5ld {U}=",(nodes+ii)->code);
+		  for(jj=0;jj<6;jj++)
+		  {
+			loffset=6*ii+jj;
+			sprintf(s," %14.5f",*(ddisp+loffset));
+			strcat(string,s);
+		  }
+		  if(fmaxq!=NULL) fprintf(fmaxq,"%s\n",string);
+		}
+                /*** 12.06.07 araki for Hakushima ***************************/
+                  /*OUTPUT NODE DISPLACEMENT IN OHX,OHY STYLE.*/
+                  if(fotpq!=NULL) fprintf(fotpq,"\n\n");
+                  /*outputdisp02(ddisp,displong,fotpq,nnode,nodes);*/  /*INCREMENTAL DISPLACEMENT.*/
+                  if(fotpq!=NULL) fprintf(fotpq,"\n\n");
+
+                  /*OUTPUT REACTIONS IN OHX,OHY STYLE.*/
+                  if(fotpq!=NULL){
+                    fprintf(fotpq,"** REACTION\n\n");
+                    fprintf(fotpq,"  NO  DIRECTION              R    NC\n\n");
+                  }
+                  /*outputreaction02(gmtx,du,nodes,confs,dreact,reactlong,fotpq,nnode);*/
+                /************************************************************/
+
+		if(fmaxq!=NULL) fclose(fmaxq);
+                if(ffes!=NULL)  fclose(ffes);
+                /***** 12.06.07 araki for Hakushima ***************************/
+                if(fotpq!=NULL) fclose(fotpq);
+                /**************************************************************/
+	  }
+	}
+        #if 0
+        for(i=0;i<nelem;i++)                                      /*OUTPUT AT DMAX*/
+	{
+	  /*if((nodes+i)->code==377)*/ /*for hakushima77*/
+          /*if((nodes+i)->code==101)*/ /*for qtst*/
+          if((nodes+i)->code==631) /*for hakushima77 test*/
+	  {
+		if(fabs(*(ddisp+6*i+mhoko)-(*(*(iniform+i)+mhoko))/*(nodes+i)->d[mhoko])*/)>ddispmax)
+		{
+		  ddispmax=fabs(*(ddisp+6*i+mhoko)-(*(*(iniform+i)+mhoko))/*(nodes+i)->d[mhoko])*/);
+
+		  fmaxd=fopen("gnshn.mxd","w");
+
+		  sprintf(string,"LAP:%d/%d",nlap,laps);
+		  if(fmaxd!=NULL) fprintf(fmaxd,"%s\n",string);
+
+		  if(fmaxd!=NULL) fprintf(fmaxd,"\"STRESS\"\n");
+		  for(ii=0;ii<nelem;ii++)
+		  {
+			/*inputelem(elems,melem,ii,&elem);
+
+			inputnode(ddisp,elem.node[0]);
+			inputnode(ddisp,elem.node[1]);
+
+			elem.sect=(elems+ii)->sect;
+
+			elemstressII(estress,&elem,du,melem,fmaxd,
+						 drccos,tmatrix,estiff,gdisp,edisp,func,ftxt);
+
+			outputstress(elem,estress,fmaxd,func);*/
+
+		    inputelem(elems,melem,ii,&elem);
+
+			inputnode(ddisp,elem.node[0]);
+			inputnode(ddisp,elem.node[1]);
+
+			elem.sect=(elems+ii)->sect;
+
+			outputstress(elem,*(estressmtx+ii),fmaxd,*(funcmtx+ii));
+		  }
+
+		  if(fmaxd!=NULL) fprintf(fmaxd,"\"REACTION\"\n");
+                  outputreactionwithoutupdate(gmtx,du,nodes,confs,dreact,fmaxd,NULL,nnode,mhoko);
+
+		  if(fmaxd!=NULL) fprintf(fmaxd,"\"CURRENT FORM\"\n");
+		  for(ii=0;ii<nnode;ii++)
+		  {
+			sprintf(string,"NODE:%5ld {U}=",(nodes+ii)->code);
+			for(jj=0;jj<6;jj++)
+			{
+			  loffset=6*ii+jj;
+			  sprintf(s," %14.5f",*(ddisp+loffset));
+			  strcat(string,s);
+			}
+			if(fmaxd!=NULL) fprintf(fmaxd,"%s\n",string);
+		  }
+
+		  if(fmaxd!=NULL) fclose(fmaxd);
+		}
+	  }
+	}
+        #endif
+/*#endif*/
+////////////////////////////////////////////////////////////////////////////////
+
+	/*SUM GLOBAL ENERGY.*/
+	Wkt=0.0;
+	Wet=0.0;
+	Wpt=0.0;
+	Wot=0.0;
+	for(ii=0;ii<nnode;ii++)
+	{
+	  for(jj=0;jj<3;jj++)
+	  {
+		*(wk[jj]+ii)=0.5*(*(nmass+ii))*(*(ud+6*ii+jj))
+									  *(*(ud+6*ii+jj));
+		Wkt+=*(wk[jj]+ii);
+
+		*(wo[jj]+ii)-=0.5*(*(nmass+ii))*(2*tacc[jj]-dacc[jj])
+						 *(*(du+6*ii+jj));
+		Wot+=*(wo[jj]+ii);
+	  }
+    }
+    for(ii=0;ii<nelem;ii++)
+    {
+      Wet+=(elems+ii)->Ee[0];
+      Wet+=(elems+ii)->Ee[1];
+      Wpt+=(elems+ii)->Ep[0];
+      Wpt+=(elems+ii)->Ep[1];
+    }
+    Wit=Wkt+Wet+Wpt;
+/*
+    if(fout!=NULL)
+    {
+      fprintf(fout,"\nENERGIES\n");
+      fprintf(fout,"Wit=Wkt+Wet+Wpt=%11.7f+%11.7f+%11.7f=%11.7f\n",
+              Wkt,Wet,Wpt,Wit);
+      fprintf(fout,"Wot=%11.7f\n",Wot);
+      if(Wot!=0.0) fprintf(fout,"Wit/Wot=%11.7f\n",Wit/Wot);
+      else         fprintf(fout,"Wit/Wot=ERROR.\n");
+      fprintf(fout,"\n");
+    }
+*/
+    if(ftxt!=NULL)
+    {
+	  /*fprintf(ftxt," Accx= %9.3f Accy= %9.3f",tacc[0],tacc[1]);
+      fprintf(ftxt," Vx= %9.3f Vy= %9.3f",tvel[0],tvel[1]);
+      fprintf(ftxt," Dx= %9.3f Dy= %9.3f",tdis[0],tdis[1]);
+      fprintf(ftxt," Wk= %11.7f Wk+We= %11.7f Wk+We+Wp= %11.7f",
+              Wkt,Wkt+Wet,Wkt+Wet+Wpt);*/
+      fprintf(ftxt," %9.3f %9.3f",tacc[0],tacc[1]); /*Acc*/
+      fprintf(ftxt," %9.3f %9.3f",tvel[0],tvel[1]); /*V*/
+      fprintf(ftxt," %9.3f %9.3f",tdis[0],tdis[1]); /*D*/
+      fprintf(ftxt," %11.7f %11.7f %11.7f",
+              Wkt,Wkt+Wet,Wkt+Wet+Wpt);             /*W*/
+      fprintf(ftxt,"\n");
+    }
+
+    t1=laptime("\0",t0);
+
+    memory2=availablephysicalmemory(NULL);
+    sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory1-memory2));
+    errormessage(string);
+
+    errormessage("L:CONTINUE R:ABORT");            /*L=LEFT R=RIGHT*/
+    while(!GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
+    {
+      #if 1                                 /*** araki for Stop ***/
+      if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
+      {
+        fclose(fin);
+
+        gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
+        gfree(mmtx,nnode); /*FREE MASS   MATRIX.*/
+        free(gacc);
+        /*free(confs);*/
+		freematrix(drccos,3);
+        freematrix(estiff, 12);
+        freematrix(tmatrix,12);
+        freematrix(e,12);
+        freematrix(t,12);
+		freematrix(estressmtx,nelem);       /*mihara*/
+		freematrix(iniform,nnode);       /*mihara*/
+	    freematrix(funcmtx,nelem);          /*mihara*/
+		free(estress);
+        free(gdisp);
+        free(edisp);
+
+        errormessage(" ");
+        errormessage("ABORTED.");
+        if(fout!=NULL) fprintf(fout,"ABORTED.\n");
+
+        laptime("\0",t0);
+        return 1;
+      }
+      #endif
+      t2=clock();
+      time=(t2-t1)/CLK_TCK;
+      if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
+    }
+  }/*END OF LAP.REPEAT UNTIL INSTABLE.*/
+
+  if((wdraw.childs+1)->hdcC!=NULL &&
+     melem!=NULL && ddisp!=NULL)                 /*DRAW LAST FRAME.*/
+  {
+    for(i=1;i<=nelem;i++)
+    {
+      inputelem(elems,melem,i-1,&elem);
+      for(ii=0;ii<=1;ii++) /*COPY HINGE DATA.*/
+      {
+        for(jj=0;jj<=5;jj++)
+        {
+          (elems+i-1)->iconf[ii][jj]=elem.iconf[ii][jj];
+        }
+      }
+
+      inputnode(ddisp,elem.node[0]);
+      inputnode(ddisp,elem.node[1]);
+
+      drawglobalwire((wdraw.childs+1)->hdcC,
+                     (wdraw.childs+1)->vparam,
+                     *af,elem,255,255,255,
+                              255,255,255,0,ONSCREEN);
+    }
+    overlayhdc(*(wdraw.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
+  }
+
+  fclose(fin);
+  if(ferr!=NULL)
+  {
+    fclose(ferr);
+    globalfile=NULL;
+  }
+ /* if(ffes!=NULL)
+  {
+    fclose(ffes);
+  }   */
+
+  gfree(gmtx,nnode); /*FREE GLOBAL  MATRIX.*/
+  gfree(cmtx,nnode); /*FREE DAMPING MATRIX.*/
+  gfree(mmtx,nnode); /*FREE MASS    MATRIX.*/
+  /*free(confs);*/
+  freematrix(drccos,3);
+  freematrix(estiff, 12);
+  freematrix(tmatrix,12);
+  freematrix(e,12);
+  freematrix(t,12);
+  freematrix(estressmtx,nelem);       /*mihara*/
+  freematrix(iniform,nnode);          /*mihara*/
+  freematrix(funcmtx,nelem);          /*mihara*/
+  free(estress);
+  free(gdisp);
+  free(edisp);
+
+  af->eigenvec=(double **)malloc(1*sizeof(double *));
+  *((af->eigenvec)+0)=du;
+
+  errormessage(" ");
+  errormessage("COMPLETED.");
+  if(fout!=NULL) fprintf(fout,"COMPLETED.\n");
+  if(fout!=NULL) fclose(fout);
+
+  memory2=availablephysicalmemory("REMAIN:");
+  sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory2));
+  errormessage(string);
+  errormessage(" ");
+
+  return 0;
+}/*gnshn101*/
+
+double *inputacceleration(FILE *fin,
+                          long int *ndata,double *dt)
+/*INPUT ACCELERATION FROM TEXTFILE.*/
+{
+  /*CAPTION*/
+  /*NUMBER OF DATA*/
+  /*INCREMENT OF TIME [s]*/
+  /*ACCELERATION DATA [cm/s2]*/
+
+  char **data,str[256];
+  int i,nstr;
+  long int idata;
+  double *a;
+
+  *ndata=0;
+  *dt=0.0;
+
+  if(fin==NULL) return NULL;
+
+  fseek(fin,0L,SEEK_SET);
+
+  fgets(str,256,fin); /*CAPTION.*/
+
+  data=fgetsbrk(fin,&nstr);
+  if(nstr<2) return NULL;
+  if(!strcmp(*(data+0),"DATA"))
+  {
+    *ndata=strtol(*(data+1),NULL,10); /*NUMBER OF DATA.*/
+  }
+
+  data=fgetsbrk(fin,&nstr);
+  if(nstr<2) return NULL;
+  if(!strcmp(*(data+0),"DT"))
+  {
+    *dt=strtod(*(data+1),NULL); /*INCREMENT OF TIME.*/
+  }
+
+  a=(double *)malloc((*ndata)*sizeof(double));
+
+  idata=0;
+  while(1)
+  {
+    data=fgetsbrk(fin,&nstr);
+    if(nstr==0) return a;
+
+    for(i=0;i<nstr;i++)
+    {
+      *(a+idata)=strtod(*(data+i),NULL);
+
+      idata++;
+      if(idata>=(*ndata)) return a;
+    }
+
+    freestr(data,nstr);
+  }
+
+}/*inputacceleration*/
+
+double assemmass(struct gcomponent *mmtx,
+                 long int nnode,
+                 struct oconf *confs,double *nmass)
+/*ASSEMBLAGE MASS MATRIX.*/
+{
+  long int i,j,ii;
+  double gdata,nm,ge,mtotal;
+  double eps=1.0E-8;
+
+  mtotal=0.0;
+  for(i=0;i<nnode;i++)
+  {
+    nm=*(nmass+i);
+    ge=eps*gdata;
+    mtotal+=nm;
+    for(j=0;j<3;j++) /*FOR X,Y,Z LINE.*/
+    {
+      ii=6*i+j+1;
+
+      if((confs+ii-1)->iconf==0)
+      {
+        if(nm!=0.0) gwrite(mmtx,ii,ii,nm);
+      }
+    }
+    for(j=3;j<6;j++) /*FOR TX,TY,TZ LINE.*/
+    {
+      ii=6*i+j+1;
+
+      if((confs+ii-1)->iconf==0)
+      {
+        if(nm!=0.0) gdata=nm;
+        else        gdata=eps;
+        if(gdata!=0.0) gwrite(mmtx,ii,ii,gdata);
+      }
+    }
+  }
+  return mtotal;
+}/*assemmass*/
+
+double accelerationincrement(struct accdata acc,
+                             double ddt,long int lap)
+/*INCREMENT OF ACCELERATION.*/
+{
+  long int n;
+  double t,a1,a2,da1,da2;
+  double dacc;
+
+  t=ddt*(double)(lap-1);
+
+  n=(long int)(t/(acc.dt));
+  a1=*(acc.a+n);
+  a2=*(acc.a+n+1);
+  da1=a1+(a2-a1)*(t-((double)n)*(acc.dt))/(acc.dt);
+
+  t+=ddt;
+  n=(long int)(t/(acc.dt));
+  a1=*(acc.a+n);
+  a2=*(acc.a+n+1);
+  da2=a1+(a2-a1)*(t-((double)n)*(acc.dt))/(acc.dt);
+
+  dacc=da2-da1;
+
+  return dacc;
+}/*accelerationincrement*/
+
+void assemaccel(double *gvct,
+                double dacc[],
+                long int nnode,struct arclmframe *af)
+/*ASSEMBLAGE ACCELERATION INTO GLOBAL VECTOR.*/
+{
+  long int i,j,ii;
+
+  for(i=0;i<(6*nnode);i++)
+  {
+    *(gvct+i)=0.0; /*INITIALIZATION.*/
+  }
+
+  for(i=0;i<nnode;i++)
+  {
+    for(j=0;j<3;j++) /*FOR X,Y,Z LINE.*/
+    {
+      ii=6*i+j;
+
+      if((af->confs+ii)->iconf==0)
+      {
+        *(gvct+ii)=dacc[j];
+      }
+    }
+  }
+  return;
+}/*assemaccel*/
+
+double newmarkbeta(struct gcomponent *gmtx,
+                   struct gcomponent *cmtx,
+                   struct gcomponent *mmtx,
+                   double *gacc,
+                   struct oconf *confs,
+                   int nnode,
+                   double *u, double *ud, double *udd,
+                   double *du,double *dud,double *dudd,
+                   double ddt,double beta,FILE *ftxt)               /*ftxt araki for Hakushima*/
+/*NEWMARK'S BETA BY INCREMENT.*/
+{
+  long int i,j,msize;
+  double gdata,cdata,mdata,det,sign;
+
+  msize=6*nnode;
+
+  for(i=0;i<msize;i++)
+  {
+    if((confs+i)->iconf==0)
+    {
+      *(du+i)=0.0;
+
+      /*for(j=0;j<=i;j++)*/
+      for(j=0;j<msize;j++)
+      {
+        if((confs+j)->iconf==0)
+        {
+          gread(gmtx,(i+1),(j+1),&gdata);
+          if(cmtx!=NULL) gread(cmtx,(i+1),(j+1),&cdata);
+          else           cdata=0.0;
+          gread(mmtx,(i+1),(j+1),&mdata);
+
+
+//if(i==450 && (j==438 || j==450))
+/*if(i==2)
+{
+  if(globalfile!=NULL)
+  {
+    fprintf(globalfile,"gdata[%d][%d] = %.5f",i,j,gdata);
+  }
+}*/
+
+
+          *(du+i)+=-mdata*(*(gacc+j))
+                   +mdata*((*(ud +j))/beta/ddt
+                          +(*(udd+j))/2.0/beta)
+                   +cdata*((*(ud +j))/2.0/beta
+                          +(*(udd+j))*ddt*(1.0/4.0/beta-1.0)); /*{dP'}:(3.59)*/
+
+          if(j<=i)
+          {
+            gdata+=mdata/beta/(ddt*ddt)
+                  +cdata/2.0/beta/ddt; /*[K']:(3.59)*/
+
+            gwrite(gmtx,(i+1),(j+1),gdata);
+          }
+
+
+//if(i==450 && (j==438 || j==450))
+/*if(i==2)
+{
+  if(globalfile!=NULL)
+  {
+    fprintf(globalfile," + %.5f + %.5f = %.5f\n",
+            mdata/beta/(ddt*ddt),
+            cdata/2.0/beta/ddt,
+            gdata);
+    fprintf(globalfile,"du[%d](%d)   += %.5f + %.5f + (%.5f + %.5f) = %.5f\n",
+            i,j,
+            -mdata*(*(gacc+j)),
+            mdata*((*(ud +j))/beta/ddt+(*(udd+j))/2.0/beta),
+            cdata*((*(ud +j))/2.0/beta),
+            cdata*((*(udd+j))*ddt*(1.0/4.0/beta-1.0)),
+            *(du+i));
+    fprintf(globalfile,"cdata=%.5f ud=%.12f beta=%.5f\n",
+            cdata,(*(ud +j)),beta);
+  }
+}*/
+
+
+        }
+      }
+
+
+//if(i==450)
+/*if(i==2)
+{
+  if(globalfile!=NULL) fprintf(globalfile,"dP[%d]=%.5f\n",i,*(du+i));
+}*/
+if(i==1539)
+{
+  if(ftxt!=NULL) fprintf(ftxt,"  %11.7f",*(du+i));
+}                                                   /*araki for qtst*/
+
+    }
+  }
+
+  /*CROUT LU DECOMPOSITION. [K']{dU}={dP'}*/
+  croutludecomposition(gmtx,du,confs,msize,&det,&sign); /*(3.58)*/
+  if(sign<=0.0) return sign;
+
+  for(i=0;i<msize;i++)
+  {
+    if((confs+i)->iconf==0)
+    {
+
+
+//if(i==450)
+/*if(i==2)
+{
+  if(globalfile!=NULL) fprintf(globalfile,"du[%d]=%.5f\n",i,*(du+i));
+}*/
+
+
+      *(dud+i)=(*(du+i))/2.0/beta/ddt-(*(ud+i))/2.0/beta
+              -(1.0/4.0/beta-1.0)*(*(udd+i))*ddt; /*(3.61)*/
+
+      (*(dudd+i))=(*(du+i))/beta/(ddt*ddt)-(*(ud+i))/beta/ddt
+                  -(*(udd+i))/2.0/beta; /*(3.62)*/
+
+      (*(u  +i))+=(*(du  +i));
+      (*(ud +i))+=(*(dud +i));
+      (*(udd+i))+=(*(dudd+i));
+    }
+    if(i==1500)
+    {
+      if(ftxt!=NULL)
+      {
+         fprintf(ftxt," %11.7f %11.7f %11.7f",*(u  +i),*(ud +i),*(udd+i));         /*araki for Hakushima NODE631_Z->i==1500*/
+      }
+    }
+  }
+
+  return det;
+}/*newmarkbeta*/
+
+void floorvalues(FILE *fout,FILE *ftxt,
+                 struct arclmframe *af,double *ddisp,double dacc[])
+{
+  /*char str[256];*/
+  int i,ii,jj,d;
+  long int nnode,nelem,nsect;
+  long int loff;
+  double disp;
+  double bunbo;
+  double intersect;
+
+  /*double flevel[FLOORS+1]={-1.0, 1.7, 5.0, 7.0,10.0,
+                           13.0,16.0,19.0,22.0,25.0,28.0};*//*AKI002*/
+  /*double flevel[FLOORS+1]={-1.0, 1.5, 2.5, 3.5, 4.5,
+                            5.5, 6.5, 7.5, 8.5, 9.5,28.0};*/
+  /*double flevel[FLOORS+1]={ -0.1, 0.1, 5.0, 10.0, 16.0, 17.5, 100.0};*//*Hakone*/
+  /*double flevel[FLOORS+1]={ -0.1, 0.1, 100.0};*/   /*Saji*/
+  double flevel[FLOORS+1]={-0.1,0.1,2.5,4.0,5.3,6.7,7.8,8.5,10.0};   /*Hakushima*/
+  /*double flevel[FLOORS+1]={-0.1,0.1,2.5,4.0,5.3,6.7,7.8,9.0,10.0};*/   /*HakushimaTest*/
+
+  int fnodes[FLOORS][2];
+  double meanlevel[FLOORS][2],meandisp[FLOORS][2],maxdisp[FLOORS][2];
+  double r[FLOORS-1][2],R[FLOORS-1][2];           /*FOR RIGID RATE.*/
+  double rmean[2];                                   /*MEAN OF "r".*/
+
+  double Gx[FLOORS-1],Gy[FLOORS-1];         /*CENTER OF SHEAR LOAD.*/
+  double summass[FLOORS],sumload[FLOORS-1][2],summoment[FLOORS-1][2];
+
+  double Lx[FLOORS-1],Ly[FLOORS-1];              /*CENTER OF RIGID.*/
+  int felems[FLOORS-1];
+  double *estress,*gstress;
+  double K,Ex,Ey;                  /*RIGID,COORDINATION OF ELEMENT.*/
+  double sumshear[FLOORS-1][2];
+  double sumrigid[FLOORS-1][2],sumrigidmoment[FLOORS-1][2];
+  double ex[FLOORS-1],ey[FLOORS-1];         /*DISTANCE FROM G TO L.*/
+  double Kr[FLOORS-1];
+  double rex[FLOORS-1],rey[FLOORS-1],Rex[FLOORS-1],Rey[FLOORS-1];
+
+  double *srate[FLOORS-1][2];            /*SHEAR  OF EACH SECTIONS.*/
+  double trate[FLOORS-1][2][MAXTYPE];/*SHEAR OF EACH SECTION TYPES.*/
+
+  struct onode *node;
+  struct owire *elem;
+
+  long int nrigid;
+  struct structrigid rigid,*rigids=NULL;
+
+  nnode=af->nnode;
+  nelem=af->nelem;
+  nsect=af->nsect;
+
+  /*RATE OF FLOOR ANGLE,CENTER OF HORIZONTAL LOAD..................*/
+  for(ii=0;ii<FLOORS;ii++)                         /*INITIALIZATION*/
+  {
+    summass[ii]=0.0;
+
+    for(d=0;d<2;d++)
+    {
+      fnodes[ii][d]   =0;
+      meanlevel[ii][d]=0.0;
+      meandisp[ii][d] =0.0;
+      maxdisp[ii][d]  =0.0;
+
+      if(ii<(FLOORS-1))
+      {
+        sumload[ii][d]=0.0;
+        summoment[ii][d]=0.0;
+      }
+    }
+  }
+
+  /*LEVEL,DISPLACEMENT OF NODE*/
+  for(i=1;i<=nnode;i++)
+  {
+    node=af->nodes+i-1;
+
+    for(d=1;d<=2;d++) /*DIRECTION X,Y*/
+    {
+      loff=6*(i-1)+d-1; /*OFFSET*/
+
+      for(ii=1;ii<=FLOORS;ii++)
+      {
+        if((flevel[ii-1]<=(node->d[GZ])) && ((node->d[GZ])<flevel[ii]))
+        {
+          fnodes[ii-1][d-1]++; /*COUNT FLOOR NODES*/
+          meanlevel[ii-1][d-1]+=(node->d[GZ]);
+          if(d==1 /*&& (af->confs+6*(i-1)+2)->iconf==0*/)
+          {
+            summass[ii-1]+=(*(af->nmass+i-1));
+          }
+
+          /*disp=*(ddisp+loff)-(node->d[d-1]);*/
+          disp=*(ddisp+loff)-((af->ninit+i-1)->d[d-1]);
+          meandisp[ii-1][d-1]+=disp;
+
+          if(maxdisp[ii-1][d-1]<fabs(disp))
+          {
+            maxdisp[ii-1][d-1]=fabs(disp);
+          }
+        }
+		if(ii>=2 && flevel[ii-1]<=(node->d[GZ]))
+        {
+          if((af->confs+loff)->iconf==0)
+          {
+            sumload[ii-2][d-1]+=dacc[d-1]*(*(af->nmass+i-1));
+            if(d==1)
+            {
+              summoment[ii-2][d-1]+=dacc[d-1]*(*(af->nmass+i-1))
+                                   *node->d[GY];
+            }
+            if(d==2)
+            {
+              summoment[ii-2][d-1]+=dacc[d-1]*(*(af->nmass+i-1))
+                                   *node->d[GX];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /*"DEFORMATION ANGLE"*/
+  for(d=0;d<2;d++)
+  {
+    rmean[d]=0.0;
+    for(ii=0;ii<FLOORS;ii++)
+    {
+      if(fnodes[ii][d]>0)
+      {
+        meanlevel[ii][d]/=fnodes[ii][d];
+        meandisp[ii][d]/=fnodes[ii][d];
+      }
+      if(ii>0 && meandisp[ii][d]!=meandisp[ii-1][d])
+      {
+        r[ii-1][d]=(meanlevel[ii][d]-meanlevel[ii-1][d])
+                  /(meandisp[ii][d]-meandisp[ii-1][d]);
+        rmean[d]+=r[ii-1][d];
+      }
+    }
+    if(FLOORS>1) rmean[d]/=(double)(FLOORS-1);
+  }
+
+  if(fout!=NULL) fprintf(fout,"\n");
+  for(ii=0;ii<FLOORS;ii++)
+  {
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dFL:MASS=%8.5f\n",ii+1,summass[ii]);
+    }
+  }
+
+  if(fout!=NULL) fprintf(fout,"\n");
+  for(ii=0;ii<FLOORS;ii++)
+  {
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dFL:LEVEL=%8.5f[m] Dx=%8.5f[m] Dy=%8.5f[m]\n",
+              ii+1,meanlevel[ii][0],
+              meandisp[ii][0],meandisp[ii][1]);
+    }
+    if(ftxt!=NULL)
+    {
+      /*fprintf(ftxt," dx%d %8.5E dy%d %8.5E",
+              ii+1,meandisp[ii][0],
+              ii+1,meandisp[ii][1]);*/
+      fprintf(ftxt," %12.5E %12.5E",meandisp[ii][0],meandisp[ii][1]);
+    }
+  }
+
+  if(fout!=NULL) fprintf(fout,"\n");
+  for(ii=0;ii<FLOORS;ii++)
+  {
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dFL:Dxmax=%8.5f[m] Dymax=%8.5f[m]\n",
+              ii+1,maxdisp[ii][0],maxdisp[ii][1]);
+    }
+  }
+
+  if(fout!=NULL) fprintf(fout,"\n");
+  for(ii=0;ii<(FLOORS-1);ii++)
+  {
+    if(rmean[0]!=0.0) R[ii][0]=r[ii][0]/rmean[0];
+    else              R[ii][0]=1.0;
+    if(rmean[1]!=0.0) R[ii][1]=r[ii][1]/rmean[1];
+    else              R[ii][1]=1.0;
+
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dF:Dx/Hi=1/%4.0f Dy/Hi=1/%4.0f",
+              ii+1,r[ii][0],r[ii][1]);
+      fprintf(fout," Rx=%7.5f Ry=%7.5f\n",R[ii][0],R[ii][1]);
+    }
+  }
+
+  /*CENTER OF HORIZONTAL LOAD......................................*/
+  if(fout!=NULL) fprintf(fout,"\n");
+  if(fout!=NULL) fprintf(fout,"CENTER OF LOAD.\n");
+  for(ii=1;ii<=(FLOORS-1);ii++)
+  {
+    if(sumload[ii-1][1]!=0.0)
+    {
+      Gx[ii-1]=summoment[ii-1][1]/sumload[ii-1][1];
+    }
+    else Gx[ii-1]=0.0;
+
+    if(sumload[ii-1][0]!=0.0)
+    {
+      Gy[ii-1]=summoment[ii-1][0]/sumload[ii-1][0];
+    }
+    else Gy[ii-1]=0.0;
+
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dFL:Qx=%10.5f[tf] Qy=%10.5f[tf]",
+              (ii+1),sumload[ii-1][0],sumload[ii-1][1]);
+      fprintf(fout," Gx=%8.5f[m] Gy=%8.5f[m]\n",
+              Gx[ii-1],Gy[ii-1]);
+    }
+  }
+
+  /*CENTER OF RIGID................................................*/
+  for(d=0;d<2;d++)                                 /*INITIALIZATION*/
+  {
+    for(ii=0;ii<(FLOORS-1);ii++)
+    {
+      sumshear[ii][d]=0.0;
+      sumrigid[ii][d]=0.0;
+      sumrigidmoment[ii][d]=0.0;
+
+      srate[ii][d]=(double *)malloc(nsect*sizeof(double));
+      for(jj=0;jj<nsect;jj++) *(srate[ii][d]+jj)=0.0;
+      for(jj=0;jj<MAXTYPE;jj++) trate[ii][d][jj]=0.0;
+    }
+  }
+  for(ii=0;ii<(FLOORS-1);ii++) felems[ii]=0;
+
+  estress=(double *)malloc(12*sizeof(double));
+  nrigid=0;
+  for(i=1;i<=nelem;i++)
+  {
+    elem=af->elems+i-1;
+
+    /*GET STRESS*/
+    for(ii=0;ii<2;ii++)
+    {
+      for(jj=0;jj<6;jj++)
+      {
+        *(estress+6*ii+jj)=(af->melem+i-1)->stress[ii][jj];
+      }
+    }
+
+    for(ii=1;ii<=(FLOORS-1);ii++)
+    {
+      intersect=(flevel[ii]-(elem->node[0])->d[GZ])
+               *(flevel[ii]-(elem->node[1])->d[GZ]);
+
+      /*IF ACROSSING JUDGING LEVEL*/
+      if(intersect<0.0)
+      {
+        felems[ii-1]++; /*COUNT ELEM*/
+
+        /*TRANSFORM STRESS INTO GLOBAL*/
+        /*gstress=stresstransform(elem,estress);*/   //Default
+        if(fout!=NULL && ii==1) gstress=stresstransform(fout,elem,estress);    /*araki for hakushima*/
+        else           gstress=stresstransform(NULL,elem,estress);
+
+        if(ii==1)
+        {
+          if(fout!=NULL)
+            fprintf(fout,"%2dFL: ELEM %d:Fx=%.5f[tf] Fy=%.5f[tf] Fz=%.5f[tf]\n",
+                    ii,elem->code,*(gstress+0),*(gstress+1),*(gstress+2));        /*araki for hakushima*/
+/*gets(non);*/
+        }
+
+        for(d=0;d<2;d++)
+        {
+		  if(elem->node[0]->d[GZ]<=elem->node[1]->d[GZ])  /*modified by mihara*/
+		  {
+			sumshear[ii-1][d]                   -=*(gstress+d);
+			*(srate[ii-1][d]+(elem->sect->loff))-=*(gstress+d);
+			trate[ii-1][d][elem->sect->type]    -=*(gstress+d);
+		  }
+		  else
+		  {
+			sumshear[ii-1][d]                   +=*(gstress+d);
+			*(srate[ii-1][d]+(elem->sect->loff))+=*(gstress+d);
+			trate[ii-1][d][elem->sect->type]    +=*(gstress+d);
+		  }
+
+		  /*SUM OF SHEAR*/
+		  /*sumshear[ii-1][d]                   -=*(gstress+d);
+		  *(srate[ii-1][d]+(elem->sect->loff))-=*(gstress+d);
+		  trate[ii-1][d][elem->sect->type]    -=*(gstress+d);*/
+
+          /*SUM OF RIGID*/
+		  bunbo=*(ddisp+(elem->node[1]->loff)*6+d)
+               -*(ddisp+(elem->node[0]->loff)*6+d);
+
+          if(bunbo!=0.0)
+          {
+            K=*(gstress+d)/bunbo;
+            Ex=0.5*((elem->node[1])->d[GX]+(elem->node[0])->d[GX]);
+            Ey=0.5*((elem->node[1])->d[GY]+(elem->node[0])->d[GY]);
+
+            sumrigid[ii-1][d]+=fabs(K);
+            if(d==0) sumrigidmoment[ii-1][d]+=fabs(K)*Ey;
+            if(d==1) sumrigidmoment[ii-1][d]+=fabs(K)*Ex;
+
+            rigid.K[d]=fabs(K);
+            if(d==0)
+            {
+              rigid.ielem=elem->code;
+              rigid.floor=ii;
+              rigid.x=Ex;
+              rigid.y=Ey;
+            }
+            if(d==1)
+            {
+              nrigid++;
+              rigids=(struct structrigid *)
+                     realloc(rigids,nrigid*sizeof(struct structrigid));
+              *(rigids+nrigid-1)=rigid;
+            }
+          }
+        }
+        free(gstress);
+      }
+    }
+  }
+  free(estress);
+
+  if(fout!=NULL) fprintf(fout,"\n");
+  if(fout!=NULL) fprintf(fout,"CENTER OF RIGID.\n");
+  for(ii=1;ii<=(FLOORS-1);ii++)
+  {
+    if(sumrigid[ii-1][1]!=0.0)
+    {
+      Lx[ii-1]=sumrigidmoment[ii-1][1]/sumrigid[ii-1][1];
+    }
+    else Lx[ii-1]=0.0;
+
+    if(sumrigid[ii-1][0]!=0.0)
+    {
+      Ly[ii-1]=sumrigidmoment[ii-1][0]/sumrigid[ii-1][0];
+    }
+    else Ly[ii-1]=0.0;
+
+    ex[ii-1]=Lx[ii-1]-Gx[ii-1];
+    ey[ii-1]=Ly[ii-1]-Gy[ii-1];
+
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dF:Lx=%8.5f[m] Ly=%8.5f[m]",
+              ii,Lx[ii-1],Ly[ii-1]);
+      fprintf(fout," ex=%8.5f[m] ey=%8.5f[m]\n",
+              ex[ii-1],ey[ii-1]);
+    }
+  }
+
+  /*RIGID OF TORTION*/
+  for(ii=1;ii<=(FLOORS-1);ii++)
+  {
+    Kr[ii-1]=0.0;
+  }
+  for(jj=0;jj<nrigid;jj++)
+  {
+    rigid=*(rigids+jj);
+
+    ii=rigid.floor;
+    Kr[ii-1]+=(rigid.K[0]*(rigid.y-Ly[ii-1])*(rigid.y-Ly[ii-1]))
+             +(rigid.K[1]*(rigid.x-Lx[ii-1])*(rigid.x-Lx[ii-1]));
+  }
+
+  /*RATE OF UNEVENESS*/
+  if(fout!=NULL) fprintf(fout,"\n");
+  if(fout!=NULL) fprintf(fout,"RATE OF UNEVENESS.\n");
+  for(ii=1;ii<=(FLOORS-1);ii++)
+  {
+    if(sumrigid[ii-1][0]!=0.0 && Kr[ii-1]!=0.0)
+    {
+      rex[ii-1]=sqrt(Kr[ii-1]/sumrigid[ii-1][0]);
+      Rex[ii-1]=ey[ii-1]/rex[ii-1];
+    }
+    else Rex[ii-1]=0.0;
+
+    if(sumrigid[ii-1][1]!=0.0 && Kr[ii-1]!=0.0)
+    {
+      rey[ii-1]=sqrt(Kr[ii-1]/sumrigid[ii-1][1]);
+      Rey[ii-1]=ex[ii-1]/rey[ii-1];
+    }
+    else Rey[ii-1]=0.0;
+
+    if(fout!=NULL) fprintf(fout,"%2dF:Rex=%8.5f Rey=%8.5f\n",
+                           ii,Rex[ii-1],Rey[ii-1]);
+  }
+
+  /*SHEAR OF FLOOR*/
+  if(fout!=NULL) fprintf(fout,"\n");
+  if(fout!=NULL) fprintf(fout,"SHEAR OF FLOOR.\n");
+  for(ii=1;ii<=(FLOORS-1);ii++)
+  {
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dF:Qx=%9.5f Qy=%9.5f\n",
+              ii,sumshear[ii-1][0],sumshear[ii-1][1]);
+    }
+    if(ftxt!=NULL)
+    {
+      /*fprintf(ftxt," Qx%d %9.5E Qy%d %9.5E",
+              ii,sumshear[ii-1][0],ii,sumshear[ii-1][1]);*/
+      fprintf(ftxt," %12.5E %12.5E",
+			  sumshear[ii-1][0],sumshear[ii-1][1]); //Default
+      /*fprintf(ftxt," %12.5E %12.5E",
+			  sumload[ii-1][0],sumload[ii-1][1]);*/   /*** araki for hakushima ***/
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+  flagsumshearmax=0;                                                  /*mihara*/
+  if(fabs(sumshear[0][mhoko])>sumshearmax)
+  {
+	flagsumshearmax=1;
+	sumshearmax=fabs(sumshear[0][mhoko]);
+  }
+////////////////////////////////////////////////////////////////////////////////
+
+  /*SHEAR OF EACH SECTION*/
+  if(fout!=NULL) fprintf(fout,"\n");
+  if(fout!=NULL) fprintf(fout,"SHEAR OF SECTION.\n");
+  for(ii=1;ii<=(FLOORS-1);ii++)
+  {
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dF:Sect%4d Qx=%9.5f Qy=%9.5f\n",
+              ii,(af->sects+0)->code,*(srate[ii-1][0]+0)
+                                  ,*(srate[ii-1][1]+0));
+      for(jj=1;jj<nsect;jj++)
+      {
+        fprintf(fout,"    Sect%4d Qx=%9.5f Qy=%9.5f\n",
+                (af->sects+jj)->code,*(srate[ii-1][0]+jj)
+                                    ,*(srate[ii-1][1]+jj));
+      }
+    }
+  }
+
+  /*SHEAR OF EACH SECTION TYPE*/
+  if(fout!=NULL) fprintf(fout,"\n");
+  if(fout!=NULL) fprintf(fout,"SHEAR OF TYPE.\n");
+  for(ii=1;ii<=(FLOORS-1);ii++)
+  {
+    if(fout!=NULL)
+    {
+      fprintf(fout,"%2dF:Type%2d Qx=%9.5f Qy=%9.5f\n",
+              ii,0,trate[ii-1][0][0],trate[ii-1][1][0]);
+
+      for(jj=1;jj<MAXTYPE;jj++)
+      {
+        fprintf(fout,"    Type%2d Qx=%9.5f Qy=%9.5f\n",
+                jj,trate[ii-1][0][jj],trate[ii-1][1][jj]);
+      }
+    }
+  }
+
+  return;
+}/*floorvalues*/
+
+/*double *stresstransform(struct owire *elem,double *estress)  */ //Default
+double *stresstransform(FILE *fout,struct owire *elem,double *estress)       /*araki for Hakushima*/
+/*ELEMENT STRESS INTO GLOBAL STRESS.*/
+{
+  int ii;
+  int jj,i/*,elemflag=1005*/;             /*araki for Hakushima*/
+  double **drccos,**t,**tt,*gstress;
+
+  drccos=directioncosine(elem->node[0]->d[GX],
+                         elem->node[0]->d[GY],
+                         elem->node[0]->d[GZ],
+                         elem->node[1]->d[GX],
+                         elem->node[1]->d[GY],
+                         elem->node[1]->d[GZ],
+                         elem->cangle);                  /*[DRCCOS]*/
+
+  t=transmatrix(drccos);                                      /*[T]*/
+  tt=matrixtranspose(t,12);                                  /*[Tt]*/
+
+  gstress=matrixvector(tt,estress,12);                /*{F}=[Tt]{f}*/
+
+  if(fout!=NULL)                              /*araki for Hakushima*/
+  {
+    //if(elem->code==elemflag)
+    //  {
+        fprintf(fout,"ELEM %d:\n",elem->code);
+        fprintf(fout,"•ûŒü—]Œ· [‚c] =");
+        for(ii=0;ii<3;ii++)
+        {
+          if(ii>0) fprintf(fout,"               ");
+          for(jj=0;jj<3;jj++)
+          {
+            fprintf(fout," %6.3f",*((*(drccos+ii))+jj));
+          }
+          fprintf(fout,"\n");
+        }
+        fprintf(fout,"\n");
+        fprintf(fout,"À•W•ÏŠ·s—ñ [‚s] =");
+        for(ii=0;ii<12;ii++)
+        {
+          if(ii>0) fprintf(fout,"                   ");
+          for(jj=0;jj<12;jj++)
+          {
+            fprintf(fout," %6.3f",*((*(t+ii))+jj));
+          }
+          fprintf(fout,"\n");
+        }
+        fprintf(fout,"\n");
+        fprintf(fout,"“]’us—ñ   [‚s‚”] =");
+        for(ii=0;ii<12;ii++)
+        {
+          if(ii>0) fprintf(fout,"                   ");
+          for(jj=0;jj<12;jj++)
+          {
+            fprintf(fout," %6.3f",*((*(tt+ii))+jj));
+          }
+          fprintf(fout,"\n");
+        }
+        fprintf(fout,"\n");
+        for(ii=0;ii<2;ii++)
+        {
+          fprintf(fout,"Ž²—Í  N [tf]  estress= %14.5f, gstress= %14.5f\n",
+                  *(estress+6*ii+0),*(gstress+6*ii+0));
+          fprintf(fout,"‚¹‚ñ’fQx[tf]  estress= %14.5f, gstress= %14.5f\n",
+                  *(estress+6*ii+1),*(gstress+6*ii+1));
+          fprintf(fout,"‚¹‚ñ’fQy[tf]  estress= %14.5f, gstress= %14.5f\n",
+                  *(estress+6*ii+2),*(gstress+6*ii+2));
+          fprintf(fout,"‚Ë‚¶‚èMz[tfm] estress= %14.5f, gstress= %14.5f\n",
+                  *(estress+6*ii+3),*(gstress+6*ii+3));
+          fprintf(fout,"‹È‚°  Mx[tfm] estress= %14.5f, gstress= %14.5f\n",
+                  *(estress+6*ii+4),*(gstress+6*ii+4));
+          fprintf(fout,"‹È‚°  My[tfm] estress= %14.5f, gstress= %14.5f\n",
+                  *(estress+6*ii+5),*(gstress+6*ii+5));
+        }
+        fprintf(fout,"\n");
+    //  }
+  }
+
+  for(ii=0;ii<=2;ii++) free(*(drccos+ii));
+  free(drccos);
+  for(ii=0;ii<=11;ii++) free(*(t+ii));
+  free(t);
+  for(ii=0;ii<=11;ii++) free(*(tt+ii));
+  free(tt);
+
+  return gstress;
+}/*stresstransform*/
+
+

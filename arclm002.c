@@ -1,0 +1,797 @@
+/*
+ARCLM002: coded for ghouse project by ujok and kaza
+
+since November 15th,2020
+last modified on December 15th,2020
+*/
+
+/*ARCLM002*/
+int arclm002(struct arclmframe *af,int idinput,int idoutput); /*ujok and kaza*/
+/*-----------------------------------------------------------------*/
+/*CHANGE SECTION AUTOMATIC*/
+int changesectautomatic(struct organ *org,int iteration);     /*ujok and kaza*/
+int saveorganizationforchangsectautomatic(FILE *fout,         /*ujok for test*/
+                     struct organ *org,
+                     struct arclmframe *af,
+                     struct viewparam *vp);
+
+/*-----------------------------------------------------------------*/
+/*ARCLM002*/
+int arclm002(struct arclmframe *af,int idinput,int idoutput)
+{
+  char str[256],non[80];
+  int i,j,ii,jj,k,code;   /*k: iteration count*/
+  int nchanged = 0;       /*section changed elems*/
+  struct owire *einit;    /*initial elems*/
+  FILE *fin,*fout;
+
+  /*TURN OFF MESSAGES*/
+  globalmessageflag=0;
+  globaldrawflag=0;
+
+  sprintf(str,"ARCLM002:BEGIN \n");
+  errormessage(str);
+
+  einit=(struct owire *)malloc(af->nelem*sizeof(struct owire));
+  for(i=0; i<af->nelem; i++) *(einit+i)=*(af->elems+i);      /*initial elems*/
+
+  k=0; /*iteration count*/
+  sprintf(str,"%d",k);
+  SetDlgItemText((wmenu.childs+2)->hwnd,ID_LAPS,str);
+  SendDlgItemMessage((wmenu.childs+2)->hwnd,ID_LAPS,WM_PAINT,0,0);
+
+  /*INITIAL ANALYSIS ARCLM001*/
+  sprintf(str,"INITIAL ANALYSIS ARCLM001:BEGIN \n");
+  errormessage(str);
+//  MessageBox(NULL,str,"Arclm002 : Arclm Frame with Dummy Braces",MB_OK);
+  arclm001(&(*af),idinput,idoutput);
+
+  /*OPEN RESULT*/
+  fout=fgetstofopen("\0","r",idoutput);  /*OPEN FILE.*/
+
+  frameoutputtomemory(fout,&*af);
+  fclose(fout);
+
+  clearwindow(*(wdraw.childs+1));
+  drawarclmframe((wdraw.childs+1)->hdcC,
+                 (wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+
+  /*CHANGE SECTION OF ARCLM FRAME*/
+  for(i=0;i<af->nelem;i++)
+  {
+  	if (((af->elems+i)->sect)->code == 601||
+//        ((af->elems+i)->sect)->code == 602||
+//        ((af->elems+i)->sect)->code == 603||
+        ((af->elems+i)->sect)->code == 604
+       )
+	  {
+       code = ((af->elems+i)->sect)->code + 10;
+  	   if((af->elems+i)->stress[0][0]>0)     /*compression*/
+        {
+     		sprintf(str,"ELEM %d :ESEC %d \n",(af->elems+i)->code,(af->elems+i)->sect->code);
+//    	    MessageBox(NULL,str,"compression",MB_OK);
+            for(j=0;j<af->nsect;j++)
+            {
+              if(code==(af->sects+j)->code)
+              {
+                (af->elems+i)->sect=af->sects+j;
+                break;
+              }
+            }
+     	   	sprintf(str,"ELEM %d :ESEC %d \n",(af->elems+i)->code,((af->elems+i)->sect)->code);
+//          errormessage(str);
+//        	MessageBox(NULL,str,"changed(compression)",MB_OK);
+        nchanged += 1;      /*section changed elems*/
+     	}
+      }
+  	else if (((af->elems+i)->sect)->code == 611||
+//             ((af->elems+i)->sect)->code == 612||
+//             ((af->elems+i)->sect)->code == 613||
+             ((af->elems+i)->sect)->code == 614
+            )
+     {
+      code = ((af->elems+i)->sect)->code - 10;
+      if((af->elems+i)->stress[0][0]<=0)      /*tension*/
+     	{
+     		sprintf(str,"ELEM %d :ESEC %d \n",(af->elems+i)->code,(af->elems+i)->sect->code);
+//    	    MessageBox(NULL,str,"compression",MB_OK);
+            for(j=0;j<af->nsect;j++)
+            {
+              if(code==(af->sects+j)->code)
+              {
+                (af->elems+i)->sect=af->sects+j;
+                break;
+              }
+            }
+     	   	sprintf(str,"ELEM %d :ESEC %d \n",(af->elems+i)->code,((af->elems+i)->sect)->code);
+//          errormessage(str);
+//        	MessageBox(NULL,str,"changed(compression)",MB_OK);
+     	}
+ 	 }
+  }
+
+  sprintf(str,"NUMBER OF SECTION CHANGED ELEMS: %d \n\n",nchanged);    /*section changed elems*/
+  errormessage(str);
+
+  k += 1;     /*iteration count*/
+  sprintf(str,"%d",k);
+  SetDlgItemText((wmenu.childs+2)->hwnd,ID_LAPS,str);
+  SendDlgItemMessage((wmenu.childs+2)->hwnd,ID_LAPS,WM_PAINT,0,0);
+
+  sprintf(str,"%d",nchanged);
+  SetDlgItemText((wmenu.childs+2)->hwnd,ID_SAFETY,str);
+  SendDlgItemMessage((wmenu.childs+2)->hwnd,ID_SAFETY,WM_PAINT,0,0);
+
+  /*SAVE*/
+  for(i=0;i<(af->nnode);i++)
+  {
+    *(af->nodes+i)=*(af->ninit+i);
+  }
+
+  for(i=0;i<(af->nelem);i++)
+  {
+    for (j=0; j < 2; j++)
+    {
+       for(jj = 0; jj < 6; jj++)
+       {
+          if(((af->elems+i)->sect)->code != 611)        /*PRESTRESS*/
+          {
+            ((af->elems+i)->stress[j][jj]) = (einit+i)->stress[j][jj];
+          }
+          else ((af->elems+i)->stress[j][jj])=0.0;
+       }
+    }
+  }
+
+  saveasarclm((wdraw.childs+1)->inpfile,&(*af));
+/*
+  saveasarclm("arclm002_test.inl",&(*af));
+  sprintf(str,"Saved as %s \n","arclm002_test.inl");
+  MessageBox(NULL,str,"Arclm002 : Arclm Frame with Dummy Braces",MB_OK);
+*/
+
+#if 1
+  while(nchanged!=0  && k<10 )  /*CONVERGENCE LOOP*/
+  {
+  nchanged=0;
+
+  /*SAVE*/
+  for(i=0;i<(af->nnode);i++)
+  {
+    *(af->nodes+i)=*(af->ninit+i);
+  }
+
+  for(i=0;i<(af->nelem);i++)
+  {
+     for (j=0; j < 2; j++)
+     {
+        for(jj = 0; jj < 6; jj++)
+        {
+          if(((af->elems+i)->sect)->code != 611)        /*PRESTRESS*/
+          {
+            ((af->elems+i)->stress[j][jj]) = (einit+i)->stress[j][jj];
+          }
+          else ((af->elems+i)->stress[j][jj])=0.0;
+        }
+     }
+  }
+
+  saveasarclm((wdraw.childs+1)->inpfile,&(*af));
+
+  /*ANALYSIS ARCLM001*/
+  sprintf(str,"ANALYSIS ARCLM001:BEGIN \n");
+  errormessage(str);
+  arclm001(&(*af),idinput,idoutput);
+
+  /*OPEN RESULT*/
+  fout=fgetstofopen("\0","r",idoutput);  /*OPEN FILE.*/
+
+  frameoutputtomemory(fout,&(*af));
+  fclose(fout);
+
+  clearwindow(*(wdraw.childs+1));
+  drawarclmframe((wdraw.childs+1)->hdcC,
+                 (wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+
+  /*CHANGE SECTION OF ARCLM FRAME*/
+  for(i=0;i<af->nelem;i++)
+  {
+  	if (((af->elems+i)->sect)->code == 601||
+//        ((af->elems+i)->sect)->code == 602||
+//        ((af->elems+i)->sect)->code == 603||
+        ((af->elems+i)->sect)->code == 604
+       )
+	  {
+       code = ((af->elems+i)->sect)->code + 10;
+  	   if((af->elems+i)->stress[0][0]>0.0)     /*compression*/
+        {
+     		sprintf(str,"ELEM %d :ESECT %d \n",(af->elems+i)->code,(af->elems+i)->sect->code);
+//    	    MessageBox(NULL,str,"compression",MB_OK);
+            for(j=0;j<arc.nsect;j++)
+            {
+              if(code==(arc.sects+j)->code)
+              {
+                (af->elems+i)->sect=af->sects+j;
+                break;
+              }
+            }
+     	   	sprintf(str,"ELEM %d :ESECT %d \n",(af->elems+i)->code,((af->elems+i)->sect)->code);
+//          errormessage(str);
+//        	MessageBox(NULL,str,"changed(compression)",MB_OK);
+        nchanged += 1;      /*section changed elems*/
+     	}
+      }
+  	else if (((af->elems+i)->sect)->code == 611||
+//             ((af->elems+i)->sect)->code == 612||
+//             ((af->elems+i)->sect)->code == 613||
+             ((af->elems+i)->sect)->code == 614
+            )
+     {
+      code = ((af->elems+i)->sect)->code - 10;
+      if((af->elems+i)->stress[0][0]<=0.0)      /*tension*/
+     	{
+     		sprintf(str,"ELEM %d :ESECT %d \n",(af->elems+i)->code,(af->elems+i)->sect->code);
+//    	    MessageBox(NULL,str,"compression",MB_OK);
+            for(j=0;j<af->nsect;j++)
+            {
+              if(code==(af->sects+j)->code)
+              {
+                (af->elems+i)->sect=af->sects+j;
+                break;
+              }
+            }
+     	   	sprintf(str,"ELEM %d :ESECT %d \n",(af->elems+i)->code,((af->elems+i)->sect)->code);
+//          errormessage(str);
+//        	MessageBox(NULL,str,"changed(compression)",MB_OK);
+     	}
+ 	 }
+  }
+  sprintf(str,"NUMBER OF SECTION CHANGED ELEMS: %d \n\n",nchanged);    /*section changed elems*/
+  errormessage(str);
+
+  k += 1;     /*iteration count*/
+  sprintf(str,"%d",k);
+  SetDlgItemText((wmenu.childs+2)->hwnd,ID_LAPS,str);
+  SendDlgItemMessage((wmenu.childs+2)->hwnd,ID_LAPS,WM_PAINT,0,0);
+
+  sprintf(str,"%d",nchanged);
+  SetDlgItemText((wmenu.childs+2)->hwnd,ID_SAFETY,str);
+  SendDlgItemMessage((wmenu.childs+2)->hwnd,ID_SAFETY,WM_PAINT,0,0);
+  }
+#endif
+
+  sprintf(str,"ARCLM002:COMPLETED");
+  MessageBox(NULL,str,"Arclm002 : Arclm Frame with Dummy Braces",MB_OK);
+
+return 0;
+}/*arclm002*/
+
+/*-----------------------------------------------------------------*/
+
+/*changesectautomatic*/ /*CHANGE SECTION OF ORGAN FRAME*/
+int changesectautomatic(struct organ *org,int iteration)
+				        		  /*iterationは繰り返し計算用（未完成）*/
+{
+  char str[256],non[80];
+  int i,j,k,n,ii,jj,code;
+  int nelem;
+  int nchanged;           /*ダミー材置換した部材の数*/ /*繰り返し計算用*/
+  struct oelem *einit;
+  FILE *fin,*fout;
+
+
+  /*TURN OFF MESSAGES*/
+  globalmessageflag=0;
+  globaldrawflag=0;
+
+  arc  = arci;
+  arcx = arci;
+  arcy = arci;
+  /*free((wdraw.childs+1)->org.loads);*/
+  nchanged =0;
+
+  for(i=0;i<org->nelem;i++)
+  {
+	for(j=0;j<2;j++)
+	{
+	  for(k=0;k<6;k++) (org->elems+i)->initial[j][k]=0.0;
+	}
+  } /*INITIAL CMQ UNAVAILABLE.*/
+
+  einit=(struct oelem *)malloc(org->nelem*sizeof(struct oelem));
+  for(k=0; k<org->nelem; k++)  *(einit+k)=*(org->elems+k);
+
+  /*INITIAL ANALYSIS ARCLM001*/
+  /*EXTRACT ARCLM*/
+  extractarclmfromorgan(org,&arc,&arcx,&arcy);
+
+  (wmenu.childs+2)->vparam.vflag.mv.ftype=F_ARCLM;
+
+  /*SAVE AS ARCLM*/
+  saveasarclm((wdraw.childs+1)->inpfilez,&arc);
+
+  getviewparam((wmenu.childs+2)->hwnd,
+			   &((wdraw.childs+1)->vparam));
+  (wdraw.childs+1)->vparam.vflag.ev.deformation=0;
+
+  /*ANALYSIS*/
+    arclm001(&arc ,ID_INPUTFILEZ,ID_OUTPUTFILEZ);
+
+  /*OPEN RESULT*/
+    fout=fgetstofopen("\0","r",ID_OUTPUTFILEZ);  /*OPEN FILE.*/
+
+  frameoutputtomemory(fout,&arc);
+  fclose(fout);
+
+//  arc.nlaps=1;
+
+/*
+  clearwindow(*(wdraw.childs+1));
+  drawarclmframe((wdraw.childs+1)->hdcC,
+                 (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
+  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+*/
+  //SetDlgItemText(hdwnd,IDV_MODENUM,"1");
+
+  (wdraw.childs+1)->lstatus=ROTATE;
+  (wmenu.childs+2)->vparam.vflag.mv.ftype=F_ORGAN;
+
+  /*Initialize Organ Frame and Reopen the inp-file*/ /*20201202 ujok*/
+  freeorganization(&((wdraw.childs+1)->org));
+  fin=fopen((wdraw.childs+1)->inpfile,"r");
+
+  sprintf(str,"OPENED=%s",(wdraw.childs+1)->inpfile);
+  errormessage(str);
+
+  inputorganization(fin,&((wdraw.childs+1)->org),
+   					    &((wdraw.childs+1)->vparam));
+
+  fclose(fin);
+
+  /*CHANGE SECTION OF ORGAN FRAME*/ /*20201207 ujok*/
+#if 1
+  ii=0;      /*index of arclm frame*/
+  jj=0;      /*number of walls and slabs*/
+  for(i=0;i<org->nelem;i++)
+  {
+    if((org->elems+i)->type==WALL||(org->elems+i)->type==SLAB)
+      {
+      jj = jj+1;;
+      }
+    ii=i-jj; /*index of arclm frame*/
+
+  	if (((org->elems+i)->sect)->code == 601||
+        ((org->elems+i)->sect)->code == 602||
+//        ((org->elems+i)->sect)->code == 603||
+        ((org->elems+i)->sect)->code == 604
+       )
+	  {
+       code = ((org->elems+i)->sect)->code + 10;
+  	   if((arc.elems+ii)->stress[0][0]>0)          /*compression*/
+        {
+     		sprintf(str,"ELEM %d :ESEC %d \n",(org->elems+i)->code,((org->elems+i)->sect)->code);
+//    	    MessageBox(NULL,str,"compression",MB_OK);
+            for(j=0;j<((wdraw.childs+1)->org.nsect);j++)
+            {
+              if(code==((wdraw.childs+1)->org.sects+j)->code)
+              {
+                (org->elems+i)->sect=(wdraw.childs+1)->org.sects+j;
+                break;
+              }
+            }
+     	   	sprintf(str,"ELEM %d :ESEC %d \n",(org->elems+i)->code,((org->elems+i)->sect)->code);
+            errormessage(str);
+//        	MessageBox(NULL,str,"changed(compression)",MB_OK);
+     	}
+      }
+  #if 1
+  	else   	if (((org->elems+i)->sect)->code == 611||
+        ((org->elems+i)->sect)->code == 612||
+//        ((org->elems+i)->sect)->code == 613||
+        ((org->elems+i)->sect)->code == 614
+       )
+     {
+      code = ((org->elems+i)->sect)->code - 10;
+      if((arc.elems+ii)->stress[0][0]<=0)      /*tension*/
+     	{
+           sprintf(str,"ELEM %d :ESECT %d \n",(org->elems+i)->code,((org->elems+i)->sect)->code);
+//         MessageBox(NULL,str,"tension",MB_OK);
+            for(j=0;j<((wdraw.childs+1)->org.nsect);j++)
+            {
+              if(code==((wdraw.childs+1)->org.sects+j)->code)
+              {
+                (org->elems+i)->sect=(wdraw.childs+1)->org.sects+j;
+                break;
+              }
+            }
+           sprintf(str,"ELEM %d :ESEC %d \n",(org->elems+i)->code,((org->elems+i)->sect)->code);
+           errormessage(str);
+//         MessageBox(NULL,str,"changed(tension)",MB_OK);
+     	}
+ 	 }
+  #endif
+  }
+
+#endif
+
+#if 0  /*テキストファイルとしてorgを出力する際に断面番号のみ変えて保存*/
+
+#define FILEFORCHANGESECT  "changesect_test.inp"  /*file for test*/
+  fout=fopen(FILEFORCHANGESECT,"w");
+  saveorganizationforchangsectautomatic(fout,&((wdraw.childs+1)->org),&arc,
+                                  &((wdraw.childs+1)->vparam));
+  fclose(fout);
+
+  sprintf(str,"Saved as %s \n",FILEFORCHANGESECT);
+  if(iteration==0)  MessageBox(NULL,str,"change section automatic",MB_OK);
+#endif
+
+  globalmessageflag=1;
+
+return nchanged;
+}/*changesectautomatic*/
+
+/*saveorganizationforchangsectautomatic*/
+int saveorganizationforchangsectautomatic(FILE *fout,
+                     struct organ *org,
+                     struct arclmframe *af,
+                     struct viewparam *vp)
+/*SAVE ORGAN INTO OUTPUT FILE.*/
+{
+  int i,j,k;
+  int ii;
+  int jj=0;
+  long int nnode,nelem,nprop,nsect;
+  double eps=1.0E-12;
+  char str[80];
+
+  fseek(fout,0L,SEEK_SET);
+
+  fprintf(fout,"\"CREATED ORGAN FRAME.\"\n");
+
+  nnode=org->nnode;
+  nelem=org->nelem;
+  nprop=org->nprop;
+  nsect=org->nsect;
+
+  fprintf(fout,"NNODE %ld\n",nnode);
+  fprintf(fout,"NELEM %ld\n",nelem);
+  fprintf(fout,"NPROP %ld\n",nprop);
+  fprintf(fout,"NSECT %ld\n",nsect);
+  fprintf(fout,"\n");
+
+  /*EARTHQUAKE DATA*/
+  fprintf(fout,"BASE    %.3f %.3f\n",org->ai.Cox);
+  fprintf(fout,"LOCATE  %.3f\n",org->ai.Z);
+  fprintf(fout,"TFACT   %.3f\n",org->ai.T1);
+  fprintf(fout,"GPERIOD %.3f\n",org->ai.Tc);
+  fprintf(fout,"\n");
+
+  /*VIEW DATA*/
+  fprintf(fout,"GFACT %.1f\n",vp->gfactor);
+  fprintf(fout,"FOCUS %.1f %.1f %.1f\n",vp->focus.d[0],
+                                        vp->focus.d[1],
+                                        vp->focus.d[2]);
+  fprintf(fout,"ANGLE %.1f %.1f\n",vp->phi,vp->theta);
+  fprintf(fout,"DISTS %.1f %.1f\n",vp->r,vp->odv);
+  fprintf(fout,"\n");
+
+  for(i=0;i<nprop;i++)
+  {
+    fprintf(fout,"PROP %3ld ",(org->props+i)->code);
+
+    /*if((org->props+i)->name!=NULL)*/
+    if(strlen((org->props+i)->name)>0)
+    {
+      fprintf(fout,"PNAME %s\n",(org->props+i)->name);
+    }
+    else
+    {
+      fprintf(fout,"PNAME \"Noname\"\n");
+    }
+
+    fprintf(fout,"         HIJU %13.8f\n",(org->props+i)->hiju);
+    fprintf(fout,"         E    %13.3f\n",(org->props+i)->E);
+    fprintf(fout,"         POI  %13.5f\n",(org->props+i)->poi);
+    fprintf(fout,"         PCOLOR %3d %3d %3d\n",(org->props+i)->r,
+                                                 (org->props+i)->g,
+                                                 (org->props+i)->b);
+  }
+  fprintf(fout,"\n");
+
+  for(i=0;i<nsect;i++)
+  {
+    fprintf(fout,"SECT %3ld ",(org->sects+i)->code);
+
+    /*if((org->sects+i)->name!=NULL)*/
+    if(strlen((org->sects+i)->name)>0)
+    {
+      fprintf(fout,"SNAME %s\n",(org->sects+i)->name);
+    }
+    else
+    {
+      fprintf(fout,"SNAME \"Noname\"\n");
+    }
+
+    if((org->sects+i)->role==ROLEHOJO)
+    {
+      fprintf(fout,"         SROLE HOJO\n");
+    }
+    else
+    {
+      fprintf(fout,"         NFIG %d\n",(org->sects+i)->nfig);
+      for(j=0;j<(org->sects+i)->nfig;j++)
+      {
+        fprintf(fout,"         FIG %3d ",
+                ((org->sects+i)->figs+j)->code);
+        fprintf(fout,"FPROP %d\n",
+                ((org->sects+i)->figs+j)->prop->code);
+
+        if(((org->sects+i)->figs+j)->area<-eps ||
+           ((org->sects+i)->figs+j)->area> eps ||
+           ((org->sects+i)->figs+j)->Ixx <-eps ||
+           ((org->sects+i)->figs+j)->Ixx > eps ||
+           ((org->sects+i)->figs+j)->Iyy <-eps ||
+           ((org->sects+i)->figs+j)->Iyy > eps ||
+           ((org->sects+i)->figs+j)->Jzz <-eps ||
+           ((org->sects+i)->figs+j)->Jzz > eps)
+        {
+          fprintf(fout,"                 ");
+          fprintf(fout,"AREA  %.4f\n",((org->sects+i)->figs+j)->area);
+          fprintf(fout,"                 ");
+          fprintf(fout,"IXX   %.8f\n",((org->sects+i)->figs+j)->Ixx);
+          fprintf(fout,"                 ");
+          fprintf(fout,"IYY   %.8f\n",((org->sects+i)->figs+j)->Iyy);
+          fprintf(fout,"                 ");
+          fprintf(fout,"VEN   %.8f\n",((org->sects+i)->figs+j)->Jzz);
+        }
+        if(((org->sects+i)->figs+j)->thick<-eps ||
+           ((org->sects+i)->figs+j)->thick> eps)
+        {
+          fprintf(fout,"                 ");
+          fprintf(fout,"THICK %.5f\n",((org->sects+i)->figs+j)->thick);
+        }
+      }
+
+      if((org->sects+i)->exp!=0.0)
+      {
+        fprintf(fout,"         EXP %.3f\n",(org->sects+i)->exp);
+
+        fprintf(fout,"         ");
+        fprintf(fout,"NZMAX %12.6f ", (org->sects+i)->fmax[0]);
+        fprintf(fout,"NZMIN %12.6f\n",(org->sects+i)->fmin[0]);
+        fprintf(fout,"         ");
+        fprintf(fout,"QXMAX %12.6f ", (org->sects+i)->fmax[1]);
+        fprintf(fout,"QXMIN %12.6f\n",(org->sects+i)->fmin[1]);
+        fprintf(fout,"         ");
+        fprintf(fout,"QYMAX %12.6f ", (org->sects+i)->fmax[2]);
+        fprintf(fout,"QYMIN %12.6f\n",(org->sects+i)->fmin[2]);
+        fprintf(fout,"         ");
+        fprintf(fout,"MZMAX %12.6f ", (org->sects+i)->fmax[3]);
+        fprintf(fout,"MZMIN %12.6f\n",(org->sects+i)->fmin[3]);
+        fprintf(fout,"         ");
+        fprintf(fout,"MXMAX %12.6f ", (org->sects+i)->fmax[4]);
+        fprintf(fout,"MXMIN %12.6f\n",(org->sects+i)->fmin[4]);
+        fprintf(fout,"         ");
+        fprintf(fout,"MYMAX %12.6f ", (org->sects+i)->fmax[5]);
+        fprintf(fout,"MYMIN %12.6f\n",(org->sects+i)->fmin[5]);
+      }
+    }
+
+    if((org->sects+i)->lload[0]!=0.0 ||
+       (org->sects+i)->lload[1]!=0.0 ||
+       (org->sects+i)->lload[2]!=0.0)
+    {
+      fprintf(fout,"         LLOAD");
+      fprintf(fout," %.3f %.3f %.3f\n",(org->sects+i)->lload[0],
+                                       (org->sects+i)->lload[1],
+                                       (org->sects+i)->lload[2]);
+    }
+
+    if((org->sects+i)->dcolor.r!=255 ||
+       (org->sects+i)->dcolor.g!=255 ||
+       (org->sects+i)->dcolor.b!=255)
+    {
+      fprintf(fout,"         COLOR");
+      fprintf(fout," %d %d %d\n",(org->sects+i)->dcolor.r,
+                                 (org->sects+i)->dcolor.g,
+                                 (org->sects+i)->dcolor.b);
+    }
+  }
+  fprintf(fout,"\n");
+
+  for(i=0;i<nnode;i++)
+  {
+	fprintf(fout,"NODE %4ld  ",(org->nodes+i)->code);
+//	fprintf(fout,"CORD %7.3f %7.3f %7.3f  ",
+	fprintf(fout,"CORD %7.6f %7.6f %7.6f  ",
+            (org->nodes+i)->d[0],
+            (org->nodes+i)->d[1],
+            (org->nodes+i)->d[2]);
+    fprintf(fout,"ICON %1d %1d %1d %1d %1d %1d  ",
+           (org->confs+6*i+0)->iconf,
+           (org->confs+6*i+1)->iconf,
+           (org->confs+6*i+2)->iconf,
+           (org->confs+6*i+3)->iconf,
+           (org->confs+6*i+4)->iconf,
+           (org->confs+6*i+5)->iconf);
+
+    fprintf(fout,"VCON  ");
+    if((org->confs+6*i+0)->value==0.0) fprintf(fout," 0.0  ");
+    else fprintf(fout,"%9.6f",(org->confs+6*i+0)->value);
+    if((org->confs+6*i+1)->value==0.0) fprintf(fout," 0.0  ");
+    else fprintf(fout,"%9.6f",(org->confs+6*i+1)->value);
+    if((org->confs+6*i+2)->value==0.0) fprintf(fout," 0.0  ");
+    else fprintf(fout,"%9.6f",(org->confs+6*i+2)->value);
+    if((org->confs+6*i+3)->value==0.0) fprintf(fout," 0.0  ");
+    else fprintf(fout,"%9.6f",(org->confs+6*i+3)->value);
+    if((org->confs+6*i+4)->value==0.0) fprintf(fout," 0.0  ");
+    else fprintf(fout,"%9.6f",(org->confs+6*i+4)->value);
+    if((org->confs+6*i+5)->value==0.0) fprintf(fout," 0.0");
+    else fprintf(fout,"%9.6f",(org->confs+6*i+5)->value);
+    fprintf(fout,"\n");
+  }
+  fprintf(fout,"\n");
+
+/*ujok ESECTの値を変更して保存*/
+//fprintf(fout,"ESECT %3ld ",(org->elems+i)->sect->code);
+
+  for(i=0;i<nelem;i++)
+  {
+    fprintf(fout,"ELEM %5ld ",(org->elems+i)->code);
+    if((org->elems+i)->type==WALL||
+       (org->elems+i)->type==SLAB
+      )
+      {
+      jj = jj+1;;
+      }
+    ii=i-jj;
+
+  	if (((org->elems+i)->sect)->code == 601||
+    	((org->elems+i)->sect)->code == 602||
+//    	((org->elems+i)->sect)->code == 603||
+    	((org->elems+i)->sect)->code == 604
+       )
+	  {
+  	   if((arc.elems+ii)->stress[0][0]>0)     /*compression*/
+        {
+  	        fprintf(fout,"ESECT %3ld ",((org->elems+i)->sect->code)+10);
+     	}
+       else  fprintf(fout,"ESECT %3ld ",(org->elems+i)->sect->code);
+      }
+  	else if (((org->elems+i)->sect)->code == 611||
+    	((org->elems+i)->sect)->code == 612||
+//    	((org->elems+i)->sect)->code == 613||
+    	((org->elems+i)->sect)->code == 614
+        )
+      {
+       if((arc.elems+ii)->stress[0][0]<=0)      /*tension*/
+     	{
+  	        fprintf(fout,"ESECT %3ld ",((org->elems+i)->sect->code)-10);
+     	}
+       else  fprintf(fout,"ESECT %3ld ",(org->elems+i)->sect->code);
+
+ 	  }
+    else  fprintf(fout,"ESECT %3ld ",(org->elems+i)->sect->code);
+
+    fprintf(fout,"ENODS %d ",(org->elems+i)->nnod);
+    fprintf(fout,"ENOD");
+    for(j=0;j<(org->elems+i)->nnod;j++)
+    {
+      fprintf(fout," %d",(*((org->elems+i)->nods+j))->code);
+    }
+    fprintf(fout," BONDS");
+    for(j=0;j<((org->elems+i)->nnod);j++)
+    {
+      fprintf(fout,"  %1d %1d %1d %1d %1d %1d",
+              *((org->elems+i)->bonds+6*j+0),
+              *((org->elems+i)->bonds+6*j+1),
+              *((org->elems+i)->bonds+6*j+2),
+              *((org->elems+i)->bonds+6*j+3),
+              *((org->elems+i)->bonds+6*j+4),
+              *((org->elems+i)->bonds+6*j+5));
+    }
+    fprintf(fout,"\n");
+
+    if(((org->elems+i)->nban)>=1)
+    {
+      fprintf(fout,"                     ");
+      fprintf(fout,"EBANS %d ",(org->elems+i)->nban);
+      for(j=0;j<(org->elems+i)->nban;j++)
+      {
+        if(j>=1) fprintf(fout,"                             ");
+
+        fprintf(fout,"EBAN %ld ",((org->elems+i)->bans+j)->code);
+        fprintf(fout,"BNODS %d ",((org->elems+i)->bans+j)->nnod);
+        fprintf(fout,"BNOD");
+        for(k=0;k<((org->elems+i)->bans+j)->nnod;k++)
+        {
+          fprintf(fout," %ld",
+                  (*(((org->elems+i)->bans+j)->nods+k))->code);
+        }
+
+        fprintf(fout,"\n");
+      }
+    }
+
+    if(((org->elems+i)->nnod)==2)
+    {
+
+      fprintf(fout,"           CANG %.5f\n",(org->elems+i)->cangle);
+
+      fprintf(fout,"           CMQ ");
+      for(j=0;j<2;j++)
+      {
+        for(k=0;k<6;k++)
+        {
+          /*fprintf(fout," %.1f",(org->elems+i)->initial[j][k]);*/
+fprintf(fout," %.1f",0.0);
+        }
+        if(j<1) fprintf(fout," ");
+      }
+      fprintf(fout,"\n");
+    }
+
+    if((org->elems+i)->type==COLUMN)
+    {
+      fprintf(fout,"           TYPE COLUMN\n");
+    }
+    if((org->elems+i)->type==GIRDER)
+    {
+      fprintf(fout,"           TYPE GIRDER\n");
+    }
+    if((org->elems+i)->type==BEAM)
+    {
+      fprintf(fout,"           TYPE BEAM\n");
+    }
+    if((org->elems+i)->type==WALL)
+    {
+      fprintf(fout,"           TYPE WALL\n");
+    }
+    if((org->elems+i)->type==SLAB)
+    {
+      fprintf(fout,"           TYPE SLAB\n");
+    }
+    if((org->elems+i)->type==BRACE)
+    {
+      fprintf(fout,"           TYPE BRACE\n");
+    }
+
+    if((org->elems+i)->lface[0]!=0.0 ||
+       (org->elems+i)->lface[1]!=0.0)
+    {
+      fprintf(fout,"           LFACE %.3f %.3f\n",
+              (org->elems+i)->lface[0],(org->elems+i)->lface[1]);
+    }
+    if((org->elems+i)->hface[0]!=0.0 ||
+       (org->elems+i)->hface[1]!=0.0)
+    {
+      fprintf(fout,"           HFACE %.3f %.3f\n",
+              (org->elems+i)->hface[0],(org->elems+i)->hface[1]);
+    }
+    if((org->elems+i)->wrect[0]!=0.0 ||
+       (org->elems+i)->wrect[1]!=0.0)
+    {
+      fprintf(fout,"           WRECT %.3f %.3f\n",
+              (org->elems+i)->wrect[0],(org->elems+i)->wrect[1]);
+    }
+
+    if((org->elems+i)->role==ROLEWEIGHT)
+    {
+      fprintf(fout,"           ROLE W\n");
+    }
+    if((org->elems+i)->role==ROLERIGID)
+    {
+      fprintf(fout,"           ROLE R\n");
+    }
+    if((org->elems+i)->role==ROLESTRESS)
+    {
+      fprintf(fout,"           ROLE S\n");
+    }
+  }
+
+  return 1;
+}/*saveorganizationforchangsectautomatic*/
+

@@ -1,0 +1,90 @@
+"CREATED ORGAN FRAME."
+NNODE 11
+NELEM 10
+NPROP 1
+NSECT 1
+
+BASE    0.300
+LOCATE  1.000
+TFACT   0.030
+GPERIOD 0.600
+
+GFACT 1.0
+FOCUS 0.0 0.0 0.0
+ANGLE 15.8 -59.4
+DISTS 50.0 1000.0
+
+PROP 101 PNAME SN490B
+         HIJU         1.000
+         E         1000.000
+         POI        0.33333
+         PCOLOR 150 150 255
+
+SECT 101 SNAME "Column"
+         NFIG 1
+         FIG   1 FPROP 101
+                 AREA  1.0000
+                 IXX   1.00000000
+                 IYY   1.00000000
+                 VEN   1.00000000
+         EXP 1.500
+         NZMAX    150.0 NZMIN   -250.0
+         QXMAX     60.0 QXMIN    -60.0
+         QYMAX     60.0 QYMIN    -60.0
+         MZMAX     10.0 MZMIN    -10.0
+         MXMAX     30.0 MXMIN    -30.0
+         MYMAX     30.0 MYMIN    -30.0
+         COLOR 255 0 255
+
+NODE  101  CORD   0.000   0.000   0.000  ICON 1 1 1 1 1 1  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  102  CORD   0.000   0.000   1.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  103  CORD   0.000   0.000   2.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  104  CORD   0.000   0.000   3.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  105  CORD   0.000   0.000   4.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  106  CORD   0.000   0.000   5.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  107  CORD   0.000   0.000   6.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  108  CORD   0.000   0.000   7.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  109  CORD   0.000   0.000   8.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  110  CORD   0.000   0.000   9.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+NODE  111  CORD   0.000   0.000  10.000  ICON 0 0 0 0 0 0  VCON   0.0   0.0   0.0   0.0   0.0   0.0
+
+ELEM   101 ESECT 101 ENODS 2 ENOD 101 102 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   102 ESECT 101 ENODS 2 ENOD 102 103 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   103 ESECT 101 ENODS 2 ENOD 103 104 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   104 ESECT 101 ENODS 2 ENOD 104 105 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   105 ESECT 101 ENODS 2 ENOD 105 106 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   106 ESECT 101 ENODS 2 ENOD 106 107 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   107 ESECT 101 ENODS 2 ENOD 107 108 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   108 ESECT 101 ENODS 2 ENOD 108 109 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   109 ESECT 101 ENODS 2 ENOD 109 110 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
+ELEM   110 ESECT 101 ENODS 2 ENOD 110 111 BONDS  0 0 0 0 0 0  0 0 0 0 0 0
+           CANG 0.00000
+           CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+           TYPE COLUMN
