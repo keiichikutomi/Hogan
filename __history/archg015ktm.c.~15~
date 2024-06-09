@@ -100,6 +100,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   struct oshell *shells;
   struct oconf *confs,*confs2;
   double *constraintval,**constraintvec;
+  long int mainoff,*constraintmain;
 
 
   memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
@@ -124,10 +125,11 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   /*if(fout!=NULL) fprintf(fout,"%s\n",string);*/
 
   msize=6*nnode; /*SIZE OF GLOBAL MATRIX.*/
-  /*FOR METHOD OF LAGRANGE MULTIPLIER.*/
 
-  gmtx=(struct gcomponent *)malloc((msize+nconstraint)*sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-  gvct=(double *)malloc((msize+nconstraint)*sizeof(double));/*GLOBAL VECTOR*/
+  /*gmtx=(struct gcomponent *)malloc((msize+nconstraint)*sizeof(struct gcomponent));*/ /*DIAGONALS OF GLOBAL MATRIX.*/
+  /*gvct=(double *)malloc((msize+nconstraint)*sizeof(double));*/ /*GLOBAL VECTOR*/
+  gmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent)); /*DIAGONALS OF GLOBAL MATRIX.*/
+  gvct=(double *)malloc(msize*sizeof(double)); /*GLOBAL VECTOR*/
   if(gmtx==NULL || gvct==NULL) return 0;
 
 
@@ -139,9 +141,9 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   free(af->ddisp);
   free(af->melem);
   free(af->mshell);
-  free(af->constraintval);
-  free(af->constraintvec);
-
+  /*free(af->constraintval);*/
+  /*free(af->constraintvec);*/
+  free(af->constraintmain);
 
   sects=(struct osect *)malloc(nsect*sizeof(struct osect));
   if(sects==NULL) return 0;
@@ -151,7 +153,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   if(elems==NULL) return 0;
   shells=(struct oshell *)malloc(nshell*sizeof(struct oshell));
   if(shells==NULL) return 0;
-  confs=(struct oconf *)malloc((msize+nconstraint)*sizeof(struct oconf));
+  /*confs=(struct oconf *)malloc((msize+nconstraint)*sizeof(struct oconf));*/
+  confs=(struct oconf *)malloc(msize*sizeof(struct oconf));
   if(confs==NULL) return 0;
   ddisp=(double *)malloc(6*nnode*sizeof(double));
   if(ddisp==NULL) return 0;
@@ -161,11 +164,17 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   mshell=(struct memoryshell *)malloc(nshell*sizeof(struct memoryshell));
   if(mshell==NULL) return 0;
 
-  constraintval=(double *)malloc(nconstraint*sizeof(double));        /*MULTI POINT CONSTRAINTS.*/
-  constraintvec=(double **)malloc(nconstraint*sizeof(double *));
+
+  /*constraintval=(double *)malloc(nconstraint*sizeof(double));*/        /*MULTI POINT CONSTRAINTS.*/
+  /*constraintvec=(double **)malloc(nconstraint*sizeof(double *));
   for(ii=0;ii<nconstraint;ii++)
   {
 	*(constraintvec+ii)=(double *)malloc(msize*sizeof(double));
+  }*/
+  constraintmain=(long int *)malloc(msize*sizeof(long int));
+  for(ii=0;ii<msize;ii++)
+  {
+	*(constraintmain+ii)=ii;
   }
 
   af->sects=sects;
@@ -176,8 +185,9 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   af->ddisp=ddisp;
   af->melem=melem;
   af->mshell=mshell;
-  af->constraintval=constraintval;
-  af->constraintvec=constraintvec;
+  /*af->constraintval=constraintval;*/
+  /*af->constraintvec=constraintvec;*/
+  af->constraintmain=constraintmain;
 
   inputtexttomemory(fin,af);        /*READY TO READ LONG REACTIONS.*/
 
@@ -209,14 +219,15 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
 
 
-  for(i=1;i<=msize+nconstraint;i++)             /*GLOBAL MATRIX & VECTOR INITIALIZATION.*/
+  /*for(i=1;i<=msize+nconstraint;i++)*/             /*GLOBAL MATRIX & VECTOR INITIALIZATION.*/
+  for(i=1;i<=msize;i++)
   {
 	ginit.m=(unsigned short int)i;
 	/*ginit.n=(unsigned short int)i;*/
 	*(gmtx+(i-1))=ginit;
 	(gmtx+(i-1))->down=NULL;
   }
-  comps=msize+nconstraint; /*INITIAL COMPONENTS=DIAGONALS.*/
+  comps=msize/*+nconstraint*/; /*INITIAL COMPONENTS=DIAGONALS.*/
 
   laptime("ASSEMBLING GLOBAL MATRIX.",t0);
 
@@ -250,7 +261,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
 		estiff=transformation(estiff,tmatrix);       /*[K]=[Tt][k][T]*/
 
-		assemgstiffness(gmtx,estiff,&elem);             /*ASSEMBLAGE.*/
+		//assemgstiffness(gmtx,estiff,&elem);             /*ASSEMBLAGE.*/
+		assemgstiffnesswithDOFelimination(gmtx,estiff,&elem,constraintmain);
 
 		modifycmq(melem,&elem);
 		assemcmq(elem,tmatrix,confs,gvct);    /*ASSEMBLAGE CMQ AS LOADS.*/
@@ -281,7 +293,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 									255,255,255,0,ONSCREEN);
 		}
 
-		drccos=shelldrccos(shell);
+		drccos=shelldrccos(shell,NULL);
 
 		tmatrix=transmatrixIII(drccos,shell.nnod);         /*TRANSFORMATION MATRIX.*/
 
@@ -289,7 +301,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		estiff=assemshellemtx(shell,drccos,NULL);    /*ELASTIC MATRIX OF SHELL.*/
 		estiff=transformationIII(estiff,tmatrix,6*shell.nnod);       /*[K]=[Tt][k][T]*/
 
-		assemgstiffnessII(gmtx,estiff,&shell);             /*ASSEMBLAGE.*/
+		assemgstiffnessIIwithDOFelimination(gmtx,estiff,&shell,constraintmain);             /*ASSEMBLAGE.*/
 
 		/*modifycmq(melem,&elem);
 		assemcmq(elem,tmatrix,confs,gvct);*/    /*ASSEMBLAGE CMQ AS LOADS.*/
@@ -302,22 +314,38 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		free(estiff);
 	  }
 
-	  for(i=1;i<=nconstraint;i++)               /*ASSEMBLAGE CONSTRAINT MATRIX.*/
+
+	  /*ASSEMBLAGE CONSTRAINT MATRIX.*/
+	  /*
+	  for(i=1;i<=nconstraint;i++)
 	  {
 		for (ii=1;ii<=msize;ii++)
 		{
 		  if(*(*(constraintvec+i-1)+ii-1) != 0 || *(*(constraintvec+i-1)+ii-1) != NULL)
 		  {
-			/*gread(gmtx,msize+i,ii,&gdata);*/
 			gdata=*(*(constraintvec+i-1)+ii-1);
 			gwrite(gmtx,msize+i,ii,gdata);
 			comps++;
 		  }
 		}
-		*(gvct+msize+i-1)=*(constraintval+i-1);
-		(confs+msize+i-1)->iconf=(signed char)0;
-		(confs+msize+i-1)->value=*(constraintval+i-1);
+		*(gvct+msize+i-1) = *(constraintval+i-1);
+		(confs+msize+i-1)->iconf = (signed char)0;
+		(confs+msize+i-1)->value = *(constraintval+i-1);
 	  }
+	  */
+
+  for (ii=1;ii<=msize;ii++)
+  {
+	if(*(constraintmain+ii)!=ii)
+	{
+	  mainoff = *(constraintmain+ii);
+	  (confs+ii)->iconf = (signed char)1;
+	  /*(confs+mainoff)->value += (confs+ii)->value;
+	  (confs+ii)->value = 0.0;*/
+	}
+  }
+
+
 
 
   sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
@@ -384,67 +412,15 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	gvct2=gvct;
 	confs2=confs;
 
-  for(ii=1;ii<=msize+nconstraint;ii++)
-  {
-	for(jj=1;jj<=ii;jj++)
-	{
-	  gread(gmtx,ii,jj,&gdata);
-	  fprintf(fonl,"%12.15f ",gdata);
-	}
-	fprintf(fonl,"\n");
-  }
-	fprintf(fonl,"\n");
-
-		for(ii=1;ii<=msize+nconstraint;ii++)
-  {
-	fprintf(fonl,"%12.9f ",*(gvct2+ii-1));
-  }
-	fprintf(fonl,"\n");
-		for(ii=1;ii<=msize+nconstraint;ii++)
-  {
-	fprintf(fonl,"%12.9f ",(confs2+ii-1)->value);
-  }
-	fprintf(fonl,"\n");
-			for(ii=1;ii<=msize+nconstraint;ii++)
-  {
-	fprintf(fonl,"%hhd            ",(confs2+ii-1)->iconf);
-  }
-	fprintf(fonl,"\n\n");
-
   laptime("CROUT LU DECOMPOSITION.",t0);
   nline=croutludecomposition(gmtx2,
 							 gvct2,confs2,
-							 msize+nconstraint,
+							 msize,
 							 &determinant,&sign);  /*[K]{dU}={dF}*/
 
   sprintf(string,"LOG{DETERMINANT}=%.5E SIGN=%.1f COMPS=%ld",determinant,sign,comps);
   errormessage(string);
 
-    for(ii=1;ii<=msize+nconstraint;ii++)
-  {
-	for(jj=1;jj<=ii;jj++)
-	{
-	  gread(gmtx,ii,jj,&gdata);
-	  fprintf(fonl,"%12.15f ",gdata);
-	}
-	fprintf(fonl,"\n");
-  }
-	fprintf(fonl,"\n");
-		for(ii=1;ii<=msize+nconstraint;ii++)
-  {
-	fprintf(fonl,"%12.9f ",*(gvct2+ii-1));
-  }
-	fprintf(fonl,"\n");
-		for(ii=1;ii<=msize+nconstraint;ii++)
-  {
-	fprintf(fonl,"%12.9f ",(confs2+ii-1)->value);
-  }
-	fprintf(fonl,"\n");
-			for(ii=1;ii<=msize+nconstraint;ii++)
-  {
-	fprintf(fonl,"%hhd            ",(confs2+ii-1)->iconf);
-  }
-	fprintf(fonl,"\n\n");
 
   if(sign<0.0)
   {
@@ -492,9 +468,16 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
   /*laptime("REEXCHANGE MATRIX.",t0);*/
   /*exchangelines(gmtx,gvct,confs,moff,noff,nnode,1);*/
-
+  for(ii=0;ii<msize;ii++)
+  {
+	if(*(constraintmain+ii)!=ii)
+	{
+	  mainoff = *(constraintmain+ii);
+	  *(gvct2+ii) = *(gvct2+mainoff);
+	}
+  }
   laptime("OUTPUT INTO FILE.",t0);
-  updateform(ddisp,gvct,nnode);
+  updateform(ddisp,gvct2,nnode);
   if(/*iteration==*/1)
   {
 	fprintf(fout,"\"DISPLACEMENT\"\n");
@@ -2124,6 +2107,9 @@ void assemconf001(struct oconf *confs,double *gvct,
 
   return;
 }/*assemconf001*/
+
+
+
 
 void frameoutputtomemory(FILE *ftext,struct arclmframe *af)
 /*TRANSLATE FRAME OUTPUTFILE TEXT INTO MEMORY.*/

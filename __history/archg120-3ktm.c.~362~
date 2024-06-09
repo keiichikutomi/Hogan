@@ -144,7 +144,9 @@ struct orgcolor{struct rgbcolor code,
                                 axis;};             /*ORGAN COLORS.*/
 
 struct onode{long int code,loff;     /*CODE NUMBER,OFFSET POSITION.*/   /*code=ß“_”Ô†, loff=’Ê‚µ”Ô†*/
-			 double d[3];};          /*ß“_À•W d[0],d[1],d[2] =(x,y,z)*/
+			 double d[3];
+			 double r[3];
+			 /*double **rmtx;*/};          /*ROTATIONAL DOF BY KUTOMI*/
 struct oconf{signed char iconf;
 			 double value;}; /*ONLY FOR ANALYSIS.*/
 struct oprop{long int code,loff;
@@ -203,6 +205,7 @@ struct obans{long int code,loff;
              struct onode **nods;}; /*PLANE OF ELEMENT.*/
 struct surface{double exp,fmax[6],fmin[6];};
 struct owire{long int code,loff;
+			 int nnod;/*KUTOMI*/
 			 double cangle;
 			 signed char iconf[2][6];
 			 double stress[2][6];
@@ -222,6 +225,10 @@ struct oshell{long int code,loff;
 			  double prate;/*IN-PLANE STIFFNESS RATIO*/
 			  double brate;/*BENDING STIFFNESS RATIO*/
 			 }; /*SHELL ELEM FOR ARCLM001,101.*/
+
+
+
+
 struct ofilm{long int code,loff;
 			 struct onode *(node[3]);
 			 struct osect *sect;}; /*FILM ELEM FOR ARCLM301.*/
@@ -1001,6 +1008,10 @@ void assemgstiffness(struct gcomponent *gmtx,
 void assemgstiffnessII(struct gcomponent *gmtx,
 					   double **estiff,
 					   struct oshell *shell);
+void assemgstiffnesswithDOFelimination(struct gcomponent *gmtx,
+					   double **estiff,
+					   struct owire *elem,
+					   long int *constraintmain);
 void assemgstiffnessIIwithDOFelimination(struct gcomponent *gmtx,
 					   double **estiff,
 					   struct oshell *shell,
@@ -12100,10 +12111,10 @@ int inputorganization(FILE *fin,
           (org->props+pprop)->code=strtol(*(data+pstr),NULL,10);
           (org->props+pprop)->loff=pprop;
           /*(org->props+pprop)->name=NULL;*/
-          (org->props+pprop)->name=(char *)malloc(1*sizeof(char));
-          strcpy((org->props+pprop)->name,"\0");
+		  (org->props+pprop)->name=(char *)malloc(1*sizeof(char));
+		  strcpy((org->props+pprop)->name,"\0");
           (org->props+pprop)->r=0;
-          (org->props+pprop)->g=0;
+		  (org->props+pprop)->g=0;
           (org->props+pprop)->b=0;
           pstr++;
           ident++;
@@ -12352,14 +12363,14 @@ int inputorganization(FILE *fin,
            !strcmp(*(data+pstr),"QXMAX"))
         {
           pstr++;
-          (org->sects+psect)->fmax[1]=strtod(*(data+pstr),NULL);
-          pstr++;
+		  (org->sects+psect)->fmax[1]=strtod(*(data+pstr),NULL);
+		  pstr++;
           ident++;
         }
         if(nstr-pstr>=2 && (org->nsect)-psect>0 &&
            !strcmp(*(data+pstr),"QXMIN"))
         {
-          pstr++;
+		  pstr++;
           (org->sects+psect)->fmin[1]=strtod(*(data+pstr),NULL);
           pstr++;
           ident++;
@@ -16759,7 +16770,7 @@ int croutlu(struct gcomponent *gmtx,
   double pivotgcomp1;
 
   *det=0.0;
-  *sign=1.0;
+  *sign=0.0;
 
   for(j=1;j<=msize;j++)                             /*DECOMPOSITION.*/
   {
@@ -16767,12 +16778,13 @@ int croutlu(struct gcomponent *gmtx,
     {
       pivot=(gmtx+(j-1)); /*PIVOT.*/
 
-      if((pivot->value)==0.0){*sign=0.0; return (j-1);}  /*INSTABLE.*/
+	  if((pivot->value) == 0.0){*sign = -1; return (j-1);}  /*INSTABLE.*/
+	  if((pivot->value) < 0.0) {*sign += 1; }
 	  /*det*=pivot->value;*/
       *det+=log10(fabs(pivot->value));   /*LOG BY 10 OF DETERMINANT.*/
-      *sign*=pivot->value/fabs(pivot->value); /*SIGN OF DETERMINANT.*/
+	  //*sign*=pivot->value/fabs(pivot->value); /*SIGN OF DETERMINANT.*/
 
-      gcomp1=pivot;
+	  gcomp1=pivot;
       while(gcomp1->down!=NULL) /*DOWNWARD.*/
       {
 		gcomp1=gcomp1->down;
@@ -16807,10 +16819,10 @@ int croutlu(struct gcomponent *gmtx,
                        malloc(sizeof(struct gcomponent));
                 if(gcomp4==NULL)
                 {
-                  sprintf(str,"GCOMP4-1: %d", i);
-                  errormessage(str);
+				  sprintf(str,"GCOMP4-1: %d", i);
+				  errormessage(str);
                   errormessage("CROUT:MEMORY INSUFFICIENT.");
-				  *sign=0.0;
+				  *sign=-999;
                   return 0;
                 }
                 gcomp3->down=gcomp4;
@@ -16837,7 +16849,7 @@ int croutlu(struct gcomponent *gmtx,
                   sprintf(str,"GCOMP4-2: %d", i);
                   errormessage(str);
                   errormessage("CROUT:MEMORY INSUFFICIENT.");
-                  *sign=0.0;
+				  *sign=-999;
                   return 0;
                 }
 
@@ -16864,10 +16876,10 @@ int croutlu(struct gcomponent *gmtx,
           }
         }
 	  }
-      currentpivot(j,msize);
+	  //currentpivot(j,msize);
     }
   }
-  if(*sign<=0.0) return 0;
+  if(*sign<0.0) return 0;
   else return 1;
 }/* croutlu */
 /***/
@@ -16881,7 +16893,7 @@ int forwardbackward(struct gcomponent *gmtx,
   double data1;
   long int i,j,k;
 
-  errormessage("FORWARD ELIMINATION.");
+  //errormessage("FORWARD ELIMINATION.");
   for(j=1;j<=msize;j++)                                  /*FORWARD.*/
   {
 	if((confs+j-1)->iconf==0) /*FREE*/
@@ -16900,10 +16912,10 @@ int forwardbackward(struct gcomponent *gmtx,
 		}
 	  }
 	}
-	currentpivot(j,msize);
+	//currentpivot(j,msize);
   }
 
-  errormessage("BACKWARD SUBSTITUTION.");
+  //errormessage("BACKWARD SUBSTITUTION.");
   for(j=msize;j>=1;j--)                                 /*BACKWARD.*/
   {
     if((confs+j-1)->iconf==0) /*FREE*/
@@ -16924,7 +16936,7 @@ int forwardbackward(struct gcomponent *gmtx,
       }
       *(gvct+j-1)=data1;
     }
-	currentpivot((j-1),msize);
+	//currentpivot((j-1),msize);
   }
 
   return 1;
@@ -20590,6 +20602,8 @@ FILE *fgetstofopen(const char *directory,const char *mode,
   return f;
 }/*fgetstofopen*/
 
+
+
 FILE *fgetstofopenII(const char *directory,const char *mode,const char *filename)
 /*INPUT FILENAME AND THEN OPEN FILE.*/
 {
@@ -20639,6 +20653,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	}
 	else (af->sects+i)->dflag=1;
 
+	/*
 	(af->sects+i)->hiju[0]=0.0;
 	(af->sects+i)->hiju[1]=0.0;
 	(af->sects+i)->hiju[2]=0.0;
@@ -20647,10 +20662,11 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	(af->sects+i)->lload[2]=0.0;
 	(af->sects+i)->perpl[0]=0.0;
 	(af->sects+i)->perpl[1]=0.0;
-	(af->sects+i)->perpl[2]=1.0;
+	(af->sects+i)->perpl[2]=0.0;
 	(af->sects+i)->dcolor.r=255;
 	(af->sects+i)->dcolor.g=255;
 	(af->sects+i)->dcolor.b=255;
+	*/
 	(af->sects+i)->ppc.npcurve=0;
   }
 
@@ -22006,6 +22022,7 @@ void inputelem(struct owire *elems,
 
   elem->code=(elems+offset)->code;                  /*ELEMENT CODE.*/
   elem->loff=offset;
+  elem->nnod=2;                                  /*KUTOMI*/
   elem->sect=(elems+offset)->sect;               /*SECTION POINTER.*/
   elem->node[0]=(elems+offset)->node[0];            /*HEAD POINTER.*/
   elem->node[1]=(elems+offset)->node[1];            /*TAIL POINTER.*/
@@ -22095,6 +22112,7 @@ void readsect(FILE *fin,struct osect *sect)
   int i,k,n;
 
   data=fgetsbrk(fin,&n);
+
   sect->code=strtol(*(data+0),NULL,10);             /*SECTION CODE.*/
   sect->E=strtod(*(data+1),NULL);                /*YOUNG'S MODULUS.*/
   sect->poi=strtod(*(data+2),NULL);              /*POISSON'S RATIO.*/
@@ -22108,8 +22126,54 @@ void readsect(FILE *fin,struct osect *sect)
 	sect->fmax[i]=strtod(*(data+k),NULL); k++;
 	sect->fmin[i]=strtod(*(data+k),NULL); k++;
   }
-  if(n>19) sect->type=strtol(*(data+19),NULL,10);   /*SECTION TYPE.*/
-  else     sect->type=TYPENULL;
+  if(n==20 || n==21)
+  {
+	  sect->hiju[0] = 0.0;
+	  sect->hiju[1] = 0.0;
+	  sect->hiju[2] = 0.0;
+	  sect->lload[0] = 0.0;
+	  sect->lload[1] = 0.0;
+	  sect->lload[2] = 0.0;
+	  sect->perpl[0] = 0.0;
+	  sect->perpl[1] = 0.0;
+	  sect->perpl[2] = 0.0;
+	  sect->dcolor.r = 255;
+	  sect->dcolor.g = 255;
+	  sect->dcolor.b = 255;
+	  sect->type=strtol(*(data+19),NULL,10);   /*SECTION TYPE.*/
+  }
+  else if(n==32)
+  {
+	  sect->hiju[0] = strtod(*(data+19),NULL);
+	  sect->hiju[1] = strtod(*(data+20),NULL);
+	  sect->hiju[2] = strtod(*(data+21),NULL);
+	  sect->lload[0] = strtod(*(data+22),NULL);
+	  sect->lload[1] = strtod(*(data+23),NULL);
+	  sect->lload[2] = strtod(*(data+24),NULL);
+	  sect->perpl[0] = strtod(*(data+25),NULL);
+	  sect->perpl[1] = strtod(*(data+26),NULL);
+	  sect->perpl[2] = strtod(*(data+27),NULL);
+	  sect->dcolor.r = strtol(*(data+28),NULL,10);
+	  sect->dcolor.g = strtol(*(data+29),NULL,10);
+	  sect->dcolor.b = strtol(*(data+30),NULL,10);
+	  sect->type=strtol(*(data+31),NULL,10);   /*SECTION TYPE.*/
+  }
+  else
+  {
+	  sect->hiju[0] = 0.0;
+	  sect->hiju[1] = 0.0;
+	  sect->hiju[2] = 0.0;
+	  sect->lload[0] = 0.0;
+	  sect->lload[1] = 0.0;
+	  sect->lload[2] = 0.0;
+	  sect->perpl[0] = 0.0;
+	  sect->perpl[1] = 0.0;
+	  sect->perpl[2] = 0.0;
+	  sect->dcolor.r = 255;
+	  sect->dcolor.g = 255;
+	  sect->dcolor.b = 255;
+	  sect->type=TYPENULL;
+  }
 
   for(;n>0;n--) free(*(data+n-1));
   free(data);
@@ -22616,14 +22680,15 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
   Lx=(double *)malloc(3*sizeof(double));
   Ly=(double *)malloc(3*sizeof(double));
   exy=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
+  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
   {
 	*(exy+i)=(double *)malloc(2*sizeof(double));
-	for(j=0;j<2;j++)
+	for(j=0;j<2;j++)/*IN-PLANE 2D VECTOR*/
 	{
 	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
 				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
 				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
+	  /*shell local coordinate {xi,yi(,zi=0)}*/
 	}
   }
 
@@ -22635,11 +22700,12 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
 	  k=i+2;
 	  if(j>=3)j-=3;
 	  if(k>=3)k-=3;
-	  *(a+i)=*(*(exy+j)+0)**(*(exy+k)+1)-*(*(exy+k)+0)**(*(exy+j)+1);
-	  *(b+i)=*(*(exy+j)+1)-*(*(exy+k)+1);
-	  *(c+i)=*(*(exy+k)+0)-*(*(exy+j)+0);
-	  *(Lx+i)=0.5**(b+i)/det;
-	  *(Ly+i)=0.5**(c+i)/det;
+	  *(a+i)=*(*(exy+j)+0)**(*(exy+k)+1)-*(*(exy+k)+0)**(*(exy+j)+1);/*xjyk-xkyj*/
+	  *(b+i)=*(*(exy+j)+1)-*(*(exy+k)+1);/*yj-yk*/
+	  *(c+i)=*(*(exy+k)+0)-*(*(exy+j)+0);/*xk-xj*/
+	  *(Lx+i)=0.5**(b+i)/det;/*dLi/dx=bi/(2*det)*/
+	  *(Ly+i)=0.5**(c+i)/det;/*dLi/dy=ci/(2*det)*/
+	  /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
   }
 
   E=shell.sect->E;
@@ -22717,7 +22783,7 @@ void addkpemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
   *(*(Bp+2)+4)=*(Ly+2);
   *(*(Bp+2)+5)=*(Lx+2);
 
-  *(*(Dp+0)+0)=prate*E/(1-poi*poi);
+  *(*(Dp+0)+0)=E/(1-poi*poi);
   *(*(Dp+0)+1)=poi**(*(Dp+0)+0);
   *(*(Dp+0)+2)=0.0;
   *(*(Dp+1)+0)=*(*(Dp+0)+1);
@@ -22725,7 +22791,7 @@ void addkpemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
   *(*(Dp+1)+2)=0.0;
   *(*(Dp+2)+0)=0.0;
   *(*(Dp+2)+1)=0.0;
-  *(*(Dp+2)+2)=prate*0.5*E/(1+poi);
+  *(*(Dp+2)+2)=0.5*E/(1+poi);
   Bpt=matrixtransposeIII(Bp,3,6);
   DpBp=matrixmatrixIII(Dp,Bp,3,3,6);
   Kp=matrixmatrixIII(Bpt,DpBp,6,3,6);
@@ -22733,10 +22799,10 @@ void addkpemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
   {
 	for(j=0;j<3;j++)
 	{
-	  *(*(e+6*i+0)+6*j+0)=det*t**(*(Kp+2*i+0)+2*j+0);
-	  *(*(e+6*i+0)+6*j+1)=det*t**(*(Kp+2*i+0)+2*j+1);
-	  *(*(e+6*i+1)+6*j+0)=det*t**(*(Kp+2*i+1)+2*j+0);
-	  *(*(e+6*i+1)+6*j+1)=det*t**(*(Kp+2*i+1)+2*j+1);
+	  *(*(e+6*i+0)+6*j+0)=det*t**(*(Kp+2*i+0)+2*j+0)*prate;
+	  *(*(e+6*i+0)+6*j+1)=det*t**(*(Kp+2*i+0)+2*j+1)*prate;
+	  *(*(e+6*i+1)+6*j+0)=det*t**(*(Kp+2*i+1)+2*j+0)*prate;
+	  *(*(e+6*i+1)+6*j+1)=det*t**(*(Kp+2*i+1)+2*j+1)*prate;
 	}
   }
   if(DBe!=NULL)
@@ -22819,6 +22885,8 @@ void addkbemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
 	  }
 	}
   }
+  /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
+  /*3 node triangular element with 7 integrated (Gauss) point*/
 
 
   /*
@@ -22851,7 +22919,7 @@ void addkbemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
   {
 	*(Db+i)=(double *)malloc(3*sizeof(double));
   }
-  *(*(Db+0)+0)=brate*E*pow(t,3)/(12.0*(1-poi*poi));
+  *(*(Db+0)+0)=E*pow(t,3)/(12.0*(1-poi*poi));
   *(*(Db+0)+1)=poi**(*(Db+0)+0);
   *(*(Db+0)+2)=0.0;
   *(*(Db+1)+0)=*(*(Db+0)+1);
@@ -22859,7 +22927,7 @@ void addkbemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
   *(*(Db+1)+2)=0.0;
   *(*(Db+2)+0)=0.0;
   *(*(Db+2)+1)=0.0;
-  *(*(Db+2)+2)=0.5*brate*E*pow(t,3)/(12.0*(1+poi));
+  *(*(Db+2)+2)=0.5*E*pow(t,3)/(12.0*(1+poi));
 
 #if 1
   aa=(double *)malloc(3*sizeof(double));
@@ -23035,15 +23103,15 @@ void addkbemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
 	{
 	  for(j=0;j<3;j++)
 	  {
-		*(*(e+6*i+2)+6*j+2) += *(*(Kb+3*i+0)+3*j+0)**(a+ii)*det;
-		*(*(e+6*i+2)+6*j+3) += *(*(Kb+3*i+0)+3*j+1)**(a+ii)*det;
-		*(*(e+6*i+2)+6*j+4) += *(*(Kb+3*i+0)+3*j+2)**(a+ii)*det;
-		*(*(e+6*i+3)+6*j+2) += *(*(Kb+3*i+1)+3*j+0)**(a+ii)*det;
-		*(*(e+6*i+3)+6*j+3) += *(*(Kb+3*i+1)+3*j+1)**(a+ii)*det;
-		*(*(e+6*i+3)+6*j+4) += *(*(Kb+3*i+1)+3*j+2)**(a+ii)*det;
-		*(*(e+6*i+4)+6*j+2) += *(*(Kb+3*i+2)+3*j+0)**(a+ii)*det;
-		*(*(e+6*i+4)+6*j+3) += *(*(Kb+3*i+2)+3*j+1)**(a+ii)*det;
-		*(*(e+6*i+4)+6*j+4) += *(*(Kb+3*i+2)+3*j+2)**(a+ii)*det;
+		*(*(e+6*i+2)+6*j+2) += *(*(Kb+3*i+0)+3*j+0)**(a+ii)*det*brate;
+		*(*(e+6*i+2)+6*j+3) += *(*(Kb+3*i+0)+3*j+1)**(a+ii)*det*brate;
+		*(*(e+6*i+2)+6*j+4) += *(*(Kb+3*i+0)+3*j+2)**(a+ii)*det*brate;
+		*(*(e+6*i+3)+6*j+2) += *(*(Kb+3*i+1)+3*j+0)**(a+ii)*det*brate;
+		*(*(e+6*i+3)+6*j+3) += *(*(Kb+3*i+1)+3*j+1)**(a+ii)*det*brate;
+		*(*(e+6*i+3)+6*j+4) += *(*(Kb+3*i+1)+3*j+2)**(a+ii)*det*brate;
+		*(*(e+6*i+4)+6*j+2) += *(*(Kb+3*i+2)+3*j+0)**(a+ii)*det*brate;
+		*(*(e+6*i+4)+6*j+3) += *(*(Kb+3*i+2)+3*j+1)**(a+ii)*det*brate;
+		*(*(e+6*i+4)+6*j+4) += *(*(Kb+3*i+2)+3*j+2)**(a+ii)*det*brate;
 	  }
 	}
 	if(DBe!=NULL && ii==0)
@@ -23097,12 +23165,179 @@ void addktemtx(double **e,double E,double t,double det)
 	return;
 }
 
+double **finertial(struct oshell shell,
+				   double **drccos, double **drccosinit,
+				   double *ud, double *udd)
+/*ASSEMBLAGE ELASTIC MATRIX.*/
+{
+  int i,j,k,ii;
+  double **m,**exy,**N,**Nt,**NtN,**L;
+  double t,hiju;
+  double Ip_0,Mp;
+  double **Ip;
+  double *b,*c;
+  double *a;
+  double det;
+  double Liij,Lijj,Liik,Likk,Lijk;
+
+  double *udvct;
+  double *uddvct;
+  double **udspin;
+
+
+
+  /*WEIGHT OF EACH NODE*/
+  a=(double *)malloc(7*sizeof(double));
+  *(a+0)=27.0/60.0;
+  *(a+1)=8.0/60.0;
+  *(a+2)=8.0/60.0;
+  *(a+3)=8.0/60.0;
+  *(a+4)=3.0/60.0;
+  *(a+5)=3.0/60.0;
+  *(a+6)=3.0/60.0;
+  /*TRIANGLE COORDINATION*/
+  L=(double **)malloc(7*sizeof(double *));
+  for(i=0;i<7;i++)
+  {
+	*(L+i)=(double *)malloc(3*sizeof(double));
+  }
+  for(i=0;i<3;i++)
+  {
+	*(*(L+0)+i)=1.0/3.0;
+	for(j=0;j<3;j++)
+	{
+	  if(i==j)
+	  {
+		*(*(L+(4+j))+i)=1.0;
+	  }
+	  else
+	  {
+		*(*(L+(4+j))+i)=0.0;
+	  }
+
+	  if((i+1)%3==j)
+	  {
+		*(*(L+(1+j))+i)=0.0;
+	  }
+	  else
+	  {
+		*(*(L+(1+j))+i)=0.5;
+	  }
+	}
+  }
+  /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
+
+
+  b=(double *)malloc(3*sizeof(double));
+  c=(double *)malloc(3*sizeof(double));
+  exy=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
+  {
+	*(exy+i)=(double *)malloc(2*sizeof(double));
+	for(j=0;j<2;j++)/*IN-PLANE 2D VECTOR*/   /*NODE 0-0, 0-1, 0-2*/
+	{
+	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
+				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
+				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
+	  /*shell local coordinate {xi,yi(,zi=0)}*/
+	}
+  }
+  det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));/*AREA*/
+
+  for(i=0;i<3;i++)
+  {
+	  j=i+1;
+	  k=i+2;
+	  if(j>=3)j-=3;
+	  if(k>=3)k-=3;
+	  *(b+i)=*(*(exy+j)+1)-*(*(exy+k)+1);/*yj-yk*/
+	  *(c+i)=*(*(exy+k)+0)-*(*(exy+j)+0);/*xk-xj*/
+  }
+
+  t=shell.sect->area;
+  hiju=shell.sect->hiju[0];
+
+  Ip_0=hiju*pow(t,3)/12.0;/*ROTATIONAL INERTIA MATRIX*/
+  Ip=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(Ip+i)=(double *)malloc(3*sizeof(double));
+	for(j=0;j<3;j++)
+	{
+		*(*(Ip+i)+j)=Ip_0**(*(drccosinit+0)+i)**(*(drccosinit+0)+j)+*(*(drccosinit+1)+i)**(*(drccosinit+1)+j);
+	}
+  }
+
+
+  uddvct=(double *)malloc(3*sizeof(double));
+  udvct=(double *)malloc(3*sizeof(double));
+  udspin=(double **)malloc(3*sizeof(double *));
+  for (i = 0; i < 3; i++)
+  {
+	*(udspin+i)=(double *)malloc(3*sizeof(double));
+  }
+
+  for(ii=0;ii<7;ii++)
+  {
+  /*
+	N=(double **)malloc(3*sizeof(double *));
+	for(i=0;i<3;i++)
+	{
+	  *(N+i)=(double *)malloc(18*sizeof(double));
+	  for(j=0;j<18;j++)
+	  {
+		*(*(N+i)+j)=0.0;
+	  }
+	}
+	for(i=0;i<3;i++)
+	{
+		j=i+1;
+		k=i+2;
+		if(j>=3)j-=3;
+		if(k>=3)k-=3;
+		Liij=*(*(L+ii)+i)**(*(L+ii)+i)**(*(L+ii)+j);
+		Lijj=*(*(L+ii)+i)**(*(L+ii)+j)**(*(L+ii)+j);
+		Liik=*(*(L+ii)+i)**(*(L+ii)+i)**(*(L+ii)+k);
+		Likk=*(*(L+ii)+i)**(*(L+ii)+k)**(*(L+ii)+k);
+		Lijk=*(*(L+ii)+i)**(*(L+ii)+j)**(*(L+ii)+k);
+
+		*(*(N+0)+6*i+0) = *(*(L+ii)+i);
+		*(*(N+1)+6*i+1) = *(*(L+ii)+i);
+		*(*(N+2)+6*i+2) = *(*(L+ii)+i) + Liij - Lijj + Liik - Likk;
+		*(*(N+2)+6*i+3) = *(b+j) * (Liik+0.5*Lijk) - *(b+k) * (Liij+0.5*Lijk);
+		*(*(N+2)+6*i+4) = *(c+j) * (Liik+0.5*Lijk) - *(c+k) * (Liij+0.5*Lijk);
+	}
+	Nt=matrixtransposeIII(N,3,18);
+	NtN=matrixmatrixIII(Nt,N,18,3,18);
+	for(i=0;i<18;i++)
+	{
+	  for(j=0;j<18;j++)
+	  {
+		*(*(m+i)+j) += *(*(NtN+i)+j)**(a+ii)*det*t*hiju;
+	  }
+	}
+	freematrix(N,3);
+	freematrix(Nt,18);
+	freematrix(NtN,18);                                           cf
+  */
+  }
+
+
+  freematrix(L,7);
+  freematrix(exy,3);
+  free(a);
+  free(b);
+  free(c);
+
+  return m;
+}
+
 double **assemshellmmtx(struct oshell shell,double **drccos)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
   int i,j,k,ii;
   double **m,**exy,**N,**Nt,**NtN,**L;
-  double t;
+  double t,hiju;
   double *b,*c;
   double *a;
   double det;
@@ -23175,6 +23410,7 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   }
 
   t=shell.sect->area;
+  hiju=shell.sect->hiju[0];
 
   m=(double **)malloc(18*sizeof(double *));
   for(i=0;i<18;i++)
@@ -23221,7 +23457,7 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 	{
 	  for(j=0;j<18;j++)
 	  {
-		*(*(m+i)+j) += *(*(NtN+i)+j)**(a+ii)*det*t;
+		*(*(m+i)+j) += *(*(NtN+i)+j)**(a+ii)*det*t*hiju;
 	  }
 	}
 	freematrix(N,3);
@@ -24341,6 +24577,44 @@ void assemgstiffnessII(struct gcomponent *gmtx,
   }
   return;
 }/*assemgstiffnessII*/
+
+void assemgstiffnesswithDOFelimination(struct gcomponent *gmtx,
+					   double **estiff,
+					   struct owire *elem,
+					   long int *constraintmain)
+/*ASSEMBLAGE ELEMENT MATRIX INTO GLOBAL MATRIX.*/
+{
+  long int i,j,ii,jj,n1,n2;
+  double edata,gdata;
+
+  for(n1=0;n1<2;n1++)
+  {
+	for(i=1;i<=6;i++)
+	{
+	  ii=6*(elem->node[n1]->loff)+i;
+	  ii=*(constraintmain+ii-1)+1;
+	  for(n2=0;n2<2;n2++)
+	  {
+		for(j=1;j<=6;j++)
+		{
+		  jj=6*(elem->node[n2]->loff)+j;
+		  jj=*(constraintmain+jj-1)+1;
+		  if(ii>=jj)
+		  {
+			edata=*(*(estiff+6*n1+i-1)+6*n2+j-1);
+			if(edata!=0.0)
+			{
+			  gread(gmtx,ii,jj,&gdata);
+			  gdata+=edata;
+			  gwrite(gmtx,ii,jj,gdata);
+			} /*THESE ARE PUT TOGETHER INTO "gadd".UNDER CONSTRUCTION.*/
+		  }
+		}
+	  }
+	}
+  }
+  return;
+}/*assemgstiffnesswithDOFelimination*/
 
 void assemgstiffnessIIwithDOFelimination(struct gcomponent *gmtx,
 					   double **estiff,
@@ -26012,32 +26286,41 @@ void outputstress(struct owire elem,
 }/*outputstress*/
 
 void outputshellstress(struct oshell shell,
-				  double *estress,FILE *fout)
-/*ELEMENT STRESS OUTPUT.*/
+    double* estress, FILE* fout)
+    /*ELEMENT STRESS OUTPUT.*/
 {
-  char s[80],string[256];
-  long int i,n;
+    char s[80], string[256];
+    long int i, n;
+    /*
+    for (n = 0; n < shell.nnod; n++)
+    {
+        if (n == 0)
+        {
+            sprintf(string, "%5d %4d %4d",
+                shell.code, shell.sect->code, shell.node[n]->code);
+        }
+        else
+		{
+            sprintf(string, "           %4d", shell.node[n]->code);
+        }
 
-  for(n=0;n<shell.nnod;n++)
-  {
-	if(n==0)
-	{
-	  sprintf(string,"%5d %4d %4d",
-			  shell.code,shell.sect->code,shell.node[n]->code);
+        for (i = 0; i < 6; i++)
+        {
+            sprintf(s, " %12.8f", shell.stress[n][i]);
+            strcat(string, s);
+        }
+        if (fout != NULL) fprintf(fout, "%s\n", string);
 	}
-	else
-	{
-	  sprintf(string,"           %4d",shell.node[n]->code);
-	}
+    */
 
-	for(i=0;i<6;i++)
-	{
-	 sprintf(s," %12.8f",shell.stress[n][i]);
-	 strcat(string,s);
-	}
-	if(fout!=NULL) fprintf(fout,"%s\n",string);
-  }
-  return;
+    sprintf(string, "%5d",shell.code);
+    for (i = 0; i < 6; i++)
+    {
+        sprintf(s, " %e", shell.stress[0][i]);
+        strcat(string, s);
+    }
+    if (fout != NULL) fprintf(fout, "%s\n", string);
+    return;
 }/*outputshellstress*/
 
 

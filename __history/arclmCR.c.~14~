@@ -1,32 +1,43 @@
-/*ARCLMCR FOR WIN32 SINCE 2023.09.11.KEIICHIKUTOMI.*/
-/*LAST CHANGE:2023.10.12.*/
-
 int arclmCR(struct arclmframe* af);
+
+/*FOR VECTOR CALCURATION*/
 double dotproduct(double* vct1, double* vct2, int vsize);
 double vectorlength(double* vct, int vsize);
 void vectornormalize(double* vct, int vsize);
+
+/*FOR ROTATION CALCURATION*/
 double* rotationvct(double** rmtx);
 double** rotationmtx(double* rvct);
 double** spinmtx(double* rvct);
-double** spinfittermtx(double* eform);
-double** projectionmtx(double* eform, double* edisp, double** G);
-double** jacobimtx(double* edisp, double* estress, double** M);
-double** assemshelltmtx(double** estiff, double* eform, double* edisp, double* estress, double** T);
+double** jacobimtx(double* rvct);
+
+
+double** spinfittermtx(double* eform, int nnod);/*G*/
+double** projectionmtx(double* eform, double* edisp, double** G, int nnod);/*P*/
+double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod);/*H&M*/
+
+double** assemtmtx(double** estiff, double* eform, double* edisp, double* estress, double** T, int nnod);
 void symmetricmtx(double** estiff, int msize);
+
 void updaterotation(double* ddisp, double* gvct, int nnode);
-void updateforce(double* pvct, double* ddisp, int nnode);
+//void updateforce(double* pvct, double* ddisp, int nnode);
+
+double* extractlocalcoord(double* gdisp, double** drccos, double nnod);
 double* extractshelldisplacement(struct oshell shell, double* ddisp);
-double* extractshelllocalcoord(struct oshell shell, double* gdisp);
+//double* extractshelllocalcoord(struct oshell shell, double* gdisp);
 void extractdeformation(double* eform, double* edisp, int nnod);
+
 void initialformCR(struct onode* nodes, double* ddisp, int nnode);
 void LDLmode(struct gcomponent* gmtx, struct oconf* confs, long int* m, int nmode, double** mode, double* norm, double* dm, long int msize);
 double shellvolume(struct oshell shell, double** drccos, double area);
-double equilibriumcurvature(double* weight, double* ddisp, double* lastddisp, double loadfactor, double lastloadfactor, double* dup, int msize);
+//double equilibriumcurvature(double* weight, double* ddisp, double* lastddisp, double loadfactor, double lastloadfactor, double* dup, int msize);
+double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);
 
 /*
 PINPOINTMODE
 0:DO NOT DETECT BUCKLING
-1:CALCULATE EIGEN VECTOR*/
+1:CALCULATE EIGEN VECTOR
+*/
 
 
 
@@ -34,7 +45,7 @@ int arclmCR(struct arclmframe* af)
 {
 	DWORDLONG memory;
 	char dir[]=DIRECTORY;
-	FILE *fdata, *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * fstr, * fene, * ffig, * fbcl, * feig;         /*FILE 8 BYTES*/
+	FILE *fdata, *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig;         /*FILE 8 BYTES*/
 	char s[80], string[400], inpname[50], fname[50];
 
 	int i, ii, jj;
@@ -44,32 +55,35 @@ int arclmCR(struct arclmframe* af)
 	long int msize, nline;
 	double time;
 
+
+
+	/*FOR READING ANALYSISDATA*/
+	int nstr, pstr, readflag, node;
+	char **data, *filename;
 	int fnode=NULL,fnodedrc=NULL;
 	double fnodemin, fnodemax;
 	int outputmode = 0;/*0:ConvergedLaps.1:AllLaps.*/
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	double arclength, *weight;
 
-	/*FOR READING ANALYSISDATA*/
-	int nstr, pstr, readflag, node;
-	char **data, *filename;
-
 	/***GLOBAL MATRIX***/
 	struct gcomponent ginit = { 0,0,0.0,NULL };
 	struct gcomponent* gmtx, * g, * p, * gcomp1;/*GLOBAL MATRIX*/
 	double gg;
-	/***GLOBAL VECTOR***/
-	double* dreact;
+	/***GLOBAL VECTOR*/
 	double* ddisp, * iform;
+	double* u, * ud, * udd, * du, * dud, * dudd;
 
 
 	double* mvct; /*LUMPED MASS*/
-	double* funbalance, * fexternal, * finternal, * fpressure, * fswitching;
+	double* funbalance, * fexternal, * finternal, * freaction, * fpressure, * fswitching;
 	double* due, * dup, * lastdue;
 	double* gvct;
 	double* vel, * lastvel, * nextvel;
 	double* acc;
 	double acceleration, velosity;
+
+
 	/***FOR SHELL ELEMENT***/
 	double* gdisp, * edisp;                     /*DEFORMED COORDINATION OF ELEMENT*/
 	double* gform, * eform;                      /*INITIAL COORDINATION OF ELEMENT*/
@@ -83,7 +97,7 @@ int arclmCR(struct arclmframe* af)
 	double Ek = 0.0;
 	double nextEk = 0.0;                                          /*KINETIC ENERGY*/
 	double q = 0.0;
-	double** Me, ** Ke, ** Kt, ** DBe, ** drccos, ** T, ** Tt;                           /*MATRIX*/
+	double** Me,** Ke,** Kt,** DBe,** drccos,** drccosinit,** T, ** Tt;                           /*MATRIX*/
 	int* loffset;
 	double area;
 	/***FOR ARC-LENGTH INCREMENTAL***/
@@ -92,7 +106,7 @@ int arclmCR(struct arclmframe* af)
 	int maxtime = 20;
 	double ddt = 1.0E-8;
 	double residual;
-	double tolerance = 1e-8;
+	double tolerance = 1.0e-8;
 
 	double determinant, sign;
 	double arcsum, predictorsign;
@@ -114,6 +128,9 @@ int arclmCR(struct arclmframe* af)
 	double nextloadfactor;
 	double lastloadfactor, lastlambda, bisecloadfactor, biseclambda;
 	double* lastddisp, * lastgvct, * bisecddisp, * bisecgvct;
+
+	double laploadfactor;
+	double* lapddisp;
 	double* nextddisp;
 
 	double* epsddisp, * epsgvct, * epsfunbalance, * epsfinternal, * epsfexternal, * epsfpressure, * re, * rp;
@@ -138,6 +155,13 @@ int arclmCR(struct arclmframe* af)
 	int ENDFLAG = 0;/*FLAG FOR ANLYSIS TERMINATION*/
 	int PEAKFLAG = 0;/*FLAG FOR VELOSITY RESET*/
 	int DRFLAG = 0;/*FLAG FOR DYNAMIC RELAXARION*/
+
+	int SCALINGARCFLAG = 0;
+
+	int BIGININGARCFLAG = 0;
+	double biginingarcratio = 1.0;
+	int biginingarclap = 0;
+
 
 
 	clock_t t0;
@@ -193,10 +217,27 @@ int arclmCR(struct arclmframe* af)
 						pstr++;
 						laps = (int)strtol(*(data + pstr), NULL, 10);
 					}
-					if (!strcmp(*(data + pstr), "SAFETY"))
+					if (!strcmp(*(data + pstr), "ITERMAX"))
+					{
+						pstr++;
+						maxiteration = (int)strtol(*(data + pstr), NULL, 10);
+					}
+					if (!strcmp(*(data + pstr), "ARCLENGTH"))
 					{
 						pstr++;
 						arclength = (double)strtod(*(data + pstr), NULL);
+					}
+					if (!strcmp(*(data + pstr), "SCALINGARC"))
+					{
+						SCALINGARCFLAG==1;
+					}
+					if (!strcmp(*(data + pstr), "BIGININGARC"))
+					{
+						BIGININGARCFLAG==1;
+						pstr++;
+						biginingarcratio = (double)strtod(*(data + pstr), NULL);
+						pstr++;
+						biginingarclap = (int)strtol(*(data + pstr), NULL, 10);
 					}
 					if (!strcmp(*(data + pstr), "NNODE"))
 					{
@@ -255,6 +296,10 @@ int arclmCR(struct arclmframe* af)
 						pstr++;
 						loadfactor = (double)strtod(*(data + pstr), NULL);
 					}
+					else
+					{
+						pstr++;
+					}
 				}
 			}
 		}
@@ -262,10 +307,8 @@ int arclmCR(struct arclmframe* af)
 
 
 
-	printf("FILENAME:");
-	printf("%s\n", filename);
-	printf("LAPS = %d\n", laps);
-	printf("ARCLENGTH = %lf\n", arclength);
+	sprintf(string, "FILENAME:%s\n LAPS = %d\n MAX ITERATION= %d\n ARCLENGTH = %lf\n", filename, laps, maxiteration, arclength);
+	errormessage(string);
 	if (outputmode == 0)printf("OUTPUT CONVERGED RESULT\n");
 	if (outputmode == 1)printf("OUTPUT ALL RESULT\n");
 
@@ -290,6 +333,8 @@ int arclmCR(struct arclmframe* af)
 	fexf = fopen(fname, "w");
 	snprintf(fname, sizeof(fname), "%s.%s", inpname, "ubf");
 	fubf = fopen(fname, "w");
+	snprintf(fname, sizeof(fname), "%s.%s", inpname, "rct");
+	frct = fopen(fname, "w");
 	snprintf(fname, sizeof(fname), "%s.%s", inpname, "str");
 	fstr = fopen(fname, "w");
 	snprintf(fname, sizeof(fname), "%s.%s", inpname, "onl");
@@ -349,6 +394,7 @@ int arclmCR(struct arclmframe* af)
 
 
 	funbalance = (double*)malloc(msize * sizeof(double));           /*UNBALANCED INTERNAL FORCE VECTOR.*/
+	freaction = (double*)malloc(msize * sizeof(double));           /*EXTERNAL FORCE VECTOR.*/
 	fexternal = (double*)malloc(msize * sizeof(double));           /*EXTERNAL FORCE VECTOR.*/
 	finternal = (double*)malloc(msize * sizeof(double));          /*INTERNAL FORCE VECTOR.*/
 	fpressure = (double*)malloc(msize * sizeof(double));          /*PRESSURE FORCE VECTOR.*/
@@ -360,6 +406,8 @@ int arclmCR(struct arclmframe* af)
 	lastddisp = (double*)malloc(msize * sizeof(double));
 	lastgvct = (double*)malloc(msize * sizeof(double));
 	lastpivot = (double*)malloc(msize * sizeof(double));        /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
+
+	lapddisp = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN LAP*/
 
 
 	evct = (double*)malloc(msize * sizeof(double));
@@ -455,6 +503,7 @@ int arclmCR(struct arclmframe* af)
 			fprintf(finf, string);
 			fprintf(fexf, string);
 			fprintf(fubf, string);
+			fprintf(frct, string);
 			fprintf(fstr, string);
 			fprintf(fene, string);
 		}
@@ -472,43 +521,18 @@ int arclmCR(struct arclmframe* af)
 			ginit.m = (unsigned short int)i;
 			*(gmtx + (i - 1)) = ginit;
 
-
-			*(mvct + (i - 1)) = 0.0;
-
 			*(finternal + (i - 1)) = 0.0;			 /*GLOBAL VECTOR INITIALIZATION.*/
 			*(fexternal + (i - 1)) = 0.0;
 			*(fpressure + (i - 1)) = 0.0;
 			*(funbalance + (i - 1)) = 0.0;
+			*(freaction+ (i - 1)) = 0.0;
 		}
 		comps = msize; /*INITIAL COMPONENTS=DIAGONALS.*/
 
 		volume = 0.0;
-	/*
-		for(i=1;i<=nelem;i++)
-	{
 
+		assemconf(confs,fexternal,1.0,nnode);               /*GLOBAL VECTOR.*/
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	}
-	#if 0
 		/*CR Girder under constructuon*/
 		for (i = 1; i <= nelem; i++)
 		{
@@ -527,28 +551,34 @@ int arclmCR(struct arclmframe* af)
 			{
 				inputnode(iform, elem.node[ii]);
 			}
-			gform = extractdisplacement(shell, iform);                  /*{Xg}*/
-			eform = extractlocalcoord(shell, gform);                    /*{Xe}*/
-
-			for (ii = 0; ii < elem.nnod; ii++)
-			{
-				inputnode(ddisp, elem.node[ii]);
-			}
-			gdisp = extractdisplacement(shell, ddiksp);              /*{Xg+Ug}*/
-			edisp = extractlocalcoord(shell, gdisp);                 /*{Xe+Ue}*/
-
-			extractdeformation(eform, edisp, elem.nnod);                /*{Ue}*/
-
-			/*Modified*/
-
-			/*drccos = shelldrccos(shell, &area);*/
-			drccos=directioncosine(elem.node[0]->d[0],
+			drccosinit = directioncosine(elem.node[0]->d[0],
 							 elem.node[0]->d[1],
 							 elem.node[0]->d[2],
 							 elem.node[1]->d[0],
 							 elem.node[1]->d[1],
 							 elem.node[1]->d[2],
 							 elem.cangle);
+			gform = extractdisplacement(elem, iform);                  /*{Xg}*/
+			eform = extractlocalcoord(gform,drccosinit,elem.nnod);
+
+
+
+			for (ii = 0; ii < elem.nnod; ii++)
+			{
+				inputnode(ddisp, elem.node[ii]);
+			}
+            drccos = directioncosine(elem.node[0]->d[0],
+							 elem.node[0]->d[1],
+							 elem.node[0]->d[2],
+							 elem.node[1]->d[0],
+							 elem.node[1]->d[1],
+							 elem.node[1]->d[2],
+							 elem.cangle);
+			//drccos = middrccos()
+			gdisp = extractdisplacement(elem, ddisp);              /*{Xg+Ug}*/
+			edisp = extractlocalcoord(gdisp,drccos,elem.nnod);
+
+			extractdeformation(eform, edisp, elem.nnod);                /*{Ue}*/
 
 			T = transmatrixIII(drccos, elem.nnod); /*TRANSFORMATION MATRIX[T].*/
 			Tt = matrixtranspose(T, 6 * elem.nnod);                    /*[Tt].*/
@@ -556,57 +586,14 @@ int arclmCR(struct arclmframe* af)
 			Ke = assememtx(elem);                  /*ELASTIC MATRIX OF GIRDER[Ke].*/
 			einternal = matrixvector(Ke, edisp, 6 * elem.nnod);      /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 
-
-			if ((outputmode == 0 && (iteration == 1 || BCLFLAG == 2)) || outputmode == 1)
-			{
-				Ee = 0.0;
-				for (ii = 0; ii < elem.nnod; ii++)                   /*UPDATE STRAIN ENERGY.*/
-				{
-					for (jj = 0; jj < 6; jj++)
-					{
-						Ee += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
-					}
-				}
-				fprintf(fene, "%5ld %e\n", elem.code, Ee);
-			}
-
-			//if (DRFLAG)
-			//{
-			//	Me = assemmmtx(elem, drccos);              /*MASS MATRIX OF GIRDER[M].*/
-			//	Me = transformationIII(Me, T, 6 * elem.nnod);
-			//	masstotal = 0.0;
-			//	massdiag = 0.0;
-			//	for (ii = 0; ii < 12; ii++)
-			//	{
-			//		for (jj = 0; jj < 12; jj++)
-			//		{
-			//			masstotal += Me[ii][jj];
-			//			if (ii == jj && ii % 6 < 3)massdiag += Me[ii][jj];
-			//		}
-			//	}
-			//	for (ii = 0; ii < elem.nnod; ii++)
-			//	{
-			//		for (jj = 0; jj < 6; jj++)
-			//		{
-			//			*(mvct + *(loffset + (6 * ii + jj))) += *(*(Me + 6 * ii + jj) + 6 * ii + jj) * masstotal / massdiag;
-			//		}
-			//	}
-			//	freematrix(Me, 12);
-			//}
-
-
-			Kt = assemtmtx(Ke, eform, edisp, einternal, T);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
-
-			/*Kt=transformation(Kt,T);*/
+			Kt = assemtmtx(Ke, eform, edisp, einternal, T, elem.nnod);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
 			Kt = transformationIII(Kt, T, 6 * elem.nnod);
-
 			symmetricmtx(Kt, 6 * elem.nnod);      /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 
-			/*assemgstiffness(gmtx,Kt,&elem);*/
-			assemgstiffnessIIwithDOFelimination(gmtx, Kt, &elem, constraintmain);/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+			assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain);/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 			freematrix(Kt, 6 * elem.nnod);
 
-			ginternal = matrixvector(Tt, einternal, 6 * elem.nnod);  /*GLOBAL INTERNAL FORCE{Fg}.*/
+			ginternal = matrixvector(Tt, einternal, 6 * elem.nnod);  /*FROM PROJECTED LOCAL INTERNAL FORCE{PtHtFe} TO GLOBAL INTERNAL FORCE{Fg}.*/
 			for (ii = 0; ii < elem.nnod; ii++)
 			{
 				for (jj = 0; jj < 6; jj++)
@@ -615,6 +602,7 @@ int arclmCR(struct arclmframe* af)
 				}
 			}
 
+			freematrix(drccosinit, 3);
 			freematrix(drccos, 3);
 			freematrix(T, 6 * elem.nnod);
 			freematrix(Tt, 6 * elem.nnod);
@@ -640,7 +628,6 @@ int arclmCR(struct arclmframe* af)
 
 			///FOR DRAWING 3///
 		}
-		/*under constructuon*/
 
 
 		for (i = 1; i <= nshell; i++)
@@ -660,20 +647,24 @@ int arclmCR(struct arclmframe* af)
 			{
 				inputnode(iform, shell.node[ii]);
 			}
-			gform = extractshelldisplacement(shell, iform);                      /*{Xg}*/
-			eform = extractshelllocalcoord(shell, gform);                        /*{Xe}*/
+			drccosinit = shelldrccos(shell, &area);
+			gform = extractshelldisplacement(shell, iform);                     /*{Xg}*/
+			//eform = extractshelllocalcoord(shell, gform);                     /*{Xe}*/
+			eform = extractlocalcoord(gform,drccosinit,shell.nnod);
 
 			for (ii = 0; ii < shell.nnod; ii++)
 			{
 				inputnode(ddisp, shell.node[ii]);
 			}
-			gdisp = extractshelldisplacement(shell, ddisp);                   /*{Xg+Ug}*/
-			edisp = extractshelllocalcoord(shell, gdisp);                     /*{Xe+Ue}*/
+			drccos = shelldrccos(shell, &area);
+			gdisp = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
+			//edisp = extractshelllocalcoord(shell, gdisp);                     /*{Xe+Ue}*/
+			edisp = extractlocalcoord(gdisp,drccos,shell.nnod);
 
 			extractdeformation(eform, edisp, shell.nnod);                       /*{Ue}*/
 
-			drccos = shelldrccos(shell, &area);                                /*DRCCOS*/
 			volume += shellvolume(shell, drccos, area);                   /*VOLUME*/
+
 			T = transmatrixIII(drccos, shell.nnod);         /*TRANSFORMATION MATRIX[T].*/
 			Tt = matrixtranspose(T, 6 * shell.nnod);                  /*[Tt].*/
 
@@ -756,15 +747,14 @@ int arclmCR(struct arclmframe* af)
 			//}
 
 
-			Kt = assemshelltmtx(Ke, eform, edisp, einternal, T);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
+			Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
 
 			Kt = transformationIII(Kt, T, 6 * shell.nnod);
 			symmetricmtx(Kt, 6 * shell.nnod);      /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
-			//assemgstiffnessII(gmtx,Kt,&shell);
 			assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain);/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 			freematrix(Kt, 6 * shell.nnod);
 
-			ginternal = matrixvector(Tt, einternal, 6 * shell.nnod);  /*GLOBAL INTERNAL FORCE{Fg}.*/
+			ginternal = matrixvector(Tt, einternal, 6 * shell.nnod);  /*FROM PROJECTED LOCAL INTERNAL FORCE{PtHtFe} TO GLOBAL INTERNAL FORCE{Fg}.*/
 			gpressure = matrixvector(Tt, epressure, 6 * shell.nnod);  /*GLOBAL EXTERNAL FORCE{Pg}.*/
 			for (ii = 0; ii < shell.nnod; ii++)
 			{
@@ -776,6 +766,7 @@ int arclmCR(struct arclmframe* af)
 			}
 
 			freematrix(drccos, 3);
+			freematrix(drccosinit, 3);
 			freematrix(T, 6 * shell.nnod);
 			freematrix(Tt, 6 * shell.nnod);
 			freematrix(Ke, 6 * shell.nnod);
@@ -810,10 +801,10 @@ int arclmCR(struct arclmframe* af)
 				*(finternal + ii) = 0.0;
 				*(fpressure + *(constraintmain + ii)) += *(fpressure + ii);
 				*(fpressure + ii) = 0.0;
-				//*(mvct + *(constraintmain + ii)) += *(mvct + ii);
-				//*(mvct + ii) = 0.0;
 			}
 		}
+
+
 
 		///FOR DRAWING 4///
 		overlayhdc(*(wdraw.childs+1),SRCPAINT);                  /*UPDATE DISPLAY.*/
@@ -822,10 +813,14 @@ int arclmCR(struct arclmframe* af)
 		residual = 0.0;
 		for (i = 0; i < msize; i++)
 		{
-			*(dup + i) = *(fpressure + i);
-			*(fexternal + i) = loadfactor * *(fpressure + i);
+			*(dup + i) = *(fexternal + i)+*(fpressure + i);
+			*(fexternal + i) = loadfactor * *(dup + i);
 			*(funbalance + i) = *(fexternal + i) - *(finternal + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
-			if ((confs + i)->iconf == 1) *(funbalance + i) = 0.0;
+			if ((confs + i)->iconf == 1)
+			{
+				*(freaction + i) = *(funbalance + i);
+				*(funbalance + i) = 0.0;
+			}
 			residual += *(funbalance + i) * *(funbalance + i);
 			*(due + i) = *(funbalance + i);
 		}
@@ -835,6 +830,7 @@ int arclmCR(struct arclmframe* af)
 			outputdisp(finternal, finf, nnode, nodes);                    /*FORMATION OUTPUT.*/
 			outputdisp(fexternal, fexf, nnode, nodes);                    /*FORMATION OUTPUT.*/
 			outputdisp(funbalance, fubf, nnode, nodes);                    /*FORMATION OUTPUT.*/
+			outputdisp(freaction, frct, nnode, nodes);                    /*FORMATION OUTPUT.*/
 		}
 
 		/*if (DRFLAG)
@@ -947,6 +943,7 @@ int arclmCR(struct arclmframe* af)
 				fclose(fexf);
 				fclose(finf);
 				fclose(fubf);
+				fclose(frct);
 				fclose(fstr);
 				fclose(fene);
 				fclose(ffig);
@@ -1040,55 +1037,76 @@ int arclmCR(struct arclmframe* af)
 				{
 					nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
 					/*ARCLENGTH CONTROL*/
-					if (nlap < 10)
+					if (nlap < biginingarclap+1)
 					{
-						scaledarclength = 0.01 * arclength;
+						scaledarclength = biginingarcratio * arclength;
 					}
-					else if (nlap == 10)
+					else if (nlap == biginingarclap+1)
 					{
 						scaledarclength = arclength;
 					}
-					else if (nlap == 11)
+					else if (nlap == biginingarclap+2)
 					{
-						k1 = equilibriumcurvature(weight, ddisp, lastddisp, loadfactor, lastloadfactor, dup, msize);
-						scaledarclength = arclength;
+						if(SCALINGARCFLAG==1)
+						{
+							k1 = equilibriumcurvature(weight, lapddisp, laploadfactor, dup, msize);
+						}
 					}
 					else
 					{
-						k = equilibriumcurvature(weight, ddisp, lastddisp, loadfactor, lastloadfactor, dup, msize);
-						scaledarclength = arclength * sqrt(k1 / k);
-						//scaledarclength = arclength * k1 / k;
-						if (scaledarclength > arclength)scaledarclength = arclength;
+						if(SCALINGARCFLAG==1)
+						{
+							k = equilibriumcurvature(weight, lapddisp, laploadfactor, dup, msize);
+							scaledarclength = arclength * sqrt(k1 / k);
+							if (scaledarclength > arclength)scaledarclength = arclength;
+						}
 					}
 
 					/*SIGN OF PREDICTOR VECTOR & ARC-LENGTH SCALING FACTOR*/
 					if (nlap == 1)
 					{
-						for (ii = 0; ii < msize; ii++)
+						/*for (ii = 0; ii < msize; ii++)
 						{
-							if ((confs + ii)->iconf != 1 && *(weight + ii) != 0)
+							if ((confs + ii)->iconf == 0 && *(weight + ii) != 0.0)
+							{
+								if(*(dup + ii)=!0.0)
+								{
+									*(weight + ii) = 1.0 / abs(*(dup + ii));
+								}
+								else
+								{
+									*(weight + ii) = 0.0;
+								}
+							}
+						}*/
+                        for (ii = 0; ii < msize; ii++)
+						{
+							if ((confs + ii)->iconf != 1 && *(weight + ii) != 0.0)
 							{
 								*(weight + ii) = 1.0 / abs(*(dup + ii));
 							}
 						}
 					}
+
 					if (nlap == 1)
 					{
 						predictorsign = 1.0;
 					}
 					else
 					{
-						/*predictorsign = *(weight + msize) * *(weight + msize) * (loadfactor - lastloadfactor) * 1.0;
+						predictorsign = *(weight + msize) * *(weight + msize) * laploadfactor * 1.0;
 						for (ii = 0; ii < msize; ii++)
 						{
-							predictorsign += *(weight + ii) * *(weight + ii) * (*(ddisp + ii) - *(lastddisp + ii)) * *(dup + ii);
-						}*/
-						predictorsign = 0.0;
-						for (ii = 0; ii < msize; ii++)
-						{
-							predictorsign += (*(ddisp + ii) - *(lastddisp + ii)) * *(dup + ii);
+							predictorsign += *(weight + ii) * *(weight + ii) * *(lapddisp + ii) * *(dup + ii);
 						}
-						predictorsign /= abs(predictorsign);
+						if(predictorsign != 0.0)
+						{
+							predictorsign /= abs(predictorsign);
+						}
+						else
+						{
+							predictorsign = 1.0;
+						}
 					}
 
 					/*INCREMENTAL CALCULATION*/
@@ -1200,7 +1218,7 @@ int arclmCR(struct arclmframe* af)
 				}
 
 
-				loadfactor += lambda;
+
 				for (ii = 0; ii < msize; ii++)
 				{
 					if (*(constraintmain + ii) != ii)
@@ -1209,10 +1227,30 @@ int arclmCR(struct arclmframe* af)
 						*(gvct + ii) = *(gvct + mainoff);
 					}
 				}
+
+				/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+				if(iteration==1)
+				{
+					laploadfactor=0.0;
+					for(i=0;i++;i<msize)
+					{
+						*(lapddisp+i)=0.0;
+					}
+				}
+				laploadfactor += lambda;
+				updaterotation(lapddisp, gvct, nnode);
+
+                loadfactor += lambda;
 				updaterotation(ddisp, gvct, nnode);
 
 
+
 				if ((residual < tolerance || iteration > maxiteration) && iteration != 1)
+				{
+					nlap++;
+					iteration = 0;
+				}
+				else if (maxiteration == 1)
 				{
 					nlap++;
 					iteration = 0;
@@ -1272,6 +1310,7 @@ int arclmCR(struct arclmframe* af)
 				fclose(fexf);
 				fclose(finf);
 				fclose(fubf);
+				fclose(frct);
 				fclose(fstr);
 				fclose(fene);
 				fclose(ffig);
@@ -1312,107 +1351,112 @@ int arclmCR(struct arclmframe* af)
 				}
 				iteration++;
 			}
-			//if (pinpointmode == 2)/*PIN-POINTING BASED ON EXTENDED SYSTEM.*/
-			//{
-			//	nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
-			//	nline = forwardbackward(gmtx, due, confs, msize, gcomp1);
-			//	/*FOR DIRECTIONAL DERIVATIVE OF TANGENTIAL STIFFNESS MATRIX*/
-			//	LDLmode(gmtx, confs, m, nmode, evct, norm, dm, msize);
-			//	for (i = 0; i < nmode; i++)
-			//	{
-			//		fprintf(fbcl, "CRITICAL EIGEN VECTOR : LINE = %5ld NORM = %12.9f dm = %12.9f\n", *(m + i), *(norm + i), *(dm + i));
-			//		for (ii = 0; ii < nnode; ii++)
-			//		{
-			//			fprintf(fbcl, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
-			//				*(*(evct + i) + (6 * ii + 0)), *(*(evct + i) + (6 * ii + 1)), *(*(evct + i) + (6 * ii + 2)),
-			//				*(*(evct + i) + (6 * ii + 3)), *(*(evct + i) + (6 * ii + 4)), *(*(evct + i) + (6 * ii + 5)));
-			//		}
-			//	}
+			#if 0
+			if (pinpointmode == 2)/*PIN-POINTING BASED ON EXTENDED SYSTEM.*/
+			{
+				nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
+				nline = forwardbackward(gmtx, due, confs, msize, gcomp1);
+				/*FOR DIRECTIONAL DERIVATIVE OF TANGENTIAL STIFFNESS MATRIX*/
+				LDLmode(gmtx, confs, m, nmode, evct, norm, dm, msize);
+				for (i = 0; i < nmode; i++)
+				{
+					fprintf(fbcl, "CRITICAL EIGEN VECTOR : LINE = %5ld NORM = %12.9f dm = %12.9f\n", *(m + i), *(norm + i), *(dm + i));
+					for (ii = 0; ii < nnode; ii++)
+					{
+						fprintf(fbcl, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
+							*(*(evct + i) + (6 * ii + 0)), *(*(evct + i) + (6 * ii + 1)), *(*(evct + i) + (6 * ii + 2)),
+							*(*(evct + i) + (6 * ii + 3)), *(*(evct + i) + (6 * ii + 4)), *(*(evct + i) + (6 * ii + 5)));
+					}
+				}
 
-			//	for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
-			//	{
-			//		*(epsgvct + ii) = gradeps * *(*(evct + 0) + ii);
-			//		*(epsddisp + ii) = *(ddisp + ii);
-			//	}
-			//	for (ii = 0; ii < msize; ii++)
-			//	{
-			//		if (*(constraintmain + ii) != ii)
-			//		{
-			//			mainoff = *(constraintmain + ii);
-			//			*(epsgvct + ii) = *(gvct + mainoff);
-			//		}
-			//	}
-			//	updaterotation(epsddisp, epsgvct, nnode);
+				for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
+				{
+					*(epsgvct + ii) = gradeps * *(*(evct + 0) + ii);
+					*(epsddisp + ii) = *(ddisp + ii);
+				}
+				for (ii = 0; ii < msize; ii++)
+				{
+					if (*(constraintmain + ii) != ii)
+					{
+						mainoff = *(constraintmain + ii);
+						*(epsgvct + ii) = *(gvct + mainoff);
+					}
+				}
+				updaterotation(epsddisp, epsgvct, nnode);
 
-			//	for (ii = 0; ii < msize; ii++)
-			//	{
-			//		*(re + ii) = 0.0;
-			//		*(rp + ii) = 0.0;
-			//	}
-			//	volume = 0.0;
-			//	for (i = 1; i <= nshell; i++)
-			//	{
-			//		inputshell(shells, mshell, i - 1, &shell);
-			//		shell.sect = (shells + i - 1)->sect;                      /*READ SECTION DATA.*/
-			//		loffset = (int*)malloc(18 * sizeof(int));
-			//		for (ii = 0; ii < shell.nnod; ii++)
-			//		{
-			//			for (jj = 0; jj < 6; jj++)
-			//			{
-			//				*(loffset + (6 * ii + jj)) = 6 * (shell.node[ii]->loff) + jj;
-			//			}
-			//		}
+				for (ii = 0; ii < msize; ii++)
+				{
+					*(re + ii) = 0.0;
+					*(rp + ii) = 0.0;
+				}
+				volume = 0.0;
+				for (i = 1; i <= nshell; i++)
+				{
+					inputshell(shells, mshell, i - 1, &shell);
+					shell.sect = (shells + i - 1)->sect;                      /*READ SECTION DATA.*/
+					loffset = (int*)malloc(18 * sizeof(int));
+					for (ii = 0; ii < shell.nnod; ii++)
+					{
+						for (jj = 0; jj < 6; jj++)
+						{
+							*(loffset + (6 * ii + jj)) = 6 * (shell.node[ii]->loff) + jj;
+						}
+					}
 
-			//		for (ii = 0; ii < shell.nnod; ii++)
-			//		{
-			//			inputnode(iform, shell.node[ii]);
-			//		}
-			//		gform = extractshelldisplacement(shell, iform);                  /*{Xg}*/
-			//		eform = extractshelllocalcoord(shell, gform);                    /*{Xe}*/
+					for (ii = 0; ii < shell.nnod; ii++)
+					{
+						inputnode(iform, shell.node[ii]);
+					}
+					drccosinit = shelldrccos(shell, &area);
+					gform = extractshelldisplacement(shell, iform);
+					//eform = extractshelllocalcoord(shell, gform);
+					eform = extractlocalcoord(gform,drccosinit,shell.nnod);
 
-			//		for (ii = 0; ii < shell.nnod; ii++)
-			//		{
-			//			inputnode(epsddisp, shell.node[ii]);
-			//		}
-			//		gdisp = extractshelldisplacement(shell, epsddisp);              /*{Xg+Ug}*/
-			//		edisp = extractshelllocalcoord(shell, gdisp);                 /*{Xe+Ue}*/
+					for (ii = 0; ii < shell.nnod; ii++)
+					{
+						inputnode(ddisp, shell.node[ii]);
+					}
+					drccos = shelldrccos(shell, &area);
+					gdisp = extractshelldisplacement(shell, ddisp);
+					//edisp = extractshelllocalcoord(shell, gdisp);
+					edisp = extractlocalcoord(gdisp,drccos,shell.nnod);
 
-			//		extractdeformation(eform, edisp, shell.nnod);                   /*{Ue}*/
+					extractdeformation(eform, edisp, shell.nnod);                   /*{Ue}*/
 
-			//		drccos = shelldrccos(shell, &area);                            /*DRCCOS*/
-			//		volume += shellvolume(shell, drccos, area);                    /*VOLUME*/
-			//		T = transmatrixIII(drccos, shell.nnod);     /*TRANSFORMATION MATRIX[T].*/
+					volume += shellvolume(shell, drccos, area);                    /*VOLUME*/
+					T = transmatrixIII(drccos, shell.nnod);     /*TRANSFORMATION MATRIX[T].*/
 
-			//		Ke = assemshellemtx(shell, drccos, NULL); /*ELASTIC MATRIX OF SHELL[K].*/
-			//		einternal = matrixvector(Ke, edisp, 6 * shell.nnod);
-			//		epressure = assemshellpvct(shell, drccos);/*ELEMENT EXTERNAL FORCE{Fe}.*/
+					Ke = assemshellemtx(shell, drccos, NULL); /*ELASTIC MATRIX OF SHELL[K].*/
+					einternal = matrixvector(Ke, edisp, 6 * shell.nnod);
+					epressure = assemshellpvct(shell, drccos);/*ELEMENT EXTERNAL FORCE{Fe}.*/
 
-			//		Kt = assemshelltmtx(Ke, eform, edisp, einternal, T);
-			//		Kt = transformationIII(Kt, T, 6 * shell.nnod);
-			//		symmetricmtx(Kt, 6 * shell.nnod);
+					Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod);
+					Kt = transformationIII(Kt, T, 6 * shell.nnod);
+					symmetricmtx(Kt, 6 * shell.nnod);
 
 
-			//		for (ii = 0; ii < 18; ii++)
-			//		{
-			//			for (jj = 0; jj < 18; jj++)
-			//			{
-			//				*(re + *(loffset + ii)) += *(*(Kt + ii) + jj) * *(due + *(loffset + jj));
-			//				*(rp + *(loffset + ii)) += *(*(Kt + ii) + jj) * *(dup + *(loffset + jj));
-			//			}
-			//		}
+					for (ii = 0; ii < 18; ii++)
+					{
+						for (jj = 0; jj < 18; jj++)
+						{
+							*(re + *(loffset + ii)) += *(*(Kt + ii) + jj) * *(due + *(loffset + jj));
+							*(rp + *(loffset + ii)) += *(*(Kt + ii) + jj) * *(dup + *(loffset + jj));
+						}
+					}
 
-			//		freematrix(drccos, 3);
-			//		freematrix(T, 18);
-			//		freematrix(Ke, 18);
-			//		freematrix(Kt, 18);
-			//		free(loffset);
-			//		free(einternal);
-			//		free(epressure);
-			//		free(eform);
-			//		free(gform);
-			//		free(edisp);
-			//		free(gdisp);
-			//	}
+					freematrix(drccosinit, 3);
+					freematrix(drccos, 3);
+					freematrix(T, 18);
+					freematrix(Ke, 18);
+					freematrix(Kt, 18);
+					free(loffset);
+					free(einternal);
+					free(epressure);
+					free(eform);
+					free(gform);
+					free(edisp);
+					free(gdisp);
+				}
 
 			//	for (i = 0; i < msize; i++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
 			//	{
@@ -1498,8 +1542,8 @@ int arclmCR(struct arclmframe* af)
 			//	}
 			//	updaterotation(ddisp, gvct, nnode);
 			//	iteration++;
-			//}
-
+			}
+			#endif
 		}
 		else if (BCLFLAG == 2)/*CALCULATE EIGEN VECTOR*/
 		{
@@ -1535,6 +1579,7 @@ int arclmCR(struct arclmframe* af)
 				fclose(fexf);
 				fclose(finf);
 				fclose(fubf);
+				fclose(frct);
 				fclose(fstr);
 				fclose(fene);
 				fclose(ffig);
@@ -1755,19 +1800,23 @@ int arclmCR(struct arclmframe* af)
 				{
 					inputnode(iform, shell.node[ii]);
 				}
+				drccosinit = shelldrccos(shell, &area);                                /*DRCCOS*/
 				gform = extractshelldisplacement(shell, iform);                      /*{Xg}*/
-				eform = extractshelllocalcoord(shell, gform);                        /*{Xe}*/
+				//eform = extractshelllocalcoord(shell, gform);                        /*{Xe}*/
+				eform = extractlocalcoord(gform,drccosinit,shell.nnod);
 
 				for (ii = 0; ii < shell.nnod; ii++)
 				{
 					inputnode(epsddisp, shell.node[ii]);
 				}
+				drccos = shelldrccos(shell, &area);                                /*DRCCOS*/
 				gdisp = extractshelldisplacement(shell, epsddisp);                   /*{Xg+Ug}*/
-				edisp = extractshelllocalcoord(shell, gdisp);                     /*{Xe+Ue}*/
+				//edisp = extractshelllocalcoord(shell, gdisp);                     /*{Xe+Ue}*/
+				edisp = extractlocalcoord(gdisp,drccos,shell.nnod);
 
 				extractdeformation(eform, edisp, shell.nnod);                       /*{Ue}*/
 
-				drccos = shelldrccos(shell, &area);                                /*DRCCOS*/
+
 				volume += shellvolume(shell, drccos, area);                   /*VOLUME*/
 				T = transmatrixIII(drccos, shell.nnod);         /*TRANSFORMATION MATRIX[T].*/
 				Tt = matrixtranspose(T, 6 * shell.nnod);                              /*[Tt].*/
@@ -1776,7 +1825,7 @@ int arclmCR(struct arclmframe* af)
 				einternal = matrixvector(Ke, edisp, 6 * shell.nnod);      /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 				epressure = assemshellpvct(shell, drccos);                /*ELEMENT EXTERNAL FORCE{Pe}.*/
 
-				Kt = assemshelltmtx(Ke, eform, edisp, einternal, T);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
+				Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
 				//Kt = transformationIII(Kt, T, 6 * shell.nnod);
 				//symmetricmtx(Kt, 6 * shell.nnod);      /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 				//assemgstiffnessII(gmtx,Kt,&shell);
@@ -1793,6 +1842,7 @@ int arclmCR(struct arclmframe* af)
 						*(epsfpressure + *(loffset + (6 * ii + jj))) += *(gpressure + 6 * ii + jj);
 					}
 				}
+				freematrix(drccosinit, 3);
 				freematrix(drccos, 3);
 				freematrix(T, 18);
 				freematrix(Tt, 18);
@@ -1877,7 +1927,7 @@ int arclmCR(struct arclmframe* af)
 			sprintf(string,"DIVERGENCE DITECTED(SIGN = %5ld). ANALYSIS TERMINATED.\n", sign);
 			errormessage(string);
 		}
-		if (nlap>20 && loadfactor < 0.0)
+		if (0/*nlap>20 && loadfactor < 0.0*/)
 		{
 			ENDFLAG = 1;
 			sprintf(string,"NEGATIVE LOAD DITECTED(LOADFACTOR = %8.5f). ANALYSIS TERMINATED.\n", loadfactor);
@@ -1907,6 +1957,7 @@ int arclmCR(struct arclmframe* af)
 			fclose(fexf);
 			fclose(finf);
 			fclose(fubf);
+			fclose(frct);
 			fclose(fstr);
 			fclose(fene);
 			fclose(ffig);
@@ -1929,6 +1980,7 @@ int arclmCR(struct arclmframe* af)
 	fclose(fexf);
 	fclose(finf);
 	fclose(fubf);
+	fclose(frct);
 	fclose(fstr);
 	fclose(fene);
 	fclose(ffig);
@@ -2112,72 +2164,153 @@ double** spinmtx(double* rvct)
 	return smtx;
 }
 
-double** spinfittermtx(double* eform)
+double** jacobimtx(double* rvct)
+/*transformation from additional infinitesimal incremental rotation to increment of total rotational pseudo-vector*/
+{
+	int n, i, j;
+	double theta, eta;
+	double** thetaspin, ** thetaspin2;
+	double** H;
+
+
+	H = (double**)malloc(3 * sizeof(double*));
+	for (i = 0; i < 3; i++)
+	{
+		*(H + i) = (double*)malloc(3 * sizeof(double));
+		for (j = 0; j < 3; j++)
+		{
+			*(*(H + i) + j) = 0.0;
+		}
+	}
+
+	theta = vectorlength(rvct,3);
+
+	if (theta < PI / 30.0)
+	{
+		eta = 1.0 / 12.0 + pow(theta, 2) / 720.0 + pow(theta, 4) / 30240.0 + pow(theta, 6) / 1209600.0;
+	}
+	else
+	{
+		eta = (1.0 - 0.5 * theta * (1.0 / tan(0.5 * theta))) / pow(theta, 2);
+	}
+	thetaspin = spinmtx(rvct);
+	thetaspin2 = matrixmatrix(thetaspin, thetaspin, 3);
+
+
+	for (i = 0; i < 3; i++)
+	{
+		for (j = 0; j < 3; j++)
+		{
+			*(*(H + i) + j) = -0.5 * *(*(thetaspin + i) + j) + eta * *(*(thetaspin2 + i) + j);
+			if (i == j)*(*(H + i) + j) += 1.0;
+		}
+	}
+	freematrix(thetaspin, 3);
+	freematrix(thetaspin2, 3);
+	return H;
+}
+
+
+double** spinfittermtx(double* eform, int nnod)
+/*spin-fitter matrix for beam & shell*/
+/*G     :3*6nnod matrix(rotational variation by translational motion)*/
+/*input :6nnod vector(variation of nodal displacement in local which inclouds noneffective rotational DOF)*/
+/*output:3 vector(variation of local coord psuedo rotation)*/
 {
 	int i, j;
 	double A, len;
-	double x1, x2, y1, y2;
+	double x1, x2, y1, y2, z1;
 	double** G;
+
 
 	G = (double**)malloc(3 * sizeof(double*));
 	for (i = 0; i < 3; i++)
 	{
-		*(G + i) = (double*)malloc(18 * sizeof(double));
-		for (j = 0; j < 18; j++)
+		*(G + i) = (double*)malloc(6*nnod * sizeof(double));
+		for (j = 0; j < 6*nnod; j++)
 		{
 			*(*(G + i) + j) = 0.0;
 		}
 	}
 
-	x1 = *(eform + 6) - *(eform + 0);
-	y1 = *(eform + 7) - *(eform + 1);
-	x2 = *(eform + 12) - *(eform + 0);
-	y2 = *(eform + 13) - *(eform + 1);
-	A = 0.5 * (x1 * y2 - x2 * y1);
-	len = sqrt(x1 * x1 + y1 * y1);
 
-	*(*(G + 0) + 2) = 0.5 * (*(eform + 12) - *(eform + 6)) / A;
-	*(*(G + 1) + 2) = 0.5 * (*(eform + 13) - *(eform + 7)) / A;
-	*(*(G + 2) + 1) = -1 / len;
+	if(nnod==2)/*[G1,0,G2,0]*/
+	{
 
-	*(*(G + 0) + 8) = 0.5 * (*(eform + 0) - *(eform + 12)) / A;
-	*(*(G + 1) + 8) = 0.5 * (*(eform + 1) - *(eform + 13)) / A;
-	*(*(G + 2) + 7) = 1 / len;
+		x1 = *(eform + 6) - *(eform + 0);
+		y1 = *(eform + 7) - *(eform + 1);
+		z1 = *(eform + 8) - *(eform + 2);
+		len = sqrt(x1 * x1 + y1 * y1 + z1 * z1);
 
-	*(*(G + 0) + 14) = 0.5 * (*(eform + 6) - *(eform + 0)) / A;
-	*(*(G + 1) + 14) = 0.5 * (*(eform + 7) - *(eform + 1)) / A;
+		/*G1*/
+		*(*(G + 1) + 2) =  1 / len;
+		*(*(G + 2) + 1) = -1 / len;
+		/*G2*/
+		*(*(G + 1) + 8) = -1 / len;
+		*(*(G + 2) + 7) =  1 / len;
+	}
+	if(nnod==3)/*[G1,0,G2,0,G3,0]*/
+	{
 
+		x1 = *(eform + 6) - *(eform + 0);
+		y1 = *(eform + 7) - *(eform + 1);
+		x2 = *(eform + 12) - *(eform + 0);
+		y2 = *(eform + 13) - *(eform + 1);
+		A = 0.5 * (x1 * y2 - x2 * y1);
+		len = sqrt(x1 * x1 + y1 * y1);
+
+		/*G1*/
+		*(*(G + 0) + 2) = 0.5 * (*(eform + 12) - *(eform + 6)) / A;
+		*(*(G + 1) + 2) = 0.5 * (*(eform + 13) - *(eform + 7)) / A;
+		*(*(G + 2) + 1) = -1 / len;
+		/*G2*/
+		*(*(G + 0) + 8) = 0.5 * (*(eform + 0) - *(eform + 12)) / A;
+		*(*(G + 1) + 8) = 0.5 * (*(eform + 1) - *(eform + 13)) / A;
+		*(*(G + 2) + 7) = 1 / len;
+		/*G3*/
+		*(*(G + 0) + 14) = 0.5 * (*(eform + 6) - *(eform + 0)) / A;
+		*(*(G + 1) + 14) = 0.5 * (*(eform + 7) - *(eform + 1)) / A;
+	}
 	return G;
 }
 
-double** projectionmtx(double* eform, double* edisp, double** G)
+double** projectionmtx(double* eform, double* edisp, double** G,int nnod)
+/*element projection matrix for beam & shell*/
+/*G     :6nnod*6nnod matrix(variation correction)*/
+/*input :6nnod vector(initial variation of displacement in local coord)*/
+/*output:6nnod vector(corrected variation of displacement in local coord)*/
 {
 	int i, j, a, b;
 	double* node;
 	double** P, ** Gu, ** S, ** SGu;
 
-	P = (double**)malloc(18 * sizeof(double*));
-	for (i = 0; i < 18; i++)
+	P = (double**)malloc(6*nnod * sizeof(double*));
+	for (i = 0; i < 6*nnod; i++)
 	{
-		*(P + i) = (double*)malloc(18 * sizeof(double));
+		*(P + i) = (double*)malloc(6*nnod * sizeof(double));
 	}
 
+	/*latest coordination of nodes in local*/
+	/*eform(initial coord)+edisp(displacement)*/
 	node = (double*)malloc(3 * sizeof(double));
 
+	/*for extracting Gu_b(b=1,2,3) from G*/
 	Gu = (double**)malloc(3 * sizeof(double*));
 	for (i = 0; i < 3; i++)
 	{
 		*(Gu + i) = (double*)malloc(3 * sizeof(double));
 	}
+	//Pab = [ delta*I-1/3*I+S_a*Gu_b    0       ]
+	//      [         -Gu_b             delta*I ]
 
-	for (a = 0; a < 3; a++)
+	for (a = 0; a < nnod; a++)/*row 6*a+0~6*a+5 of P*/
 	{
 		for (i = 0; i < 3; i++)
 		{
 			*(node + i) = *(eform + 6 * a + i) + *(edisp + 6 * a + i);
 		}
 		S = spinmtx(node);
-		for (b = 0; b < 3; b++)
+		for (b = 0; b < nnod; b++)/*column 6*b+0~6*b+5 of P*/
 		{
 			for (i = 0; i < 3; i++)
 			{
@@ -2191,25 +2324,24 @@ double** projectionmtx(double* eform, double* edisp, double** G)
 			{
 				for (j = 0; j < 3; j++)
 				{
-					*(*(P + 6 * a + 3 + i) + 6 * b + j) = -*(*(Gu + i) + j);
-					*(*(P + 6 * a + i) + 6 * b + 3 + j) = 0.0;
+					*(*(P + 6 * a + 3 + i) + 6 * b + j) = -*(*(Gu + i) + j);/*-Gu_b*/
+					*(*(P + 6 * a + i) + 6 * b + 3 + j) = 0.0;				/*0*/
 					if (a == b && i == j)
 					{
-						*(*(P + 6 * a + i) + 6 * b + j) = 2.0 / 3.0;
-						*(*(P + 6 * a + 3 + i) + 6 * b + 3 + j) = 1.0;
+						*(*(P + 6 * a + i) + 6 * b + j) = 1.0 - 1.0/(double)nnod;	/*delta*I-1/3*I*/
+						*(*(P + 6 * a + 3 + i) + 6 * b + 3 + j) = 1.0;		/*delta*I*/
 					}
 					else if (i == j)
 					{
-						*(*(P + 6 * a + i) + 6 * b + j) = -1.0 / 3.0;
-						*(*(P + 6 * a + 3 + i) + 6 * b + 3 + j) = 0.0;
+						*(*(P + 6 * a + i) + 6 * b + j) = - 1.0/(double)nnod;		/*delta*I-1/3*I*/
+						*(*(P + 6 * a + 3 + i) + 6 * b + 3 + j) = 0.0;		/*delta*I*/
 					}
 					else
 					{
-						*(*(P + 6 * a + i) + 6 * b + j) = 0.0;
-						*(*(P + 6 * a + 3 + i) + 6 * b + 3 + j) = 0.0;
+						*(*(P + 6 * a + i) + 6 * b + j) = 0.0;				/*delta*I-1/3*I*/
+						*(*(P + 6 * a + 3 + i) + 6 * b + 3 + j) = 0.0;		/*delta*I*/
 					}
-					*(*(P + 6 * a + i) + 6 * b + j) += *(*(SGu + i) + j);
-
+					*(*(P + 6 * a + i) + 6 * b + j) += *(*(SGu + i) + j);	/*S_a*Gu_b*/
 				}
 			}
 			freematrix(SGu, 3);
@@ -2221,20 +2353,20 @@ double** projectionmtx(double* eform, double* edisp, double** G)
 	return P;
 }
 
-double** jacobimtx(double* edisp, double* estress, double** M)
+double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod)
 {
 	int n, i, j;
-	double theta, eta, mu, dot;
-	double* thetavct, * mvct;
+	double theta, dot, eta, mu;
+	double* rvct, * mvct;
 	double** thetaspin, ** thetaspin2, ** mspin, ** mtheta, ** mtheta2;
 	double** H, ** Ha, ** Ma;
 
-
-	H = (double**)malloc(18 * sizeof(double*));
-	for (i = 0; i < 18; i++)
+	/*H=diag[I, H_1, I, H_2(, I, H_3)]*/
+	H = (double**)malloc(6*nnod * sizeof(double*));
+	for (i = 0; i < 6*nnod; i++)
 	{
-		*(H + i) = (double*)malloc(18 * sizeof(double));
-		for (j = 0; j < 18; j++)
+		*(H + i) = (double*)malloc(6*nnod * sizeof(double));
+		for (j = 0; j < 6*nnod; j++)
 		{
 			*(*(H + i) + j) = 0.0;
 		}
@@ -2246,26 +2378,24 @@ double** jacobimtx(double* edisp, double* estress, double** M)
 		*(mtheta + i) = (double*)malloc(3 * sizeof(double));
 	}
 
-	thetavct = (double*)malloc(3 * sizeof(double));
+	rvct = (double*)malloc(3 * sizeof(double));
 	mvct = (double*)malloc(3 * sizeof(double));
 
-	for (n = 0; n < 3; n++)
+	for (n = 0; n < nnod; n++)
 	{
-		theta = 0.0;
-		dot = 0.0;
 		for (i = 0; i < 3; i++)
 		{
-			*(thetavct + i) = *(edisp + 6 * n + 3 + i);
+			*(rvct + i) = *(edisp + 6 * n + 3 + i);
 			*(mvct + i) = *(estress + 6 * n + 3 + i);
-			theta += *(thetavct + i) * *(thetavct + i);
-			dot += *(thetavct + i) * *(mvct + i);
 		}
-		theta = sqrt(theta);
+		theta = vectorlength(rvct,3);
+		dot = dotproduct(rvct,mvct,3);
+
 		for (i = 0; i < 3; i++)
 		{
 			for (j = 0; j < 3; j++)
 			{
-				*(*(mtheta + i) + j) = *(mvct + i) * *(thetavct + j);
+				*(*(mtheta + i) + j) = *(mvct + i) * *(rvct + j);
 			}
 		}
 
@@ -2280,8 +2410,9 @@ double** jacobimtx(double* edisp, double* estress, double** M)
 			mu = (theta * theta + 4.0 * cos(theta) + theta * sin(theta) - 4.0)
 				/ (4.0 * pow(theta, 4) * sin(0.5 * theta) * sin(0.5 * theta));
 		}
-		thetaspin = spinmtx(thetavct);
+		thetaspin = spinmtx(rvct);
 		thetaspin2 = matrixmatrix(thetaspin, thetaspin, 3);
+
 		mspin = spinmtx(mvct);
 		mtheta2 = matrixmatrix(thetaspin2, mtheta, 3);
 		Ha = (double**)malloc(3 * sizeof(double*));
@@ -2295,8 +2426,9 @@ double** jacobimtx(double* edisp, double* estress, double** M)
 			{
 				*(*(Ha + i) + j) = -0.5 * *(*(thetaspin + i) + j) + eta * *(*(thetaspin2 + i) + j);
 				if (i == j)*(*(Ha + i) + j) += 1.0;
+
 				*(*(mtheta2 + i) + j) *= mu;
-				*(*(mtheta2 + i) + j) += eta * (*(*(mtheta + j) + i) - 2.0 * *(*(mtheta + i) + j)) - 0.5 * *(*(mspin + i) + j);
+				*(*(mtheta2 + i) + j) += eta * ( *(*(mtheta + j) + i) - 2.0 * *(*(mtheta + i) + j) ) - 0.5 * *(*(mspin + i) + j);
 				if (i == j)*(*(mtheta2 + i) + j) += eta * dot;
 			}
 		}
@@ -2319,13 +2451,13 @@ double** jacobimtx(double* edisp, double* estress, double** M)
 		freematrix(Ma, 3);
 		freematrix(Ha, 3);
 	}
-	free(thetavct);
+	free(rvct);
 	free(mvct);
 	freematrix(mtheta, 3);
 	return H;
 }
 
-double** assemshelltmtx(double** estiff, double* eform, double* edisp, double* estress, double** T)
+double** assemtmtx(double** estiff, double* eform, double* edisp, double* estress, double** T, int nnod)
 {
 	int i, j, n;
 	double** G, ** P, ** H;
@@ -2335,30 +2467,30 @@ double** assemshelltmtx(double** estiff, double* eform, double* edisp, double* e
 	double** tstiff, ** gstiff1, ** gstiff2, ** gstiff3;
 
 
-	tstiff = (double**)malloc(18 * sizeof(double*));                              /*[M]*/
-	for (i = 0; i < 18; i++)
+	tstiff = (double**)malloc(6*nnod * sizeof(double*));                              /*[Kr]*/
+	for (i = 0; i < 6*nnod; i++)
 	{
-		*(tstiff + i) = (double*)malloc(18 * sizeof(double));
+		*(tstiff + i) = (double*)malloc(6*nnod * sizeof(double));
 	}
 
-	gstiff3 = (double**)malloc(18 * sizeof(double*));                              /*[M]*/
-	for (i = 0; i < 18; i++)
+	gstiff3 = (double**)malloc(6*nnod * sizeof(double*));                              /*[M]*/
+	for (i = 0; i < 6*nnod; i++)
 	{
-		*(gstiff3 + i) = (double*)malloc(18 * sizeof(double));
-		for (j = 0; j < 18; j++)
+		*(gstiff3 + i) = (double*)malloc(6*nnod * sizeof(double));
+		for (j = 0; j < 6*nnod; j++)
 		{
 			*(*(gstiff3 + i) + j) = 0.0;
 		}
 	}
 
 
-	G = spinfittermtx(eform);                             /*SPIN-FITTER MATRIX[G].*/
-	P = projectionmtx(eform, edisp, G);                            /*PROJECTION MATRIX[P].*/
-	H = jacobimtx(edisp, estress, gstiff3);              /*JACOBIAN MATRIX OF ROTATION[H].*/
-	HP = matrixmatrix(H, P, 18);                                            /*[H][P]*/
-	PtHt = matrixtranspose(HP, 18);
-	pstress = matrixvector(PtHt, estress, 18);           /*projected estress {Fp}*/
-	for (i = 0; i < 18; i++)
+	G = spinfittermtx(eform, nnod);                     /*SPIN-FITTER MATRIX[G].*/
+	P = projectionmtx(eform, edisp, G, nnod);    		/*PROJECTION MATRIX[P].*/
+	H = blockjacobimtx(edisp, estress, gstiff3, nnod);  /*JACOBIAN MATRIX OF ROTATION[H].*/
+	HP = matrixmatrix(H, P, 6*nnod);                    /*[H][P]*/
+	PtHt = matrixtranspose(HP, 6*nnod);
+	pstress = matrixvector(PtHt, estress, 6*nnod);      /*projected estress {Fp}*/
+	for (i = 0; i < 6*nnod; i++)
 	{
 		*(estress + i) = *(pstress + i);
 	}
@@ -2366,18 +2498,18 @@ double** assemshelltmtx(double** estiff, double* eform, double* edisp, double* e
 
 	nm = (double*)malloc(3 * sizeof(double));           /*projected estress of each node {n}&{m}*/
 
-	Fnm = (double**)malloc(18 * sizeof(double*));                          /*[Fnm]*/
-	for (i = 0; i < 18; i++)
+	Fnm = (double**)malloc(6*nnod * sizeof(double*));                          /*[Fnm]*/
+	for (i = 0; i < 6*nnod; i++)
 	{
 		*(Fnm + i) = (double*)malloc(3 * sizeof(double));
 	}
-	Fn = (double**)malloc(18 * sizeof(double*));                            /*[Fn]*/
-	for (i = 0; i < 18; i++)
+	Fn = (double**)malloc(6*nnod * sizeof(double*));                            /*[Fn]*/
+	for (i = 0; i < 6*nnod; i++)
 	{
 		*(Fn + i) = (double*)malloc(3 * sizeof(double));
 	}
 
-	for (n = 0; n < 3; n++)
+	for (n = 0; n < nnod; n++)
 	{
 		for (i = 0; i < 3; i++)
 		{
@@ -2411,19 +2543,19 @@ double** assemshelltmtx(double** estiff, double* eform, double* edisp, double* e
 	}
 
 
-	estiff = transformationIII(estiff, HP, 18);                  /*[Pt][Ht][K][H][P]*/
+	estiff = transformationIII(estiff, HP, 6*nnod);			/*[Pt][Ht][K][H][P]*/
 
-	gstiff1 = matrixmatrixIII(Fnm, G, 18, 3, 18);                           /*[Fnm][G]*/
+	gstiff1 = matrixmatrixIII(Fnm, G, 6*nnod, 3, 6*nnod);		/*[Fnm][G]*/
 
-	FnG = matrixmatrixIII(Fn, G, 18, 3, 18);                                 /*[Fn][G]*/
-	GtFnt = matrixtranspose(FnG, 18);                                   /*[Gt][Fnt]*/
-	gstiff2 = matrixmatrix(GtFnt, P, 18);                             /*[Gt][Fnt][P]*/
+	FnG = matrixmatrixIII(Fn, G, 6*nnod, 3, 6*nnod);         	/*[Fn][G]*/
+	GtFnt = matrixtranspose(FnG, 6*nnod);                   /*[Gt][Fnt]*/
+	gstiff2 = matrixmatrix(GtFnt, P, 6*nnod);               /*[Gt][Fnt][P]*/
 
-	gstiff3 = transformationIII(gstiff3, P, 18);                        /*[Pt][M][P]*/
+	gstiff3 = transformationIII(gstiff3, P, 6*nnod);        /*[Pt][M][P]*/
 
-	for (i = 0; i < 18; i++)
+	for (i = 0; i < 6*nnod; i++)
 	{
-		for (j = 0; j < 18; j++)
+		for (j = 0; j < 6*nnod; j++)
 		{
 			*(*(tstiff + i) + j) = *(*(estiff + i) + j) - *(*(gstiff1 + i) + j) - *(*(gstiff2 + i) + j) + *(*(gstiff3 + i) + j);
 		}
@@ -2433,18 +2565,18 @@ double** assemshelltmtx(double** estiff, double* eform, double* edisp, double* e
 	free(nm);
 
 	freematrix(G, 3);
-	freematrix(P, 18);
-	freematrix(H, 18);
-	freematrix(PtHt, 18);
-	freematrix(HP, 18);
-	freematrix(Fnm, 18);
-	freematrix(Fn, 18);
+	freematrix(P, 6*nnod);
+	freematrix(H, 6*nnod);
+	freematrix(PtHt, 6*nnod);
+	freematrix(HP, 6*nnod);
+	freematrix(Fnm, 6*nnod);
+	freematrix(Fn, 6*nnod);
 
-	freematrix(gstiff1, 18);
-	freematrix(FnG, 18);
-	freematrix(GtFnt, 18);
-	freematrix(gstiff2, 18);
-	freematrix(gstiff3, 18);
+	freematrix(gstiff1, 6*nnod);
+	freematrix(FnG, 6*nnod);
+	freematrix(GtFnt, 6*nnod);
+	freematrix(gstiff2, 6*nnod);
+	freematrix(gstiff3, 6*nnod);
 	return tstiff;
 }
 
@@ -2469,8 +2601,8 @@ void updaterotation(double* ddisp, double* gvct, int nnode)
 	long int loff;
 	double* rvctR, * rvctL, * rvct;
 	double** rmtxR, ** rmtxL, ** rmtx;
-	rvctR = (double*)malloc(3 * nnode * sizeof(double));
-	rvctL = (double*)malloc(3 * nnode * sizeof(double));
+	rvctR = (double*)malloc(3 * sizeof(double));
+	rvctL = (double*)malloc(3 * sizeof(double));
 	for (i = 0; i < nnode; i++)
 	{
 		for (j = 0; j < 3; j++)
@@ -2503,8 +2635,88 @@ void updaterotation(double* ddisp, double* gvct, int nnode)
 	return;
 }/*updaterotation*/
 
+
+double** updatedrccos(double** drccosinit, double* gdisp)
+{
+	int i;
+	double** drccos;
+	double* rvct1, * rvct2, *rvct;
+	double** rmtx1, ** rmtx2, **trmtx1, ** rmtx;
+	double** alpharmtx, **midrmtx;
+
+	rvct1 = (double*)malloc(3 * sizeof(double));
+	rvct2 = (double*)malloc(3 * sizeof(double));
+
+	for (i = 0; i < 3; i++)
+	{
+		*(rvct1 + i) += *(gdisp + 3 + i);
+		*(rvct2 + i) += *(gdisp + 9 + i);
+	}
+
+	rmtx1 = rotationmtx(rvct1);
+	rmtx2 = rotationmtx(rvct2);
+	trmtx1 = matrixtranspose(rmtx1,3);
+	rmtx = matrixmatrix(rmtx2, trmtx1, 3);
+	rvct = rotationvct(rmtx);
+
+	for (i = 0; i < 3; i++)
+	{
+		*(rvct+i)*=0.5;
+	}
+
+	alpharmtx = rotationmtx(rvct);
+	midrmtx = matrixmatrix(alpharmtx, rmtx1, 3);
+	drccos = matrixmatrix(midrmtx, drccosinit, 3);
+
+
+	freematrix(rmtx1, 3);
+	freematrix(rmtx2, 3);
+	freematrix(trmtx1, 3);
+	freematrix(rmtx, 3);
+	freematrix(alpharmtx, 3);
+	freematrix(midrmtx, 3);
+	free(rvct1);
+	free(rvct2);
+
+	return drccos;
+}
+
+/*
+double** interpolaterotation(double* rvct1, double* rvct2, double alpha)
+{
+	int i, j;
+	long int loff;
+	double* rvct;
+	double** rmtx1, ** rmtx2, **trmtx1, ** rmtx;
+
+	rmtx1 = rotationmtx(rvct1);
+	rmtx2 = rotationmtx(rvct2);
+	trmtx1 = matrixtranspose(rmtx1);
+	rmtx = matrixmatrix(rmtx2, trmtx1, 3);
+	rvct = rotationvct(rmtx);
+
+	for (i = 0; i < 3; i++)
+	{
+		*(rvct+i)*=alpha;
+	}
+
+	alpharmtx = rotationmtx(rvct);
+	midrmtx = matrixmatrix(alpharmtx, rmtx1, 3);
+
+
+	freematrix(rmtx1, 3);
+	freematrix(rmtx2, 3);
+	freematrix(trmtx1, 3);
+	freematrix(rmtx, 3);
+	free(rvct);
+
+	return midrmtx;
+}*/
+/*interpolaterotation*/
+
+
+/*
 void updateforce(double* pvct, double* ddisp, int nnode)
-/*FORMATION UPDATE IF ROTATION IS FINITE.*/
 {
 	int i, j;
 	long int loff;
@@ -2537,28 +2749,24 @@ void updateforce(double* pvct, double* ddisp, int nnode)
 	free(rvctR);
 	free(rvctL);
 	return;
-}/*updateforce*/
+}
+*/
+/*updateforce*/
 
 
-
-double* extractlocalcoord(struct oelem elem, double* gdisp)
+double* extractlocalcoord(double* gdisp, double** drccos, double nnod)
 /*EXTRACT LOCAL ELEMENT DEFORMATION FROM GLOBAL.*/
 /*UPDATE PSUEDO-ROTATION VECTOR*/
 {
-	long int i, loffset;
-	int n, nnod;
+	long int i, n;
 	double* d, * r, * c, * td, * tr, * edisp;
-	double** drccos, ** trmtx, ** rmtx;
-
-	nnod = elem.nnod;
+	double** trmtx, ** rmtx;
 
 	edisp = (double*)malloc(6 * nnod * sizeof(double));
 
 	c = (double*)malloc(3 * sizeof(double));
 	d = (double*)malloc(3 * sizeof(double));
 	r = (double*)malloc(3 * sizeof(double));
-
-	drccos = shelldrccos(shell, NULL);
 
 	for (i = 0; i < 3; i++)
 	{
@@ -2595,15 +2803,13 @@ double* extractlocalcoord(struct oelem elem, double* gdisp)
 		freematrix(rmtx, 3);
 		freematrix(trmtx, 3);
 	}
-
-
 	free(c);
 	free(d);
 	free(r);
-	freematrix(drccos, 3);
 
 	return edisp;
-}/*extractshelllocalcoord*/
+}/*extractlocalcoord*/
+
 
 double* extractshelldisplacement(struct oshell shell, double* ddisp)
 /*EXTRACT ELEMENT DEFORMATION{dU} FROM GLOBAL VECTOR.*/
@@ -2626,7 +2832,8 @@ double* extractshelldisplacement(struct oshell shell, double* ddisp)
 }/*extractshelldisplacement*/
 
 
-
+/*USE NEW VERSION "extractlocalcoord".*/
+#if 0
 double* extractshelllocalcoord(struct oshell shell, double* gdisp)
 /*EXTRACT LOCAL ELEMENT DEFORMATION FROM GLOBAL.*/
 /*UPDATE PSUEDO-ROTATION VECTOR*/
@@ -2690,6 +2897,7 @@ double* extractshelllocalcoord(struct oshell shell, double* gdisp)
 
 	return edisp;
 }/*extractshelllocalcoord*/
+#endif
 
 void extractdeformation(double* eform, double* edisp, int nnod)
 /*EXTRACT LOCAL ELEMENT DEFORMATION FROM GLOBAL.*/
@@ -2820,6 +3028,7 @@ double shellvolume(struct oshell shell, double** drccos, double area)
 	return volume;
 }/*shellvolume*/
 
+/*
 double equilibriumcurvature(double* weight, double* ddisp, double* lastddisp, double loadfactor, double lastloadfactor, double* dup, int msize)
 {
 	int i;
@@ -2843,5 +3052,26 @@ double equilibriumcurvature(double* weight, double* ddisp, double* lastddisp, do
 	curvature = acos(cos) / sqrt(lastlen);
 	free(vct);
 	free(lastvct);
+	return curvature;
+}
+*/
+
+double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize)
+{
+	int i;
+	double cos, dot, len, lastlen, curvature;
+	char string[40];
+
+	dot = laploadfactor;
+	len = 1.0;
+	lastlen = laploadfactor * laploadfactor;
+	for (i = 0; i < msize; i++)
+	{
+		dot += *(weight + i) **(dup + i) **(weight + i) **(lapddisp + i);
+		len += *(weight + i) **(dup + i) **(weight + i) **(dup + i);
+		lastlen += *(weight + i) **(lapddisp + i) **(weight + i) **(lapddisp + i);
+	}
+	cos = abs(dot / sqrt(len * lastlen));
+	curvature = acos(cos) / sqrt(lastlen);
 	return curvature;
 }

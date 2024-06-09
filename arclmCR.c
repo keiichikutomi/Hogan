@@ -45,7 +45,7 @@ int arclmCR(struct arclmframe* af)
 {
 	DWORDLONG memory;
 	char dir[]=DIRECTORY;
-	FILE *fdata, *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig;         /*FILE 8 BYTES*/
+	FILE *fdata, *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout;         /*FILE 8 BYTES*/
 	char s[80], string[400], inpname[50], fname[50];
 
 	int i, ii, jj;
@@ -347,6 +347,8 @@ int arclmCR(struct arclmframe* af)
 	fene = fopen(fname, "w");
 	snprintf(fname, sizeof(fname), "%s.%s", inpname, "eig");
 	feig = fopen(fname, "w");
+	snprintf(fname, sizeof(fname), "%s.%s", inpname, "otl");
+	fout = fopen(fname, "w");
 
 
 
@@ -1973,6 +1975,50 @@ int arclmCR(struct arclmframe* af)
 
 
 	}
+		  ////////// OUTPUT RESULT //////////
+	  laptime("OUTPUT INTO FILE.",t0);
+
+	  errormessage("STRESS.");
+	  if(fout!=NULL)
+	  {
+		fprintf(fout,"\n\n");
+		fprintf(fout,"** FORCES OF MEMBER\n\n");
+		fprintf(fout,"   NO   KT NODE            N           Q1           Q2");
+		fprintf(fout,"           MT           M1           M2\n\n");
+	  }
+	  for(i=1;i<=nelem;i++)                   /*STRESS OUTPUT,UPDATE.*/
+	  {
+		inputelem(elems,melem,i-1,&elem);
+
+		inputnode(ddisp,elem.node[0]);
+		inputnode(ddisp,elem.node[1]);
+
+		elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
+
+		estress=elemstress001(&elem,gvct,melem);
+
+		outputstress001(elem,estress,fout);
+		free(estress);
+	  }
+	  /*for(i=1;i<=nshell;i++)
+	  {
+		inputshell(shells,mshell,i-1,&shell);
+
+		for(ii=0;ii<shell.nnod;ii++)
+		{
+		  inputnode(ddisp,shell.node[ii]);
+		}
+
+		shell.sect=(shells+i-1)->sect;
+
+		estress=shellstress(&shell,gvct2,mshell);
+
+		outputshellstress(shell,estress,fout);
+		free(estress);
+	  }*/
+	  if(fout!=NULL) fprintf(fout,"\n\n");
+
+
 
 	fclose(fin);
 	fclose(fonl);

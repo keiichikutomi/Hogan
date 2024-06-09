@@ -334,16 +334,18 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	  }
 	  */
 
-  for (ii=1;ii<=msize;ii++)
+  for(ii = 0; ii < msize; ii++)
   {
 	if(*(constraintmain+ii)!=ii)
 	{
-	  mainoff = *(constraintmain+ii);
+	  //mainoff = *(constraintmain+ii);
 	  (confs+ii)->iconf = (signed char)1;
 	  /*(confs+mainoff)->value += (confs+ii)->value;
 	  (confs+ii)->value = 0.0;*/
 	}
   }
+
+
 
 
 
@@ -406,6 +408,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	confs2=confs;
   }
 #endif
+
+
 	moff=NULL;
 	noff=NULL;
 	gmtx2=gmtx;
@@ -468,6 +472,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
   /*laptime("REEXCHANGE MATRIX.",t0);*/
   /*exchangelines(gmtx,gvct,confs,moff,noff,nnode,1);*/
+
+
   for(ii=0;ii<msize;ii++)
   {
 	if(*(constraintmain+ii)!=ii)
@@ -476,15 +482,10 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	  *(gvct2+ii) = *(gvct2+mainoff);
 	}
   }
+
+  ////////// OUTPUT RESULT //////////
   laptime("OUTPUT INTO FILE.",t0);
-  updateform(ddisp,gvct2,nnode);
-  if(/*iteration==*/1)
-  {
-	fprintf(fout,"\"DISPLACEMENT\"\n");
-	outputdisp(ddisp,fout,nnode,nodes);                    /*FORMATION OUTPUT.*/
-	fprintf(fout,"\"STRESS\"\n");
-  }
-#if 0
+
   errormessage("STRESS.");
   if(fout!=NULL)
   {
@@ -508,14 +509,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	outputstress001(elem,estress,fout);
 	free(estress);
   }
-  if(fout!=NULL)
-  {
-	fprintf(fout,"\n\n");
-	fprintf(fout,"** FORCES OF MEMBER\n\n");
-	fprintf(fout,"   NO   KT NODE            N           Q1           Q2");
-	fprintf(fout,"           MT           M1           M2\n\n");
-  }
-#endif
   for(i=1;i<=nshell;i++)
   {
 	inputshell(shells,mshell,i-1,&shell);
@@ -532,15 +525,12 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	outputshellstress(shell,estress,fout);
 	free(estress);
   }
-#if 1
   if(fout!=NULL) fprintf(fout,"\n\n");
 
   errormessage("DISPLACEMENT.");
   /*outputdisp001(gvct,fout,nnode,nodes);*/           /*DISPLACEMENT.*/
   outputdisp002(gvct2,fout,nnode,nodes,moff);     /*DISPLACEMENT.*/
   if(fout!=NULL) fprintf(fout,"\n\n");
-  /*while(!GetAsyncKeyState(VK_LBUTTON))
-  ;*/                                   /*LEFT CLICK TO CONTINUE.*/
 
   errormessage("REACTION.");
   if(fout!=NULL)
@@ -549,9 +539,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
     fprintf(fout,"  NO  DIRECTION              R    NC\n\n");
   }
   /*outputreaction001(gmtx,gvct,nodes,confs,dreact,fout,nnode);*/
-
-
-  outputreaction002(gmtx2,gvct2,nodes,confs2,dreact,fout,nnode,moff);
+  //outputreaction002(gmtx2,gvct2,nodes,confs2,dreact,fout,nnode,moff); /*TAKES TOO MUCH TIME.*/
 
   fclose(fin);
   fclose(fout);
@@ -561,7 +549,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   updateform2(ddisp,gvct2,nnode,moff);        /*FORMATION UPDATE.*/
 
   laptime("\0",t0);
-#endif
+
   memory2=availablephysicalmemory(NULL);
   sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory1-memory2));
   errormessage(string);

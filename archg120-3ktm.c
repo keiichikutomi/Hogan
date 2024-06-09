@@ -26360,13 +26360,13 @@ void outputstressnl(struct owire elem,                           //Check MIHARA
   char s[80],string[256];
   int i,n,nn[2];
 
-  for(n=0;n<=1;n++)
+  for(n=0;n<2;n++)
   {
     nn[n]=elem.node[n]->code;
     if(n==0) sprintf(string,"%5d %4d %4d",
                      elem.code,elem.sect->code,nn[n]);
     if(n==1) sprintf(string,"           %4d",nn[n]);
-    for(i=0;i<=5;i++)
+	for(i=0;i<6;i++)
     {
       /*sprintf(s," %9.3f",*(estress+6*n+i));*/       /*WITHOUT CMQ*/
       sprintf(s," %3.9f",elem.stress[n][i]);             /*WITH CMQ*/      //9.3
