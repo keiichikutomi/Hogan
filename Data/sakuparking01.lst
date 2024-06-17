@@ -1,0 +1,52 @@
+âºíËífñ ÇÃì¸óÕÉfÅ[É^
+
+"INPUT DATA"
+"MATERIAL TYPE:S,RC,SRC,PC"
+"MEMBER TYPE  :COLUMN,GIRDER,WALL,SLAB,BRACE"
+"SRECT:STEEL.                                    LEFT,BOTTOM,RIGHT,TOP[cm]"
+"HKYOU:STEEL H, x=STRONG AXIS.                               H,B,tw,tf[cm]"
+"HWEAK:STEEL H, x=WEAK AXIS.                                 H,B,tw,tf[cm]"
+"RPIPE:STEEL RECTANGLE PIPE.                                 H,B,tw,tf[cm]"
+"CPIPE:STEEL CIRCLE PIPE.                                          D,t[cm]"
+"SAREA:AREA OF STEEL BRACE.                                      AREA[cm2]"
+"REINS:REINFOCEMENT.                                          AREA,X,Y[cm]"
+"CRECT:CONCRETE.                                 LEFT,BOTTOM,RIGHT,TOP[cm]"
+"THICK:THICKNESS OF RC WALL.                                 THICKNESS[cm]"
+"HOOPS:HOOP,STP.                                       FOR Qx,FOR Qy[RATE]"
+"SREIN:REINFORCEMENT FOR SHEAR OF WALL.                           pw[RATE]"
+"WRECT:WINDOW RECTANGLE OF WALL.                         LENGTH,HEIGHT[cm]"
+"XFACE:FACE FOR Mx,FACE FOR WALL LENGTH.                     HEAD,TAIL[cm]"
+"YFACE:FACE FOR My,FACE FOR WALL HEIGHT.                     HEAD,TAIL[cm]"
+
+CODE 101 S COLUMN                                                  "CS1"
+         CPIPE    12.7     0.6     SN400                "É”127.0x6.0[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 301 RC GIRDER                                                "FG11"
+         REINS  2.865     -7.0   42.0 SD345                      "2-D19"
+         REINS  2.865      7.0   42.0 SD345 
+         REINS  2.865     -7.0  -42.0 SD345                      "2-D19"
+         REINS  2.865      7.0  -42.0 SD345 
+         CRECT  -15.0 -50.0   15.0  50.0  FC24      "CONCRETE 30x100[cm]"
+         HOOPS 0.00071 0.00238  SD295      "HOOP Qx:2-D10@200 Qy:2-D10@200"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 501 S GIRDER                                                     "G11"
+         HKYOU    15.0    15.0   0.7   1.0   SN400     "H-150x150x7x10[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     4.0     4.0
+         BTFAC     4.0     4.0
+
+CODE 502 S GIRDER                                                     "G11"
+         HKYOU     7.5     7.5   0.5   0.8   SN400        "H-75x75x5x8[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     4.0     4.0
+         BTFAC     4.0     4.0
+
+

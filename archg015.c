@@ -2064,7 +2064,8 @@ void frameoutputtomemory(FILE *ftext,struct arclmframe *af)
   int i,j,k,n;
   long int ecode,hcode;
   double ddata;
-
+  errormessage("test");
+  errormessage("test");
   fseek(ftext,0L,SEEK_SET);
 
   /*"OUTPUTFILE SPECIFICATION"*/
@@ -2073,25 +2074,26 @@ void frameoutputtomemory(FILE *ftext,struct arclmframe *af)
   /*              TAIL N Q1 Q2 MT M1 M2*/
   /*NODECODE U V W TX TY TZ*/
   /*NODECODE DIRECTION REACTIONVALUE CONFINEMENTTYPE*/
-
+  errormessage("test");
   af->ddisp=(double *)malloc(6*(af->nnode)*sizeof(double));
-                                       /*DISPLACEMENT:6 DIRECTIONS.*/
+									   /*DISPLACEMENT:6 DIRECTIONS.*/
   af->melem=(struct memoryelem *)
             malloc((af->nelem)*sizeof(struct memoryelem));
-                                        /*CODE,12 BOUNDS,12 STRESS.*/
+										/*CODE,12 BOUNDS,12 STRESS.*/
   af->dreact=(double *)malloc((af->nreact)*sizeof(double));
-                                                        /*REACTION.*/
-
+														/*REACTION.*/
+  errormessage("test");
   while(strncmp(str,"** FORCES",9)) fgets(str,256,ftext);
   for(i=1;i<=3;i++) fgets(str,256,ftext);
 
+  errormessage("test");
   for(i=1;i<=(af->nelem);i++) /*STRESSES.*/
   {
     data=fgetsbrk(ftext,&n);
-    if(n!=9) return;
+	if(n!=9) return;
 
     ecode=strtol(*(data+0),NULL,10);
-    if(ecode!=(af->elems+i-1)->code) return;
+	if(ecode!=(af->elems+i-1)->code) return;
 
     /*scode=strtol(*(data+1),NULL,10);*/ /*SECTION.*/
     /*hcode=strtol(*(data+2),NULL,10);*/ /*HEAD NODE.*/

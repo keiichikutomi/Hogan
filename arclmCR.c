@@ -395,11 +395,11 @@ int arclmCR(struct arclmframe* af)
 	mvct = (double*)malloc(msize * sizeof(double));/*MASS VECTOR.*/
 
 
-	funbalance = (double*)malloc(msize * sizeof(double));           /*UNBALANCED INTERNAL FORCE VECTOR.*/
+	funbalance = (double*)malloc(msize * sizeof(double));          /*UNBALANCED INTERNAL FORCE VECTOR.*/
 	freaction = (double*)malloc(msize * sizeof(double));           /*EXTERNAL FORCE VECTOR.*/
 	fexternal = (double*)malloc(msize * sizeof(double));           /*EXTERNAL FORCE VECTOR.*/
-	finternal = (double*)malloc(msize * sizeof(double));          /*INTERNAL FORCE VECTOR.*/
-	fpressure = (double*)malloc(msize * sizeof(double));          /*PRESSURE FORCE VECTOR.*/
+	finternal = (double*)malloc(msize * sizeof(double));           /*INTERNAL FORCE VECTOR.*/
+	fpressure = (double*)malloc(msize * sizeof(double));           /*PRESSURE FORCE VECTOR.*/
 	fswitching = (double*)malloc(msize * sizeof(double));
 
 	due = (double*)malloc(msize * sizeof(double));
@@ -407,9 +407,8 @@ int arclmCR(struct arclmframe* af)
 
 	lastddisp = (double*)malloc(msize * sizeof(double));
 	lastgvct = (double*)malloc(msize * sizeof(double));
-	lastpivot = (double*)malloc(msize * sizeof(double));        /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
-
-	lapddisp = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN LAP*/
+	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
+	lapddisp = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
 
 
 	evct = (double*)malloc(msize * sizeof(double));
@@ -1936,7 +1935,7 @@ int arclmCR(struct arclmframe* af)
 			errormessage(string);
 		}
 
-
+#if 0
 		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 		{
 		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
@@ -1968,12 +1967,12 @@ int arclmCR(struct arclmframe* af)
 			laptime("\0",t0);
 			return 1;
 		  }
+
 		  //t2=clock();
 		  //time=(t2-t1)/CLK_TCK;
 		  //if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
 		}
-
-
+#endif
 	}
 		  ////////// OUTPUT RESULT //////////
 	  laptime("OUTPUT INTO FILE.",t0);
@@ -1985,21 +1984,63 @@ int arclmCR(struct arclmframe* af)
 		fprintf(fout,"** FORCES OF MEMBER\n\n");
 		fprintf(fout,"   NO   KT NODE            N           Q1           Q2");
 		fprintf(fout,"           MT           M1           M2\n\n");
-	  }
-	  for(i=1;i<=nelem;i++)                   /*STRESS OUTPUT,UPDATE.*/
-	  {
-		inputelem(elems,melem,i-1,&elem);
+      }
 
-		inputnode(ddisp,elem.node[0]);
-		inputnode(ddisp,elem.node[1]);
 
-		elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
+      /*CR Girder under constructuon*/
+		for (i = 1; i <= nelem; i++)
+		{
+			inputelem(elems,melem,i-1,&elem);
+			elem.sect=(elems+i-1)->sect;
 
-		estress=elemstress001(&elem,gvct,melem);
+			for (ii = 0; ii < elem.nnod; ii++)
+			{
+				inputnode(iform, elem.node[ii]);
+			}
+			drccosinit = directioncosine(elem.node[0]->d[0],
+							 elem.node[0]->d[1],
+							 elem.node[0]->d[2],
+							 elem.node[1]->d[0],
+							 elem.node[1]->d[1],
+							 elem.node[1]->d[2],
+							 elem.cangle);
+			gform = extractdisplacement(elem, iform);                  /*{Xg}*/
+			eform = extractlocalcoord(gform,drccosinit,elem.nnod);
 
-		outputstress001(elem,estress,fout);
-		free(estress);
-	  }
+			for (ii = 0; ii < elem.nnod; ii++)
+			{
+				inputnode(ddisp, elem.node[ii]);
+			}
+            drccos = directioncosine(elem.node[0]->d[0],
+							 elem.node[0]->d[1],
+							 elem.node[0]->d[2],
+							 elem.node[1]->d[0],
+							 elem.node[1]->d[1],
+							 elem.node[1]->d[2],
+							 elem.cangle);
+			//drccos = middrccos()
+			gdisp = extractdisplacement(elem, ddisp);              /*{Xg+Ug}*/
+			edisp = extractlocalcoord(gdisp,drccos,elem.nnod);
+
+			extractdeformation(eform, edisp, elem.nnod);                /*{Ue}*/
+
+
+
+			Ke = assememtx(elem);                  /*ELASTIC MATRIX OF GIRDER[Ke].*/
+			einternal = matrixvector(Ke, edisp, 6 * elem.nnod);      /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
+
+			updatestressnl(melem,einternal,&elem);
+			outputstress001(elem,einternal,fout);
+
+			freematrix(drccosinit, 3);
+			freematrix(drccos, 3);
+			freematrix(Ke, 6 * elem.nnod);
+			free(einternal);
+			free(eform);
+			free(gform);
+			free(edisp);
+			free(gdisp);
+		}
 	  /*for(i=1;i<=nshell;i++)
 	  {
 		inputshell(shells,mshell,i-1,&shell);
@@ -2017,6 +2058,12 @@ int arclmCR(struct arclmframe* af)
 		free(estress);
 	  }*/
 	  if(fout!=NULL) fprintf(fout,"\n\n");
+	  for (i = 0; i < msize; i++)
+	  {
+		  *(gvct+i)=*(ddisp+i)-*(iform+i);
+      }
+	  outputdisp001(gvct,fout,nnode,nodes);
+	  if(fout!=NULL) fprintf(fout,"\n\n");
 
 
 
@@ -2031,6 +2078,7 @@ int arclmCR(struct arclmframe* af)
 	fclose(fene);
 	fclose(ffig);
 	fclose(fbcl);
+	fclose(fout);
 	gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
 	errormessage(" ");
 	errormessage("COMPLETED.");
@@ -2082,7 +2130,7 @@ double* rotationvct(double** rmtx)
 	c = *(*(rmtx + 0) + 0) + *(*(rmtx + 1) + 1) + *(*(rmtx + 2) + 2) - 1;                         /*2cos(theta)*/
 	s = sqrt((*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2)) * (*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2))
 		+ (*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0)) * (*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0))
-		+ (*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1)) * (*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1)));  /*2sin(theta)>0*/
+		+ (*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1)) * (*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1)));  /*|2sin(theta)|>0*/
 
 	if (s != 0.0)
 	{

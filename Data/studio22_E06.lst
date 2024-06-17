@@ -1,0 +1,43 @@
+����f�ʂ̓��̓f�[�^
+
+"INPUT DATA"
+"MATERIAL TYPE:S,RC,SRC,PC"
+"MEMBER TYPE  :COLUMN,GIRDER,WALL,SLAB,BRACE"
+"SRECT:STEEL.                                    LEFT,BOTTOM,TOP,RIGHT[cm]"
+"HKYOU:STEEL H, x=STRONG AXIS.                               H,B,tw,tf[cm]"
+"HWEAK:STEEL H, x=WEAK AXIS.                                 H,B,tw,tf[cm]"
+"RPIPE:STEEL RECTANGLE PIPE.                                 H,B,tw,tf[cm]"
+"CPIPE:STEEL CIRCLE PIPE.                                          D,t[cm]"
+"SAREA:AREA OF STEEL BRACE.                                      AREA[cm2]"
+"REINS:REINFOCEMENT.                                          AREA,X,Y[cm]"
+"CRECT:CONCRETE.                                 LEFT,BOTTOM,TOP,RIGHT[cm]"
+"THICK:THICKNESS OF RC WALL.                                 THICKNESS[cm]"
+"HOOPS:HOOP,STP.                                       FOR Qx,FOR Qy[RATE]"
+"SREIN:REINFORCEMENT FOR SHEAR OF WALL.                           pw[RATE]"
+"WRECT:WINDOW RECTANGLE OF WALL.                         LENGTH,HEIGHT[cm]"
+"XFACE:FACE FOR Mx,FACE FOR WALL LENGTH.                     HEAD,TAIL[cm]"
+"YFACE:FACE FOR My,FACE FOR WALL HEIGHT.                     HEAD,TAIL[cm]"
+
+
+CODE 201 S COLUMN                                        "nemoto=Rod:phi-5"
+         CPIPE   0.439   0.170            SN490                    "phi-5[mm]"
+         XFACE   0.0   0.0             "FACE LENGTH Mx:HEAD= 0,TAIL= 0[cm]"
+         YFACE   0.0   0.0             "FACE LENGTH My:HEAD= 0,TAIL= 0[cm]"
+         BBFAC   3.0   3.0       "BUCKLING LENGTH FACTOR kx=1.0 ky=1.0[cm]"
+
+CODE 202 S COLUMN                                              "mannaka"
+         CPIPE   0.439   0.170            SN490                    "phi-5[mm]"
+         XFACE   0.0   0.0             "FACE LENGTH Mx:HEAD= 0,TAIL= 0[cm]"
+         YFACE   0.0   0.0             "FACE LENGTH My:HEAD= 0,TAIL= 0[cm]"
+         BBFAC   1.5   1.5      "BUCKLING LENGTH FACTOR kx=1.0 ky=1.0[cm]"
+
+CODE 203 S COLUMN                                              "senntan"
+         CPIPE   0.439   0.170            SN490                    "phi-5[mm]"
+         XFACE   0.0   0.0             "FACE LENGTH Mx:HEAD= 0,TAIL= 0[cm]"
+         YFACE   0.0   0.0             "FACE LENGTH My:HEAD= 0,TAIL= 0[cm]"
+         BBFAC   2.0   2.0       "BUCKLING LENGTH FACTOR kx=1.0 ky=1.0[cm]"
+
+CODE 601 S BRACE                                           "=Cable:phi-0.7"
+         SAREA   0.0038                  SN400
+
+

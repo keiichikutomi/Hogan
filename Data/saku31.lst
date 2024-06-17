@@ -1,0 +1,511 @@
+âºíËífñ ÇÃì¸óÕÉfÅ[É^
+
+"INPUT DATA"
+"MATERIAL TYPE:S,RC,SRC,PC"
+"MEMBER TYPE  :COLUMN,GIRDER,WALL,SLAB,BRACE"
+"SRECT:STEEL.                                    LEFT,BOTTOM,RIGHT,TOP[cm]"
+"HKYOU:STEEL H, x=STRONG AXIS.                               H,B,tw,tf[cm]"
+"HWEAK:STEEL H, x=WEAK AXIS.                                 H,B,tw,tf[cm]"
+"RPIPE:STEEL RECTANGLE PIPE.                                 H,B,tw,tf[cm]"
+"CPIPE:STEEL CIRCLE PIPE.                                          D,t[cm]"
+"SAREA:AREA OF STEEL BRACE.                                      AREA[cm2]"
+"REINS:REINFOCEMENT.                                          AREA,X,Y[cm]"
+"CRECT:CONCRETE.                                 LEFT,BOTTOM,RIGHT,TOP[cm]"
+"THICK:THICKNESS OF RC WALL.                                 THICKNESS[cm]"
+"HOOPS:HOOP,STP.                                       FOR Qx,FOR Qy[RATE]"
+"SREIN:REINFORCEMENT FOR SHEAR OF WALL.                           pw[RATE]"
+"WRECT:WINDOW RECTANGLE OF WALL.                         LENGTH,HEIGHT[cm]"
+"XFACE:FACE FOR Mx,FACE FOR WALL LENGTH.                     HEAD,TAIL[cm]"
+"YFACE:FACE FOR My,FACE FOR WALL HEIGHT.                     HEAD,TAIL[cm]"
+
+CODE 101 RC COLUMN                                                   "CR1"
+         REINS  1.986     -17.0   17.0   SD295                    "12-D16"
+         REINS  1.986     -17.0    4.0   SD295
+         REINS  1.986     -17.0   -4.0   SD295
+         REINS  1.986     -17.0  -17.0   SD295
+         REINS  1.986      -4.0   17.0   SD295
+         REINS  1.986      -4.0  -17.0   SD295
+         REINS  1.986       4.0   17.0   SD295 
+         REINS  1.986       4.0  -17.0   SD295 
+         REINS  1.986      17.0   17.0   SD295 
+         REINS  1.986      17.0    4.0   SD295
+         REINS  1.986      17.0   -4.0   SD295
+         REINS  1.986      17.0  -17.0   SD295
+         CRECT  -25.0  -25.0   25.0   25.0  FC24      "CONCRETE 50x50[cm]"
+         HOOPS 0.002852 0.002852  SD295   "HOOP Qx:2-D10@100 Qy:2-D10@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 102 RC COLUMN                                                   "CR2"
+         REINS  2.865     -17.0   17.0   SD345                    "12-D19"
+         REINS  2.865     -17.0    4.0   SD345
+         REINS  2.865     -17.0   -4.0   SD345
+         REINS  2.865     -17.0  -17.0   SD345
+         REINS  2.865      -4.0   17.0   SD345
+         REINS  2.865      -4.0  -17.0   SD345
+         REINS  2.865       4.0   17.0   SD345 
+         REINS  2.865       4.0  -17.0   SD345 
+         REINS  2.865      17.0   17.0   SD345 
+         REINS  2.865      17.0    4.0   SD345
+         REINS  2.865      17.0   -4.0   SD345
+         REINS  2.865      17.0  -17.0   SD345
+         CRECT  -25.0  -25.0   25.0   25.0  FC24      "CONCRETE 50x50[cm]"
+         HOOPS 0.002852 0.002852  SD295   "HOOP Qx:2-D10@100 Qy:2-D10@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 103 RC COLUMN                                                  "CR3A"
+         REINS  5.067     -17.0   17.0   SD345                    "12-D25"
+         REINS  5.067     -17.0    4.0   SD345
+         REINS  5.067     -17.0   -4.0   SD345
+         REINS  5.067     -17.0  -17.0   SD345
+         REINS  5.067      -4.0   17.0   SD345
+         REINS  5.067      -4.0  -17.0   SD345
+         REINS  5.067       4.0   17.0   SD345 
+         REINS  5.067       4.0  -17.0   SD345 
+         REINS  5.067      17.0   17.0   SD345 
+         REINS  5.067      17.0    4.0   SD345
+         REINS  5.067      17.0   -4.0   SD345
+         REINS  5.067      17.0  -17.0   SD345
+         CRECT  -25.0  -25.0   25.0   25.0  FC24      "CONCRETE 50x50[cm]"
+         HOOPS 0.002852 0.002852  SD295   "HOOP Qx:2-D10@100 Qy:2-D10@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 104 RC COLUMN                                                  "CR3B"
+         REINS  5.067     -17.0   17.0   SD345                    "12-D25"
+         REINS  5.067     -17.0    4.0   SD345
+         REINS  5.067     -17.0   -4.0   SD345
+         REINS  5.067     -17.0  -17.0   SD345
+         REINS  5.067      -4.0   17.0   SD345
+         REINS  5.067      -4.0  -17.0   SD345
+         REINS  5.067       4.0   17.0   SD345 
+         REINS  5.067       4.0  -17.0   SD345 
+         REINS  5.067      17.0   17.0   SD345 
+         REINS  5.067      17.0    4.0   SD345
+         REINS  5.067      17.0   -4.0   SD345
+         REINS  5.067      17.0  -17.0   SD345
+         CRECT  -25.0  -25.0   25.0   25.0  FC24      "CONCRETE 50x50[cm]"
+         HOOPS 0.007602 0.007602  SD295   "HOOP Qx:3-D13@100 Qy:3-D13@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 101 RC COLUMN                                                   "CR4"
+         REINS  6.424     -17.0   17.0   SD345                    "12-D29"
+         REINS  6.424     -17.0    4.0   SD345
+         REINS  6.424     -17.0   -4.0   SD345
+         REINS  6.424     -17.0  -17.0   SD345
+         REINS  6.424      -4.0   17.0   SD345
+         REINS  6.424      -4.0  -17.0   SD345
+         REINS  6.424       4.0   17.0   SD345 
+         REINS  6.424       4.0  -17.0   SD345 
+         REINS  6.424      17.0   17.0   SD345 
+         REINS  6.424      17.0    4.0   SD345
+         REINS  6.424      17.0   -4.0   SD345
+         REINS  6.424      17.0  -17.0   SD345
+         CRECT  -25.0  -25.0   25.0   25.0  FC24      "CONCRETE 50x50[cm]"
+         HOOPS 0.007602 0.007602  SD295   "HOOP Qx:3-D13@100 Qy:3-D13@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 201 S COLUMN                                               "CS1(pin)"
+         CPIPE    26.74    0.9     SN000                "É”267.4x19.0[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 202 S COLUMN                                                   "CS2"
+         CPIPE    26.74    1.9     SN490               "É”267.4x19.0[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.2     1.2
+         BTFAC     1.2     1.2
+
+CODE 203 S COLUMN                                             "G13(weak)"
+         HWEAK    12.5    12.5   0.65  0.9   SN490  "H-125x125x6.5x9[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.2     1.2
+         BTFAC     1.2     1.2
+CODE 211 S COLUMN                                                   "CS2"
+         CPIPE    26.74    1.9     SN490               "É”267.4x19.0[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.2     1.2
+         BTFAC     1.2     1.2
+CODE 212 S COLUMN                                                   "CS2"
+         CPIPE    26.74    1.9     SN490               "É”267.4x19.0[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.2     1.2
+         BTFAC     1.2     1.2
+CODE 213 S COLUMN                                                   "CS2"
+         CPIPE    26.74    1.9     SN490               "É”267.4x19.0[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.2     1.2
+         BTFAC     1.2     1.2
+CODE 214 S COLUMN                                                   "CS2"
+         CPIPE    26.74    1.9     SN490               "É”267.4x19.0[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.2     1.2
+         BTFAC     1.2     1.2
+CODE 215 S COLUMN                                                   "CS2"
+         CPIPE    26.74    1.9     SN490               "É”267.4x19.0[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.2     1.2
+         BTFAC     1.2     1.2
+CODE 301 RC GIRDER                                                "FG11"
+         REINS  2.865     -17.0   92.0 SD345                     "4-D19"
+         REINS  2.865      17.0   92.0 SD345
+         REINS  2.865     -17.0   84.0 SD345
+         REINS  2.865      17.0   84.0 SD345
+         REINS  2.865     -17.0  -92.0 SD345                     "4-D19"
+         REINS  2.865      17.0  -92.0 SD345
+         REINS  2.865     -17.0  -84.0 SD345
+         REINS  2.865      17.0  -84.0 SD345
+         CRECT  -25.0 -100.0   25.0  100.0  FC24      "CONCRETE 50x200[cm]"
+         HOOPS 0.00063 0.00253  SD295      "HOOP Qx:2-D13@200 Qy:2-D13@200"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 302 RC GIRDER                                                "FG12"
+         REINS  3.871     -17.0   92.0 SD345                     "4-D22"
+         REINS  3.871      17.0   92.0 SD345
+         REINS  3.871     -17.0   84.0 SD345
+         REINS  3.871      17.0   84.0 SD345
+         REINS  3.871     -17.0  -92.0 SD345                     "4-D22"
+         REINS  3.871      17.0  -92.0 SD345
+         REINS  3.871     -17.0  -84.0 SD345
+         REINS  3.871      17.0  -84.0 SD345
+         CRECT  -25.0 -100.0   25.0  100.0  FC24      "CONCRETE 50x200[cm]"
+         HOOPS 0.00063 0.00253  SD295      "HOOP Qx:2-D13@200 Qy:2-D13@200"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 303 RC GIRDER                                                "FG13"
+         REINS  3.871     -17.0   92.0 SD345                     "6-D22"
+         REINS  3.871      -9.0   92.0 SD345
+         REINS  3.871       9.0   92.0 SD345
+         REINS  3.871      17.0   92.0 SD345
+         REINS  3.871     -17.0   84.0 SD345
+         REINS  3.871      17.0   84.0 SD345
+         REINS  3.871     -17.0  -92.0 SD345                     "6-D22"
+         REINS  3.871      -9.0  -92.0 SD345
+         REINS  3.871       9.0  -92.0 SD345
+         REINS  3.871      17.0  -92.0 SD345
+         REINS  3.871     -17.0  -84.0 SD345
+         REINS  3.871      17.0  -84.0 SD345
+         CRECT  -25.0 -100.0   25.0  100.0  FC24      "CONCRETE 50x200[cm]"
+         HOOPS 0.00063 0.00253  SD295      "HOOP Qx:2-D13@200 Qy:2-D13@200"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 304 RC GIRDER                                               "FG14A"
+         REINS  5.067     -17.0   92.0 SD345                     "6-D25"
+         REINS  5.067      -9.0   92.0 SD345
+         REINS  5.067       9.0   92.0 SD345
+         REINS  5.067      17.0   92.0 SD345
+         REINS  5.067     -17.0   84.0 SD345
+         REINS  5.067      17.0   84.0 SD345
+         REINS  5.067     -17.0  -92.0 SD345                     "6-D25"
+         REINS  5.067      -9.0  -92.0 SD345
+         REINS  5.067       9.0  -92.0 SD345
+         REINS  5.067      17.0  -92.0 SD345
+         REINS  5.067     -17.0  -84.0 SD345
+         REINS  5.067      17.0  -84.0 SD345
+         CRECT  -25.0 -100.0   25.0  100.0  FC24      "CONCRETE 50x200[cm]"
+         HOOPS 0.00063 0.00253  SD295      "HOOP Qx:2-D13@200 Qy:2-D13@200"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 305 RC GIRDER                                               "FG14B"
+         REINS  5.067     -17.0   92.0 SD345                     "6-D25"
+         REINS  5.067      -9.0   92.0 SD345
+         REINS  5.067       9.0   92.0 SD345
+         REINS  5.067      17.0   92.0 SD345
+         REINS  5.067     -17.0   84.0 SD345
+         REINS  5.067      17.0   84.0 SD345
+         REINS  5.067     -17.0  -92.0 SD345                     "6-D25"
+         REINS  5.067      -9.0  -92.0 SD345
+         REINS  5.067       9.0  -92.0 SD345
+         REINS  5.067      17.0  -92.0 SD345
+         REINS  5.067     -17.0  -84.0 SD345
+         REINS  5.067      17.0  -84.0 SD345
+         CRECT  -25.0 -100.0   25.0  100.0  FC24      "CONCRETE 50x200[cm]"
+         HOOPS 0.00198 0.00794  SD295      "HOOP Qx:2-D16@100 Qy:2-D16@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 306 RC GIRDER                                                "FG15"
+         REINS  5.067     -17.0   92.0 SD345                     "8-D25"
+         REINS  5.067      -9.0   92.0 SD345
+         REINS  5.067       9.0   92.0 SD345
+         REINS  5.067      17.0   92.0 SD345
+         REINS  5.067     -17.0   84.0 SD345
+         REINS  5.067      17.0   84.0 SD345
+         REINS  5.067      -9.0   84.0 SD345
+         REINS  5.067       9.0   84.0 SD345
+         REINS  5.067     -17.0  -92.0 SD345                     "8-D25"
+         REINS  5.067      -9.0  -92.0 SD345
+         REINS  5.067       9.0  -92.0 SD345
+         REINS  5.067      17.0  -92.0 SD345
+         REINS  5.067     -17.0  -84.0 SD345
+         REINS  5.067      17.0  -84.0 SD345
+         REINS  5.067      -9.0  -84.0 SD345
+         REINS  5.067       9.0  -84.0 SD345
+         CRECT  -25.0 -100.0   25.0  100.0  FC24      "CONCRETE 50x200[cm]"
+         HOOPS 0.00198 0.00794  SD295      "HOOP Qx:2-D16@100 Qy:2-D16@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 401 RC GIRDER                                                "GR11"
+         REINS  2.865     -17.0   27.0 SD345                     "4-D19"
+         REINS  2.865      17.0   27.0 SD345
+         REINS  2.865     -17.0   20.0 SD345
+         REINS  2.865      17.0   20.0 SD345
+         REINS  2.865     -17.0  -27.0 SD345                     "4-D19"
+         REINS  2.865      17.0  -27.0 SD345
+         REINS  2.865     -17.0  -20.0 SD345
+         REINS  2.865      17.0  -20.0 SD345
+         CRECT  -25.0  -35.0   25.0   35.0  FC24       "CONCRETE 50x70[cm]"
+         HOOPS 0.00203 0.00285  SD295      "HOOP Qx:2-D10@100 Qy:2-D10@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 402 RC GIRDER                                                "GR12"
+         REINS  3.871     -17.0   27.0 SD345                     "4-D22"
+         REINS  3.871      17.0   27.0 SD345
+         REINS  3.871     -17.0   20.0 SD345
+         REINS  3.871      17.0   20.0 SD345
+         REINS  3.871     -17.0  -27.0 SD345                     "4-D22"
+         REINS  3.871      17.0  -27.0 SD345
+         REINS  3.871     -17.0  -20.0 SD345
+         REINS  3.871      17.0  -20.0 SD345
+         CRECT  -25.0  -35.0   25.0   35.0  FC24       "CONCRETE 50x70[cm]"
+         HOOPS 0.00203 0.00285  SD295      "HOOP Qx:2-D10@100 Qy:2-D10@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 403 RC GIRDER                                                "GR13"
+         REINS  5.067     -17.0   27.0 SD345                     "4-D25"
+         REINS  5.067      17.0   27.0 SD345
+         REINS  5.067     -17.0   20.0 SD345
+         REINS  5.067      17.0   20.0 SD345
+         REINS  5.067     -17.0  -27.0 SD345                     "4-D25"
+         REINS  5.067      17.0  -27.0 SD345
+         REINS  5.067     -17.0  -20.0 SD345
+         REINS  5.067      17.0  -20.0 SD345
+         CRECT  -25.0  -35.0   25.0   35.0  FC24       "CONCRETE 50x70[cm]"
+         HOOPS 0.00203 0.00285  SD295      "HOOP Qx:2-D10@100 Qy:2-D10@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 404 RC GIRDER                                                "GR14"
+         REINS  5.067     -17.0   27.0 SD345                     "6-D25"
+         REINS  5.067      -9.0   27.0 SD345
+         REINS  5.067       9.0   27.0 SD345
+         REINS  5.067      17.0   27.0 SD345
+         REINS  5.067     -17.0   20.0 SD345
+         REINS  5.067      17.0   20.0 SD345
+         REINS  5.067     -17.0  -27.0 SD345                     "6-D25"
+         REINS  5.067      -9.0  -27.0 SD345
+         REINS  5.067       9.0  -27.0 SD345
+         REINS  5.067      17.0  -27.0 SD345
+         REINS  5.067     -17.0  -20.0 SD345
+         REINS  5.067      17.0  -20.0 SD345
+         CRECT  -25.0  -35.0   25.0   35.0  FC24       "CONCRETE 50x70[cm]"
+         HOOPS 0.00203 0.00285  SD295      "HOOP Qx:2-D10@100 Qy:2-D10@100"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 405 RC GIRDER                                                "GR21"
+         REINS  2.865      -4.5   27.0 SD345                     "2-D19"
+         REINS  2.865       4.5   27.0 SD345
+         REINS  2.865      -4.5  -27.0 SD345                     "2-D19"
+         REINS  2.865       4.5  -27.0 SD345
+         CRECT  -12.5  -35.0   12.5   35.0  FC24       "CONCRETE 25x70[cm]"
+         HOOPS 0.00101 0.00285  SD295      "HOOP Qx:2-D10@200 Qy:2-D10@200"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 406 RC GIRDER                                                "GR22"
+         REINS  3.871      -4.5   27.0 SD345                     "2-D22"
+         REINS  3.871       4.5   27.0 SD345
+         REINS  3.871      -4.5  -27.0 SD345                     "2-D22"
+         REINS  3.871       4.5  -27.0 SD345
+         CRECT  -12.5  -35.0   12.5   35.0  FC24       "CONCRETE 25x70[cm]"
+         HOOPS 0.00101 0.00285  SD295      "HOOP Qx:2-D10@200 Qy:2-D10@200"
+         XFACE   0.0   0.0             FACE LENGTH FOR Mx ON HEAD,TAIL[cm]
+         YFACE   0.0   0.0             FACE LENGTH FOR My ON HEAD,TAIL[cm]
+
+CODE 501 S COLUMN                                                     "G11"
+         HKYOU    25.0    25.0   0.9   1.4   SN400     "H-250x250x9x14[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     4.0     4.0
+         BTFAC     4.0     4.0
+
+CODE 9501 S COLUMN                                                     "G11"
+         HKYOU    35.0    17.5   0.7   1.1   SN490   "H-350x175x7x11[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBLEN   200.0  1000.0
+         BTLEN   1000.0  200.0  
+         
+CODE 9502 S COLUMN                                                     "G12"
+         HKYOU    12.5    12.5   0.6   0.9   SN400   "H-125x125x6.5x9[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     5.0     1.0
+         BTFAC     1.0     5.0
+
+CODE 502 S COLUMN                                                     "G12"
+         HKYOU    12.5    12.5   0.6   0.9   SN400   "H-125x125x6.5x9[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 503 S COLUMN                                                     "G13"
+         TKYOU     7.5     7.5   0.5   0.7   SN400       "CT-75x75x5x7[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     4.0     1.0
+         BTFAC     1.0     4.0
+
+CODE 504 S COLUMN                                                     "G12"
+         HWEAK    12.5    12.5   0.6   0.9   SN400   "H-125x125x6.5x9[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     4.0     4.0
+         BTFAC     4.0     4.0
+
+CODE 505 S COLUMN                                                     "G12"
+         HKYOU    12.5    12.5   0.6   0.9   SN490   "H-125x125x6.5x9[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 9506 S COLUMN                                                     "G12"
+         HKYOU    12.5    12.5   0.6   0.9   SN400   "H-125x125x6.5x9[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC    20.0     4.0
+         BTFAC     4.0    20.0
+
+CODE 506 S COLUMN                                                     "G12"
+         HKYOU    12.5    12.5   0.6   0.9   SN400   "H-125x125x6.5x9[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     4.0     4.0
+         BTFAC     4.0     4.0
+
+CODE 507 S COLUMN                                                     "G12"
+         HKYOU    12.5    12.5   0.6   0.9   SN400   "H-125x125x6.5x9[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 511 WOOD COLUMN                                                "=Gw15"
+         PLATE   5.5  24.0   E50SUGI                  "SUGI-240x55[mm]hira"
+         XFACE   0.0   0.0             "FACE LENGTH Mx:HEAD= 0,TAIL= 0[cm]"
+         YFACE   0.0   0.0             "FACE LENGTH My:HEAD= 0,TAIL= 0[cm]"
+         BBFAC     1.0     4.0
+         BTFAC     4.0     1.0
+
+CODE 9601 S COLUMN                                                     "BR1"
+         HKYOU    10.0    10.0   0.6   0.8   SN400      "H-100x100x6x8[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 601 S COLUMN                                                     "BR1"
+         HKYOU    10.0    10.0   0.6   0.8   SN400      "H-100x100x6x8[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     0.5     0.5
+         BTFAC     0.5     0.5
+
+CODE 9611 S COLUMN                                                     "C2"
+         CPIPE     3.0     1.4     SN490                        "É”30[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 611 S COLUMN                                                     "C2"
+         CPIPE     3.0     1.4     SN490                        "É”30[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     0.3     0.3
+         BTFAC     0.3     0.3
+
+CODE 612 S COLUMN                                                     "BR1"
+         HKYOU    10.0    10.0   0.6   0.8   SN400      "H-100x100x6x8[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 702 RC SLAB                                                    "=1FL"
+         THICK  18.0       FC24                          "THICKNESS_18[cm]"
+         SREIN  0.003961  SD295           "Ps=0.2853%_D10@200 DOUBLE[RATE]"
+         WRECT   0.0   0.0                   "WINDOW_RECTANGLE_0.0x0.0[cm]"
+         XFACE  25.0  25.0
+         YFACE  25.0  25.0
+
+CODE 703 RC SLAB                                                    "=1FL"
+         THICK  18.0       FC24                          "THICKNESS_18[cm]"
+         SREIN  0.003961  SD295           "Ps=0.2853%_D10@200 DOUBLE[RATE]"
+         WRECT   0.0   0.0                   "WINDOW_RECTANGLE_0.0x0.0[cm]"
+         XFACE  25.0  25.0
+         YFACE  25.0  25.0
+
+CODE 704 RC SLAB                                                    "=1FL"
+         THICK  18.0       FC24                          "THICKNESS_18[cm]"
+         SREIN  0.003961  SD295           "Ps=0.2853%_D10@200 DOUBLE[RATE]"
+         WRECT   0.0   0.0                   "WINDOW_RECTANGLE_0.0x0.0[cm]"
+         XFACE  25.0  25.0
+         YFACE  25.0  25.0
+
+CODE 705 RC SLAB                                                    "=1FL"
+         THICK  18.0       FC24                          "THICKNESS_18[cm]"
+         SREIN  0.003961  SD295           "Ps=0.2853%_D10@200 DOUBLE[RATE]"
+         WRECT   0.0   0.0                   "WINDOW_RECTANGLE_0.0x0.0[cm]"
+         XFACE  25.0  25.0
+         YFACE  25.0  25.0
+
+CODE 706 RC SLAB                                                    "=1FL"
+         THICK  18.0       FC24                          "THICKNESS_18[cm]"
+         SREIN  0.003961  SD295           "Ps=0.2853%_D10@200 DOUBLE[RATE]"
+         WRECT   0.0   0.0                   "WINDOW_RECTANGLE_0.0x0.0[cm]"
+         XFACE  25.0  25.0
+         YFACE  25.0  25.0
+
+CODE 708 RC SLAB                                                    "=1FL"
+         THICK  18.0       FC24                          "THICKNESS_18[cm]"
+         SREIN  0.003961  SD295           "Ps=0.3961%_D10@200 DOUBLE[RATE]"
+         WRECT   0.0   0.0                   "WINDOW_RECTANGLE_0.0x0.0[cm]"
+         XFACE  25.0  25.0
+         YFACE  25.0  25.0
+
+CODE 9802 RC WALL                                                  "=W12"
+         THICK  12.0       FC24                          "THICKNESS_12[cm]"
+         SREIN  0.005941  SD295           "Ps=0.5941%_D10@200 DOUBLE[RATE]"
+         WRECT   0.0   0.0                   "WINDOW_RECTANGLE_0.0x0.0[cm]"
+         XFACE   25.0   25.0
+         YFACE   25.0   25.0
+
+CODE 802 RC WALL                                                  "=W25"
+         THICK  25.0       FC24                          "THICKNESS_12[cm]"
+         SREIN  0.010136  SD295           "Ps=1.0136%_D13@100 DOUBLE[RATE]"
+         WRECT   0.0   0.0                   "WINDOW_RECTANGLE_0.0x0.0[cm]"
+         XFACE   25.0   25.0
+         YFACE   25.0   25.0

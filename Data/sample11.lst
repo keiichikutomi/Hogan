@@ -1,0 +1,10 @@
+"INPUT DATA"
+
+CODE 101 S COLUMN                                                     "=C1"
+         CPIPE  25.0   1.5   SN400                        "PIPE-250x15[mm]"
+         BBLEN 440.0 440.0               "Buckling Length x=440, y=440[cm]"
+
+CODE 201 S COLUMN                                                      "C1"
+         HKYOU  30.0  15.0  0.65  0.9   SN400         "H-300x150x6.5x9[mm]"
+         BBFAC   1.0   1.0            "Buckling Length Factor x=1.0, y=1.0"
+

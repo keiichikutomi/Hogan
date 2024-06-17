@@ -68,7 +68,7 @@
 #define SURFACEY 4 // default: 4
 #define SURFACEZ 0
 
-#define DIRECTORY "C:\\Users\\Keiic\\OneDrive - The University of Tokyo\\ƒhƒLƒ…ƒƒ“ƒg\\data\\" /*DATA DIRECTORY*/
+#define DIRECTORY "C:\\Users\\Keiic\\Desktop\\Hogan\\Data\\" /*DATA DIRECTORY*/
 /*#define DIRECTORY "\0"*/                /*CURRENT*/
 
 #define BOXMOUSE 5 /*BOX MOUSE SIZE.*/
@@ -165,7 +165,7 @@ struct curve{long int loff;
              double radius[2],cangle;       /*RADIUSES,COORD ANGLE.*/
              double angle[2];                      /*ANGLE OF ENDS.*/
              struct onode *center;
-             struct onode *(dots[3]);
+			 struct onode *(dots[3]);
              struct line *(tan[3]);
             };
 struct polycurve{long int loff;
@@ -175,7 +175,7 @@ struct polycurve{long int loff;
                  struct oprop prop;};
 struct polypolycurve{int npcurve;
                      struct polycurve *pcurves;
-                     char name[256];
+					 char name[256];
                      ICONINFO ici;
                      HICON hico;
                      HCURSOR hcur;};
@@ -10294,7 +10294,7 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
             vp.focus.d[GX],vp.focus.d[GY],vp.focus.d[GZ]);
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
     imax[1]+=size.cy;
-    sprintf(str,"Phi=%.3f Theta=%.3f",vp.phi,vp.theta);
+	sprintf(str,"Phi=%.3f Theta=%.3f",vp.phi,vp.theta);
 	TextOut(hdc,imin[0],imax[1],str,strlen(str));
     imax[1]+=size.cy;
     sprintf(str,"R=%.3f L=%.3f",vp.r,vp.odv);
@@ -10399,7 +10399,7 @@ if(vp.vflag.nv.conffig)
                                                255,0,150,code,mode);
 
 /*drawglobalwire(hdc,vp,af,*(af.elems+i),255,150,50,
-                                       255,150,50,code,mode);*/
+									   255,150,50,code,mode);*/
       }
 #if 0
 /*******FOR BUCKLING SAFETY******/
@@ -10680,7 +10680,7 @@ if(vp.vflag.nv.conffig)
         if(af.melem!=NULL)
         {
         inputelem(af.elems,af.melem,i,&elem);
-        drawwirestress(hdc,vp,af,elem,mode);
+		drawwirestress(hdc,vp,af,elem,mode);
         }
 */
       }
@@ -10694,7 +10694,7 @@ if(vp.vflag.nv.conffig)
 }/*drawarclmframe*/
 
 void savearclmasdxf(FILE *fout,struct viewparam vp,
-                    struct arclmframe af)
+					struct arclmframe af)
 /*BASED ON SAVEORGANASDXF*/
 {
   char str[256];
@@ -11363,7 +11363,7 @@ void setnodeconf(HWND hdwnd,int idiconf,int idvconf,
 }/*setnodeconf*/
 
 struct onode *selectnode(struct viewparam vp,
-                         struct arclmframe *af,POINT point)
+						 struct arclmframe *af,POINT point)
 /*SELECT NODE BY CURSOR.*/
 /*RETURN:POINTER OF NODE.*/
 {
@@ -20676,12 +20676,33 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 
 	data=fgetsbrk(ftext,&n);
 
-	(af->nodes+i)->code=strtol(*(data+0),NULL,10);
-	(af->nodes+i)->d[0]=strtod(*(data+1),NULL);
-	(af->nodes+i)->d[1]=strtod(*(data+2),NULL);
-	(af->nodes+i)->d[2]=strtod(*(data+3),NULL);
+	if(n=4)
+	{
+		(af->nodes+i)->code=strtol(*(data+0),NULL,10);
+		(af->nodes+i)->d[0]=strtod(*(data+1),NULL);
+		(af->nodes+i)->d[1]=strtod(*(data+2),NULL);
+		(af->nodes+i)->d[2]=strtod(*(data+3),NULL);
 
-	*(af->ninit+i)=*(af->nodes+i);
+		*(af->ninit+i)=*(af->nodes+i);
+	}
+	else if(n=13)
+	{
+		(af->nodes+i)->code=strtol(*(data+0),NULL,10);
+		(af->nodes+i)->d[0]=strtod(*(data+1),NULL);
+		(af->nodes+i)->d[1]=strtod(*(data+2),NULL);
+		(af->nodes+i)->d[2]=strtod(*(data+3),NULL);
+		(af->nodes+i)->r[0]=strtod(*(data+4),NULL);
+		(af->nodes+i)->r[1]=strtod(*(data+5),NULL);
+		(af->nodes+i)->r[2]=strtod(*(data+6),NULL);
+		(af->ninit+i)->d[0]=strtod(*(data+7),NULL);
+		(af->ninit+i)->d[1]=strtod(*(data+8),NULL);
+		(af->ninit+i)->d[2]=strtod(*(data+9),NULL);
+		(af->ninit+i)->r[0]=strtod(*(data+10),NULL);
+		(af->ninit+i)->r[1]=strtod(*(data+11),NULL);
+		(af->ninit+i)->r[2]=strtod(*(data+12),NULL);
+	}
+
+
 
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
@@ -23165,9 +23186,11 @@ void addktemtx(double **e,double E,double t,double det)
 	return;
 }
 
+
+#if 0
 double **finertial(struct oshell shell,
 				   double **drccos, double **drccosinit,
-				   double *ud, double *udd)
+				   double *gvel_m, double *gacc_m)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
   int i,j,k,ii;
@@ -23256,7 +23279,7 @@ double **finertial(struct oshell shell,
 
   t=shell.sect->area;
   hiju=shell.sect->hiju[0];
-
+  Mp=hiju*h;
   Ip_0=hiju*pow(t,3)/12.0;/*ROTATIONAL INERTIA MATRIX*/
   Ip=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
@@ -23318,7 +23341,7 @@ double **finertial(struct oshell shell,
 	}
 	freematrix(N,3);
 	freematrix(Nt,18);
-	freematrix(NtN,18);                                           cf
+	freematrix(NtN,18);
   */
   }
 
@@ -23332,6 +23355,8 @@ double **finertial(struct oshell shell,
   return m;
 }
 
+#endif
+
 double **assemshellmmtx(struct oshell shell,double **drccos)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
@@ -23342,6 +23367,8 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   double *a;
   double det;
   double Liij,Lijj,Liik,Likk,Lijk;
+  double alpha=0.0;
+  //double alpha=0.15;
 
 
 
@@ -23447,9 +23474,9 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 
 		*(*(N+0)+6*i+0) = *(*(L+ii)+i);
 		*(*(N+1)+6*i+1) = *(*(L+ii)+i);
-		*(*(N+2)+6*i+2) = *(*(L+ii)+i) + Liij - Lijj + Liik - Likk;
-		*(*(N+2)+6*i+3) = *(b+j) * (Liik+0.5*Lijk) - *(b+k) * (Liij+0.5*Lijk);
-		*(*(N+2)+6*i+4) = *(c+j) * (Liik+0.5*Lijk) - *(c+k) * (Liij+0.5*Lijk);
+		*(*(N+2)+6*i+2) = *(*(L+ii)+i) + (1.0-alpha)*(Liij - Lijj + Liik - Likk);
+		*(*(N+2)+6*i+3) = (1.0-alpha)*(*(b+j) * (Liik+0.5*Lijk) - *(b+k) * (Liij+0.5*Lijk));
+		*(*(N+2)+6*i+4) = (1.0-alpha)*(*(c+j) * (Liik+0.5*Lijk) - *(c+k) * (Liij+0.5*Lijk));
 	}
 	Nt=matrixtransposeIII(N,3,18);
 	NtN=matrixmatrixIII(Nt,N,18,3,18);
@@ -23475,13 +23502,17 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   return m;
 }/*assemshellmmtx*/
 
+
+
+
+
 double *assemshellpvct(struct oshell shell,double **drccos)
 {/*nodal force equivalent to surface force*/
   int i,j,k,ii;
   double *q,*p,**exy,**Nt,**L;
   double t;
   double *b,*c;
-  double *a;
+double *a;
   double det;
   double Liij,Lijj,Liik,Likk,Lijk;
   double *perpl,*lload;

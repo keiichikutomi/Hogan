@@ -31,7 +31,7 @@
 #include "srcal007ujok.c"                     /*DRAW SECTIONS LIST.*/
 #include "gnshn103ktm.c"                       /*DYNAMIC ANALYSIS.*/
 //#include "drhg.c"                               /*DYNAMIC ANALYSIS.*/
-#include "gnshnCR.c"
+//#include "gnshnCR.c"
 #include "optimization.c"                 			 /*OPTIMIZATION*/
 #include "model001.c"                      /*INP-TO-DXF CONVERSION.*/
 #include "arclm002.c"                     /*FOR GREEN-HOUSE PROJECT*/
@@ -137,7 +137,13 @@
 //#define FILENAME      "ShellTest"
 //#define FILENAME      "240607LMBosfullwithframeb100"
 
-#define FILENAME      "2406070702LMBosfullwithframeb100"
+#define FILENAME      "240614LMBosfullsimplep1b100ver2"
+#define FILENAME      "240617LMBosbending"
+
+
+
+//#define FILENAME      "bc_lattice_frame_08_t10"
+
 
 //#define FILENAME      "LanderSolarModel00"
 
@@ -158,7 +164,7 @@
 #define DEFAULTINPUTFILEZ  FILENAME".inl"
 #define DEFAULTINPUTFILEX  FILENAME".ihx"
 #define DEFAULTINPUTFILEY  FILENAME".ihy"
-#define DEFAULTOUTPUTFILE  FILENAME".otp"
+#define DEFAULTOUTPUTFILE  FILENAME".otl"
 #define DEFAULTOUTPUTFILEZ FILENAME".otl"
 #define DEFAULTOUTPUTFILEX FILENAME".ohx"
 #define DEFAULTOUTPUTFILEY FILENAME".ohy"
@@ -259,7 +265,7 @@ struct windowparams wsect={7,0,0,NEUTRAL,"CanSlistWin",
 
 struct windowparams wsdsp={8,0,0,NEUTRAL,"CanSviewWin",
                            NULL,NULL,NULL,NULL,
-                           NEUTRAL,NEUTRAL,NEUTRAL,
+						   NEUTRAL,NEUTRAL,NEUTRAL,
                            NULL,0,0};
 struct windowparams wweig={9,0,0,NEUTRAL,"CanWeightWin",
                            NULL,NULL,NULL,NULL,
@@ -272,48 +278,65 @@ struct windowparams wcmqd={10,0,0,NEUTRAL,"CanCmqWin",
 struct windowparams whorz={11,0,0,NEUTRAL,"CanHorizonWin",
 						   NULL,NULL,NULL,NULL,
                            NEUTRAL,NEUTRAL,NEUTRAL,
-                           NULL,0,0};
+						   NULL,0,0};
+
+/*struct arclmframe arci={0,0,
+						"\0",
+						0,0,0,0,0,
+						NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
+						0,NULL,NULL,NULL};*/       /*NULL ARCLM FRAME. NO SHELL.*/
 
 struct arclmframe arci={0,0,
-                        "\0",
-                        0,0,0,0,0,
-                        NULL,NULL,
-                        NULL,NULL,NULL,NULL,
-                        NULL,NULL,
-                        NULL,NULL,NULL,
-                        0,NULL,NULL,NULL};       /*NULL ARCLM FRAME.*/
+						"\0",
+						0,0,0,0,0,0,0,
+						NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
+						NULL,NULL,NULL,
+						0,NULL,NULL,NULL};       /*NULL ARCLM FRAME.*/
 struct arclmframe arc ={0,0,
-                        "\0",
-                        0,0,0,0,0,
-                        NULL,NULL,
-                        NULL,NULL,NULL,NULL,
-                        NULL,NULL,
-                        NULL,NULL,NULL,
-                        0,NULL,NULL,NULL};     /*GLOBAL ARCLM FRAME.*/
+						"\0",
+						0,0,0,0,0,0,0,
+						NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
+						NULL,NULL,NULL,
+						0,NULL,NULL,NULL};     /*GLOBAL ARCLM FRAME.*/
 struct arclmframe arcx={0,0,
-                        "\0",
-                        0,0,0,0,0,
-                        NULL,NULL,
-                        NULL,NULL,NULL,NULL,
-                        NULL,NULL,
-                        NULL,NULL,NULL,
-                        0,NULL,NULL,NULL}; /*ARCLM FRAME FOR X LOAD.*/
+						"\0",
+						0,0,0,0,0,0,0,
+						NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
+						NULL,NULL,NULL,
+						0,NULL,NULL,NULL}; /*ARCLM FRAME FOR X LOAD.*/
 struct arclmframe arcy={0,0,
-                        "\0",
-                        0,0,0,0,0,
-                        NULL,NULL,
-                        NULL,NULL,NULL,NULL,
-                        NULL,NULL,
-                        NULL,NULL,NULL,
-                        0,NULL,NULL,NULL}; /*ARCLM FRAME FOR Y LOAD.*/
+						"\0",
+						0,0,0,0,0,0,0,
+						NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
+						NULL,NULL,NULL,
+						0,NULL,NULL,NULL}; /*ARCLM FRAME FOR Y LOAD.*/
 
 struct biquadframe bqf={0,0,
-                        "\0",
-                        0,0,0,0,0,0,0,
-                        NULL,NULL,NULL,NULL,NULL,
-                        NULL,NULL,
-                        NULL,
-                        NULL,NULL,NULL}; /*GLOBAL BIQUAD FRAME.*/
+						"\0",
+						0,0,0,0,0,0,0,
+						NULL,NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,
+						NULL,NULL,NULL}; /*GLOBAL BIQUAD FRAME.*/
 
 LRESULT CALLBACK WindowProcedureMain(HWND,UINT,WPARAM,LPARAM);
 LRESULT CALLBACK WindowProcedureSheet(HWND,UINT,WPARAM,LPARAM);
@@ -1981,20 +2004,10 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			  updateorganization(&((wdraw.childs+1)->org));
 		    }
           }
-          break;
-
-          /*test student seminer 20200704*/
-          /*
-		  int testf;
-		  char teststr[4000];
-		  testf = testfunc(12,13,24);
-		  sprintf(teststr,"test calculation is %d",testf);
-		  MessageBox(NULL,teststr,"student seminar test",MB_OK);
 		  break;
-          */
 		/*test*/
 
-        /*BCLNG*/
+		/*BCLNG*/
 		case IDM_OPENBCLNGRESULT:
 		  if(wdraw.nchilds>=2 &&
 			 (wdraw.childs+1)->hwnd!=NULL &&
@@ -10927,13 +10940,16 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		  if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
 		  {
 
-            struct arclmframe arcII={0,0,
-                                     "\0",
-                                     0,0,0,0,0,
-                                     NULL,NULL,
-                                     NULL,NULL,NULL,NULL,
-                                     NULL,NULL,
-                                     NULL,NULL,NULL}; /*ARCLM FRAME.*/
+			struct arclmframe arcII  =  {0,0,
+										"\0",
+										0,0,0,0,0,0,0,
+										NULL,NULL,
+										NULL,NULL,NULL,NULL,
+										NULL,NULL,NULL,NULL,
+										NULL,NULL,
+										NULL,NULL,NULL,
+										NULL,NULL,NULL,
+										0,NULL,NULL,NULL}; /*ARCLM FRAME.*/
 		  #if 1
           /*STRESS OF LOAD*/
             arclm001(&arc,ID_INPUTFILE,ID_OUTPUTFILE);
@@ -11026,7 +11042,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		  else
 		  {
 			  getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-			  gnshnCR(&arc);
+			  //gnshnCR(&arc);
 		  }
 		  break;
 
@@ -11344,15 +11360,15 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
                strcat((wdraw.childs+1)->inpfile,".inl2");
                SetDlgItemText(hdwnd,ID_INPUTFILE,
                              (wdraw.childs+1)->inpfile);
-               saveasarclm2((wdraw.childs+1)->inpfile,&arc);
+			   saveasarclm2((wdraw.childs+1)->inpfile,&arc);
             }
           }
           break;
 
         case IDD_ROTATE: /*ROTATION*/
           if(wdraw.hwnd!=NULL)
-          {
-            (wdraw.childs+1)->lstatus=ROTATE;
+		  {
+			(wdraw.childs+1)->lstatus=ROTATE;
             hcursor=LoadCursor(hInstGlobal,"CANCURSORW");   /*CURSOR*/
             SetClassLong((wdraw.childs+1)->hwnd,
                          GCL_HCURSOR,(LONG)hcursor);
@@ -11768,27 +11784,26 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       switch(LOWORD(wParam))
       {
 /***** Zobun Result *****/
-        case IDD_OPENRESULT:
+		case IDD_OPENRESULT:
           if(wdraw.nchilds>=2 &&
              (wdraw.childs+1)->hwnd!=NULL &&
-             (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM ||
-             (wmenu.childs+2)->vparam.vflag.mv.ftype==F_FRAME)
+			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM ||
+			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_FRAME)
           {
-            if(arc.nodes==NULL) break;
+			if(arc.nodes==NULL) break;
+			fout=fgetstofopen("\0","r",ID_OUTPUTFILE);  /*OPEN FILE.*/
+			if(fout==NULL) break;
+			if(globalmessageflag==0 || MessageBox(NULL,"ARCLM001 Result","OPEN RESULT",MB_OKCANCEL)==IDOK)
+			{
+			   errormessage("test");
+			   frameoutputtomemory(fout,&arc);
+			}
+			else if(MessageBox(NULL,"ARCLM101 Result(Zobun)","OPEN RESULT",MB_OKCANCEL)==IDOK)
+			{
+			   openarclmlastfileII(fout,&arc);
+			}
 
-            fout=fgetstofopen("\0","r",ID_OUTPUTFILE);  /*OPEN FILE.*/
-            if(fout==NULL) break;
-
-		    if(globalmessageflag==0 || MessageBox(NULL,"ARCLM001 Result","OPEN RESULT",MB_OKCANCEL)==IDOK)
-            {
-               frameoutputtomemory(fout,&arc);
-            }
-		    else if(MessageBox(NULL,"ARCLM101 Result(Zobun)","OPEN RESULT",MB_OKCANCEL)==IDOK)
-            {
-               openarclmlastfileII(fout,&arc);
-            }
-
-            fclose(fout);
+			fclose(fout);
 
             arc.nlaps=1;
 
@@ -16778,7 +16793,7 @@ void printarclmlastfigures(FILE *fin,struct viewparam *vp,
 
 
 void printarclmlastfiguresII(FILE *fin,struct viewparam *vp,
-                             struct arclmframe *af)        //UJIOKA
+							 struct arclmframe *af)        //UJIOKA
 /*TYPE 1:PRINT DEFORMATION BY AXIS.*/
 /*SETTING BEFORE BEGINNING:VISIBLE ELEMENT TYPE*/
 /*                         M FACTOR*/

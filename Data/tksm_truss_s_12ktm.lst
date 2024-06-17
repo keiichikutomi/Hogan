@@ -1,0 +1,88 @@
+"INPUT DATA"
+"MATERIAL TYPE:S,RC,SRC,PC"
+"MEMBER TYPE  :COLUMN,COLUMN,WALL,SLAB,BRACE"
+"SRECT:STEEL.                                    LEFT,BOTTOM,TOP,RIGHT[cm]"
+"HKYOU:STEEL H, x=STRONG AXIS.                               H,B,tw,tf[cm]"
+"HWEAK:STEEL H, x=WEAK AXIS.                                 H,B,tw,tf[cm]"
+"RPIPE:STEEL RECTANGLE PIPE.                                 H,B,tw,tf[cm]"
+"CPIPE:STEEL CIRCLE PIPE.                                          D,t[cm]"
+"SAREA:AREA OF STEEL BRACE.                                      AREA[cm2]"
+"REINS:REINFOCEMENT.                                          AREA,X,Y[cm]"
+"CRECT:CONCRETE.                                 LEFT,BOTTOM,TOP,RIGHT[cm]"
+"THICK:THICKNESS OF RC WALL.                                 THICKNESS[cm]"
+"HOOPS:HOOP,STP.                                       FOR Qx,FOR Qy[RATE]"
+"SREIN:REINFORCEMENT FOR SHEAR OF WALL.                           pw[RATE]"
+"WRECT:WINDOW RECTANGLE OF WALL.                         LENGTH,HEIGHT[cm]"
+"XFACE:FACE FOR Mx,FACE FOR WALL LENGTH.                     HEAD,TAIL[cm]"
+"YFACE:FACE FOR My,FACE FOR WALL HEIGHT.                     HEAD,TAIL[cm]"
+         
+CODE 262 S COLUMN                                                     "Cs1"
+         HKYOU    30.0    30.0   1.0   1.5   SN490    "H-414x405x18x28[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 530 S COLUMN                                                    "Gs14"
+         HKYOU    60.0    60.0   2.5   4.5  T40SN490 "BH-400x650x25x45[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 531 S COLUMN                                                    "Gs13"
+         HKYOU    58.8    30.0   1.2   2.0  SN490 "BH-400x400x22x45[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 1532 S COLUMN                                                    "Gs12"
+         HKYOU    58.8    30.0   1.2   2.0   SN400   "BH-400x400x19x32[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 532 S COLUMN                                                     "Cs1"
+         HKYOU    60.0    30.0   1.6   3.2   SN490    "H-414x405x18x28[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 533 S COLUMN                                                   "BRs1"
+         HKYOU    30.0    30.0   1.0   1.5   SN400   "H-400x400x13x21[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 1533 S COLUMN                                                   "BRs2"
+         HKYOU    35.0    35.0   1.2   1.9   SN490   "H-414x405x18x28[mm]"
+         XFACE     0.0     0.0            
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0 
+         BTFAC     1.0     1.0
+
+CODE 2533 S COLUMN                                                   "BRs2"
+         PLATE     10.0     10.0   T40SN490   "H-414x405x18x28[mm]"
+         XFACE     0.0     0.0            
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0 
+         BTFAC     1.0     1.0
+         
+CODE 534 S COLUMN                                                  "Bs11"
+         HKYOU    40.0    20.0   0.8   1.3   SN490   "H-400x200x8x13[mm]"
+         XFACE     0.0     0.0
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 536 S COLUMN                                                   "BRs2"
+         HKYOU    35.0    35.0   1.2   1.9   SN490   "H-414x405x18x28[mm]"
+         XFACE     0.0     0.0            
+         YFACE     0.0     0.0
+         BBFAC     1.0     1.0 
+         BTFAC     1.0     1.0
+

@@ -115,8 +115,8 @@
         <ILINK_LibraryPath>$(BDSLIB)\$(PLATFORM)\debug;$(ILINK_LibraryPath)</ILINK_LibraryPath>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-        <IntermediateOutputDir>C:\Users\Keiic\OneDrive - The University of Tokyo\ドキュメント\data\</IntermediateOutputDir>
-        <FinalOutputDir>C:\Users\Keiic\OneDrive - The University of Tokyo\デスクトップ\Hogan\Debug\</FinalOutputDir>
+        <IntermediateOutputDir>C:\Users\Keiic\Desktop\Hogan\Data\</IntermediateOutputDir>
+        <FinalOutputDir>C:\Users\Keiic\Desktop\Hogan\Debug\</FinalOutputDir>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <Defines>_DEBUG;$(Defines)</Defines>

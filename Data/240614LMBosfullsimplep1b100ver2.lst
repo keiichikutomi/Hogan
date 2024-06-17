@@ -1,0 +1,38 @@
+âºíËífñ ÇÃì¸óÕÉfÅ[É^
+
+"INPUT DATA"
+"MATERIAL TYPE:S,RC,SRC,PC"
+"MEMBER TYPE  :COLUMN,GIRDER,WALL,SLAB,BRACE"
+"SRECT:STEEL.                                    LEFT,BOTTOM,RIGHT,TOP[cm]"
+"HKYOU:STEEL H, x=STRONG AXIS.                               H,B,tw,tf[cm]"
+"HWEAK:STEEL H, x=WEAK AXIS.                                 H,B,tw,tf[cm]"
+"RPIPE:STEEL RECTANGLE PIPE.                                 H,B,tw,tf[cm]"
+"CPIPE:STEEL CIRCLE PIPE.                                          D,t[cm]"
+"SAREA:AREA OF STEEL BRACE.                                      AREA[cm2]"
+"REINS:REINFOCEMENT.                                          AREA,X,Y[cm]"
+"CRECT:CONCRETE.                                 LEFT,BOTTOM,RIGHT,TOP[cm]"
+"THICK:THICKNESS OF RC WALL.                                 THICKNESS[cm]"
+"HOOPS:HOOP,STP.                                       FOR Qx,FOR Qy[RATE]"
+"SREIN:REINFORCEMENT FOR SHEAR OF WALL.                           pw[RATE]"
+"WRECT:WINDOW RECTANGLE OF WALL.                         LENGTH,HEIGHT[cm]"
+"XFACE:FACE FOR Mx,FACE FOR WALL LENGTH.                     HEAD,TAIL[cm]"
+"YFACE:FACE FOR My,FACE FOR WALL HEIGHT.                     HEAD,TAIL[cm]"
+
+CODE 101 ALUMI GIRDER                                            
+         HKYOU    20.0    20.0    0.8    1.2     A7178              
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 102 ALUMI GIRDER                                            
+         HKYOU    20.0    20.0    0.8    1.2     A7178              
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+
+CODE 103 ALUMI GIRDER                                      
+         HKYOU     8.0    10.0    0.5    1.2     A7178       
+         BBFAC     1.0     1.0
+         BTFAC     1.0     1.0
+ 
+
+
+
