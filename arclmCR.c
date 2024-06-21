@@ -16,7 +16,7 @@ double** spinfittermtx(double* eform, int nnod);/*G*/
 double** projectionmtx(double* eform, double* edisp, double** G, int nnod);/*P*/
 double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod);/*H&M*/
 
-double** assemtmtx(double** estiff, double* eform, double* edisp, double* estress, double** T, int nnod);
+double** assemtmtx(double** Ke, double* eform, double* edisp, double* estress, double** T, int nnod);
 void symmetricmtx(double** estiff, int msize);
 
 void updaterotation(double* ddisp, double* gvct, int nnode);
@@ -106,7 +106,7 @@ int arclmCR(struct arclmframe* af)
 	int maxtime = 20;
 	double ddt = 1.0E-8;
 	double residual;
-	double tolerance = 1.0e-8;
+	double tolerance = 1.0e-5;
 
 	double determinant, sign;
 	double arcsum, predictorsign;
@@ -562,6 +562,7 @@ int arclmCR(struct arclmframe* af)
 			gform = extractdisplacement(elem, iform);                  /*{Xg}*/
 			eform = extractlocalcoord(gform,drccosinit,elem.nnod);
 
+			Ke = assememtx(elem);                  /*ELASTIC MATRIX OF GIRDER[Ke].*/
 
 
 			for (ii = 0; ii < elem.nnod; ii++)
@@ -576,23 +577,21 @@ int arclmCR(struct arclmframe* af)
 							 elem.node[1]->d[2],
 							 elem.cangle);
 			//drccos = middrccos()
+            T = transmatrixIII(drccos, elem.nnod); /*TRANSFORMATION MATRIX[T].*/
+			Tt = matrixtranspose(T, 6 * elem.nnod);                    /*[Tt].*/
+
 			gdisp = extractdisplacement(elem, ddisp);              /*{Xg+Ug}*/
 			edisp = extractlocalcoord(gdisp,drccos,elem.nnod);
 
 			extractdeformation(eform, edisp, elem.nnod);                /*{Ue}*/
+			einternal = matrixvector(Ke, edisp, 6 * elem.nnod);         /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 
-			T = transmatrixIII(drccos, elem.nnod); /*TRANSFORMATION MATRIX[T].*/
-			Tt = matrixtranspose(T, 6 * elem.nnod);                    /*[Tt].*/
 
-			Ke = assememtx(elem);                  /*ELASTIC MATRIX OF GIRDER[Ke].*/
-			einternal = matrixvector(Ke, edisp, 6 * elem.nnod);      /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 
 			Kt = assemtmtx(Ke, eform, edisp, einternal, T, elem.nnod);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
-			Kt = transformationIII(Kt, T, 6 * elem.nnod);
-			symmetricmtx(Kt, 6 * elem.nnod);      /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+			
 
 			assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain);/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
-			freematrix(Kt, 6 * elem.nnod);
 
 			ginternal = matrixvector(Tt, einternal, 6 * elem.nnod);  /*FROM PROJECTED LOCAL INTERNAL FORCE{PtHtFe} TO GLOBAL INTERNAL FORCE{Fg}.*/
 			for (ii = 0; ii < elem.nnod; ii++)
@@ -608,6 +607,7 @@ int arclmCR(struct arclmframe* af)
 			freematrix(T, 6 * elem.nnod);
 			freematrix(Tt, 6 * elem.nnod);
 			freematrix(Ke, 6 * elem.nnod);
+			freematrix(Kt, 6 * elem.nnod);
 
 			free(einternal);
 			free(ginternal);
@@ -650,24 +650,7 @@ int arclmCR(struct arclmframe* af)
 			}
 			drccosinit = shelldrccos(shell, &area);
 			gform = extractshelldisplacement(shell, iform);                     /*{Xg}*/
-			//eform = extractshelllocalcoord(shell, gform);                     /*{Xe}*/
-			eform = extractlocalcoord(gform,drccosinit,shell.nnod);
-
-			for (ii = 0; ii < shell.nnod; ii++)
-			{
-				inputnode(ddisp, shell.node[ii]);
-			}
-			drccos = shelldrccos(shell, &area);
-			gdisp = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
-			//edisp = extractshelllocalcoord(shell, gdisp);                     /*{Xe+Ue}*/
-			edisp = extractlocalcoord(gdisp,drccos,shell.nnod);
-
-			extractdeformation(eform, edisp, shell.nnod);                       /*{Ue}*/
-
-			volume += shellvolume(shell, drccos, area);                   /*VOLUME*/
-
-			T = transmatrixIII(drccos, shell.nnod);         /*TRANSFORMATION MATRIX[T].*/
-			Tt = matrixtranspose(T, 6 * shell.nnod);                  /*[Tt].*/
+			eform = extractlocalcoord(gform,drccosinit,shell.nnod);             /*{Xe}*/
 
 			if ((outputmode == 0 && (iteration == 1 || BCLFLAG == 2)) || outputmode == 1)
 			{
@@ -677,7 +660,7 @@ int arclmCR(struct arclmframe* af)
 					*(DBe + ii) = (double*)malloc(6 * shell.nnod * sizeof(double));
 					for (jj = 0; jj < 6 * shell.nnod; jj++)
 					{
-						*(*(DBe + ii) + jj) = 0.0;                                          /*INITIAL.*/
+						*(*(DBe + ii) + jj) = 0.0;
 					}
 				}
 			}
@@ -685,10 +668,24 @@ int arclmCR(struct arclmframe* af)
 			{
 				DBe = NULL;
 			}
+			Ke = assemshellemtx(shell, drccosinit, DBe);                  /*ELASTIC MATRIX OF SHELL[Ke].*/
 
-			Ke = assemshellemtx(shell, drccos, DBe);                  /*ELASTIC MATRIX OF SHELL[Ke].*/
-			einternal = matrixvector(Ke, edisp, 6 * shell.nnod);      /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
-			epressure = assemshellpvct(shell, drccos);                /*ELEMENT EXTERNAL FORCE{Pe}.*/
+			for (ii = 0; ii < shell.nnod; ii++)
+			{
+				inputnode(ddisp, shell.node[ii]);
+			}
+			drccos = shelldrccos(shell, &area);
+			T = transmatrixIII(drccos, shell.nnod);         					/*TRANSFORMATION MATRIX[T].*/
+			Tt = matrixtranspose(T, 6 * shell.nnod);                  			/*[Tt].*/
+
+			gdisp = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
+			edisp = extractlocalcoord(gdisp,drccos,shell.nnod); 				/*{Xe+Ue}*/
+
+			extractdeformation(eform, edisp, shell.nnod);                       /*{Ue}*/
+			einternal = matrixvector(Ke, edisp, 6 * shell.nnod);      			/*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
+
+			volume += shellvolume(shell, drccos, area);                   		/*VOLUME*/
+			epressure = assemshellpvct(shell, drccos);                			/*ELEMENT EXTERNAL FORCE{Pe}.*/
 
 			if ((outputmode == 0 && (iteration == 1 || BCLFLAG == 2)) || outputmode == 1)
 			{
@@ -750,10 +747,8 @@ int arclmCR(struct arclmframe* af)
 
 			Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
 
-			Kt = transformationIII(Kt, T, 6 * shell.nnod);
-			symmetricmtx(Kt, 6 * shell.nnod);      /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 			assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain);/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
-			freematrix(Kt, 6 * shell.nnod);
+
 
 			ginternal = matrixvector(Tt, einternal, 6 * shell.nnod);  /*FROM PROJECTED LOCAL INTERNAL FORCE{PtHtFe} TO GLOBAL INTERNAL FORCE{Fg}.*/
 			gpressure = matrixvector(Tt, epressure, 6 * shell.nnod);  /*GLOBAL EXTERNAL FORCE{Pg}.*/
@@ -771,6 +766,7 @@ int arclmCR(struct arclmframe* af)
 			freematrix(T, 6 * shell.nnod);
 			freematrix(Tt, 6 * shell.nnod);
 			freematrix(Ke, 6 * shell.nnod);
+			freematrix(Kt, 6 * shell.nnod);
 
 			free(einternal);
 			free(ginternal);
@@ -1233,7 +1229,7 @@ int arclmCR(struct arclmframe* af)
 				if(iteration==1)
 				{
 					laploadfactor=0.0;
-					for(i=0;i++;i<msize)
+					for(i=0;i<msize;i++)
 					{
 						*(lapddisp+i)=0.0;
 					}
@@ -1410,30 +1406,27 @@ int arclmCR(struct arclmframe* af)
 					}
 					drccosinit = shelldrccos(shell, &area);
 					gform = extractshelldisplacement(shell, iform);
-					//eform = extractshelllocalcoord(shell, gform);
 					eform = extractlocalcoord(gform,drccosinit,shell.nnod);
+
+					Ke = assemshellemtx(shell, drccosinit, NULL); /*ELASTIC MATRIX OF SHELL[K].*/
 
 					for (ii = 0; ii < shell.nnod; ii++)
 					{
 						inputnode(ddisp, shell.node[ii]);
 					}
 					drccos = shelldrccos(shell, &area);
+					T = transmatrixIII(drccos, shell.nnod);     /*TRANSFORMATION MATRIX[T].*/
+
 					gdisp = extractshelldisplacement(shell, ddisp);
-					//edisp = extractshelllocalcoord(shell, gdisp);
 					edisp = extractlocalcoord(gdisp,drccos,shell.nnod);
 
 					extractdeformation(eform, edisp, shell.nnod);                   /*{Ue}*/
+					einternal = matrixvector(Ke, edisp, 6 * shell.nnod);
 
 					volume += shellvolume(shell, drccos, area);                    /*VOLUME*/
-					T = transmatrixIII(drccos, shell.nnod);     /*TRANSFORMATION MATRIX[T].*/
-
-					Ke = assemshellemtx(shell, drccos, NULL); /*ELASTIC MATRIX OF SHELL[K].*/
-					einternal = matrixvector(Ke, edisp, 6 * shell.nnod);
 					epressure = assemshellpvct(shell, drccos);/*ELEMENT EXTERNAL FORCE{Fe}.*/
 
 					Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod);
-					Kt = transformationIII(Kt, T, 6 * shell.nnod);
-					symmetricmtx(Kt, 6 * shell.nnod);
 
 
 					for (ii = 0; ii < 18; ii++)
@@ -1802,36 +1795,32 @@ int arclmCR(struct arclmframe* af)
 					inputnode(iform, shell.node[ii]);
 				}
 				drccosinit = shelldrccos(shell, &area);                                /*DRCCOS*/
-				gform = extractshelldisplacement(shell, iform);                      /*{Xg}*/
-				//eform = extractshelllocalcoord(shell, gform);                        /*{Xe}*/
+				gform = extractshelldisplacement(shell, iform);
 				eform = extractlocalcoord(gform,drccosinit,shell.nnod);
+
+				Ke = assemshellemtx(shell, drccosinit, NULL);                  /*ELASTIC MATRIX OF SHELL[Ke].*/
 
 				for (ii = 0; ii < shell.nnod; ii++)
 				{
 					inputnode(epsddisp, shell.node[ii]);
 				}
 				drccos = shelldrccos(shell, &area);                                /*DRCCOS*/
+				T = transmatrixIII(drccos, shell.nnod);         /*TRANSFORMATION MATRIX[T].*/
+				Tt = matrixtranspose(T, 6 * shell.nnod);                              /*[Tt].*/
 				gdisp = extractshelldisplacement(shell, epsddisp);                   /*{Xg+Ug}*/
-				//edisp = extractshelllocalcoord(shell, gdisp);                     /*{Xe+Ue}*/
 				edisp = extractlocalcoord(gdisp,drccos,shell.nnod);
 
 				extractdeformation(eform, edisp, shell.nnod);                       /*{Ue}*/
+				einternal = matrixvector(Ke, edisp, 6 * shell.nnod);      /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 
 
 				volume += shellvolume(shell, drccos, area);                   /*VOLUME*/
-				T = transmatrixIII(drccos, shell.nnod);         /*TRANSFORMATION MATRIX[T].*/
-				Tt = matrixtranspose(T, 6 * shell.nnod);                              /*[Tt].*/
-
-				Ke = assemshellemtx(shell, drccos, NULL);                  /*ELASTIC MATRIX OF SHELL[Ke].*/
-				einternal = matrixvector(Ke, edisp, 6 * shell.nnod);      /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 				epressure = assemshellpvct(shell, drccos);                /*ELEMENT EXTERNAL FORCE{Pe}.*/
 
 				Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod);	  /*TANGENTIAL MATRIX[Kt].*//*PROJECTION of einternal[Pt][Ht]{Fe}.*/
-				//Kt = transformationIII(Kt, T, 6 * shell.nnod);
-				//symmetricmtx(Kt, 6 * shell.nnod);      /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 				//assemgstiffnessII(gmtx,Kt,&shell);
 				//assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain);/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
-				freematrix(Kt, 18);
+
 
 				ginternal = matrixvector(Tt, einternal, 6 * shell.nnod);  /*GLOBAL INTERNAL FORCE{Fg}.*/
 				gpressure = matrixvector(Tt, epressure, 6 * shell.nnod);  /*GLOBAL EXTERNAL FORCE{Pg}.*/
@@ -1848,6 +1837,7 @@ int arclmCR(struct arclmframe* af)
 				freematrix(T, 18);
 				freematrix(Tt, 18);
 				freematrix(Ke, 18);
+				freematrix(Kt, 18);
 
 				free(einternal);
 				free(ginternal);
@@ -2007,6 +1997,8 @@ int arclmCR(struct arclmframe* af)
 			gform = extractdisplacement(elem, iform);                  /*{Xg}*/
 			eform = extractlocalcoord(gform,drccosinit,elem.nnod);
 
+			Ke = assememtx(elem);                  /*ELASTIC MATRIX OF GIRDER[Ke].*/
+
 			for (ii = 0; ii < elem.nnod; ii++)
 			{
 				inputnode(ddisp, elem.node[ii]);
@@ -2022,11 +2014,7 @@ int arclmCR(struct arclmframe* af)
 			gdisp = extractdisplacement(elem, ddisp);              /*{Xg+Ug}*/
 			edisp = extractlocalcoord(gdisp,drccos,elem.nnod);
 
-			extractdeformation(eform, edisp, elem.nnod);                /*{Ue}*/
-
-
-
-			Ke = assememtx(elem);                  /*ELASTIC MATRIX OF GIRDER[Ke].*/
+			extractdeformation(eform, edisp, elem.nnod);             /*{Ue}*/
 			einternal = matrixvector(Ke, edisp, 6 * elem.nnod);      /*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 
 			updatestressnl(melem,einternal,&elem);
@@ -2551,36 +2539,36 @@ double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod)
 	return H;
 }
 
-double** assemtmtx(double** estiff, double* eform, double* edisp, double* estress, double** T, int nnod)
+double** assemtmtx(double** Ke, double* eform, double* edisp, double* estress, double** T, int nnod)
 {
 	int i, j, n;
 	double** G, ** P, ** H;
 	double** HP, ** PtHt;
 	double* nm, ** spinnm, * pstress;
 	double** Fnm, ** Fn, ** FnG, ** GtFnt;
-	double** tstiff, ** gstiff1, ** gstiff2, ** gstiff3;
+	double** Kt, ** Kgr, ** Kgp, ** Kgm;
 
 
-	tstiff = (double**)malloc(6*nnod * sizeof(double*));                              /*[Kr]*/
+	Kt = (double**)malloc(6*nnod * sizeof(double*));                              /*[Kt]*/
 	for (i = 0; i < 6*nnod; i++)
 	{
-		*(tstiff + i) = (double*)malloc(6*nnod * sizeof(double));
+		*(Kt + i) = (double*)malloc(6*nnod * sizeof(double));
 	}
 
-	gstiff3 = (double**)malloc(6*nnod * sizeof(double*));                              /*[M]*/
+	Kgm = (double**)malloc(6*nnod * sizeof(double*));                              /*[M]&[Kgm]*/
 	for (i = 0; i < 6*nnod; i++)
 	{
-		*(gstiff3 + i) = (double*)malloc(6*nnod * sizeof(double));
+		*(Kgm + i) = (double*)malloc(6*nnod * sizeof(double));
 		for (j = 0; j < 6*nnod; j++)
 		{
-			*(*(gstiff3 + i) + j) = 0.0;
+			*(*(Kgm + i) + j) = 0.0;
 		}
 	}
 
 
 	G = spinfittermtx(eform, nnod);                     /*SPIN-FITTER MATRIX[G].*/
 	P = projectionmtx(eform, edisp, G, nnod);    		/*PROJECTION MATRIX[P].*/
-	H = blockjacobimtx(edisp, estress, gstiff3, nnod);  /*JACOBIAN MATRIX OF ROTATION[H].*/
+	H = blockjacobimtx(edisp, estress, Kgm, nnod);  /*JACOBIAN MATRIX OF ROTATION[H].*/
 	HP = matrixmatrix(H, P, 6*nnod);                    /*[H][P]*/
 	PtHt = matrixtranspose(HP, 6*nnod);
 	pstress = matrixvector(PtHt, estress, 6*nnod);      /*projected estress {Fp}*/
@@ -2637,23 +2625,26 @@ double** assemtmtx(double** estiff, double* eform, double* edisp, double* estres
 	}
 
 
-	estiff = transformationIII(estiff, HP, 6*nnod);			/*[Pt][Ht][K][H][P]*/
+	Ke = transformationIII(Ke, HP, 6*nnod);/*[Pt][Ht][K][H][P]*/
 
-	gstiff1 = matrixmatrixIII(Fnm, G, 6*nnod, 3, 6*nnod);		/*[Fnm][G]*/
+	Kgr = matrixmatrixIII(Fnm, G, 6*nnod, 3, 6*nnod);/*[Fnm][G]*/
 
-	FnG = matrixmatrixIII(Fn, G, 6*nnod, 3, 6*nnod);         	/*[Fn][G]*/
-	GtFnt = matrixtranspose(FnG, 6*nnod);                   /*[Gt][Fnt]*/
-	gstiff2 = matrixmatrix(GtFnt, P, 6*nnod);               /*[Gt][Fnt][P]*/
+	FnG = matrixmatrixIII(Fn, G, 6*nnod, 3, 6*nnod);/*[Fn][G]*/
+	GtFnt = matrixtranspose(FnG, 6*nnod);/*[Gt][Fnt]*/
+	Kgp = matrixmatrix(GtFnt, P, 6*nnod);/*[Gt][Fnt][P]*/
 
-	gstiff3 = transformationIII(gstiff3, P, 6*nnod);        /*[Pt][M][P]*/
+	Kgm = transformationIII(Kgm, P, 6*nnod);/*[Pt][M][P]*/
 
 	for (i = 0; i < 6*nnod; i++)
 	{
 		for (j = 0; j < 6*nnod; j++)
 		{
-			*(*(tstiff + i) + j) = *(*(estiff + i) + j) - *(*(gstiff1 + i) + j) - *(*(gstiff2 + i) + j) + *(*(gstiff3 + i) + j);
+			*(*(Kt + i) + j) = *(*(Ke + i) + j) - *(*(Kgr + i) + j) - *(*(Kgp + i) + j) + *(*(Kgm + i) + j);
 		}
 	}
+
+	Kt = transformationIII(Kt, T, 6*nnod);
+	symmetricmtx(Kt, 6*nnod);/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 
 
 	free(nm);
@@ -2666,12 +2657,12 @@ double** assemtmtx(double** estiff, double* eform, double* edisp, double* estres
 	freematrix(Fnm, 6*nnod);
 	freematrix(Fn, 6*nnod);
 
-	freematrix(gstiff1, 6*nnod);
+	freematrix(Kgr, 6*nnod);
 	freematrix(FnG, 6*nnod);
 	freematrix(GtFnt, 6*nnod);
-	freematrix(gstiff2, 6*nnod);
-	freematrix(gstiff3, 6*nnod);
-	return tstiff;
+	freematrix(Kgp, 6*nnod);
+	freematrix(Kgm, 6*nnod);
+	return Kt;
 }
 
 void symmetricmtx(double** estiff, int msize)

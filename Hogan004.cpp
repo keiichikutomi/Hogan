@@ -134,11 +134,11 @@
 //#define LISTFILENAME   "optimization"
 
 //#define FILENAME      "ShellTest230728"
-//#define FILENAME      "ShellTest"
+#define FILENAME      "ShellTest"
 //#define FILENAME      "240607LMBosfullwithframeb100"
 
-#define FILENAME      "240614LMBosfullsimplep1b100ver2"
-#define FILENAME      "240617LMBosbending"
+//#define FILENAME      "fullsimplep1b100ver2"
+//#define FILENAME      "240617LMBosbending"
 
 
 
@@ -207,7 +207,7 @@ struct viewparam vpdefault={PERSPECTIVE,0,0,
 							1.0,
 							{0,0,{70.0,-10.0, 0.0}},
                             {{0,0,{1000.0, 1000.0, 1000.0}},
-                             {0,0,{-100.0, -100.0, 6.0}}},
+							 {0,0,{-100.0, -100.0, 6.0}}},
                             {10.0, 0.5,
                              500.0, 0.0, 0.01,
                              0.5,
@@ -15330,7 +15330,7 @@ void printarclmfigures2(FILE *fin,struct viewparam *vp,int ftype,int mode)
         flag=0;
         while(!flag)
         {
-          data=fgetsbrk(fin,&nstr);
+		  data=fgetsbrk(fin,&nstr);
           if(!strcmp(*(data+0),"YFRAME")) flag=1;
         }
       }
@@ -16913,7 +16913,7 @@ void printarclmlastfiguresII(FILE *fin,struct viewparam *vp,
       }
       freestr(data,nstr);
 
-      data=fgetsbrk(fin,&nstr);
+	  data=fgetsbrk(fin,&nstr);
       if(nstr==0) return;
       if(!strcmp(*(data+0),"NFRAME"))
       {

@@ -2293,7 +2293,7 @@ char **fgetsbrk(FILE *fin,int *n)
 	ii=0;
 	ss=NULL;
 	while((ichr=getc(f))==' ')
-	;
+	;/*IGNORE SPACE STRINGS AT THE HEAD.*/
 	while(1)
 	{
 	  if(ichr==EOF) return NULL;
@@ -20626,6 +20626,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
   int i,j,ii,jj,k,n;
   long int offset,mainoff,suboff;
   long int scode,ncode,dcode,code1,code2,code3,code4;
+  //char str[50];/*for debug*/
 
   fseek(ftext,0L,SEEK_SET);
   inputinitII(ftext,&(af->nnode),&(af->nelem),&(af->nshell),&(af->nsect),&(af->nconstraint));
@@ -20676,33 +20677,32 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 
 	data=fgetsbrk(ftext,&n);
 
-	if(n=4)
+	//sprintf(str,"%d",n);
+
+
+	if (n == 13)
 	{
-		(af->nodes+i)->code=strtol(*(data+0),NULL,10);
-		(af->nodes+i)->d[0]=strtod(*(data+1),NULL);
-		(af->nodes+i)->d[1]=strtod(*(data+2),NULL);
-		(af->nodes+i)->d[2]=strtod(*(data+3),NULL);
-
-		*(af->ninit+i)=*(af->nodes+i);
+		(af->nodes + i)->code = strtol(*(data + 0), NULL, 10);
+		(af->ninit + i)->code = strtol(*(data + 0), NULL, 10);
+		for (ii = 0; ii < 3; ii++)
+		{
+			(af->nodes + i)->d[ii] = strtod(*(data + 1 + ii), NULL);
+			(af->nodes + i)->r[ii] = strtod(*(data + 4 + ii), NULL);
+			(af->ninit + i)->d[ii] = strtod(*(data + 7 + ii), NULL);
+			(af->ninit + i)->r[ii] = strtod(*(data + 10 + ii), NULL);
+		}
 	}
-	else if(n=13)
+	if (n == 4)
 	{
-		(af->nodes+i)->code=strtol(*(data+0),NULL,10);
-		(af->nodes+i)->d[0]=strtod(*(data+1),NULL);
-		(af->nodes+i)->d[1]=strtod(*(data+2),NULL);
-		(af->nodes+i)->d[2]=strtod(*(data+3),NULL);
-		(af->nodes+i)->r[0]=strtod(*(data+4),NULL);
-		(af->nodes+i)->r[1]=strtod(*(data+5),NULL);
-		(af->nodes+i)->r[2]=strtod(*(data+6),NULL);
-		(af->ninit+i)->d[0]=strtod(*(data+7),NULL);
-		(af->ninit+i)->d[1]=strtod(*(data+8),NULL);
-		(af->ninit+i)->d[2]=strtod(*(data+9),NULL);
-		(af->ninit+i)->r[0]=strtod(*(data+10),NULL);
-		(af->ninit+i)->r[1]=strtod(*(data+11),NULL);
-		(af->ninit+i)->r[2]=strtod(*(data+12),NULL);
+		(af->nodes + i)->code = strtol(*(data + 0), NULL, 10);
+		for (ii = 0; ii < 3; ii++)
+		{
+			(af->nodes + i)->d[ii] = strtod(*(data + 1 + ii), NULL);
+			(af->nodes + i)->r[ii] = 0.0;
+		}
+		*(af->ninit + i) = *(af->nodes + i);
 	}
-
-
+	//errormessage(str);
 
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
@@ -23370,8 +23370,21 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   double alpha=0.0;
   //double alpha=0.15;
 
+  t=shell.sect->area;
+  hiju=shell.sect->hiju[0];
 
+  m=(double **)malloc(18*sizeof(double *));
+  for(i=0;i<18;i++)
+  {
+	*(m+i)=(double *)malloc(18*sizeof(double));
+	for(j=0;j<18;j++)
+	{
+	  *(*(m+i)+j)=0.0;                                              /*INITIAL.*/
+	}
+  }
 
+#if 0
+  /*WEIGHT OF EACH NODE*/
   a=(double *)malloc(7*sizeof(double));
   *(a+0)=27.0/60.0;
   *(a+1)=8.0/60.0;
@@ -23380,6 +23393,8 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   *(a+4)=3.0/60.0;
   *(a+5)=3.0/60.0;
   *(a+6)=3.0/60.0;
+
+  /*TRIANGLE COORDINATION*/
   L=(double **)malloc(7*sizeof(double *));
   for(i=0;i<7;i++)
   {
@@ -23409,10 +23424,8 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 	  }
 	}
   }
+  /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
 
-
-  b=(double *)malloc(3*sizeof(double));
-  c=(double *)malloc(3*sizeof(double));
   exy=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
@@ -23424,30 +23437,22 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
 	}
   }
+  /*shell local coordinate {xi,yi(,zi=0)}*/
   det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
 
+  b=(double *)malloc(3*sizeof(double));
+  c=(double *)malloc(3*sizeof(double));
   for(i=0;i<3;i++)
   {
 	  j=i+1;
 	  k=i+2;
 	  if(j>=3)j-=3;
 	  if(k>=3)k-=3;
-	  *(b+i)=*(*(exy+j)+1)-*(*(exy+k)+1);
-	  *(c+i)=*(*(exy+k)+0)-*(*(exy+j)+0);
+	  *(b+i)=*(*(exy+j)+1)-*(*(exy+k)+1);/*yj-yk*/
+	  *(c+i)=*(*(exy+k)+0)-*(*(exy+j)+0);/*xk-xj*/
   }
 
-  t=shell.sect->area;
-  hiju=shell.sect->hiju[0];
 
-  m=(double **)malloc(18*sizeof(double *));
-  for(i=0;i<18;i++)
-  {
-	*(m+i)=(double *)malloc(18*sizeof(double));
-	for(j=0;j<18;j++)
-	{
-	  *(*(m+i)+j)=0.0;                                              /*INITIAL.*/
-	}
-  }
 
   for(ii=0;ii<7;ii++)
   {
@@ -23492,12 +23497,33 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 	freematrix(NtN,18);
   }
 
-
+  free(a);
   freematrix(L,7);
   freematrix(exy,3);
-  free(a);
   free(b);
   free(c);
+#endif
+
+  for(i=0;i<3;i++)
+  {
+	for(j=0;j<3;j++)
+	{
+	  for(k=0;k<3;k++)
+	  {
+		if(i==j)
+		{
+		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*det*t/12.0;
+		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*det*pow(t,3)/36.0;
+		}
+		else
+		{
+		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*det*t/6.0;
+		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*det*pow(t,3)/18.0;
+		}
+	  }
+	}
+  }
+  /*MASS MATRIX BY ZHONG AND ALMEDIA.*/
 
   return m;
 }/*assemshellmmtx*/
