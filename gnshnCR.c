@@ -110,7 +110,8 @@ int gnshnCR(struct arclmframe* af)
 
 	int i, ii, jj;
 	int nnode, nelem, nshell, nsect, nreact, nconstraint;
-	int nlap, laps;                                                  /*LAP COUNT*/
+	int nlap, laps;  /*LAP COUNT*/
+
 	long int msize;
 
 	double ddt = 0.00020;/*TIME INCREMENT[sec]*/
@@ -118,9 +119,10 @@ int gnshnCR(struct arclmframe* af)
 
 
 	/***FOR ELEMENT***/
-	double* gform, * eform;                      /*INITIAL COORDINATION OF ELEMENT*/
+	double* gforminit, * gform;                      /*GLOBAL COORDINATION OF ELEMENT*/
+	double* eforminit, * eform;                      /*LOCAL COORDINATION OF ELEMENT*/
+	double* edisp;                                   /*LOCAL DEFORMATION OF ELEMENT*/
 
-	double* gdisp, * edisp;                      /*DEFORMED COORDINATION OF ELEMENT*/
 	double* midgdisp, * midedisp;
 	double* lastgdisp, * lastedisp;
 
@@ -553,6 +555,7 @@ int gnshnCR(struct arclmframe* af)
 			ginit.m = (unsigned short int)i;
 			*(gmtx + (i - 1)) = ginit;
 		}
+		comps = msize;
 		/*FORCE VECTOR INITIALIZATION.*/
 		for (i = 0; i < msize; i++)
 		{
@@ -564,7 +567,9 @@ int gnshnCR(struct arclmframe* af)
 
 		loadfactor = lambda * nlap;
 
-		volumetotal = 0.0;
+		volume = 0.0;
+
+		assemconf(confs, fexternal, 1.0, nnode);               /*GLOBAL VECTOR.*/
 
 
 
@@ -574,7 +579,6 @@ int gnshnCR(struct arclmframe* af)
 		{
 			inputshell(shells, mshell, i - 1, &shell);
 			shell.sect = (shells + i - 1)->sect;                      /*READ SECTION DATA.*/
-
 			loffset = (int*)malloc(6 * shell.nnod * sizeof(int));
 			for (ii = 0; ii < shell.nnod; ii++)
 			{
@@ -591,8 +595,8 @@ int gnshnCR(struct arclmframe* af)
 				inputnode(iform, shell.node[ii]);
 			}
 			drccosinit = shelldrccos(shell, &area);
-			gform = extractshelldisplacement(shell, iform);                     /*{Xg}*/
-			eform = extractlocalcoord(gform,drccosinit,shell.nnod);             /*{Xe}*/
+			gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
+			eforminit = extractlocalcoord(gforminit,drccosinit,shell.nnod);     /*{Xe}*/
 
 			if (iteration == 1)
 			{
@@ -610,33 +614,9 @@ int gnshnCR(struct arclmframe* af)
 			{
 				DBe = NULL;
 			}
-			Ke = assemshellemtx(shell, drccosinit, DBe);   						/*ELASTIC MATRIX[K]*/
+			Ke = assemshellemtx(shell, drccosinit, DBe);   						/*ELASTIC MATRIX[Ke]*/
 			Me = assemshellmmtx(shell, drccosinit);          					/*INERTIAL MATRIX[Me]*/
 
-			//////////*LAST LAP*//////////
-
-			for (ii = 0; ii < shell.nnod; ii++)
-			{
-				inputnode(lastddisp, shell.node[ii]);
-			}
-			lastdrccos = shelldrccos(shell, &area);
-			lastT = transmatrixIII(lastdrccos, shell.nnod);
-
-			lastgdisp = extractshelldisplacement(shell, lastddisp);
-			lastedisp = extractlocalcoord(lastgdisp,lastdrccos,shell.nnod);
-
-			extractdeformation(eform, lastedisp, shell.nnod);
-			lasteinternal = matrixvector(Ke, lastedisp, 6 * shell.nnod);
-
-
-
-
-			lastgacc_m = extractshelldisplacement(shell, lastudd_m);
-			lastginertial_m = matrixvector(Me, lastgacc_m, 6 * shell.nnod);
-			lastginertial = pushforward(lastedisp, lastginertial_m, shell.nnod);
-
-			lasteexternal = assemshellpvct(shell, lastdrccos);
-			lastgexternal = matrixvector(lastTt, lasteexternal, 6*shell.nnod); /*GLOBAL EXTERNAL FORCE.*/
 
 			//////////*LATEST ITERATION*//////////
 
@@ -645,40 +625,27 @@ int gnshnCR(struct arclmframe* af)
 				inputnode(ddisp, shell.node[ii]);
 			}
 			drccos = shelldrccos(shell, &area);
-			T = transmatrixIII(drccos, shell.nnod);         					/*TRANSFORMATION MATRIX[T]*/
+			gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
+			eform = extractlocalcoord(gform,drccos,shell.nnod);                 /*{Xe+Ue}*/
 
-			gdisp = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
-			edisp = extractlocalcoord(gdisp,drccos,shell.nnod);                 /*{Xe+Ue}*/
-
-			extractdeformation(eform, edisp, shell.nnod);                       /*{Ue}*/
+			edisp = extractdeformation(eforminit, eform, shell.nnod);           /*{Ue}*/
 			einternal = matrixvector(Ke, edisp, 6 * shell.nnod);      			/*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 
-
+			T = transmatrixIII(drccos, shell.nnod);         					/*TRANSFORMATION MATRIX[T]*/
+			Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod);         /*TANGENTIAL STIFFNESS MATRIX[Kt].*//*PROJECTION of estress[Pt][Ht]{Fe}.*/
 
 			gacc_m = extractshelldisplacement(shell, udd_m);
 			ginertial_m = matrixvector(Me, gacc, 6 * shell.nnod);
 			ginertial = pushforward(edisp, ginertial_m, 3);
 
-			eexternal = assemshellpvct(shell, drccos);          /*ELEMENT EXTERNAL FORCE{Fe}.*/
+			epressure = assemshellpvct(shell, drccos);          /*ELEMENT EXTERNAL FORCE{Fe}.*/
+			gpressure = matrixvector(Tt, epressure, 6 * shell.nnod); /*GLOBAL EXTERNAL FORCE.*/
+
+			volume += shellvolume(shell, drccos, area);                         /*VOLUME*/
 
 
-
-
-
-
-
-
-
-
-
-
-
-			volumetotal += shellvolume(shell, drccos, area);                         /*VOLUME*/
-
-
-			if (iteration == 1)
+			if ((outputmode == 0 && (iteration == 1 || BCLFLAG == 2)) || outputmode == 1)
 			{
-				fprintf(fene, "\"STRAIN ENERGY\"\n");
 				Ee = 0.0;
 				Ep = 0.0;
 				Eb = 0.0;
@@ -695,9 +662,8 @@ int gnshnCR(struct arclmframe* af)
 					Ee += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
 				}
 				Ee += Ep + Eb;
-				fprintf(fene, "CODE:%5ld %e %e %e\n", shell.code, Ep, Eb, Ee);
+				fprintf(fene, "%5ld %e %e %e\n", shell.code, Ep, Eb, Ee);
 
-				fprintf(fout, "\"STRESS\"\n");
 				shellstress = matrixvector(DBe, edisp, 6 * shell.nnod);
 				for (ii = 0; ii < shell.nnod; ii++)                          /*UPDATE STRESS.*/
 				{
@@ -706,26 +672,18 @@ int gnshnCR(struct arclmframe* af)
 						shell.stress[ii][jj] = *(shellstress + 6 * ii + jj);
 					}
 				}
-				outputshellstress(shell, shellstress, fout);
+				outputshellstress(shell, shellstress, fstr);
 				free(shellstress);
-				freematrix(DBe, 18);
+				freematrix(DBe, 6 * shell.nnod);
 			}
-
-
-			Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod); /*TANGENTIAL STIFFNESS MATRIX[Kt].*//*PROJECTION of estress[Pt][Ht]{Fe}.*/
-
-
-
-
-
-
-
-
-
 
 			//////////*MID-POINT*//////////
 			midginertial = midpointvct(ginertial, lastginertial, alpham   , 6*shell.nnod);
-			midginternal = midpointvct(ginternal, lastginternal, alphaf-xi, 6*shell.nnod);/*xi : NUMERICAL DAMPING DISSIPATION*/
+
+			mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*shell.nnod);/*xi : NUMERICAL DAMPING DISSIPATION*/
+			midA = midpointmtx(A, lastA, alpha - xi, 6 * shell.nnod);
+			midginternal = matrixvector(midA, mideinternal, 6 * shell.nnod);
+
 			midgexternal = midpointvct(gexternal, lastgexternal, alphaf   , 6*shell.nnod);
 
 

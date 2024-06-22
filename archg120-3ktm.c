@@ -22689,7 +22689,7 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
   int i,j,k;
-  double **e,**exy;
+  double **Ke,**exy;
   double E,poi,t;
   double *a,*b,*c;
   double det;
@@ -22733,19 +22733,19 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
   poi=shell.sect->poi;
   t=shell.sect->area;
 
-  e=(double **)malloc(18*sizeof(double *));
+  Ke=(double **)malloc(18*sizeof(double *));
   for(i=0;i<18;i++)
   {
-	*(e+i)=(double *)malloc(18*sizeof(double));
+	*(Ke+i)=(double *)malloc(18*sizeof(double));
 	for(j=0;j<18;j++)
 	{
-	  *(*(e+i)+j)=0.0;                                              /*INITIAL.*/
+	  *(*(Ke+i)+j)=0.0;                                              /*INITIAL.*/
 	}
   }
 
-  addkpemtx(e,shell,E,poi,t,det,Lx,Ly,DBe);
-  addkbemtx(e,shell,E,poi,t,det,Lx,Ly,b,c,DBe);
-  addktemtx(e,E,t,det);
+  addkpemtx(Ke,shell,E,poi,t,det,Lx,Ly,DBe);
+  addkbemtx(Ke,shell,E,poi,t,det,Lx,Ly,b,c,DBe);
+  addktemtx(Ke,E,t,det);
 
   for(i=0;i<3;i++)free(*(exy+i));
   free(exy);
@@ -22754,10 +22754,10 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
   free(c);
   free(Lx);
   free(Ly);
-  return e;
+  return Ke;
 }/*assememtx*/
 
-void addkpemtx(double **e,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double **DBe)
+void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double **DBe)
 {
   int i,j;
   double **Dp,**Bp,**Bpt,**DpBp,**Kp;
@@ -22820,10 +22820,10 @@ void addkpemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
   {
 	for(j=0;j<3;j++)
 	{
-	  *(*(e+6*i+0)+6*j+0)=det*t**(*(Kp+2*i+0)+2*j+0)*prate;
-	  *(*(e+6*i+0)+6*j+1)=det*t**(*(Kp+2*i+0)+2*j+1)*prate;
-	  *(*(e+6*i+1)+6*j+0)=det*t**(*(Kp+2*i+1)+2*j+0)*prate;
-	  *(*(e+6*i+1)+6*j+1)=det*t**(*(Kp+2*i+1)+2*j+1)*prate;
+	  *(*(Ke+6*i+0)+6*j+0)=det*t**(*(Kp+2*i+0)+2*j+0)*prate;
+	  *(*(Ke+6*i+0)+6*j+1)=det*t**(*(Kp+2*i+0)+2*j+1)*prate;
+	  *(*(Ke+6*i+1)+6*j+0)=det*t**(*(Kp+2*i+1)+2*j+0)*prate;
+	  *(*(Ke+6*i+1)+6*j+1)=det*t**(*(Kp+2*i+1)+2*j+1)*prate;
 	}
   }
   if(DBe!=NULL)
@@ -22849,7 +22849,7 @@ void addkpemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
   return;
 }
 
-void addkbemtx(double **e,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double *b,double *c,double **DBe)
+void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double *b,double *c,double **DBe)
 {
   int i,j,k,ii;
   double *a;
@@ -23124,15 +23124,15 @@ void addkbemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
 	{
 	  for(j=0;j<3;j++)
 	  {
-		*(*(e+6*i+2)+6*j+2) += *(*(Kb+3*i+0)+3*j+0)**(a+ii)*det*brate;
-		*(*(e+6*i+2)+6*j+3) += *(*(Kb+3*i+0)+3*j+1)**(a+ii)*det*brate;
-		*(*(e+6*i+2)+6*j+4) += *(*(Kb+3*i+0)+3*j+2)**(a+ii)*det*brate;
-		*(*(e+6*i+3)+6*j+2) += *(*(Kb+3*i+1)+3*j+0)**(a+ii)*det*brate;
-		*(*(e+6*i+3)+6*j+3) += *(*(Kb+3*i+1)+3*j+1)**(a+ii)*det*brate;
-		*(*(e+6*i+3)+6*j+4) += *(*(Kb+3*i+1)+3*j+2)**(a+ii)*det*brate;
-		*(*(e+6*i+4)+6*j+2) += *(*(Kb+3*i+2)+3*j+0)**(a+ii)*det*brate;
-		*(*(e+6*i+4)+6*j+3) += *(*(Kb+3*i+2)+3*j+1)**(a+ii)*det*brate;
-		*(*(e+6*i+4)+6*j+4) += *(*(Kb+3*i+2)+3*j+2)**(a+ii)*det*brate;
+		*(*(Ke+6*i+2)+6*j+2) += *(*(Kb+3*i+0)+3*j+0)**(a+ii)*det*brate;
+		*(*(Ke+6*i+2)+6*j+3) += *(*(Kb+3*i+0)+3*j+1)**(a+ii)*det*brate;
+		*(*(Ke+6*i+2)+6*j+4) += *(*(Kb+3*i+0)+3*j+2)**(a+ii)*det*brate;
+		*(*(Ke+6*i+3)+6*j+2) += *(*(Kb+3*i+1)+3*j+0)**(a+ii)*det*brate;
+		*(*(Ke+6*i+3)+6*j+3) += *(*(Kb+3*i+1)+3*j+1)**(a+ii)*det*brate;
+		*(*(Ke+6*i+3)+6*j+4) += *(*(Kb+3*i+1)+3*j+2)**(a+ii)*det*brate;
+		*(*(Ke+6*i+4)+6*j+2) += *(*(Kb+3*i+2)+3*j+0)**(a+ii)*det*brate;
+		*(*(Ke+6*i+4)+6*j+3) += *(*(Kb+3*i+2)+3*j+1)**(a+ii)*det*brate;
+		*(*(Ke+6*i+4)+6*j+4) += *(*(Kb+3*i+2)+3*j+2)**(a+ii)*det*brate;
 	  }
 	}
 	if(DBe!=NULL && ii==0)
@@ -23172,17 +23172,17 @@ void addkbemtx(double **e,struct oshell shell,double E,double poi,double t,doubl
   return;
 }
 
-void addktemtx(double **e,double E,double t,double det)
+void addktemtx(double **Ke,double E,double t,double det)
 {   /*–Ê“à‰ñ“]ˆÀ’è‰»—ps—ñ*/
-	*(*(e+5)+5)=0.03*E*t*det;
-	*(*(e+5)+11)=-0.015*E*t*det;
-	*(*(e+5)+17)=*(*(e+5)+11);
-	*(*(e+11)+5)=*(*(e+5)+11);
-	*(*(e+11)+11)=*(*(e+5)+5);
-	*(*(e+11)+17)=*(*(e+5)+11);
-	*(*(e+17)+5)=*(*(e+5)+11);
-	*(*(e+17)+11)=*(*(e+5)+11);
-	*(*(e+17)+17)=*(*(e+5)+5);
+	*(*(Ke+5)+5)=0.03*E*t*det;
+	*(*(Ke+5)+11)=-0.015*E*t*det;
+	*(*(Ke+5)+17)=*(*(Ke+5)+11);
+	*(*(Ke+11)+5)=*(*(Ke+5)+11);
+	*(*(Ke+11)+11)=*(*(Ke+5)+5);
+	*(*(Ke+11)+17)=*(*(Ke+5)+11);
+	*(*(Ke+17)+5)=*(*(Ke+5)+11);
+	*(*(Ke+17)+11)=*(*(Ke+5)+11);
+	*(*(Ke+17)+17)=*(*(Ke+5)+5);
 	return;
 }
 
