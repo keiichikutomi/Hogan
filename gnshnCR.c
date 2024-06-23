@@ -578,9 +578,10 @@ int gnshnCR(struct arclmframe* af)
 		for (i = 1; i <= nshell; i++)
 		{
 			inputshell(shells, mshell, i - 1, &shell);
+			nnod = shell.nnod
 			shell.sect = (shells + i - 1)->sect;                      /*READ SECTION DATA.*/
-			loffset = (int*)malloc(6 * shell.nnod * sizeof(int));
-			for (ii = 0; ii < shell.nnod; ii++)
+			loffset = (int*)malloc(6 * nnod * sizeof(int));
+			for (ii = 0; ii < nnod; ii++)
 			{
 				for (jj = 0; jj < 6; jj++)
 				{
@@ -588,68 +589,96 @@ int gnshnCR(struct arclmframe* af)
 				}
 			}
 
-			//////////*INITIAL*//////////
-
-			for (ii = 0; ii < shell.nnod; ii++)
+			/*INITIAL CONFIGURATION*/
+			for (ii = 0; ii < nnod; ii++)
 			{
 				inputnode(iform, shell.node[ii]);
 			}
 			drccosinit = shelldrccos(shell, &area);
 			gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
-			eforminit = extractlocalcoord(gforminit,drccosinit,shell.nnod);     /*{Xe}*/
+			eforminit = extractlocalcoord(gforminit,drccosinit,nnod);     /*{Xe}*/
 
-			if (iteration == 1)
+
+			DBe = (double**)malloc(18 * sizeof(double*));
+			for (ii = 0; ii < 18; ii++)
 			{
-				DBe = (double**)malloc(18 * sizeof(double*));
-				for (ii = 0; ii < 18; ii++)
+				*(DBe + ii) = (double*)malloc(18 * sizeof(double));
+				for (jj = 0; jj < 18; jj++)
 				{
-					*(DBe + ii) = (double*)malloc(18 * sizeof(double));
-					for (jj = 0; jj < 18; jj++)
-					{
-						*(*(DBe + ii) + jj) = 0.0;
-					}
+					*(*(DBe + ii) + jj) = 0.0;
 				}
-			}
-			else
-			{
-				DBe = NULL;
 			}
 			Ke = assemshellemtx(shell, drccosinit, DBe);   						/*ELASTIC MATRIX[Ke]*/
 			Me = assemshellmmtx(shell, drccosinit);          					/*INERTIAL MATRIX[Me]*/
 
-
-			//////////*LATEST ITERATION*//////////
-
-			for (ii = 0; ii < shell.nnod; ii++)
+			/*DEFORMED CONFIGURATION*/
+			for (ii = 0; ii < nnod; ii++)
 			{
 				inputnode(ddisp, shell.node[ii]);
 			}
 			drccos = shelldrccos(shell, &area);
 			gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
-			eform = extractlocalcoord(gform,drccos,shell.nnod);                 /*{Xe+Ue}*/
+			eform = extractlocalcoord(gform,drccos,nnod);                 /*{Xe+Ue}*/
 
-			edisp = extractdeformation(eforminit, eform, shell.nnod);           /*{Ue}*/
-			einternal = matrixvector(Ke, edisp, 6 * shell.nnod);      			/*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
+			edisp = extractdeformation(eforminit, eform, nnod);           /*{Ue}*/
+			einternal = matrixvector(Ke, edisp, 6 * nnod);      			/*ELEMENT INTERNAL FORCE{Fe}=[Ke]{Ue}.*/
 
-			T = transmatrixIII(drccos, shell.nnod);         					/*TRANSFORMATION MATRIX[T]*/
-			Kt = assemtmtx(Ke, eform, edisp, einternal, T, shell.nnod);         /*TANGENTIAL STIFFNESS MATRIX[Kt].*//*PROJECTION of estress[Pt][Ht]{Fe}.*/
+			T = transmatrixIII(drccos, nnod);         					/*TRANSFORMATION MATRIX[T]*/
+			Tt = matrixtranspose(T, 6 * nnod);                  				/*[Tt].*/
+
+			pinternal = (double*)malloc(6 * nnod * sizeof(int));
+			HP = (double**)malloc(6 * nnod * sizeof(double*));
+			for (ii = 0; ii < nnod; ii++)
+			{
+				*(HP + ii) = (double*)malloc(6 * nnod * sizeof(double));
+			}
+			Kt = assemtmtx(Ke, eform, edisp, einternal, pinternal, HP, nnod);	/*TANGENTIAL MATRIX[Kt].*/
+
+			Kt = transformationIII(Kt, T, 6*nnod);
+			symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 
 			gacc_m = extractshelldisplacement(shell, udd_m);
-			ginertial_m = matrixvector(Me, gacc, 6 * shell.nnod);
+			ginertial_m = matrixvector(Me, gacc, 6 * nnod);
 			ginertial = pushforward(edisp, ginertial_m, 3);
 
 			epressure = assemshellpvct(shell, drccos);          /*ELEMENT EXTERNAL FORCE{Fe}.*/
-			gpressure = matrixvector(Tt, epressure, 6 * shell.nnod); /*GLOBAL EXTERNAL FORCE.*/
+			gpressure = matrixvector(Tt, epressure, 6 * nnod); /*GLOBAL EXTERNAL FORCE.*/
 
 			volume += shellvolume(shell, drccos, area);                         /*VOLUME*/
 
 
-			if ((outputmode == 0 && (iteration == 1 || BCLFLAG == 2)) || outputmode == 1)
+
+
+			//////////*MID-POINT*//////////
+			midginertial = midpointvct(ginertial, lastginertial, alpham   , 6*nnod);
+
+			mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);/*xi : NUMERICAL DAMPING DISSIPATION*/
+			midA = midpointmtx(A, lastA, alpha - xi, 6 * nnod);
+			midginternal = matrixvector(midA, mideinternal, 6 * nnod);
+
+			midgexternal = midpointvct(gexternal, lastgexternal, alphaf   , 6*nnod);
+
+
+			//////////*GLOBAL VECTOR & MATRIX ASSEMBLY*//////////
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(finertial + *(loffset + (6 * ii + jj))) += *(midginertial + 6 * ii + jj);
+					*(finternal + *(loffset + (6 * ii + jj))) += *(midginternal + 6 * ii + jj);
+					*(fexternal + *(loffset + (6 * ii + jj))) += *(midgexternal + 6 * ii + jj);
+				}
+			}
+			assemgstiffnessIIwithDOFelimination(gmtx, K, &shell, constraintmain);
+
+
+			/*OUTPUT STRAIN ENERGY & STRESS*/
+            if ((outputmode == 0 && (iteration == 1 || BCLFLAG == 2)) || outputmode == 1)
 			{
 				Ee = 0.0;
 				Ep = 0.0;
 				Eb = 0.0;
-				for (ii = 0; ii < shell.nnod; ii++)                   /*UPDATE STRAIN ENERGY.*/
+				for (ii = 0; ii < nnod; ii++)                   /*UPDATE STRAIN ENERGY.*/
 				{
 					for (jj = 0; jj < 2; jj++)
 					{
@@ -664,8 +693,8 @@ int gnshnCR(struct arclmframe* af)
 				Ee += Ep + Eb;
 				fprintf(fene, "%5ld %e %e %e\n", shell.code, Ep, Eb, Ee);
 
-				shellstress = matrixvector(DBe, edisp, 6 * shell.nnod);
-				for (ii = 0; ii < shell.nnod; ii++)                          /*UPDATE STRESS.*/
+				shellstress = matrixvector(DBe, edisp, 6 * nnod);
+				for (ii = 0; ii < nnod; ii++)                          /*UPDATE STRESS.*/
 				{
 					for (jj = 0; jj < 6; jj++)
 					{
@@ -674,40 +703,19 @@ int gnshnCR(struct arclmframe* af)
 				}
 				outputshellstress(shell, shellstress, fstr);
 				free(shellstress);
-				freematrix(DBe, 6 * shell.nnod);
 			}
 
-			//////////*MID-POINT*//////////
-			midginertial = midpointvct(ginertial, lastginertial, alpham   , 6*shell.nnod);
-
-			mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*shell.nnod);/*xi : NUMERICAL DAMPING DISSIPATION*/
-			midA = midpointmtx(A, lastA, alpha - xi, 6 * shell.nnod);
-			midginternal = matrixvector(midA, mideinternal, 6 * shell.nnod);
-
-			midgexternal = midpointvct(gexternal, lastgexternal, alphaf   , 6*shell.nnod);
-
-
-			//////////*GLOBAL VECTOR & MATRIX ASSEMBLY*//////////
-			for (ii = 0; ii < shell.nnod; ii++)
-			{
-				for (jj = 0; jj < 6; jj++)
-				{
-					*(finertial + *(loffset + (6 * ii + jj))) += *(midginertial + 6 * ii + jj);
-					*(finternal + *(loffset + (6 * ii + jj))) += *(midginternal + 6 * ii + jj);
-					*(fexternal + *(loffset + (6 * ii + jj))) += *(midgexternal + 6 * ii + jj);
-				}
-			}
-			assemgstiffnessIIwithDOFelimination(gmtx, K, &shell, constraintmain);
 
 			freematrix(drccosinit, 3);
 			freematrix(lastdrccos, 3);
 			freematrix(drccos, 3);
 
-			freematrix(T, 18);
-			freematrix(Tt, 18);
-			freematrix(Ke, 18);
-			freematrix(Kt, 18);
-			freematrix(Me, 18);
+			freematrix(T, 6 * nnod);
+			freematrix(Tt, 6 * nnod);
+			freematrix(Ke, 6 * nnod);
+			freematrix(Kt, 6 * nnod);
+			freematrix(DBe, 6 * nnod);
+			freematrix(Me, 6 * nnod);
 
 			free(einternal);
 			free(ginternal);
