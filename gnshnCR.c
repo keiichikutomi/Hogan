@@ -629,17 +629,15 @@ int gnshnCR(struct arclmframe* af)
 			//epressure = assemshellpvct(shell, drccos);                		/*{Pe}*/
 			volume += shellvolume(shell, drccos, area);                         /*VOLUME*/
 
-			pinternal = (double*)malloc(6 * nnod * sizeof(double));
-			HP = (double**)malloc(6 * nnod * sizeof(double*));
+			ginternal = (double*)malloc(6 * nnod * sizeof(double));
+			HPT = (double**)malloc(6 * nnod * sizeof(double*));
 			for (ii = 0; ii < nnod; ii++)
 			{
-				*(HP + ii) = (double*)malloc(6 * nnod * sizeof(double));
+				*(HPT + ii) = (double*)malloc(6 * nnod * sizeof(double));
 			}
-			Kt = assemtmtx(Ke, eform, edisp, einternal, pinternal, HP, nnod);	/*[Kt]*/
-			Kt = transformationIII(Kt, T, 6*nnod);
+			Kg = assemgmtxCR(eform, edisp, einternal, ginternal, T, HPT, nnod);	/*[Kg]*/
 			symmetricmtx(Kt, 6*nnod);											/*[Ksym]*/
 
-			ginternal = matrixvector(Tt, pinternal, 6 * nnod);  				/*{Fg}*/
 			//gpressure = matrixvector(Tt, epressure, 6 * nnod);  				/*{Pg}*/
 
 			gacc_m = extractshelldisplacement(shell, udd_m);
@@ -651,11 +649,37 @@ int gnshnCR(struct arclmframe* af)
 			midginertial = midpointvct(ginertial, lastginertial, alpham   , 6*nnod);
 
 			mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);/*xi : NUMERICAL DAMPING DISSIPATION*/
-			midA = midpointmtx(A, lastA, alpha - xi, 6 * nnod);
-			midginternal = matrixvector(midA, mideinternal, 6 * nnod);
+			midHPT = midpointmtx(HPT, lastHPT, alphaf, 6 * nnod);
+			midTtPtHt = matrixtranspose(midHPT, 6 * nnod);                  				/*[Tt]*/
+			midginternal = matrixvector(midTtPtHt, mideinternal, 6 * nnod);
+
+			//matrixtransposevector
 
 			midgexternal = midpointvct(gexternal, lastgexternal, alphaf   , 6*nnod);
 
+
+
+			Kg = assemgmtxCR(eform, edisp, mideinternal, pstress, HP, nnod);
+			midTtPtHtKe = matrixmatrix(midHPT, Ke, 6*nnod);
+			midTtPtHtKeHPT = matrixmatrix(midTtPtHtKe, HPT, 6*nnod);
+
+
+			/*ASSEMBLE TANGENT STIFFNESS MATRIX*/
+			for (ii = 0; ii < 6*nnod; ii++)
+			{
+				for (jj = 0; jj < 6*nnod; jj++)
+				{
+					*(*(Kt + ii) + jj) = (1-alphaf)**(*(Kg + ii) + jj) + (1-alphaf + xi)**(*(Ke + ii) + jj);
+				}
+			}
+			/*ASSEMBLE TANGENT MASS MATRIX*/
+			for (ii = 0; ii < 6*nnod; ii++)
+			{
+				for (jj = 0; jj < 6*nnod; jj++)
+				{
+					*(*(Kt + ii) + jj) = (1-alphaf)**(*(Kg + ii) + jj) + (1-alphaf + xi)**(*(Ke + ii) + jj);
+				}
+			}
 
 			/*GLOBAL VECTOR & MATRIX ASSEMBLY.*/
 			for (ii = 0; ii < nnod; ii++)
