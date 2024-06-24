@@ -495,7 +495,7 @@ int arclmCR(struct arclmframe* af)
 		af->nlaps = nlap;
 
 		///FOR DRAWING 2///
-		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+		//setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 		if(iteration==1)clearwindow(*(wdraw.childs+1));
 		///FOR DRAWING 2///
 
@@ -930,7 +930,7 @@ int arclmCR(struct arclmframe* af)
 			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
 				nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, 0.0, volume);
 			fprintf(ffig, "%s", string);
-			errormessage(string);
+			//errormessage(string);
 			/*LDL DECOMPOSITION FAILED*/
 			if (sign < 0.0)
 			{
@@ -2261,53 +2261,6 @@ double** spinmtx(double* rvct)
 	return smtx;
 }
 
-double** jacobimtx(double* rvct)
-/*transformation from additional infinitesimal incremental rotation to increment of total rotational pseudo-vector*/
-{
-	int n, i, j;
-	double theta, eta;
-	double** thetaspin, ** thetaspin2;
-	double** H;
-
-
-	H = (double**)malloc(3 * sizeof(double*));
-	for (i = 0; i < 3; i++)
-	{
-		*(H + i) = (double*)malloc(3 * sizeof(double));
-		for (j = 0; j < 3; j++)
-		{
-			*(*(H + i) + j) = 0.0;
-		}
-	}
-
-	theta = vectorlength(rvct,3);
-
-	if (theta < PI / 30.0)
-	{
-		eta = 1.0 / 12.0 + pow(theta, 2) / 720.0 + pow(theta, 4) / 30240.0 + pow(theta, 6) / 1209600.0;
-	}
-	else
-	{
-		eta = (1.0 - 0.5 * theta * (1.0 / tan(0.5 * theta))) / pow(theta, 2);
-	}
-	thetaspin = spinmtx(rvct);
-	thetaspin2 = matrixmatrix(thetaspin, thetaspin, 3);
-
-
-	for (i = 0; i < 3; i++)
-	{
-		for (j = 0; j < 3; j++)
-		{
-			*(*(H + i) + j) = -0.5 * *(*(thetaspin + i) + j) + eta * *(*(thetaspin2 + i) + j);
-			if (i == j)*(*(H + i) + j) += 1.0;
-		}
-	}
-	freematrix(thetaspin, 3);
-	freematrix(thetaspin2, 3);
-	return H;
-}
-
-
 double** spinfittermtx(double* eform, int nnod)
 /*spin-fitter matrix for beam & shell*/
 /*G     :3*6nnod matrix(rotational variation by translational motion)*/
@@ -2449,6 +2402,52 @@ double** projectionmtx(double* eform, double** G,int nnod)
 	return P;
 }
 
+double** jacobimtx(double* rvct)
+/*transformation from additional infinitesimal incremental rotation to increment of total rotational pseudo-vector*/
+{
+	int n, i, j;
+	double theta, eta;
+	double** thetaspin, ** thetaspin2;
+	double** H;
+
+
+	H = (double**)malloc(3 * sizeof(double*));
+	for (i = 0; i < 3; i++)
+	{
+		*(H + i) = (double*)malloc(3 * sizeof(double));
+		for (j = 0; j < 3; j++)
+		{
+			*(*(H + i) + j) = 0.0;
+		}
+	}
+
+	theta = vectorlength(rvct,3);
+
+	if (theta < PI / 30.0)
+	{
+		eta = 1.0 / 12.0 + pow(theta, 2) / 720.0 + pow(theta, 4) / 30240.0 + pow(theta, 6) / 1209600.0;
+	}
+	else
+	{
+		eta = (1.0 - 0.5 * theta * (1.0 / tan(0.5 * theta))) / pow(theta, 2);
+	}
+	thetaspin = spinmtx(rvct);
+	thetaspin2 = matrixmatrix(thetaspin, thetaspin, 3);
+
+
+	for (i = 0; i < 3; i++)
+	{
+		for (j = 0; j < 3; j++)
+		{
+			*(*(H + i) + j) = -0.5 * *(*(thetaspin + i) + j) + eta * *(*(thetaspin2 + i) + j);
+			if (i == j)*(*(H + i) + j) += 1.0;
+		}
+	}
+	freematrix(thetaspin, 3);
+	freematrix(thetaspin2, 3);
+	return H;
+}
+
 double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod)
 {
 	int n, i, j;
@@ -2467,33 +2466,27 @@ double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod)
 			*(*(H + i) + j) = 0.0;
 		}
 	}
-
-	mtheta = (double**)malloc(3 * sizeof(double*));                    /*{ma}{ƒÆat}*/
-	for (i = 0; i < 3; i++)
-	{
-		*(mtheta + i) = (double*)malloc(3 * sizeof(double));
-	}
-
 	rvct = (double*)malloc(3 * sizeof(double));
-	mvct = (double*)malloc(3 * sizeof(double));
+
+	if(estress!=NULL && M!=NULL)
+	{
+		mtheta = (double**)malloc(3 * sizeof(double*));                         /*{ma}{ƒÆat}*/
+		for (i = 0; i < 3; i++)
+		{
+			*(mtheta + i) = (double*)malloc(3 * sizeof(double));
+		}
+		mvct = (double*)malloc(3 * sizeof(double));
+	}
 
 	for (n = 0; n < nnod; n++)
 	{
 		for (i = 0; i < 3; i++)
 		{
 			*(rvct + i) = *(edisp + 6 * n + 3 + i);
-			*(mvct + i) = *(estress + 6 * n + 3 + i);
 		}
 		theta = vectorlength(rvct,3);
-		dot = dotproduct(rvct,mvct,3);
-
-		for (i = 0; i < 3; i++)
-		{
-			for (j = 0; j < 3; j++)
-			{
-				*(*(mtheta + i) + j) = *(mvct + i) * *(rvct + j);
-			}
-		}
+        thetaspin = spinmtx(rvct);
+		thetaspin2 = matrixmatrix(thetaspin, thetaspin, 3);
 
 		if (theta < PI / 30.0)
 		{
@@ -2506,11 +2499,7 @@ double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod)
 			mu = (theta * theta + 4.0 * cos(theta) + theta * sin(theta) - 4.0)
 				/ (4.0 * pow(theta, 4) * sin(0.5 * theta) * sin(0.5 * theta));
 		}
-		thetaspin = spinmtx(rvct);
-		thetaspin2 = matrixmatrix(thetaspin, thetaspin, 3);
 
-		mspin = spinmtx(mvct);
-		mtheta2 = matrixmatrix(thetaspin2, mtheta, 3);
 		Ha = (double**)malloc(3 * sizeof(double*));
 		for (i = 0; i < 3; i++)
 		{
@@ -2522,35 +2511,89 @@ double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod)
 			{
 				*(*(Ha + i) + j) = -0.5 * *(*(thetaspin + i) + j) + eta * *(*(thetaspin2 + i) + j);
 				if (i == j)*(*(Ha + i) + j) += 1.0;
-
-				*(*(mtheta2 + i) + j) *= mu;
-				*(*(mtheta2 + i) + j) += eta * ( *(*(mtheta + j) + i) - 2.0 * *(*(mtheta + i) + j) ) - 0.5 * *(*(mspin + i) + j);
-				if (i == j)*(*(mtheta2 + i) + j) += eta * dot;
 			}
 		}
-
-		Ma = matrixmatrix(mtheta2, Ha, 3);
-
 		for (i = 0; i < 3; i++)
 		{
 			for (j = 0; j < 3; j++)
 			{
 				*(*(H + 6 * n + 3 + i) + 6 * n + 3 + j) = *(*(Ha + i) + j);
-				*(*(M + 6 * n + 3 + i) + 6 * n + 3 + j) = *(*(Ma + i) + j);
 				if (i == j)*(*(H + 6 * n + i) + 6 * n + j) = 1.0;
 			}
 		}
+
+
+		if(estress!=NULL && M!=NULL)
+		{
+			for (i = 0; i < 3; i++)
+			{
+				*(mvct + i) = *(estress + 6 * n + 3 + i);
+			}
+			dot = dotproduct(rvct,mvct,3);
+			for (i = 0; i < 3; i++)
+			{
+				for (j = 0; j < 3; j++)
+				{
+					*(*(mtheta + i) + j) = *(mvct + i) * *(rvct + j);
+				}
+			}
+			mspin = spinmtx(mvct);
+			mtheta2 = matrixmatrix(thetaspin2, mtheta, 3);
+			for (i = 0; i < 3; i++)
+			{
+				for (j = 0; j < 3; j++)
+				{
+					*(*(mtheta2 + i) + j) *= mu;
+					*(*(mtheta2 + i) + j) += eta * ( *(*(mtheta + j) + i) - 2.0 * *(*(mtheta + i) + j) ) - 0.5 * *(*(mspin + i) + j);
+					if (i == j)*(*(mtheta2 + i) + j) += eta * dot;
+				}
+			}
+			Ma = matrixmatrix(mtheta2, Ha, 3);
+			for (i = 0; i < 3; i++)
+			{
+				for (j = 0; j < 3; j++)
+				{
+					*(*(M + 6 * n + 3 + i) + 6 * n + 3 + j) = *(*(Ma + i) + j);
+				}
+			}
+
+			freematrix(mspin, 3);
+			freematrix(mtheta2, 3);
+			freematrix(Ma, 3);
+		}
+
 		freematrix(thetaspin, 3);
 		freematrix(thetaspin2, 3);
-		freematrix(mspin, 3);
-		freematrix(mtheta2, 3);
-		freematrix(Ma, 3);
 		freematrix(Ha, 3);
 	}
+
 	free(rvct);
-	free(mvct);
-	freematrix(mtheta, 3);
+	if(estress!=NULL && M!=NULL)
+	{
+		free(mvct);
+		freematrix(mtheta, 3);
+	}
 	return H;
+}
+
+double** HPT(double* eform, double* edisp, double** T, int nnod)
+{
+	double** G, ** P, ** H;
+	double** HP, ** HPT;
+
+	G = spinfittermtx(eform, nnod);                     						/*SPIN-FITTER MATRIX[G].*/
+	P = projectionmtx(eform, G, nnod);    										/*PROJECTION MATRIX[P].*/
+	H = blockjacobimtx(edisp, NULL, NULL, nnod);								/*JACOBIAN MATRIX OF ROTATION[H].*/
+
+	HP = matrixmatrix(H, P, 6*nnod);
+	HPT = matrixmatrix(HP, T, 6*nnod);
+
+	freematrix(G, 3);
+	freematrix(P, 6*nnod);
+	freematrix(H, 6*nnod);
+	freematrix(HP, 6*nnod);
+
+	return HPT;
 }
 
 
