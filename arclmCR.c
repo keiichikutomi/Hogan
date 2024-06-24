@@ -587,9 +587,9 @@ int arclmCR(struct arclmframe* af)
 			edisp = extractdeformation(eforminit, eform, nnod);                	/*{Ue}*/
 			einternal = matrixvector(Ke, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
 
-			pinternal = (double*)malloc(6 * nnod * sizeof(int));
+			pinternal = (double*)malloc(6 * nnod * sizeof(double));
 			HP = (double**)malloc(6 * nnod * sizeof(double*));
-			for (ii = 0; ii < nnod; ii++)
+			for (ii = 0; ii <6 * nnod; ii++)
 			{
 				*(HP + ii) = (double*)malloc(6 * nnod * sizeof(double));
 			}
@@ -690,10 +690,11 @@ int arclmCR(struct arclmframe* af)
 			edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
 			einternal = matrixvector(Ke, edisp, 6 * nnod);      				/*{Fe}=[Ke]{Ue}.*/
 			epressure = assemshellpvct(shell, drccos);                			/*{Pe}.*/
+			volume += shellvolume(shell, drccos, area);                   		/*VOLUME*/
 
-			pinternal = (double*)malloc(6 * nnod * sizeof(int));
+			pinternal = (double*)malloc(6 * nnod * sizeof(double));
 			HP = (double**)malloc(6 * nnod * sizeof(double*));
-			for (ii = 0; ii < nnod; ii++)
+			for (ii = 0; ii < 6 * nnod; ii++)
 			{
 				*(HP + ii) = (double*)malloc(6 * nnod * sizeof(double));
 			}
@@ -715,7 +716,7 @@ int arclmCR(struct arclmframe* af)
 			/*epressure->pressure->gpressure?*/
 
 
-			volume += shellvolume(shell, drccos, area);                   		/*VOLUME*/
+
 
 			//if (DRFLAG)/*FOR MASS VECTOR*/
 			//{
@@ -785,7 +786,9 @@ int arclmCR(struct arclmframe* af)
 			freematrix(DBe, 6 * nnod);
 
 			free(einternal);
+			free(pinternal);
 			free(ginternal);
+
 			free(epressure);
 			free(gpressure);
 
@@ -809,11 +812,6 @@ int arclmCR(struct arclmframe* af)
 			}
 			///FOR DRAWING 3///
 		}
-
-		sprintf(string, "%p", Ke);
-			errormessage(string);
-			sprintf(string, "%p", DBe);
-			errormessage(string);
 
 		for (ii = 0; ii < msize; ii++)
 		{
