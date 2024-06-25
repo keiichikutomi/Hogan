@@ -14,7 +14,7 @@ double** jacobimtx(double* rvct);
 double** spinfittermtx(double* eform, int nnod);/*G*/
 double** projectionmtx(double* eform, double** G, int nnod);/*P*/
 double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod);/*H&M*/
-
+double** transmatrixHPT(double* eform, double* edisp, double** T, int nnod);
 double** assemtmtxCR(double** Ke, double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod);
 double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod);
 void symmetricmtx(double** estiff, int msize);
@@ -2576,7 +2576,7 @@ double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod)
 	return H;
 }
 
-double** HPT(double* eform, double* edisp, double** T, int nnod)
+double** transmatrixHPT(double* eform, double* edisp, double** T, int nnod)
 {
 	double** G, ** P, ** H;
 	double** HP, ** HPT;

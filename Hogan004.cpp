@@ -31,7 +31,7 @@
 #include "srcal007ujok.c"                     /*DRAW SECTIONS LIST.*/
 #include "gnshn103ktm.c"                       /*DYNAMIC ANALYSIS.*/
 //#include "drhg.c"                               /*DYNAMIC ANALYSIS.*/
-//#include "gnshnCR.c"
+#include "gnshnCR.c"
 #include "optimization.c"                 			 /*OPTIMIZATION*/
 #include "model001.c"                      /*INP-TO-DXF CONVERSION.*/
 #include "arclm002.c"                     /*FOR GREEN-HOUSE PROJECT*/
