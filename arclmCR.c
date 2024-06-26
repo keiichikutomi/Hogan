@@ -107,7 +107,7 @@ int arclmCR(struct arclmframe* af)
 	int maxtime = 20;
 	double ddt = 1.0E-8;
 	double residual;
-	double tolerance = 1.0e-5;
+	double tolerance = 1.0e-4;
 
 	double determinant, sign;
 	double arcsum, predictorsign;
@@ -930,7 +930,7 @@ int arclmCR(struct arclmframe* af)
 			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
 				nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, 0.0, volume);
 			fprintf(ffig, "%s", string);
-			//errormessage(string);
+			errormessage(string);
 			/*LDL DECOMPOSITION FAILED*/
 			if (sign < 0.0)
 			{
@@ -2633,9 +2633,13 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 	PtHt = matrixtranspose(HP, 6*nnod);
 	pstress = matrixvector(PtHt, estress, 6*nnod);     							/*projected estress {Fp}*/
 
-	matrixmatrixII(HPT, HP, T, 6*nnod);                 						/*[H][P][T]*/
-	TtPtHt = matrixtranspose(HPT, 6*nnod);
-	matrixvectorII(gstress, TtPtHt, estress, 6*nnod);      						/*global estress {Fg}*/
+	if(HPT!=NULL & gstress!=NULL)
+	{
+		matrixmatrixII(HPT, HP, T, 6*nnod);                 						/*[H][P][T]*/
+		TtPtHt = matrixtranspose(HPT, 6*nnod);
+		matrixvectorII(gstress, TtPtHt, estress, 6*nnod);      						/*global estress {Fg}*/
+		freematrix(TtPtHt, 6*nnod);
+	}
 
 	nm = (double*)malloc(3 * sizeof(double));           						/*projected estress of each node {n}&{m}*/
 
@@ -2709,7 +2713,6 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 	freematrix(H, 6*nnod);
 	freematrix(HP, 6*nnod);
 	freematrix(PtHt, 6*nnod);
-	freematrix(TtPtHt, 6*nnod);
 	freematrix(Fnm, 6*nnod);
 	freematrix(Fn, 6*nnod);
 

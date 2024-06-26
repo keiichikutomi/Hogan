@@ -135,6 +135,7 @@
 
 //#define FILENAME    "ShellTest230728"
 #define FILENAME      "ShellTest"
+#define FILENAME      "ShellDynaTest"
 //#define FILENAME      "240607LMBosfullwithframeb100"
 
 //#define FILENAME      "fullsimplep1b100ver2"
@@ -10873,7 +10874,6 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		   {
 		   getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
 		   clearwindow(*(wdraw.childs + 1));
-		   getincrement((wmenu.childs+2)->hwnd,&laps,&dsafety);
 		   arclmCR(&arc);
 		   }
 		   break;
@@ -11042,7 +11042,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		  else
 		  {
 			  getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-			  //gnshnCR(&arc);
+			  gnshnCR(&arc);
 		  }
 		  break;
 
