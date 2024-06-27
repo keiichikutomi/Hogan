@@ -238,7 +238,8 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 			*(*(Keff + i) + j) = (1-alphaf)     **(*(Kint1 + i) + j)
 							   + (1-alphaf + xi)**(*(Kint2 + i) + j)
 							   + (1-alpham)     **(*(Kmas1 + i) + j)
-							   + (1-alpham)     **(*(Kmas2 + i) + j) / (beta * ddt * ddt);
+							   + (1-alpham)     **(*(Kmas2 + i) + j) / (beta * ddt * ddt)
+							   ;
 		}
 	}
 	freematrix(Kint1, 6 * nnod);
@@ -317,6 +318,7 @@ int gnshnCR(struct arclmframe* af)
 	long int nline;
 	double det, sign;
 	double loadfactor = 0.0;
+	double lastloadfactor = 0.0;
 	//double lambda = 0.0;
 
 	/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
@@ -509,7 +511,7 @@ int gnshnCR(struct arclmframe* af)
 	iform = (double*)malloc(msize * sizeof(double));		/*INITIAL*/
 	ddisp = (double*)malloc(msize * sizeof(double));		/*LATEST ITERATION*/
 	lastddisp = (double*)malloc(msize * sizeof(double));	/*LATEST LAP*/
-	lapddisp = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
+	lapddisp  = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
 	lapddisp_m = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
 
 
@@ -553,23 +555,6 @@ int gnshnCR(struct arclmframe* af)
 
 		*(ud_m + i) = 0.0;
 		*(udd_m + i) = 0.0;
-	}
-
-	/*ONLY FOR GENERALIZED ALPHA ALGOLITHM*/
-	double* midud,* midudd,* midud_m,* midudd_m;
-
-	midud = (double*)malloc(msize * sizeof(double));     /*MID-POINT IN SPATIAL*/
-	midudd = (double*)malloc(msize * sizeof(double));
-
-	midud_m = (double*)malloc(msize * sizeof(double)); 	 /*MID-POINT IN MATERIAL*/
-	midudd_m = (double*)malloc(msize * sizeof(double));
-
-    for (i = 0; i < msize; i++)
-	{
-		*(midud + i) = 0.0;
-		*(midudd + i) = 0.0;
-		*(midud_m + i) = 0.0;
-		*(midudd_m + i) = 0.0;
 	}
 
 	///FORCE VECTOR INITIALIZATION///
@@ -683,7 +668,7 @@ int gnshnCR(struct arclmframe* af)
 		///FOR DRAWING 2///
 
 
-		if (iteration == 1)
+		if((outputmode == 0 && iteration == 1) || outputmode == 1)
 		{
 			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
 			fprintf(fdsp, string);
@@ -694,12 +679,19 @@ int gnshnCR(struct arclmframe* af)
 			fprintf(frct, string);
 			fprintf(fstr, string);
 			fprintf(fene, string);
+		}
+
+		if (iteration == 1)
+		{
+			time+=ddt;
+			lastloadfactor = loadfactor;
+			loadfactor = 1.0e+5 * time;
 
 			for (i = 0; i < msize; i++)
 			{
 				*(lapddisp  + i) = 0.0;
 				*(lastddisp + i) = *(ddisp + i);
-				*(lastud_m  + i) = *(ud_m + i);
+				*(lastud_m  + i) = *(ud_m  + i);
 				*(lastudd_m + i) = *(udd_m + i);
 			}
 		}
@@ -730,12 +722,9 @@ int gnshnCR(struct arclmframe* af)
 			*(funbalance + i) = 0.0;
 		}
 
-		loadfactor = 1.0e-3 * time;
-
 		volume = 0.0;
 
 		assemconf(confs, fexternal, 1.0, nnode);
-
 
 		clearwindow(*(wdraw.childs + 1));
 
@@ -853,7 +842,7 @@ int gnshnCR(struct arclmframe* af)
 				{
 					*(finertial + *(loffset + (6 * ii + jj))) += *(midginertial + 6 * ii + jj);
 					*(finternal + *(loffset + (6 * ii + jj))) += *(midginternal + 6 * ii + jj);
-					*(fpressure + *(loffset + (6 * ii + jj))) += *(midgpressure + 6 * ii + jj);
+					//*(fpressure + *(loffset + (6 * ii + jj))) += *(midgpressure + 6 * ii + jj);
 				}
 			}
 
@@ -937,7 +926,7 @@ int gnshnCR(struct arclmframe* af)
 			free(mideinternal);
 			free(midginternal);
 			free(midginertial);
-			free(midgpressure);
+			//free(midgpressure);
 			freematrix(Keff, 6 * nnod);
 
 
@@ -962,8 +951,8 @@ int gnshnCR(struct arclmframe* af)
 				*(finternal + i) = 0.0;
 				*(fexternal + *(constraintmain + i)) += *(fexternal + i);
 				*(fexternal + i) = 0.0;
-				*(fpressure + *(constraintmain + i)) += *(fpressure + i);
-				*(fpressure + i) = 0.0;
+				//*(fpressure + *(constraintmain + i)) += *(fpressure + i);
+				//*(fpressure + i) = 0.0;
 			}
 		}
 
@@ -974,7 +963,7 @@ int gnshnCR(struct arclmframe* af)
 		residual = 0.0;
 		for (i = 0; i < msize; i++)
 		{
-			*(fexternal + i) = loadfactor * (*(fexternal + i)+*(fpressure + i));
+			*(fexternal + i) = (alphaf*lastloadfactor + (1-alphaf)*loadfactor) * (*(fexternal + i)+*(fpressure + i));
 			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
 			/*funbalance : UNBALANCED FORCE -{E}.*/
 			/*SIGN OF UNBALANCED FORCE IS INVERTED FROM DEFINITION.*/
@@ -987,7 +976,7 @@ int gnshnCR(struct arclmframe* af)
 			*(gvct + i) = *(funbalance + i);
 		}
 
-		if (iteration == 1)
+		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
 		{
 			outputdisp(ddisp, fdsp, nnode, nodes);                        /*FORMATION OUTPUT.*/
 			outputdisp(finertial, finr, nnode, nodes);
@@ -1068,7 +1057,7 @@ int gnshnCR(struct arclmframe* af)
 		}
 
 		/*UPDATE POSITION & VELOCITY & ACCELERATION IN SPATIAL FORM.*/
-		updaterotation(ddisp, lapddisp, nnode);
+		updaterotation(ddisp, gvct, nnode);
 
 		//ud  = pushforward(ddisp,ud_m,nnode);
 		//udd = pushforward(ddisp,udd_m,nnode);
@@ -1083,12 +1072,12 @@ int gnshnCR(struct arclmframe* af)
 				*(udd_m + ii) = *(udd_m + mainoff);
 			}
 		}
+		free(lapddisp_m);
 
 		if ((residual<tolerance || iteration>maxiteration) && iteration != 1)
 		{
 			nlap++;
 			iteration = 0;
-			time += ddt;
 		}
 		iteration++;
 	}

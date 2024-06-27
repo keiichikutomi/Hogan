@@ -2633,7 +2633,7 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 	PtHt = matrixtranspose(HP, 6*nnod);
 	pstress = matrixvector(PtHt, estress, 6*nnod);     							/*projected estress {Fp}*/
 
-	if(HPT!=NULL & gstress!=NULL)
+	if(HPT!=NULL && gstress!=NULL)
 	{
 		matrixmatrixII(HPT, HP, T, 6*nnod);                 						/*[H][P][T]*/
 		TtPtHt = matrixtranspose(HPT, 6*nnod);
