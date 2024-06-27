@@ -185,7 +185,7 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 						  double* ginertial, double** Me, double** R, double** lastRt, double** lapH,
 						  double alphaf, double alpham, double xi, double beta, double ddt, int nnod)
 {
-	int i,j,n;
+	int ii,jj,n;
 	double** Kint1, ** Kint2;
 	double** Kmas1, ** Kmas2;
 	double* mvct;
@@ -201,26 +201,26 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 
 	mvct = (double*)malloc(3 * sizeof(double));
 	Kmas1 = (double**)malloc(6*nnod * sizeof(double*));
-	for (i = 0; i < 6*nnod; i++)
+	for (ii = 0; ii < 6*nnod; ii++)
 	{
-		*(Kmas1 + i) = (double*)malloc(6*nnod * sizeof(double));
-		for (j = 0; j < 6*nnod; j++)
+		*(Kmas1 + ii) = (double*)malloc(6*nnod * sizeof(double));
+		for (jj = 0; jj < 6*nnod; jj++)
 		{
-			*(*(Kmas1 + i) + j)=0.0;
+			*(*(Kmas1 + ii) + jj)=0.0;
 		}
 	}
 	for (n = 0; n < nnod; n++)
 	{
-		for (i = 0; i < 3; i++)
+		for (ii = 0; ii < 3; ii++)
 		{
-			*(mvct + i) = *(ginertial + 6 * n + 3 + i);
+			*(mvct + ii) = *(ginertial + 6 * n + 3 + ii);
 		}
 		mspin = spinmtx(mvct);
-		for (i = 0; i < 3; i++)
+		for (ii = 0; ii < 3; ii++)
 		{
-			for (j = 0; j < 3; j++)
+			for (jj = 0; jj < 3; jj++)
 			{
-				*(*(Kmas1 + 6 * n + 3 + i) + 6 * n + 3 + j) = - *(*(mspin + i) + j);
+				*(*(Kmas1 + 6 * n + 3 + ii) + 6 * n + 3 + jj) = - *(*(mspin + ii) + jj);
 			}
 		}
 	}
@@ -230,18 +230,18 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 	Kmas2 = matrixmatrix(RMR, lapH, 6*nnod);
 
 	Keff = (double**)malloc(6*nnod * sizeof(double*));
-	for (i = 0; i < 6*nnod; i++)
+	for (ii = 0; ii < 6*nnod; ii++)
 	{
-		*(Keff + i) = (double*)malloc(6*nnod * sizeof(double));
-		for (j = 0; j < 6*nnod; j++)
+		*(Keff + ii) = (double*)malloc(6*nnod * sizeof(double));
+		for (jj = 0; jj < 6*nnod; jj++)
 		{
-			*(*(Keff + i) + j) = (1-alphaf)     **(*(Kint1 + i) + j)
-							   + (1-alphaf + xi)**(*(Kint2 + i) + j)
-							   + (1-alpham)     **(*(Kmas1 + i) + j)
-							   + (1-alpham)     **(*(Kmas2 + i) + j) / (beta * ddt * ddt)
-							   ;
+			*(*(Keff + ii) + jj) = (1-alphaf)     **(*(Kint1 + ii) + jj)
+								 + (1-alphaf + xi)**(*(Kint2 + ii) + jj)
+								 + (1-alpham)     **(*(Kmas1 + ii) + jj)
+								 + (1-alpham)     **(*(Kmas2 + ii) + jj) / (beta * ddt * ddt);
 		}
 	}
+
 	freematrix(Kint1, 6 * nnod);
 	freematrix(TPHK,  6 * nnod);
 	freematrix(Kint2, 6 * nnod);
@@ -251,6 +251,7 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 	freematrix(RM,    6 * nnod);
 	freematrix(RMR,   6 * nnod);
 	freematrix(Kmas2, 6 * nnod);
+
 	return Keff;
 }
 
@@ -299,6 +300,16 @@ int gnshnCR(struct arclmframe* af)
 
 	double* lastgpressure, * gpressure;
 	double* midgpressure;
+
+	int n;
+	double** Kint1, ** Kint2;
+	double** Kmas1, ** Kmas2;
+	double* mvct;
+	double** mspin;
+	double** TPHK;
+	double** RM, ** RMR;
+
+
 	double** Keff;
 
 	double* shellstress;                           /*σx,σy,τxy,Mx,My,Mxy OF ELEMENT*/
@@ -311,7 +322,7 @@ int gnshnCR(struct arclmframe* af)
 	int iteration;
 	int maxiteration = 20;
 	double residual;
-	double tolerance = 1.0E-3;
+	double tolerance = 1.0E-8;
 
 	double momentumlinear,momentumangular;
 
@@ -322,7 +333,8 @@ int gnshnCR(struct arclmframe* af)
 	//double lambda = 0.0;
 
 	/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
-	double rho = 1.0;
+	//double rho = 1.0;
+	double rho = 0.8;
 	double alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
 	double alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
 	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
@@ -688,7 +700,14 @@ int gnshnCR(struct arclmframe* af)
 		{
 			time+=ddt;
 			lastloadfactor = loadfactor;
-			loadfactor = 1.0e+5 * time;
+			if(time<=0.2)
+			{
+			  loadfactor = 1.0e+5 * time;
+			}
+			else
+			{
+			  loadfactor = 2.0e+4;
+            }
 
 			for (i = 0; i < msize; i++)
 			{
@@ -753,7 +772,25 @@ int gnshnCR(struct arclmframe* af)
 			}
 			drccosinit = shelldrccos(shell, &area);
 			gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
+			if(i==5)
+			{
+				fprintf(flog, "GFORMINIT\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gforminit+6*ii+0), *(gforminit+6*ii+1), *(gforminit+6*ii+2),*(gforminit+6*ii+3), *(gforminit+6*ii+4), *(gforminit+6*ii+5));
+				}
+
+			}
+
 			eforminit = extractlocalcoord(gforminit,drccosinit,nnod);     		/*{Xe}*/
+            if(i==5)
+			{
+			fprintf(flog, "EFORMINIT\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eforminit+6*ii+0), *(eforminit+6*ii+1), *(eforminit+6*ii+2),*(eforminit+6*ii+3), *(eforminit+6*ii+4), *(eforminit+6*ii+5));
+				}
+			}
 
 			DBe = (double**)malloc(6*nnod * sizeof(double*));
 			for (ii = 0; ii < 6*nnod; ii++)
@@ -766,6 +803,26 @@ int gnshnCR(struct arclmframe* af)
 			}
 			Ke = assemshellemtx(shell, drccosinit, DBe);   						/*[Ke]*/
 			Me = assemshellmmtx(shell, drccosinit);          					/*[Me]*/
+
+	/*
+	if(i==5 )
+	{
+	 fprintf(flog, "M\n");
+
+
+
+		for (ii = 0; ii < 6*nnod; ii++)
+		{
+			for (jj = 0; jj < 6*nnod; jj++)
+			{
+				   fprintf(flog, "%e ",*(*(Me + ii) + jj) );
+			}
+			fprintf(flog, "\n ");
+		}
+	}
+	*/
+
+
 
 			/*DEFORMED CONFIGURATION OF LAST LAP.*/
 			for (ii = 0; ii < nnod; ii++)
@@ -784,13 +841,6 @@ int gnshnCR(struct arclmframe* af)
 			lastHPT = transmatrixHPT(lasteform, lastedisp, lastT, nnod);
 
 			lastgacc_m = extractshelldisplacement(shell, lastudd_m);
-
-				fprintf(flog, "GFORMINIT\n");
-				for(ii=0;ii<nnod;ii++)
-				{
-				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eforminit+6*ii+0), *(eforminit+6*ii+1), *(eforminit+6*ii+2),*(eforminit+6*ii+3), *(eforminit+6*ii+4), *(eforminit+6*ii+5));
-				}
-
 			lastR = pushforwardmtx(lastgform, nnod);
 			lastRt = matrixtranspose(lastR, 6 * nnod);
 			lastginertial_m = matrixvector(Me, lastgacc_m, 6 * nnod);
@@ -806,9 +856,33 @@ int gnshnCR(struct arclmframe* af)
 			Tt = matrixtranspose(T, 6 * nnod);                  				/*[Tt]*/
 
 			gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
+			if(i==5)
+			{
+			fprintf(flog, "GFORM\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gform+6*ii+0), *(gform+6*ii+1), *(gform+6*ii+2),*(gform+6*ii+3), *(gform+6*ii+4), *(gform+6*ii+5));
+				}
+			}
 			eform = extractlocalcoord(gform,drccos,nnod);                 		/*{Xe+Ue}*/
+            if(i==5)
+			{
+			fprintf(flog, "EFORM\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eform+6*ii+0), *(eform+6*ii+1), *(eform+6*ii+2),*(eform+6*ii+3), *(eform+6*ii+4), *(eform+6*ii+5));
+				}
+			}
 
 			edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
+			if(i==5)
+			{
+						fprintf(flog, "EDISP\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(edisp+6*ii+0), *(edisp+6*ii+1), *(edisp+6*ii+2),*(edisp+6*ii+3), *(edisp+6*ii+4), *(edisp+6*ii+5));
+				}
+			}
 			einternal = matrixvector(Ke, edisp, 6 * nnod);      				/*{Fe}=[Ke]{Ue}*/
 			HPT = transmatrixHPT(eform, edisp, T, nnod);
 
@@ -838,6 +912,80 @@ int gnshnCR(struct arclmframe* af)
 			//midgpressure = midpointvct(gpressure, lastgpressure, alphaf, 6*nnod);
 
 			/*MID-POINT MASS & STIFFNESS MATRIX.*/
+	/*
+	Kint1 = assemgmtxCR(eform, edisp, mideinternal, NULL, T, NULL, nnod);
+
+	TPHK = matrixmatrix(midTtPtHt, Ke, 6*nnod);
+	Kint2 = matrixmatrix(TPHK, HPT, 6*nnod);
+
+	mvct = (double*)malloc(3 * sizeof(double));
+	Kmas1 = (double**)malloc(6*nnod * sizeof(double*));
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		*(Kmas1 + ii) = (double*)malloc(6*nnod * sizeof(double));
+		for (jj = 0; jj < 6*nnod; jj++)
+		{
+			*(*(Kmas1 + ii) + jj)=0.0;
+		}
+	}
+	for (n = 0; n < nnod; n++)
+	{
+		for (ii = 0; ii < 3; ii++)
+		{
+			*(mvct + ii) = *(ginertial + 6 * n + 3 + ii);
+		}
+		mspin = spinmtx(mvct);
+		for (ii = 0; ii < 3; ii++)
+		{
+			for (jj = 0; jj < 3; jj++)
+			{
+				*(*(Kmas1 + 6 * n + 3 + ii) + 6 * n + 3 + jj) = - *(*(mspin + ii) + jj);
+			}
+		}
+	}
+
+	RM = matrixmatrix(R, Me, 6*nnod);
+	RMR = matrixmatrix(RM, lastRt, 6*nnod);
+	Kmas2 = matrixmatrix(RMR, lapH, 6*nnod);
+
+
+	if(i==5 && nlap>130)
+	{
+	 fprintf(flog, "K\n");
+	}
+
+
+	Keff = (double**)malloc(6*nnod * sizeof(double*));
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		*(Keff + ii) = (double*)malloc(6*nnod * sizeof(double));
+
+		for (jj = 0; jj < 6*nnod; jj++)
+		{
+			*(*(Keff + ii) + jj) = (1-alphaf)     **(*(Kint1 + ii) + jj)
+								 + (1-alphaf + xi)**(*(Kint2 + ii) + jj)
+								 + (1-alpham)     **(*(Kmas1 + ii) + jj)
+								 + (1-alpham)     **(*(Kmas2 + ii) + jj) / (beta * ddt * ddt);
+			if(i==5 && nlap>130)
+			 {
+			   fprintf(flog, "%e %e %e %e %e \n",*(*(Kint1 + ii) + jj),*(*(Kint2 + ii) + jj),*(*(Kmas1 + ii) + jj),*(*(Kmas2 + ii) + jj)/ (beta * ddt * ddt) ,*(*(Keff + ii) + jj) );
+			 }
+		}
+	}
+
+	freematrix(Kint1, 6 * nnod);
+	freematrix(TPHK,  6 * nnod);
+	freematrix(Kint2, 6 * nnod);
+	free(mvct);
+	freematrix(mspin, 3);
+	freematrix(Kmas1, 6 * nnod);
+	freematrix(RM,    6 * nnod);
+	freematrix(RMR,   6 * nnod);
+	freematrix(Kmas2, 6 * nnod);
+	*/
+
+
+
 
 			Keff=assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Ke, midTtPtHt, HPT,
 								  ginertial, Me, R, lastRt, lapH,
@@ -888,10 +1036,6 @@ int gnshnCR(struct arclmframe* af)
 				outputshellstress(shell, shellstress, fstr);
 				free(shellstress);
 			}
-
-
-				//fprintf(flog, "%5ld %e %e %e %e %e %e\n", shell.code, *(midginertial+0), *(midginertial+1), *(midginertial+2),
-				//*(midginertial+3), *(midginertial+4), *(midginertial+5));
 
 
 			/*MEMORY FREE : INITIAL CONFIGURATION.*/
@@ -996,9 +1140,7 @@ int gnshnCR(struct arclmframe* af)
 		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
 		{
 			outputdisp(ddisp, fdsp, nnode, nodes);                        /*FORMATION OUTPUT.*/
-			//outputdisp(finertial, finr, nnode, nodes);
-			outputdisp(udd_m, finr, nnode, nodes);
-			outputdisp(ud_m, finr, nnode, nodes);
+			outputdisp(finertial, finr, nnode, nodes);
 			outputdisp(finternal, finf, nnode, nodes);
 			outputdisp(fexternal, fexf, nnode, nodes);
 			outputdisp(funbalance, fubf, nnode, nodes);

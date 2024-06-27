@@ -2145,9 +2145,9 @@ double* rotationvct(double** rmtx)
 	}
 	else if(c < 0)/*theta=PI*/
 	{
-		*(rvct + 0) = theta * sqrt( ( *(*(rmtx + 0) + 0) + 1 ) / 2 );
-		*(rvct + 1) = theta * sqrt( ( *(*(rmtx + 1) + 1) + 1 ) / 2 );
-		*(rvct + 2) = theta * sqrt( ( *(*(rmtx + 2) + 2) + 1 ) / 2 );
+		*(rvct + 0) = theta * sqrt( ( *(*(rmtx + 0) + 0) + 1.0 ) / 2.0 );
+		*(rvct + 1) = theta * sqrt( ( *(*(rmtx + 1) + 1) + 1.0 ) / 2.0 );
+		*(rvct + 2) = theta * sqrt( ( *(*(rmtx + 2) + 2) + 1.0 ) / 2.0 );
 	}
 	else/*theta=0*/
 	{
@@ -2980,13 +2980,13 @@ void initialformCR(struct onode* nodes, double* ddisp, int nnode)
 		for (j = 0; j < 3; j++)
 		{
 			*(ddisp + 6 * i + j) = (nodes + i)->d[j];
-			if (0/*(nodes + i)->r[j] != NULL*/)
+			if ((nodes + i)->r[j] != NULL)
 			{
 				*(ddisp + 6 * i + 3 + j) = (nodes + i)->r[j];
 			}
 			else
 			{
-				*(ddisp + 6 * i + 3 + j) = 0;
+				*(ddisp + 6 * i + 3 + j) = 0.0001;
 			}
 		}
 	}

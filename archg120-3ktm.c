@@ -23360,6 +23360,7 @@ double **finertial(struct oshell shell,
 double **assemshellmmtx(struct oshell shell,double **drccos)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
+  char string[100];
   int i,j,k,ii;
   double **m,**exy,**N,**Nt,**NtN,**L;
   double t,hiju;
@@ -23383,7 +23384,21 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 	}
   }
 
-#if 0
+  exy=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(exy+i)=(double *)malloc(2*sizeof(double));
+	for(j=0;j<2;j++)
+	{
+	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
+				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
+				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
+	}
+  }
+  /*shell local coordinate {xi,yi(,zi=0)}*/
+  det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
+
+#if 1
   /*WEIGHT OF EACH NODE*/
   a=(double *)malloc(7*sizeof(double));
   *(a+0)=27.0/60.0;
@@ -23425,20 +23440,6 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 	}
   }
   /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
-
-  exy=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(exy+i)=(double *)malloc(2*sizeof(double));
-	for(j=0;j<2;j++)
-	{
-	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
-				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
-				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
-	}
-  }
-  /*shell local coordinate {xi,yi(,zi=0)}*/
-  det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
 
   b=(double *)malloc(3*sizeof(double));
   c=(double *)malloc(3*sizeof(double));
@@ -23499,11 +23500,10 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 
   free(a);
   freematrix(L,7);
-  freematrix(exy,3);
   free(b);
   free(c);
 #endif
-
+#if 0
   for(i=0;i<3;i++)
   {
 	for(j=0;j<3;j++)
@@ -23512,18 +23512,21 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 	  {
 		if(i==j)
 		{
-		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*det*t/12.0;
-		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*det*pow(t,3)/36.0;
+		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*det*t/6.0;
+		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*det*pow(t,3)/18.0;
 		}
 		else
 		{
-		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*det*t/6.0;
-		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*det*pow(t,3)/18.0;
+		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*det*t/12.0;
+		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*det*pow(t,3)/36.0;
 		}
 	  }
 	}
   }
   /*MASS MATRIX BY ZHONG AND ALMEDIA.*/
+#endif
+
+  freematrix(exy,3);
 
   return m;
 }/*assemshellmmtx*/
