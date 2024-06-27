@@ -16781,7 +16781,7 @@ int croutlu(struct gcomponent *gmtx,
 	  if((pivot->value) == 0.0){*sign = -1; return (j-1);}  /*INSTABLE.*/
 	  if((pivot->value) < 0.0) {*sign += 1; }
 	  /*det*=pivot->value;*/
-      *det+=log10(fabs(pivot->value));   /*LOG BY 10 OF DETERMINANT.*/
+	  *det+=log10(fabs(pivot->value));   /*LOG BY 10 OF DETERMINANT.*/
 	  //*sign*=pivot->value/fabs(pivot->value); /*SIGN OF DETERMINANT.*/
 
 	  gcomp1=pivot;

@@ -19,7 +19,7 @@ double* pullback(double* ddisp, double* gvct_s, int nnode)
 	{
 		for (i = 0; i < 3; i++)
 		{
-			*(rvct + i) = *(ddisp + 6*n+3+i);
+			*(rvct + i)  = *(ddisp + 6*n+3+i);
 			*(vct_s + i) = *(gvct_s + 6*n+3+i);
 		}
 		rmtx = rotationmtx(rvct);
@@ -27,15 +27,15 @@ double* pullback(double* ddisp, double* gvct_s, int nnode)
 		vct_m = matrixvector(trmtx, vct_s, 3);
 		for (i = 0; i < 3; i++)
 		{
-			*(gvct_m + 6*n+i) = *(gvct_s + 6*n+i);
+			*(gvct_m + 6*n+i)   = *(gvct_s + 6*n+i);
 			*(gvct_m + 6*n+3+i) = *(vct_m + i);
 		}
+		freematrix(rmtx,3);
+		freematrix(trmtx,3);
+		free(vct_m);
 	}
 	free(rvct);
 	free(vct_s);
-	free(vct_m);
-	freematrix(rmtx,3);
-	freematrix(trmtx,3);
 	return gvct_m;
 }
 
@@ -71,11 +71,10 @@ double** pullbackmtx(double* gform, int nnod)
 				if (i == j)*(*(Rt + 6 * n + i) + 6 * n + j) = 1.0;
 			}
 		}
+		freematrix(rmtx,3);
+		freematrix(trmtx,3);
 	}
-
 	free(rvct);
-	freematrix(rmtx,3);
-	freematrix(trmtx,3);
 	return Rt;
 }
 
@@ -102,11 +101,12 @@ double* pushforward(double* ddisp, double* gvct_m, int nnode)
 			*(gvct_s + 6*n+i) = *(gvct_m + 6*n+i);
 			*(gvct_s + 6*n+i+3) = *(vct_s + i);
 		}
+		free(vct_s);
+		freematrix(rmtx,3);
 	}
 	free(rvct);
-	free(vct_s);
 	free(vct_m);
-	freematrix(rmtx,3);
+
 	return gvct_s;
 }
 
@@ -142,10 +142,10 @@ double** pushforwardmtx(double* gform, int nnod)
 				if (i == j)*(*(R + 6 * n + i) + 6 * n + j) = 1.0;
 			}
 		}
+		freematrix(rmtx,3);
 	}
-
 	free(rvct);
-	freematrix(rmtx,3);
+
 	return R;
 }
 
@@ -311,7 +311,7 @@ int gnshnCR(struct arclmframe* af)
 	int iteration;
 	int maxiteration = 20;
 	double residual;
-	double tolerance = 1.0E-8;
+	double tolerance = 1.0E-3;
 
 	double momentumlinear,momentumangular;
 
@@ -329,7 +329,7 @@ int gnshnCR(struct arclmframe* af)
 
 	/*NEWMARK-BETA'S PARAMETER.*/
 	double beta = pow(1-alpham+alphaf,2)/4.0;
-	double gamma = (0.5-alpham+alphaf)/4.0;
+	double gamma = 0.5-alpham+alphaf;
 
 	/*FOR READING ANALYSISDATA*/
 	/*ANALYSIS SETTING*/
@@ -653,6 +653,8 @@ int gnshnCR(struct arclmframe* af)
 	}
 	///FOR DRAWING 1///
 
+	sprintf(string,"beta=%e gamma=%e ",beta,gamma);
+	errormessage(string);
 
 	nlap = 1;
 	iteration = 1;
@@ -679,6 +681,7 @@ int gnshnCR(struct arclmframe* af)
 			fprintf(frct, string);
 			fprintf(fstr, string);
 			fprintf(fene, string);
+			fprintf(flog, string);
 		}
 
 		if (iteration == 1)
@@ -750,7 +753,20 @@ int gnshnCR(struct arclmframe* af)
 			}
 			drccosinit = shelldrccos(shell, &area);
 			gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
+
+				fprintf(flog, "GFORMINIT\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gforminit+6*ii+0), *(gforminit+6*ii+1), *(gforminit+6*ii+2),*(gforminit+6*ii+3), *(gforminit+6*ii+4), *(gforminit+6*ii+5));
+				}
+
 			eforminit = extractlocalcoord(gforminit,drccosinit,nnod);     		/*{Xe}*/
+
+				fprintf(flog, "GFORMINIT\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eforminit+6*ii+0), *(eforminit+6*ii+1), *(eforminit+6*ii+2),*(eforminit+6*ii+3), *(eforminit+6*ii+4), *(eforminit+6*ii+5));
+				}
 
 			DBe = (double**)malloc(18 * sizeof(double*));
 			for (ii = 0; ii < 18; ii++)
@@ -796,9 +812,32 @@ int gnshnCR(struct arclmframe* af)
 			Tt = matrixtranspose(T, 6 * nnod);                  				/*[Tt]*/
 
 			gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
+
+				fprintf(flog, "GFORM\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gform+6*ii+0), *(gform+6*ii+1), *(gform+6*ii+2),*(gform+6*ii+3), *(gform+6*ii+4), *(gform+6*ii+5));
+				}
+
+
 			eform = extractlocalcoord(gform,drccos,nnod);                 		/*{Xe+Ue}*/
 
+				fprintf(flog, "EFORM\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eform+6*ii+0), *(eform+6*ii+1), *(eform+6*ii+2),*(eform+6*ii+3), *(eform+6*ii+4), *(eform+6*ii+5));
+				}
+
+
 			edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
+
+				fprintf(flog, "EDISP\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(edisp+6*ii+0), *(edisp+6*ii+1), *(edisp+6*ii+2),*(edisp+6*ii+3), *(edisp+6*ii+4), *(edisp+6*ii+5));
+				}
+
+
 			einternal = matrixvector(Ke, edisp, 6 * nnod);      				/*{Fe}=[Ke]{Ue}*/
 			HPT = transmatrixHPT(eform, edisp, T, nnod);
 
@@ -879,6 +918,11 @@ int gnshnCR(struct arclmframe* af)
 				free(shellstress);
 			}
 
+
+				//fprintf(flog, "%5ld %e %e %e %e %e %e\n", shell.code, *(midginertial+0), *(midginertial+1), *(midginertial+2),
+				//*(midginertial+3), *(midginertial+4), *(midginertial+5));
+
+
 			/*MEMORY FREE : INITIAL CONFIGURATION.*/
 			free(loffset);
 			freematrix(drccosinit, 3);
@@ -930,6 +974,8 @@ int gnshnCR(struct arclmframe* af)
 			freematrix(Keff, 6 * nnod);
 
 
+
+
 			if (/*iteration==1 &&*/ (wdraw.childs + 1)->hdcC != NULL)/*DRAW DEFORMED ELEMENT OF LAST ITERATION.*/
 			{
 				drawglobalshell((wdraw.childs + 1)->hdcC,
@@ -979,7 +1025,9 @@ int gnshnCR(struct arclmframe* af)
 		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
 		{
 			outputdisp(ddisp, fdsp, nnode, nodes);                        /*FORMATION OUTPUT.*/
-			outputdisp(finertial, finr, nnode, nodes);
+			//outputdisp(finertial, finr, nnode, nodes);
+			outputdisp(udd_m, finr, nnode, nodes);
+			outputdisp(ud_m, finr, nnode, nodes);
 			outputdisp(finternal, finf, nnode, nodes);
 			outputdisp(fexternal, fexf, nnode, nodes);
 			outputdisp(funbalance, fubf, nnode, nodes);

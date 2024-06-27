@@ -2126,65 +2126,34 @@ void vectornormalize(double* vct, int vsize)
 
 double* rotationvct(double** rmtx)
 {
-	double c, s;
+	double c, s,a;
 	double* rvct;
 	double theta;
 	rvct = (double*)malloc(3 * sizeof(double));
-	c = *(*(rmtx + 0) + 0) + *(*(rmtx + 1) + 1) + *(*(rmtx + 2) + 2) - 1;                         /*2cos(theta)*/
-	s = sqrt((*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2)) * (*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2))
-		+ (*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0)) * (*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0))
-		+ (*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1)) * (*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1)));  /*|2sin(theta)|>0*/
+	c = 0.5*(  *(*(rmtx + 0) + 0) + *(*(rmtx + 1) + 1) + *(*(rmtx + 2) + 2) - 1  );/*cos(theta)*/
+	s = 0.5*(sqrt(pow( *(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2) ,2)
+				+ pow( *(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0) ,2)
+				+ pow( *(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1) ,2))); /*|sin(theta)|>=0*/
 
-	if (s != 0.0)
+	theta = atan2(s , c);
+
+	if (s != 0)
 	{
-		if (c > 0.0)/*0<=theta<PI/2*/
-		{
-			theta = atan(s / c);
-		}
-		else if (c < 0.0)/*PI/2<theta<=PI*/
-		{
-			theta = atan(s / c) + PI;
-		}
-		else/*theta=PI/2*/
-		{
-			theta = PI / 2.0;
-		}
-
-		*(rvct + 0) = theta * ((*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2))) / s;
-		*(rvct + 1) = theta * ((*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0))) / s;
-		*(rvct + 2) = theta * ((*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1))) / s;
-
+		*(rvct + 0) = 0.5* theta * ((*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2))) / s;
+		*(rvct + 1) = 0.5* theta * ((*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0))) / s;
+		*(rvct + 2) = 0.5* theta * ((*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1))) / s;
 	}
-	else if (s == 0.0 && c > 0.0)/*theta=0*/
+	else if(c < 0)/*theta=PI*/
 	{
-
+		*(rvct + 0) = theta * sqrt( ( *(*(rmtx + 0) + 0) + 1 ) / 2 );
+		*(rvct + 1) = theta * sqrt( ( *(*(rmtx + 1) + 1) + 1 ) / 2 );
+		*(rvct + 2) = theta * sqrt( ( *(*(rmtx + 2) + 2) + 1 ) / 2 );
+	}
+	else/*theta=0*/
+	{
 		*(rvct + 0) = 0.0;
 		*(rvct + 1) = 0.0;
 		*(rvct + 2) = 0.0;
-
-	}
-	else if (s == 0.0 && c < 0.0)/*theta=PI*/
-	{
-
-		*(rvct + 0) = 0.5 * sqrt(*(*(rmtx + 0) + 0) + 1);
-		if (*(rvct + 0) != 0)
-		{
-			*(rvct + 1) = 0.5 * *(*(rmtx + 0) + 1) / (*(rvct + 0));
-			*(rvct + 2) = 0.5 * *(*(rmtx + 0) + 2) / (*(rvct + 0));
-		}
-		else
-		{
-			*(rvct + 1) = 0.5 * sqrt(*(*(rmtx + 1) + 1) + 1);
-			if (*(rvct + 1) != 0)
-			{
-				*(rvct + 2) = 0.5 * *(*(rmtx + 1) + 2) / (*(rvct + 1));
-			}
-			else
-			{
-				*(rvct + 2) = 0.5 * sqrt(*(*(rmtx + 2) + 2) + 1);
-			}
-		}
-
 	}
 	return rvct;
 }
@@ -2204,7 +2173,7 @@ double** rotationmtx(double* rvct)
 		*(rmtx + i) = (double*)malloc(3 * sizeof(double));
 	}
 	theta = sqrt(*(rvct + 0) * *(rvct + 0) + *(rvct + 1) * *(rvct + 1) + *(rvct + 2) * *(rvct + 2));
-	if (theta != 0.0)
+	if (theta != 0)
 	{
 		for (i = 0; i < 3; i++)
 		{
@@ -3011,13 +2980,13 @@ void initialformCR(struct onode* nodes, double* ddisp, int nnode)
 		for (j = 0; j < 3; j++)
 		{
 			*(ddisp + 6 * i + j) = (nodes + i)->d[j];
-			if ((nodes + i)->r[j] != NULL)
+			if (0/*(nodes + i)->r[j] != NULL*/)
 			{
 				*(ddisp + 6 * i + 3 + j) = (nodes + i)->r[j];
 			}
 			else
 			{
-				*(ddisp + 6 * i + 3 + j) = 0.01;
+				*(ddisp + 6 * i + 3 + j) = 0;
 			}
 		}
 	}
