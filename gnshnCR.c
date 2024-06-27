@@ -753,26 +753,13 @@ int gnshnCR(struct arclmframe* af)
 			}
 			drccosinit = shelldrccos(shell, &area);
 			gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
-
-				fprintf(flog, "GFORMINIT\n");
-				for(ii=0;ii<nnod;ii++)
-				{
-				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gforminit+6*ii+0), *(gforminit+6*ii+1), *(gforminit+6*ii+2),*(gforminit+6*ii+3), *(gforminit+6*ii+4), *(gforminit+6*ii+5));
-				}
-
 			eforminit = extractlocalcoord(gforminit,drccosinit,nnod);     		/*{Xe}*/
 
-				fprintf(flog, "GFORMINIT\n");
-				for(ii=0;ii<nnod;ii++)
-				{
-				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eforminit+6*ii+0), *(eforminit+6*ii+1), *(eforminit+6*ii+2),*(eforminit+6*ii+3), *(eforminit+6*ii+4), *(eforminit+6*ii+5));
-				}
-
-			DBe = (double**)malloc(18 * sizeof(double*));
-			for (ii = 0; ii < 18; ii++)
+			DBe = (double**)malloc(6*nnod * sizeof(double*));
+			for (ii = 0; ii < 6*nnod; ii++)
 			{
-				*(DBe + ii) = (double*)malloc(18 * sizeof(double));
-				for (jj = 0; jj < 18; jj++)
+				*(DBe + ii) = (double*)malloc(6*nnod * sizeof(double));
+				for (jj = 0; jj < 6*nnod; jj++)
 				{
 					*(*(DBe + ii) + jj) = 0.0;
 				}
@@ -797,6 +784,13 @@ int gnshnCR(struct arclmframe* af)
 			lastHPT = transmatrixHPT(lasteform, lastedisp, lastT, nnod);
 
 			lastgacc_m = extractshelldisplacement(shell, lastudd_m);
+
+				fprintf(flog, "GFORMINIT\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eforminit+6*ii+0), *(eforminit+6*ii+1), *(eforminit+6*ii+2),*(eforminit+6*ii+3), *(eforminit+6*ii+4), *(eforminit+6*ii+5));
+				}
+
 			lastR = pushforwardmtx(lastgform, nnod);
 			lastRt = matrixtranspose(lastR, 6 * nnod);
 			lastginertial_m = matrixvector(Me, lastgacc_m, 6 * nnod);
@@ -812,32 +806,9 @@ int gnshnCR(struct arclmframe* af)
 			Tt = matrixtranspose(T, 6 * nnod);                  				/*[Tt]*/
 
 			gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
-
-				fprintf(flog, "GFORM\n");
-				for(ii=0;ii<nnod;ii++)
-				{
-				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gform+6*ii+0), *(gform+6*ii+1), *(gform+6*ii+2),*(gform+6*ii+3), *(gform+6*ii+4), *(gform+6*ii+5));
-				}
-
-
 			eform = extractlocalcoord(gform,drccos,nnod);                 		/*{Xe+Ue}*/
 
-				fprintf(flog, "EFORM\n");
-				for(ii=0;ii<nnod;ii++)
-				{
-				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eform+6*ii+0), *(eform+6*ii+1), *(eform+6*ii+2),*(eform+6*ii+3), *(eform+6*ii+4), *(eform+6*ii+5));
-				}
-
-
 			edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
-
-				fprintf(flog, "EDISP\n");
-				for(ii=0;ii<nnod;ii++)
-				{
-				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(edisp+6*ii+0), *(edisp+6*ii+1), *(edisp+6*ii+2),*(edisp+6*ii+3), *(edisp+6*ii+4), *(edisp+6*ii+5));
-				}
-
-
 			einternal = matrixvector(Ke, edisp, 6 * nnod);      				/*{Fe}=[Ke]{Ue}*/
 			HPT = transmatrixHPT(eform, edisp, T, nnod);
 
