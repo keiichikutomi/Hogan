@@ -259,6 +259,7 @@ int gnshnCR(struct arclmframe* af)
 {
 	DWORDLONG memory;
 	FILE *fdata, *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * frct, * finr, * fstr, * fene, * ffig, * fbcl, * feig, * flog;         /*FILE 8 BYTES*/
+	FILE *fvel,*facc;
 	char dir[] = DIRECTORY;
 	char s[80], string[400], inpname[50], fname[50];
 
@@ -270,6 +271,7 @@ int gnshnCR(struct arclmframe* af)
 	double ddt = 0.001;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
+	int lognode;
 	/***FOR ELEMENT***/
 	double volume;
 	int nnod;
@@ -333,8 +335,8 @@ int gnshnCR(struct arclmframe* af)
 	//double lambda = 0.0;
 
 	/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
-	//double rho = 1.0;
-	double rho = 0.8;
+	double rho = 1.0;
+	//double rho = 0.8;
 	double alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
 	double alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
 	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
@@ -483,6 +485,10 @@ int gnshnCR(struct arclmframe* af)
 	feig = fopen(fname, "w");
 	snprintf(fname, sizeof(fname), "%s.%s", inpname, "log");
 	flog = fopen(fname, "w");
+	snprintf(fname, sizeof(fname), "%s.%s", inpname, "vel");
+	fvel = fopen(fname, "w");
+	snprintf(fname, sizeof(fname), "%s.%s", inpname, "acc");
+	facc = fopen(fname, "w");
 
 
 	inputinitII(fin, &nnode, &nelem, &nshell, &nsect, &nconstraint);	/*INPUT INITIAL.*/
@@ -533,7 +539,7 @@ int gnshnCR(struct arclmframe* af)
 	double* udinit_m,* uddinit_m;
 	//double* lastud,* lastudd;
 	double* lastud_m,* lastudd_m;
-	//double* ud,* udd;
+	double* ud,* udd;
 	double* ud_m,* udd_m;
 
 	udinit_m = (double*)malloc(msize * sizeof(double));  	   	/*NEWMARK INITIAL IN LAP*/
@@ -545,8 +551,8 @@ int gnshnCR(struct arclmframe* af)
 	lastud_m = (double*)malloc(msize * sizeof(double));     /*LATEST LAP IN MATERIAL*/
 	lastudd_m = (double*)malloc(msize * sizeof(double));
 
-	//ud = (double*)malloc(msize * sizeof(double)); 			/*LATEST ITERATION IN SPATIAL*/
-	//udd = (double*)malloc(msize * sizeof(double));
+	ud = (double*)malloc(msize * sizeof(double)); 			/*LATEST ITERATION IN SPATIAL*/
+	udd = (double*)malloc(msize * sizeof(double));
 
 	ud_m = (double*)malloc(msize * sizeof(double));  		/*LATEST ITERATION IN MATERIAL*/
 	udd_m = (double*)malloc(msize * sizeof(double));
@@ -562,8 +568,8 @@ int gnshnCR(struct arclmframe* af)
 		*(lastud_m + i) = 0.0;
 		*(lastudd_m + i) = 0.0;
 
-		//*(ud + i) = 0.0;
-		//*(udd + i) = 0.0;
+		*(ud + i) = 0.0;
+		*(udd + i) = 0.0;
 
 		*(ud_m + i) = 0.0;
 		*(udd_m + i) = 0.0;
@@ -694,6 +700,8 @@ int gnshnCR(struct arclmframe* af)
 			fprintf(fstr, string);
 			fprintf(fene, string);
 			fprintf(flog, string);
+			fprintf(fvel, string);
+			fprintf(facc, string);
 		}
 
 		if (iteration == 1)
@@ -772,7 +780,7 @@ int gnshnCR(struct arclmframe* af)
 			}
 			drccosinit = shelldrccos(shell, &area);
 			gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
-			if(i==5)
+			if(0)
 			{
 				fprintf(flog, "GFORMINIT\n");
 				for(ii=0;ii<nnod;ii++)
@@ -783,7 +791,7 @@ int gnshnCR(struct arclmframe* af)
 			}
 
 			eforminit = extractlocalcoord(gforminit,drccosinit,nnod);     		/*{Xe}*/
-            if(i==5)
+			if(0)
 			{
 			fprintf(flog, "EFORMINIT\n");
 				for(ii=0;ii<nnod;ii++)
@@ -804,7 +812,7 @@ int gnshnCR(struct arclmframe* af)
 			Ke = assemshellemtx(shell, drccosinit, DBe);   						/*[Ke]*/
 			Me = assemshellmmtx(shell, drccosinit);          					/*[Me]*/
 
-	/*
+
 	if(i==5 )
 	{
 	 fprintf(flog, "M\n");
@@ -819,8 +827,9 @@ int gnshnCR(struct arclmframe* af)
 			}
 			fprintf(flog, "\n ");
 		}
+		fprintf(flog, "%e\n ",area*(shell.sect->area)*(shell.sect->hiju[0]) );
 	}
-	*/
+
 
 
 
@@ -856,7 +865,7 @@ int gnshnCR(struct arclmframe* af)
 			Tt = matrixtranspose(T, 6 * nnod);                  				/*[Tt]*/
 
 			gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
-			if(i==5)
+			if(i==0)
 			{
 			fprintf(flog, "GFORM\n");
 				for(ii=0;ii<nnod;ii++)
@@ -865,7 +874,7 @@ int gnshnCR(struct arclmframe* af)
 				}
 			}
 			eform = extractlocalcoord(gform,drccos,nnod);                 		/*{Xe+Ue}*/
-            if(i==5)
+			if(i==0)
 			{
 			fprintf(flog, "EFORM\n");
 				for(ii=0;ii<nnod;ii++)
@@ -875,7 +884,7 @@ int gnshnCR(struct arclmframe* af)
 			}
 
 			edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
-			if(i==5)
+			if(i==0)
 			{
 						fprintf(flog, "EDISP\n");
 				for(ii=0;ii<nnod;ii++)
@@ -912,7 +921,7 @@ int gnshnCR(struct arclmframe* af)
 			//midgpressure = midpointvct(gpressure, lastgpressure, alphaf, 6*nnod);
 
 			/*MID-POINT MASS & STIFFNESS MATRIX.*/
-	/*
+
 	Kint1 = assemgmtxCR(eform, edisp, mideinternal, NULL, T, NULL, nnod);
 
 	TPHK = matrixmatrix(midTtPtHt, Ke, 6*nnod);
@@ -966,10 +975,15 @@ int gnshnCR(struct arclmframe* af)
 								 + (1-alphaf + xi)**(*(Kint2 + ii) + jj)
 								 + (1-alpham)     **(*(Kmas1 + ii) + jj)
 								 + (1-alpham)     **(*(Kmas2 + ii) + jj) / (beta * ddt * ddt);
-			if(i==5 && nlap>130)
+			/*if(i==5 && nlap>130)
 			 {
-			   fprintf(flog, "%e %e %e %e %e \n",*(*(Kint1 + ii) + jj),*(*(Kint2 + ii) + jj),*(*(Kmas1 + ii) + jj),*(*(Kmas2 + ii) + jj)/ (beta * ddt * ddt) ,*(*(Keff + ii) + jj) );
-			 }
+			   fprintf(flog, "%e %e %e %e %e \n",
+			   *(*(Kint1 + ii) + jj),
+			   *(*(Kint2 + ii) + jj),
+			   *(*(Kmas1 + ii) + jj),
+			   *(*(Kmas2 + ii) + jj)/ (beta * ddt * ddt) ,
+			   *(*(Keff + ii) + jj) );
+			 }*/
 		}
 	}
 
@@ -982,14 +996,14 @@ int gnshnCR(struct arclmframe* af)
 	freematrix(RM,    6 * nnod);
 	freematrix(RMR,   6 * nnod);
 	freematrix(Kmas2, 6 * nnod);
-	*/
 
 
 
 
-			Keff=assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Ke, midTtPtHt, HPT,
-								  ginertial, Me, R, lastRt, lapH,
-								  alphaf, alpham, xi, beta, ddt, nnod);
+
+			//Keff=assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Ke, midTtPtHt, HPT,
+			  //					  ginertial, Me, R, lastRt, lapH,
+				//				  alphaf, alpham, xi, beta, ddt, nnod);
 			symmetricmtx(Keff, 6*nnod);
 			assemgstiffnessIIwithDOFelimination(gmtx, Keff, &shell, constraintmain);
 
@@ -1124,7 +1138,7 @@ int gnshnCR(struct arclmframe* af)
 		residual = 0.0;
 		for (i = 0; i < msize; i++)
 		{
-			*(fexternal + i) = (alphaf*lastloadfactor + (1-alphaf)*loadfactor) * (*(fexternal + i)+*(fpressure + i));
+			*(fexternal + i) = (alphaf*lastloadfactor + (1-alphaf)*loadfactor) * (*(fexternal + i)/*+*(fpressure + i)*/);
 			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
 			/*funbalance : UNBALANCED FORCE -{E}.*/
 			/*SIGN OF UNBALANCED FORCE IS INVERTED FROM DEFINITION.*/
@@ -1140,6 +1154,8 @@ int gnshnCR(struct arclmframe* af)
 		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
 		{
 			outputdisp(ddisp, fdsp, nnode, nodes);                        /*FORMATION OUTPUT.*/
+			outputdisp(ud , fvel, nnode, nodes);                        /*FORMATION OUTPUT.*/
+			outputdisp(udd, facc, nnode, nodes);                        /*FORMATION OUTPUT.*/
 			outputdisp(finertial, finr, nnode, nodes);
 			outputdisp(finternal, finf, nnode, nodes);
 			outputdisp(fexternal, fexf, nnode, nodes);
@@ -1204,6 +1220,9 @@ int gnshnCR(struct arclmframe* af)
 								   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
 			}
 		}
+
+
+
 		/*INCREMENT DISPLACEMENT OF THIS LAP IN SPATIAL FORM.*/
 		updaterotation(lapddisp,gvct,nnode);
 
@@ -1220,8 +1239,11 @@ int gnshnCR(struct arclmframe* af)
 		/*UPDATE POSITION & VELOCITY & ACCELERATION IN SPATIAL FORM.*/
 		updaterotation(ddisp, gvct, nnode);
 
-		//ud  = pushforward(ddisp,ud_m,nnode);
-		//udd = pushforward(ddisp,udd_m,nnode);
+
+        free(ud);
+		free(udd);
+		ud  = pushforward(ddisp,ud_m,nnode);
+		udd = pushforward(ddisp,udd_m,nnode);
 
 		for (ii = 0; ii < msize; ii++)
 		{
