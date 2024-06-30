@@ -174,7 +174,7 @@ double** midpointmtx(double** mtx,double** lastmtx,double alpha,int size)
 		*(midmtx+i) = (double*)malloc(size * sizeof(double));
 		for(j=0;j<size;j++)
 		{
-			*(*(midmtx+i)+j)=(1.0-alpha)**(*(mtx+i)+j)+alpha**(*(lastmtx+i)+j);
+			*(*(midmtx+i)+j)=(1.0-alpha)**(*(mtx+i)+j) + alpha**(*(lastmtx+i)+j);
 		}
 	}
 	return midmtx;
@@ -315,7 +315,9 @@ int gnshnCR(struct arclmframe* af)
 	double** Keff;
 
 	double* shellstress;                           /*σx,σy,τxy,Mx,My,Mxy OF ELEMENT*/
-	double Ep, Eb, Ee;                             /*STRAIN ENERGY OF ELEMENT*/
+	double SEp, SEb, SEe;                             /*STRAIN ENERGY OF ELEMENT*/
+	double KEt, KEr, KEe;                             /*STRAIN ENERGY OF ELEMENT*/
+
 
 	double area, volumetotal;
 	double masstotal,massdiag;
@@ -710,11 +712,11 @@ int gnshnCR(struct arclmframe* af)
 			lastloadfactor = loadfactor;
 			if(time<=0.2)
 			{
-			  loadfactor = 1.0e+5 * time;
+			  loadfactor = 2.5e+8 * time;
 			}
 			else
 			{
-			  loadfactor = 2.0e+4;
+			  loadfactor = 5.0e+7;
             }
 
 			for (i = 0; i < msize; i++)
@@ -1021,23 +1023,23 @@ int gnshnCR(struct arclmframe* af)
 			/*OUTPUT STRAIN ENERGY & STRESS.*/
 			if (iteration == 1)
 			{
-				Ee = 0.0;
-				Ep = 0.0;
-				Eb = 0.0;
+				SEe = 0.0;
+				SEp = 0.0;
+				SEb = 0.0;
 				for (ii = 0; ii < nnod; ii++)
 				{
 					for (jj = 0; jj < 2; jj++)
 					{
-						Ep += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+						SEp += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
 					}
 					for (jj = 2; jj < 5; jj++)
 					{
-						Eb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+						SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
 					}
-					Ee += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
+					SEe += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
 				}
-				Ee += Ep + Eb;
-				fprintf(fene, "%5ld %e %e %e\n", shell.code, Ep, Eb, Ee);
+				SEe += SEp + SEb;
+				fprintf(fene, "%5ld %e %e %e\n", shell.code, SEp, SEb, SEe);
 
 				shellstress = matrixvector(DBe, edisp, 6 * nnod);
 				for (ii = 0; ii < nnod; ii++)
