@@ -300,7 +300,8 @@ int gnshnCR(struct arclmframe* af)
 	double* lastginertial, * ginertial;
 	double* midginertial;
 
-	double* lastgpressure, * gpressure;
+	double* lastepressure, * epressure;
+	double* midepressure;
 	double* midgpressure;
 
 	int n;
@@ -326,7 +327,8 @@ int gnshnCR(struct arclmframe* af)
 	int iteration;
 	int maxiteration = 20;
 	double residual;
-	double tolerance = 1.0E-8;
+	double tolerance = 1.0E-4;
+	double gvctlen;
 
 	double momentumlinear,momentumangular;
 
@@ -711,12 +713,15 @@ int gnshnCR(struct arclmframe* af)
 			time+=ddt;
 			lastloadfactor = loadfactor;
 			if(time<=0.2)
+			//if(nlap<=100)
 			{
 			  loadfactor = 2.5e+8 * time;
+			  //loadfactor = 0.1 * nlap;
 			}
 			else
 			{
 			  loadfactor = 5.0e+7;
+			  //loadfactor = 10.0;
             }
 
 			for (i = 0; i < msize; i++)
@@ -819,8 +824,6 @@ int gnshnCR(struct arclmframe* af)
 	{
 	 fprintf(flog, "M\n");
 
-
-
 		for (ii = 0; ii < 6*nnod; ii++)
 		{
 			for (jj = 0; jj < 6*nnod; jj++)
@@ -856,6 +859,8 @@ int gnshnCR(struct arclmframe* af)
 			lastRt = matrixtranspose(lastR, 6 * nnod);
 			lastginertial_m = matrixvector(Me, lastgacc_m, 6 * nnod);
 			lastginertial = pushforward(lastgform, lastginertial_m, nnod);
+
+			lastepressure = assemshellpvct(shell, lastdrccos);                		    /*{Pe}*/
 
 			/*DEFORMED CONFIGURATION OF LAST ITERATION.*/
 			for (ii = 0; ii < nnod; ii++)
@@ -905,9 +910,8 @@ int gnshnCR(struct arclmframe* af)
 			lapgform = extractshelldisplacement(shell, lapddisp);                     /*{Xg+Ug}*/
 			lapH = blockjacobimtx(lapgform, NULL, NULL, nnod);
 
-			//epressure = assemshellpvct(shell, drccos);                		  /*{Pe}*/
-			//gpressure = matrixvector(Tt, epressure, 6 * nnod);  				  /*{Pg}*/
-			//volume += shellvolume(shell, drccos, area);                         /*VOLUME*/
+			epressure = assemshellpvct(shell, drccos);                		    /*{Pe}*/
+			//volume += shellvolume(shell, drccos, area);                       /*VOLUME*/
 
 
 			/*MID-POINT TRANSFORMATION MATRIX.*/
@@ -915,12 +919,13 @@ int gnshnCR(struct arclmframe* af)
 			midTtPtHt = matrixtranspose(midHPT, 6 * nnod);
 
 			/*MID-POINT FORCE VECTOR.*/
-			mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);/*xi : NUMERICAL DAMPING DISSIPATION*/
+			mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);
 			midginternal = matrixvector(midTtPtHt, mideinternal, 6 * nnod);
 
 			midginertial = midpointvct(ginertial, lastginertial, alpham, 6*nnod);
 
-			//midgpressure = midpointvct(gpressure, lastgpressure, alphaf, 6*nnod);
+			midepressure = midpointvct(epressure, lastepressure, alphaf, 6*nnod);
+			midgpressure = matrixvector(midTtPtHt, midepressure, 6 * nnod);
 
 			/*MID-POINT MASS & STIFFNESS MATRIX.*/
 
@@ -1016,7 +1021,7 @@ int gnshnCR(struct arclmframe* af)
 				{
 					*(finertial + *(loffset + (6 * ii + jj))) += *(midginertial + 6 * ii + jj);
 					*(finternal + *(loffset + (6 * ii + jj))) += *(midginternal + 6 * ii + jj);
-					//*(fpressure + *(loffset + (6 * ii + jj))) += *(midgpressure + 6 * ii + jj);
+					*(fpressure + *(loffset + (6 * ii + jj))) += *(midgpressure + 6 * ii + jj);
 				}
 			}
 
@@ -1078,6 +1083,8 @@ int gnshnCR(struct arclmframe* af)
 			free(lastginertial_m);
 			free(lastginertial);
 
+			free(lastepressure);
+
 			/*MEMORY FREE : DEFORMED CONFIGURATION OF LAST ITERATION.*/
 			freematrix(drccos, 3);
 			freematrix(T, 6 * nnod);
@@ -1095,13 +1102,16 @@ int gnshnCR(struct arclmframe* af)
 			free(lapgform);
 			freematrix(lapH, 6 * nnod);
 
+			free(epressure);
+
 			/*MEMORY FREE : MID-POINT.*/
 			freematrix(midHPT, 6 * nnod);
 			freematrix(midTtPtHt, 6 * nnod);
 			free(mideinternal);
 			free(midginternal);
 			free(midginertial);
-			//free(midgpressure);
+			free(midepressure);
+			free(midgpressure);
 			freematrix(Keff, 6 * nnod);
 
 
@@ -1128,8 +1138,8 @@ int gnshnCR(struct arclmframe* af)
 				*(finternal + i) = 0.0;
 				*(fexternal + *(constraintmain + i)) += *(fexternal + i);
 				*(fexternal + i) = 0.0;
-				//*(fpressure + *(constraintmain + i)) += *(fpressure + i);
-				//*(fpressure + i) = 0.0;
+				*(fpressure + *(constraintmain + i)) += *(fpressure + i);
+				*(fpressure + i) = 0.0;
 			}
 		}
 
@@ -1140,7 +1150,7 @@ int gnshnCR(struct arclmframe* af)
 		residual = 0.0;
 		for (i = 0; i < msize; i++)
 		{
-			*(fexternal + i) = (alphaf*lastloadfactor + (1-alphaf)*loadfactor) * (*(fexternal + i)/*+*(fpressure + i)*/);
+			*(fexternal + i) = (alphaf*lastloadfactor + (1-alphaf)*loadfactor) * (*(fexternal + i)+*(fpressure + i));
 			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
 			/*funbalance : UNBALANCED FORCE -{E}.*/
 			/*SIGN OF UNBALANCED FORCE IS INVERTED FROM DEFINITION.*/
@@ -1210,6 +1220,8 @@ int gnshnCR(struct arclmframe* af)
 		}
 		nline = forwardbackward(gmtx, gvct, confs, msize, gcomp1);
 
+		gvctlen = vectorlength(gvct,msize);
+
 		/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
 		if(iteration==1)
 		{
@@ -1259,7 +1271,7 @@ int gnshnCR(struct arclmframe* af)
 		}
 		free(lapddisp_m);
 
-		if ((residual<tolerance || iteration>maxiteration) && iteration != 1)
+		if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
 		{
 			nlap++;
 			iteration = 0;
