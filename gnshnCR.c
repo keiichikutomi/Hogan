@@ -237,7 +237,7 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 		{
 			*(*(Keff + ii) + jj) = (1-alphaf)     **(*(Kint1 + ii) + jj)
 								 + (1-alphaf + xi)**(*(Kint2 + ii) + jj)
-								 + (1-alpham)     **(*(Kmas1 + ii) + jj)
+								 //+ (1-alpham)     **(*(Kmas1 + ii) + jj)
 								 + (1-alpham)     **(*(Kmas2 + ii) + jj) / (beta * ddt * ddt);
 		}
 	}
@@ -335,19 +335,30 @@ int gnshnCR(struct arclmframe* af)
 	long int nline;
 	double det, sign;
 	double loadfactor = 0.0;
-	double lastloadfactor = 0.0;
+	double lastloadfactor;
 	//double lambda = 0.0;
 
+	#if 1
 	/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
 	double rho = 1.0;
-	//double rho = 0.8;
 	double alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
 	double alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
 	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
-
 	/*NEWMARK-BETA'S PARAMETER.*/
 	double beta = pow(1-alpham+alphaf,2)/4.0;
 	double gamma = 0.5-alpham+alphaf;
+	#endif
+
+	#if 0
+	/*NEWmark METHOD'S PARAMETER.*/
+	double rho = 1.0;
+	double alpham = 0.0;  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
+	double alphaf = 0.0;        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
+	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+	/*NEWMARK-BETA'S PARAMETER.*/
+	double beta = 1.0/pow(rho+1,2);
+	double gamma = (3.0-rho)/(2*(rho+1.0));
+	#endif
 
 	/*FOR READING ANALYSISDATA*/
 	/*ANALYSIS SETTING*/
@@ -722,14 +733,21 @@ int gnshnCR(struct arclmframe* af)
 			{
 			  loadfactor = 5.0e+7;
 			  //loadfactor = 10.0;
-            }
+			}
 
 			for (i = 0; i < msize; i++)
 			{
-				*(lapddisp  + i) = 0.0;
+				*(lapddisp  + i) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+
 				*(lastddisp + i) = *(ddisp + i);
+
 				*(lastud_m  + i) = *(ud_m  + i);
 				*(lastudd_m + i) = *(udd_m + i);
+
+				*(udinit_m + i)  =- (gamma / beta - 1.0) **(lastud_m + i)
+								  - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + i);
+				*(uddinit_m + i) =- (1.0 / (beta * ddt)) **(lastud_m + i)
+								  - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + i);
 			}
 		}
 
@@ -758,6 +776,7 @@ int gnshnCR(struct arclmframe* af)
 			*(freaction  + i) = 0.0;
 			*(funbalance + i) = 0.0;
 		}
+
 
 		volume = 0.0;
 
@@ -1177,10 +1196,6 @@ int gnshnCR(struct arclmframe* af)
 
 		/*CROUT LU DECOMPOSITION.*/
 		nline = croutlu(gmtx, confs, msize, &det, &sign, gcomp1);
-		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
-			nlap, iteration, loadfactor, residual, det, sign, 0, 0.0, volume);
-		fprintf(ffig, "%s", string);
-		errormessage(string);
 		/*DECOMPOSITION FAILED*/
 		if (sign < 0.0)
 		{
@@ -1222,19 +1237,16 @@ int gnshnCR(struct arclmframe* af)
 
 		gvctlen = vectorlength(gvct,msize);
 
-		/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-		if(iteration==1)
-		{
-			for(ii = 0; ii < msize; ii++)
-			{
-				*(lapddisp + ii)  =   0.0;
-				*(udinit_m + ii)  =- (gamma / beta - 1.0) **(lastud_m + ii)
-								   - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + ii);
-				*(uddinit_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
-								   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
-			}
-		}
+        sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.3f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
+			nlap, iteration, loadfactor,/*residual*/gvctlen, det, sign, 0, 0.0, volume);
+		fprintf(ffig, "%s", string);
+		errormessage(string);
 
+        if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
+		{
+			nlap++;
+			iteration = 0;
+		}
 
 
 		/*INCREMENT DISPLACEMENT OF THIS LAP IN SPATIAL FORM.*/
@@ -1254,7 +1266,7 @@ int gnshnCR(struct arclmframe* af)
 		updaterotation(ddisp, gvct, nnode);
 
 
-        free(ud);
+		free(ud);
 		free(udd);
 		ud  = pushforward(ddisp,ud_m,nnode);
 		udd = pushforward(ddisp,udd_m,nnode);
@@ -1267,15 +1279,13 @@ int gnshnCR(struct arclmframe* af)
 				*(ddisp + ii) = *(ddisp + mainoff);
 				*(ud_m + ii)  = *(ud_m + mainoff);
 				*(udd_m + ii) = *(udd_m + mainoff);
+				*(ud + ii)  = *(ud + mainoff);
+				*(udd + ii) = *(udd + mainoff);
 			}
 		}
 		free(lapddisp_m);
 
-		if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
-		{
-			nlap++;
-			iteration = 0;
-		}
+
 		iteration++;
 	}
 

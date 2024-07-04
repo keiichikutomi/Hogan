@@ -2986,7 +2986,7 @@ void initialformCR(struct onode* nodes, double* ddisp, int nnode)
 			}
 			else
 			{
-				*(ddisp + 6 * i + 3 + j) = 0.0001;
+				*(ddisp + 6 * i + 3 + j) = 0.0;
 			}
 		}
 	}
