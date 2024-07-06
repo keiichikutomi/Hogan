@@ -63,13 +63,13 @@
 /*#define RADIUS 1.1875*/ /*=0.950x1.250*/        /*RADIUS OF YIELD SURFACE*/
 /*#define RADIUS 1.0925*/ /*=1.150x0.75*/     /*RADIUS OF YIELD SURFACE*/
 
-/*AXIS OF YIELD SURFACE.0:Nz 1:Qx 2:Qy 3:Mz 4:Mx 5:My*/
+/*AXIS OF YIELD SURF]ACE.0:Nz 1:Qx 2:Qy 3:Mz 4:Mx 5:My*/
 #define SURFACEX 2 // default: 2
 #define SURFACEY 4 // default: 4
 #define SURFACEZ 0
 
 #define DIRECTORY "C:\\Users\\Keiic\\Desktop\\Hogan\\Data\\" /*DATA DIRECTORY*/
-/*#define DIRECTORY "\0"*/                /*CURRENT*/
+//#define DIRECTORY "\0"               /*CURRENT*/
 
 #define BOXMOUSE 5 /*BOX MOUSE SIZE.*/
 

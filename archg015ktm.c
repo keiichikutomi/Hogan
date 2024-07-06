@@ -964,15 +964,15 @@ int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
           errormessage(string);
         }
       }
-    /************************************************************************/
+	/************************************************************************/
 
-    if(sign<=0.0)
-    {
+	if(sign<0.0)
+	{
       if(noff==NULL)
       {
         sprintf(string,"INSTABLE TERMINATION AT NODE %ld.",
                 (afs[lxy]->nodes+(int)(nline/6))->code);
-      }
+	  }
       else
       {
         sprintf(string,"INSTABLE TERMINATION AT NODE %ld.",

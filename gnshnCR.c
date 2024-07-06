@@ -268,7 +268,7 @@ int gnshnCR(struct arclmframe* af)
 	long int msize;
 
 	int nlap, laps;  /*LAP COUNT*/
-	double ddt = 0.001;/*TIME INCREMENT[sec]*/
+	double ddt = 0.01;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
 	int lognode;
@@ -287,6 +287,7 @@ int gnshnCR(struct arclmframe* af)
 	double** lastTt, ** Tt;
 	double** lastHPT, ** HPT;
 	double** midHPT, **midTtPtHt;
+	double** midT, **midTt;
 	double** lastR, ** R;
 	double** lastRt, ** Rt;
 	double** lapH;
@@ -343,7 +344,7 @@ int gnshnCR(struct arclmframe* af)
 	double rho = 1.0;
 	double alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
 	double alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
-	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+	double xi = 0.05;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
 	/*NEWMARK-BETA'S PARAMETER.*/
 	double beta = pow(1-alpham+alphaf,2)/4.0;
 	double gamma = 0.5-alpham+alphaf;
@@ -723,17 +724,27 @@ int gnshnCR(struct arclmframe* af)
 		{
 			time+=ddt;
 			lastloadfactor = loadfactor;
+
+#if 0
 			if(time<=0.2)
-			//if(nlap<=100)
 			{
 			  loadfactor = 2.5e+8 * time;
-			  //loadfactor = 0.1 * nlap;
 			}
 			else
 			{
 			  loadfactor = 5.0e+7;
-			  //loadfactor = 10.0;
 			}
+#endif
+#if 1
+			if(time<=100)
+			{
+			  loadfactor = 0.1 * time;
+			}
+			else
+			{
+			  loadfactor = 10.0;
+			}
+#endif
 
 			for (i = 0; i < msize; i++)
 			{
@@ -839,7 +850,7 @@ int gnshnCR(struct arclmframe* af)
 			Me = assemshellmmtx(shell, drccosinit);          					/*[Me]*/
 
 
-	if(i==5 )
+	if(0)
 	{
 	 fprintf(flog, "M\n");
 
@@ -936,15 +947,48 @@ int gnshnCR(struct arclmframe* af)
 			/*MID-POINT TRANSFORMATION MATRIX.*/
 			midHPT = midpointmtx(HPT, lastHPT, alphaf, 6 * nnod);
 			midTtPtHt = matrixtranspose(midHPT, 6 * nnod);
+			midT = midpointmtx(T, lastT, alphaf, 6 * nnod);
+			midTt = matrixtranspose(midT, 6 * nnod);
 
 			/*MID-POINT FORCE VECTOR.*/
 			mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);
 			midginternal = matrixvector(midTtPtHt, mideinternal, 6 * nnod);
 
+
+			if(0)
+			{
+			fprintf(flog, "EINTERNAL\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(mideinternal+6*ii+0), *(mideinternal+6*ii+1), *(mideinternal+6*ii+2),*(mideinternal+6*ii+3), *(mideinternal+6*ii+4), *(mideinternal+6*ii+5));
+				}
+			fprintf(flog, "GINTERNAL\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(midginternal+6*ii+0), *(midginternal+6*ii+1), *(midginternal+6*ii+2),*(midginternal+6*ii+3), *(midginternal+6*ii+4), *(midginternal+6*ii+5));
+				}
+			}
+
 			midginertial = midpointvct(ginertial, lastginertial, alpham, 6*nnod);
 
 			midepressure = midpointvct(epressure, lastepressure, alphaf, 6*nnod);
-			midgpressure = matrixvector(midTtPtHt, midepressure, 6 * nnod);
+			midgpressure = matrixvector(midTt, midepressure, 6 * nnod);
+
+			if(0)
+			{
+
+			fprintf(flog, "AREA %e\n", area);
+			fprintf(flog, "EPRESSURE\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(midepressure+6*ii+0), *(midepressure+6*ii+1), *(midepressure+6*ii+2),*(midepressure+6*ii+3), *(midepressure+6*ii+4), *(midepressure+6*ii+5));
+				}
+			fprintf(flog, "GPRESSURE\n");
+				for(ii=0;ii<nnod;ii++)
+				{
+				  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(midgpressure+6*ii+0), *(midgpressure+6*ii+1), *(midgpressure+6*ii+2),*(midgpressure+6*ii+3), *(midgpressure+6*ii+4), *(midgpressure+6*ii+5));
+				}
+			}
 
 			/*MID-POINT MASS & STIFFNESS MATRIX.*/
 
@@ -1126,6 +1170,8 @@ int gnshnCR(struct arclmframe* af)
 			/*MEMORY FREE : MID-POINT.*/
 			freematrix(midHPT, 6 * nnod);
 			freematrix(midTtPtHt, 6 * nnod);
+			freematrix(midT, 6 * nnod);
+			freematrix(midTt, 6 * nnod);
 			free(mideinternal);
 			free(midginternal);
 			free(midginertial);

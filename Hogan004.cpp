@@ -137,7 +137,8 @@
 #define FILENAME      "ShellTest"
 #define FILENAME      "ShellDynaTest"
 //#define FILENAME      "240607LMBosfullwithframeb100"
-//#define FILENAME  "240701LMBosfullp1b1"
+#define FILENAME  "240701LMBosfullp1b1"
+#define FILENAME  "sample"
 
 
 //#define FILENAME      "fullsimplep1b100ver2"
@@ -161,9 +162,9 @@
 //#define FILENAME      "231104QuadPolyhedronShellP100B100"
 
 
-#define DEFAULTFILETYPE F_ARCLM
-//#define DEFAULTINPUTFILE   FILENAME".inp"
-#define DEFAULTINPUTFILE   FILENAME".inl"
+//#define DEFAULTFILETYPE F_ARCLM
+#define DEFAULTINPUTFILE   FILENAME".inp"
+//#define DEFAULTINPUTFILE   FILENAME".inl"
 #define DEFAULTINPUTFILEZ  FILENAME".inl"
 #define DEFAULTINPUTFILEX  FILENAME".ihx"
 #define DEFAULTINPUTFILEY  FILENAME".ihy"
