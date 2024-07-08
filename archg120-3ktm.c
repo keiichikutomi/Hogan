@@ -20885,6 +20885,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  (af->shells+i-1)->prate=1.0;
 	  (af->shells+i-1)->brate=1.0;
 	}
+
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
   }
@@ -22745,7 +22746,7 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
 
   addkpemtx(Ke,shell,E,poi,t,det,Lx,Ly,DBe);
   addkbemtx(Ke,shell,E,poi,t,det,Lx,Ly,b,c,DBe);
-  addktemtx(Ke,E,t,det);
+  //addktemtx(Ke,E,t,det);
 
   for(i=0;i<3;i++)free(*(exy+i));
   free(exy);
@@ -22761,16 +22762,7 @@ void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 {
   int i,j;
   double **Dp,**Bp,**Bpt,**DpBp,**Kp;
-  double prate;
-
-  if(shell.prate==NULL)
-  {
-	prate=1.0;
-  }
-  else
-  {
-	prate=shell.prate;
-  }
+  double prate = shell.prate;
 
   Dp=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
@@ -22832,12 +22824,12 @@ void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 	{
 	  for(j=0;j<3;j++)
 	  {
-		*(*(DBe+6*i+0)+6*j+0)=*(*(DpBp+0)+2*j+0);
-		*(*(DBe+6*i+0)+6*j+1)=*(*(DpBp+0)+2*j+1);
-		*(*(DBe+6*i+1)+6*j+0)=*(*(DpBp+1)+2*j+0);
-		*(*(DBe+6*i+1)+6*j+1)=*(*(DpBp+1)+2*j+1);
-		*(*(DBe+6*i+2)+6*j+0)=*(*(DpBp+2)+2*j+0);
-		*(*(DBe+6*i+2)+6*j+1)=*(*(DpBp+2)+2*j+1);
+		*(*(DBe+6*i+0)+6*j+0)=*(*(DpBp+0)+2*j+0)*prate;
+		*(*(DBe+6*i+0)+6*j+1)=*(*(DpBp+0)+2*j+1)*prate;
+		*(*(DBe+6*i+1)+6*j+0)=*(*(DpBp+1)+2*j+0)*prate;
+		*(*(DBe+6*i+1)+6*j+1)=*(*(DpBp+1)+2*j+1)*prate;
+		*(*(DBe+6*i+2)+6*j+0)=*(*(DpBp+2)+2*j+0)*prate;
+		*(*(DBe+6*i+2)+6*j+1)=*(*(DpBp+2)+2*j+1)*prate;
 	  }
 	}
   }
@@ -22857,17 +22849,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
   char string[1024];
   double *aa,*bb,*cc,*dd,*ee;
   double len;
-  double brate;
-
-  if(shell.brate==NULL)
-  {
-	brate=1.0;
-  }
-  else
-  {
-	brate=shell.brate;
-  }
-
+  double brate = shell.brate;
 
   a=(double *)malloc(7*sizeof(double));
   *(a+0)=27.0/60.0;
@@ -23118,8 +23100,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 	Bbt=matrixtransposeIII(Bb,3,9);
 	DbBb=matrixmatrixIII(Db,Bb,3,3,9);
 	Kb=matrixmatrixIII(Bbt,DbBb,9,3,9);
-	/*sprintf(string,"%12.9f %12.9f %12.9f",*(*(Kb+0)+0),*(*(Kb+0)+1),*(*(Kb+0)+1));
-	errormessage(string); */
+
 	for(i=0;i<3;i++)
 	{
 	  for(j=0;j<3;j++)
@@ -23141,18 +23122,17 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 	  {
 		for(j=0;j<3;j++)
 		{
-		  *(*(DBe+6*i+3)+6*j+2)=*(*(DbBb+0)+3*j+0)*6/pow(t,2);
-		  *(*(DBe+6*i+3)+6*j+3)=*(*(DbBb+0)+3*j+1)*6/pow(t,2);
-		  *(*(DBe+6*i+3)+6*j+4)=*(*(DbBb+0)+3*j+2)*6/pow(t,2);
-		  *(*(DBe+6*i+4)+6*j+2)=*(*(DbBb+1)+3*j+0)*6/pow(t,2);
-		  *(*(DBe+6*i+4)+6*j+3)=*(*(DbBb+1)+3*j+1)*6/pow(t,2);
-		  *(*(DBe+6*i+4)+6*j+4)=*(*(DbBb+1)+3*j+2)*6/pow(t,2);
-		  *(*(DBe+6*i+5)+6*j+2)=*(*(DbBb+2)+3*j+0)*6/pow(t,2);
-		  *(*(DBe+6*i+5)+6*j+3)=*(*(DbBb+2)+3*j+1)*6/pow(t,2);
-		  *(*(DBe+6*i+5)+6*j+4)=*(*(DbBb+2)+3*j+2)*6/pow(t,2);
+		  *(*(DBe+6*i+3)+6*j+2)=*(*(DbBb+0)+3*j+0)*6/pow(t,2)*brate;
+		  *(*(DBe+6*i+3)+6*j+3)=*(*(DbBb+0)+3*j+1)*6/pow(t,2)*brate;
+		  *(*(DBe+6*i+3)+6*j+4)=*(*(DbBb+0)+3*j+2)*6/pow(t,2)*brate;
+		  *(*(DBe+6*i+4)+6*j+2)=*(*(DbBb+1)+3*j+0)*6/pow(t,2)*brate;
+		  *(*(DBe+6*i+4)+6*j+3)=*(*(DbBb+1)+3*j+1)*6/pow(t,2)*brate;
+		  *(*(DBe+6*i+4)+6*j+4)=*(*(DbBb+1)+3*j+2)*6/pow(t,2)*brate;
+		  *(*(DBe+6*i+5)+6*j+2)=*(*(DbBb+2)+3*j+0)*6/pow(t,2)*brate;
+		  *(*(DBe+6*i+5)+6*j+3)=*(*(DbBb+2)+3*j+1)*6/pow(t,2)*brate;
+		  *(*(DBe+6*i+5)+6*j+4)=*(*(DbBb+2)+3*j+2)*6/pow(t,2)*brate;
 		}
 	  }
-
 	}
 	freematrix(Bb,3);
 	freematrix(Bbt,9);
