@@ -22746,7 +22746,7 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
 
   addkpemtx(Ke,shell,E,poi,t,det,Lx,Ly,DBe);
   addkbemtx(Ke,shell,E,poi,t,det,Lx,Ly,b,c,DBe);
-  //addktemtx(Ke,E,t,det);
+  addktemtx(Ke,E,t,det);
 
   for(i=0;i<3;i++)free(*(exy+i));
   free(exy);
