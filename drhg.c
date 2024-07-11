@@ -354,6 +354,24 @@ int arclmDR(struct arclmframe *af,int idinput,int laps,double lambda)
 		  if(ii==jj && ii%6<3)massdiag+=Me[ii][jj];
 		}
 	  }
+
+
+
+		for (ii = 0; ii < nnod; ii++)
+		{
+			for (jj = 0; jj < 6; jj++)
+			{
+				*(mvct + *(loffset + (6 * ii + jj))) += *(*(Me + 6 * ii + jj) + 6 * ii + jj) * masstotal / massdiag;
+			}
+		}
+
+
+
+
+
+
+
+
 	  //assemgstiffnessIIwithDOFelimination(mmtx,Me,&shell,constraintmain);/*ASSEMBLAGE MASS MATRIX.*/
 
 	  ginternal=matrixvector(Tt,einternal,6*shell.nnod);/*GLOBAL INTERNAL FORCE{Fg}.*/
@@ -459,6 +477,7 @@ int arclmDR(struct arclmframe *af,int idinput,int laps,double lambda)
 		  {
 			*(lastvel+i) = *(nextvel+i);
 			*(nextvel+i) = ( *(funbalance+i)+(*(mvct+i)/ddt-*(cvct+i)/2.0)**(lastvel+i) )/( *(mvct+i)/ddt+*(cvct+i)/2.0 );
+			//*(nextvel + i) = *(funbalance + i) * ddt / (*(mvct + i)) + *(lastvel + i);
 			*(vel+i) =  (*(nextvel+i)+*(lastvel+i))/2.0;
 			*(acc+i) =  (*(nextvel+i)-*(lastvel+i))/ddt;
 		  }

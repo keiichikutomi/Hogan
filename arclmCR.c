@@ -20,6 +20,10 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 void symmetricmtx(double** estiff, int msize);
 
 void updaterotation(double* ddisp, double* gvct, int nnode);
+
+double* quaternionvct(double* rvct);
+double** updatedrccos(double** drccosinit, double* gforminit, double* gform);
+double** interpolatermtx(double* rvct1, double* rvct2, double alpha);
 //void updateforce(double* pvct, double* ddisp, int nnode);
 
 double* extractlocalcoord(double* gform, double** drccos, double nnod);
@@ -70,17 +74,9 @@ int arclmCR(struct arclmframe* af)
 	double gg;
 	/***GLOBAL VECTOR*/
 	double* ddisp, * iform;
-	double* u, * ud, * udd, * du, * dud, * dudd;
-
-
-	double* mvct; /*LUMPED MASS*/
 	double* funbalance, * fexternal, * finternal, * freaction, * fpressure, * fswitching;
 	double* due, * dup, * lastdue;
 	double* gvct;
-	double* vel, * lastvel, * nextvel;
-	double* acc;
-	double acceleration, velosity;
-
 
 	/***FOR EACH ELEMENT***/
 	int nnod;
@@ -92,11 +88,6 @@ int arclmCR(struct arclmframe* af)
 	double* gpressure, * epressure;                          /*EXTERNAL FORCE OF ELEMENT*/
 	double* shellstress;                        /*ƒÐx,ƒÐy,ƒÑxy,Mx,My,Mxy OF ELEMENT*/
 	double Ep, Eb, Ee;                           /*STRAIN ENERGY OF ELEMENT*/
-	double lastlastEk = 0.0;
-	double lastEk = 0.0;
-	double Ek = 0.0;
-	double nextEk = 0.0;                                          /*KINETIC ENERGY*/
-	double q = 0.0;
 	double** Me,** Ke,** Kt,** DBe,** drccos,** drccosinit;                           /*MATRIX*/
 	double** T,** Tt,** HP,**PtHt,**HPT,**TtPtHt;
 	int* loffset;
@@ -154,11 +145,8 @@ int arclmCR(struct arclmframe* af)
 
 	int BCLFLAG = 0;/*FLAG FOR BUCKLING DETECTION*/
 	int ENDFLAG = 0;/*FLAG FOR ANLYSIS TERMINATION*/
-	int PEAKFLAG = 0;/*FLAG FOR VELOSITY RESET*/
-	int DRFLAG = 0;/*FLAG FOR DYNAMIC RELAXARION*/
 
 	int SCALINGARCFLAG = 0;
-
 	int BIGININGARCFLAG = 0;
 	double biginingarcratio = 1.0;
 	int biginingarclap = 0;
@@ -384,16 +372,9 @@ int arclmCR(struct arclmframe* af)
 	af->mshell = mshell;
 	af->constraintmain = constraintmain;
 
-	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));
-	/*DIAGONALS OF GLOBAL MATRIX.*/
+	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	gvct = (double *)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
 
-	/*for dynamic*/
-	acc = (double*)malloc(msize * sizeof(double));
-	vel = (double*)malloc(msize * sizeof(double));
-	lastvel = (double*)malloc(msize * sizeof(double));
-	nextvel = (double*)malloc(msize * sizeof(double));
-	gvct = (double*)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
-	mvct = (double*)malloc(msize * sizeof(double));/*MASS VECTOR.*/
 
 
 	funbalance = (double*)malloc(msize * sizeof(double));          /*UNBALANCED INTERNAL FORCE VECTOR.*/
@@ -432,10 +413,6 @@ int arclmCR(struct arclmframe* af)
 	for (i = 0; i < msize; i++)
 	{
 		(gmtx + i)->down = NULL;
-		*(acc + i) = 0.0;
-		*(vel + i) = 0.0;
-		*(lastvel + i) = 0.0;
-		*(nextvel + i) = 0.0;
 		*(gvct + i) = 0.0;
 		*(constraintmain + i) = i;
 	}
@@ -571,15 +548,8 @@ int arclmCR(struct arclmframe* af)
 			{
 				inputnode(ddisp, elem.node[ii]);
 			}
-            drccos = directioncosine(elem.node[0]->d[0],
-							 elem.node[0]->d[1],
-							 elem.node[0]->d[2],
-							 elem.node[1]->d[0],
-							 elem.node[1]->d[1],
-							 elem.node[1]->d[2],
-							 elem.cangle);
-			//drccos = middrccos();
 			gform = extractdisplacement(elem, ddisp);
+			drccos = updatedrccos(drccosinit, gforminit, gform);
 			eform = extractlocalcoord(gform,drccos,nnod);
 
 			T = transmatrixIII(drccos, nnod);									/*[T].*/
@@ -711,32 +681,6 @@ int arclmCR(struct arclmframe* af)
 			/*epressure->pressure->gpressure?*/
 
 
-
-
-			//if (DRFLAG)/*FOR MASS VECTOR*/
-			//{
-			//	Me = assemshellmmtx(shell, drccos);              /*MASS MATRIX OF SHELL[M].*/
-			//	Me = transformationIII(Me, T, 6 * nnod);
-			//	masstotal = 0.0;
-			//	massdiag = 0.0;
-			//	for (ii = 0; ii < 18; ii++)
-			//	{
-			//		for (jj = 0; jj < 18; jj++)
-			//		{
-			//			masstotal += Me[ii][jj];
-			//			if (ii == jj && ii % 6 < 3)massdiag += Me[ii][jj];
-			//		}
-			//	}
-			//	for (ii = 0; ii < nnod; ii++)
-			//	{
-			//		for (jj = 0; jj < 6; jj++)
-			//		{
-			//			*(mvct + *(loffset + (6 * ii + jj))) += *(*(Me + 6 * ii + jj) + 6 * ii + jj) * masstotal / massdiag;
-			//		}
-			//	}
-			//	freematrix(Me, 18);
-			//}
-
 			/*OUTPUT STRAIN ENERGY & STRESS*/
 			if ((outputmode == 0 && (iteration == 1 || BCLFLAG == 2)) || outputmode == 1)
 			{
@@ -845,70 +789,7 @@ int arclmCR(struct arclmframe* af)
 			outputdisp(freaction, frct, nnode, nodes);                    /*FORMATION OUTPUT.*/
 		}
 
-		/*if (DRFLAG)
-		{
-			lastlastEk = lastEk;
-			lastEk = nextEk;
-			Ek = 0.0;
-			nextEk = 0.0;
-			acceleration = 0.0;
-			velosity = 0.0;
 
-			for (i = 0; i < msize; i++)
-			{
-				if ((confs + i)->iconf != 1)
-				{
-					if (time == 0.0 || PEAKFLAG)
-					{
-						*(nextvel + i) = *(funbalance + i) * ddt / (2.0 * *(mvct + i));
-						*(lastvel + i) = -*(nextvel + i);
-						*(vel + i) = 0.0;
-						*(acc + i) = 2.0 * *(nextvel + i) / ddt;
-					}
-					else
-					{
-						*(lastvel + i) = *(nextvel + i);
-						*(nextvel + i) = *(funbalance + i) * ddt / (*(mvct + i)) + *(lastvel + i);
-						*(vel + i) = (*(nextvel + i) + *(lastvel + i)) / 2.0;
-						*(acc + i) = (*(nextvel + i) - *(lastvel + i)) / ddt;
-					}
-					Ek += 0.5 * *(mvct + i) * *(vel + i) * *(vel + i);
-					nextEk += 0.5 * *(mvct + i) * *(nextvel + i) * *(nextvel + i);
-					acceleration += *(acc + i) * *(acc + i);
-					velosity += *(vel + i) * *(vel + i);
-
-				}
-			}
-			acceleration = sqrt(acceleration);
-			velosity = sqrt(velosity);
-			PEAKFLAG = 0;
-			if (nextEk < lastEk)
-			{
-				q = (lastEk - nextEk) / (2 * lastEk - nextEk - lastlastEk);
-				for (i = 0; i < msize; i++)
-				{
-					if ((confs + i)->iconf != 1)
-					{
-						*(gvct + i) = -q * *(lastvel + i) * ddt;
-					}
-
-				}
-				lastEk = 0.0;
-				nextEk = 0.0;
-				PEAKFLAG = 1;
-			}
-			else
-			{
-				for (i = 0; i < msize; i++)
-				{
-					if ((confs + i)->iconf != 1)
-					{
-						*(gvct + i) = *(nextvel + i) * ddt;
-					}
-				}
-			}
-
-		}*/
 
 
 		if (BCLFLAG < 1)/*REGULAR*/
@@ -2095,7 +1976,7 @@ int arclmCR(struct arclmframe* af)
 
 double dotproduct(double* vct1, double* vct2, int vsize)
 {
-    int i;
+	int i;
 	double dot;
 	dot = 0.0;
 	for (i = 0; i < vsize; i++) dot += (*(vct1 + i)) * (*(vct2 + i));
@@ -2104,21 +1985,21 @@ double dotproduct(double* vct1, double* vct2, int vsize)
 
 double vectorlength(double* vct, int vsize)
 {
-    int i;
-    double len;
-    len = 0.0;
-    for (i = 0; i < vsize; i++) len += (*(vct + i)) * (*(vct + i));
-    len = sqrt(len);
+	int i;
+	double len;
+	len = 0.0;
+	for (i = 0; i < vsize; i++) len += (*(vct + i)) * (*(vct + i));
+	len = sqrt(len);
     return len;
 }/*vectorlength*/
 
 void vectornormalize(double* vct, int vsize)
 {
 	int i;
-    double len;
-    len = vectorlength(vct,vsize);
-    for (i = 0; i < vsize; i++) *(vct + i)/=len;
-    return;
+	double len;
+	len = vectorlength(vct,vsize);
+	for (i = 0; i < vsize; i++) *(vct + i)/=len;
+	return;
 }/*vectorlength*/
 
 
@@ -2727,6 +2608,8 @@ void symmetricmtx(double** estiff, int msize)
 	return;
 }
 
+
+
 void updaterotation(double* ddisp, double* gvct, int nnode)
 /*FORMATION UPDATE IF ROTATION IS FINITE.*/
 {
@@ -2769,62 +2652,102 @@ void updaterotation(double* ddisp, double* gvct, int nnode)
 }/*updaterotation*/
 
 
-double** updatedrccos(double** drccosinit, double* gdisp)
+
+double* quaternionvct(double* rvct)
+{
+	int i;
+	double* qvct;
+	double theta;
+
+	qvct = (double*)malloc(4 * sizeof(double));
+	theta = sqrt(*(rvct + 0) * *(rvct + 0) + *(rvct + 1) * *(rvct + 1) + *(rvct + 2) * *(rvct + 2));
+	if(theta!=0)
+	{
+		for (i = 0; i < 3; i++)
+		{
+			*(qvct + i) = sin(0.5*theta)**(rvct + i)/theta;
+		}
+	}
+	else
+	{
+        for (i = 0; i < 3; i++)
+		{
+			*(qvct + i) = 0.0;
+		}
+    }
+	*(qvct + 3) = cos(0.5*theta);
+	return qvct;
+}
+
+
+double** updatedrccos(double** drccosinit, double* gforminit, double* gform)
 {
 	int i;
 	double** drccos;
-	double* rvct1, * rvct2, *rvct;
-	double** rmtx1, ** rmtx2, **trmtx1, ** rmtx;
-	double** alpharmtx, **midrmtx;
+	double* rvct1, * rvct2;
+	double** rmtxinit, ** rmtxinitt, **rmtx, ** drccosrmtx;
 
 	rvct1 = (double*)malloc(3 * sizeof(double));
 	rvct2 = (double*)malloc(3 * sizeof(double));
 
 	for (i = 0; i < 3; i++)
 	{
-		*(rvct1 + i) += *(gdisp + 3 + i);
-		*(rvct2 + i) += *(gdisp + 9 + i);
+		*(rvct1 + i) = *(gforminit + 3 + i);
+		*(rvct2 + i) = *(gforminit + 9 + i);
 	}
-
-	rmtx1 = rotationmtx(rvct1);
-	rmtx2 = rotationmtx(rvct2);
-	trmtx1 = matrixtranspose(rmtx1,3);
-	rmtx = matrixmatrix(rmtx2, trmtx1, 3);
-	rvct = rotationvct(rmtx);
+	rmtxinit = interpolatermtx(rvct1, rvct2, 0.5);
+	rmtxinitt = matrixtranspose(rmtxinit, 3);
 
 	for (i = 0; i < 3; i++)
 	{
-		*(rvct+i)*=0.5;
+		*(rvct1 + i) = *(gform + 3 + i);
+		*(rvct2 + i) = *(gform + 9 + i);
 	}
+	rmtx = interpolatermtx(rvct1, rvct2, 0.5);
 
-	alpharmtx = rotationmtx(rvct);
-	midrmtx = matrixmatrix(alpharmtx, rmtx1, 3);
-	drccos = matrixmatrix(midrmtx, drccosinit, 3);
+	drccosrmtx = matrixmatrix(rmtx, rmtxinitt, 3);
+	drccos = matrixmatrix(drccosrmtx, drccosinit, 3);
 
-
-	freematrix(rmtx1, 3);
-	freematrix(rmtx2, 3);
-	freematrix(trmtx1, 3);
-	freematrix(rmtx, 3);
-	freematrix(alpharmtx, 3);
-	freematrix(midrmtx, 3);
 	free(rvct1);
 	free(rvct2);
+
+	freematrix(rmtxinit, 3);
+	freematrix(rmtxinitt, 3);
+	freematrix(rmtx, 3);
+	freematrix(drccosrmtx, 3);
 
 	return drccos;
 }
 
-/*
-double** interpolaterotation(double* rvct1, double* rvct2, double alpha)
+
+double** interpolatermtx(double* rvct1, double* rvct2, double alpha)
 {
-	int i, j;
-	long int loff;
+	int i;
 	double* rvct;
 	double** rmtx1, ** rmtx2, **trmtx1, ** rmtx;
+	double** alpharmtx, ** midrmtx;
+
+
+	/*
+	qvct1 = quaternionvct(rvct1);
+	qvct2 = quaternionvct(rvct2);
+	dot = dotproduct(qvct1,qvct2,4);
+	theta = acos(dot);
+
+	if(theta!= 0)
+	{
+		for (i = 0; i < 4; i++)
+		{
+			*(midqvct + i) = (*(qvct1 + i)+*(qvct2 + i))/(2*cos(0.5*theta));
+		}
+	}
+	*/
+
+
 
 	rmtx1 = rotationmtx(rvct1);
 	rmtx2 = rotationmtx(rvct2);
-	trmtx1 = matrixtranspose(rmtx1);
+	trmtx1 = matrixtranspose(rmtx1, 3);
 	rmtx = matrixmatrix(rmtx2, trmtx1, 3);
 	rvct = rotationvct(rmtx);
 
@@ -2842,10 +2765,12 @@ double** interpolaterotation(double* rvct1, double* rvct2, double alpha)
 	freematrix(trmtx1, 3);
 	freematrix(rmtx, 3);
 	free(rvct);
+	freematrix(alpharmtx, 3);
 
 	return midrmtx;
-}*/
-/*interpolaterotation*/
+}
+
+
 
 double* extractlocalcoord(double* gform, double** drccos, double nnod)
 /*EXTRACT LOCAL ELEMENT DEFORMATION FROM GLOBAL.*/
@@ -3056,33 +2981,6 @@ double shellvolume(struct oshell shell, double** drccos, double area)
 	return volume;
 }/*shellvolume*/
 
-/*
-double equilibriumcurvature(double* weight, double* ddisp, double* lastddisp, double loadfactor, double lastloadfactor, double* dup, int msize)
-{
-	int i;
-	double* vct, * lastvct;
-	double cos, dot, len, lastlen, curvature;
-	char string[40];
-	vct = (double*)malloc(msize * sizeof(double));
-	lastvct = (double*)malloc(msize * sizeof(double));
-	dot = loadfactor - lastloadfactor;
-	len = 1.0;
-	lastlen = (loadfactor - lastloadfactor) * (loadfactor - lastloadfactor);
-	for (i = 0; i < msize; i++)
-	{
-		*(vct + i) = *(weight + i) * *(dup + i);
-		*(lastvct + i) = *(weight + i) * (*(ddisp + i) - *(lastddisp + i));
-		dot += *(vct + i) * *(lastvct + i);
-		len += *(vct + i) * *(vct + i);
-		lastlen += *(lastvct + i) * *(lastvct + i);
-	}
-	cos = abs(dot / sqrt(len * lastlen));
-	curvature = acos(cos) / sqrt(lastlen);
-	free(vct);
-	free(lastvct);
-	return curvature;
-}
-*/
 
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize)
 {
