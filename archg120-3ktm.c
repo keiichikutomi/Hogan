@@ -2828,12 +2828,12 @@ void setviewpoint(HWND hdwnd,
 
   vp->odv*=0.8*fmin;
 
-  vp->range.max.d[GX]=dmax[GX];
-  vp->range.min.d[GX]=dmin[GX];
-  vp->range.max.d[GY]=dmax[GY];
-  vp->range.min.d[GY]=dmin[GY];
-  vp->range.max.d[GZ]=dmax[GZ];
-  vp->range.min.d[GZ]=dmin[GZ];
+  vp->range.max.d[GX]=dmax[GX]+100.0;
+  vp->range.min.d[GX]=dmin[GX]-100.0;
+  vp->range.max.d[GY]=dmax[GY]+100.0;
+  vp->range.min.d[GY]=dmin[GY]-100.0;
+  vp->range.max.d[GZ]=dmax[GZ]+100.0;
+  vp->range.min.d[GZ]=dmin[GZ]-100.0;
 
   createviewdata(vp);
   return;
