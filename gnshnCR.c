@@ -268,7 +268,7 @@ int gnshnCR(struct arclmframe* af)
 	long int msize;
 
 	int nlap, laps;  /*LAP COUNT*/
-	double ddt = 0.01;/*TIME INCREMENT[sec]*/
+	double ddt = 0.001;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
 	int lognode;

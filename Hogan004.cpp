@@ -139,6 +139,8 @@
 //#define FILENAME      "240607LMBosfullwithframeb100"
 #define FILENAME  "240701LMBosfullp1b1"
 #define FILENAME  "LMBosfullmembrane"
+#define FILENAME  "LMBexploration1"
+
 
 
 //#define FILENAME      "fullsimplep1b100ver2"
