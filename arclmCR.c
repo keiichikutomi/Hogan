@@ -57,8 +57,6 @@ int arclmCR(struct arclmframe* af)
 	long int msize, nline;
 	double time;
 
-
-
 	/*FOR READING ANALYSISDATA*/
 	int nstr, pstr, readflag, node;
 	char **data, *filename;
@@ -648,6 +646,7 @@ int arclmCR(struct arclmframe* af)
 				inputnode(ddisp, shell.node[ii]);
 			}
 			drccos = shelldrccos(shell, &area);
+
 			gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
 			eform = extractlocalcoord(gform,drccos,nnod); 			       	    /*{Xe+Ue}*/
 
@@ -860,6 +859,7 @@ int arclmCR(struct arclmframe* af)
 				BCLFLAG = 1;
 				sprintf(string, "BUCKLING DITECTED LAP: %4d ITER: %2d  ", nlap, iteration);
 				fprintf(fbcl, "%s\n", string);
+
 				//if (pinpointmode == 2)/*EXTENDED SYSTEM*/
 				//{
 				//	norm = (double *)malloc(nmode * sizeof(double));/*NORM OF LDL MODE*/
@@ -958,26 +958,20 @@ int arclmCR(struct arclmframe* af)
 					/*SIGN OF PREDICTOR VECTOR & ARC-LENGTH SCALING FACTOR*/
 					if (nlap == 1)
 					{
-						/*for (ii = 0; ii < msize; ii++)
-						{
-							if ((confs + ii)->iconf == 0 && *(weight + ii) != 0.0)
-							{
-								if(*(dup + ii)=!0.0)
-								{
-									*(weight + ii) = 1.0 / abs(*(dup + ii));
-								}
-								else
-								{
-									*(weight + ii) = 0.0;
-								}
-							}
-						}*/
-                        for (ii = 0; ii < msize; ii++)
+						for (ii = 0; ii < msize; ii++)
 						{
 							if ((confs + ii)->iconf != 1 && *(weight + ii) != 0.0)
 							{
 								*(weight + ii) = 1.0 / abs(*(dup + ii));
 							}
+							/*if(*(dup + ii)!=0.0)
+							{
+								*(weight + ii) = 1.0 / abs(*(dup + ii));
+							}
+							else
+							{
+								*(weight + ii) = 0.0;
+							}*/
 						}
 					}
 
@@ -2007,7 +2001,8 @@ void vectornormalize(double* vct, int vsize)
 
 double* rotationvct(double** rmtx)
 {
-	double c, s,a;
+	//char str[50];
+	double c, s;
 	double* rvct;
 	double theta;
 	rvct = (double*)malloc(3 * sizeof(double));
@@ -2016,19 +2011,42 @@ double* rotationvct(double** rmtx)
 				+ pow( *(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0) ,2)
 				+ pow( *(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1) ,2))); /*|sin(theta)|>=0*/
 
-	theta = atan2(s , c);
 
-	if (s != 0)
+
+	theta = atan2(s , c);/*theta>=0*/
+
+	if(s > 1e-15)
 	{
-		*(rvct + 0) = 0.5* theta * ((*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2))) / s;
-		*(rvct + 1) = 0.5* theta * ((*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0))) / s;
-		*(rvct + 2) = 0.5* theta * ((*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1))) / s;
+		*(rvct + 0) = 0.5 * ((*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2)))* theta / s;
+		*(rvct + 1) = 0.5 * ((*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0)))* theta / s;
+		*(rvct + 2) = 0.5 * ((*(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1)))* theta / s;
 	}
-	else if(c < 0)/*theta=PI*/
+	else if(c < 0.0)/*theta=PI*/
 	{
-		*(rvct + 0) = theta * sqrt( ( *(*(rmtx + 0) + 0) + 1.0 ) / 2.0 );
-		*(rvct + 1) = theta * sqrt( ( *(*(rmtx + 1) + 1) + 1.0 ) / 2.0 );
-		*(rvct + 2) = theta * sqrt( ( *(*(rmtx + 2) + 2) + 1.0 ) / 2.0 );
+		*(rvct + 0) = sqrt( ( *(*(rmtx + 0) + 0) + 1.0 ) / 2.0 );
+		if (*(rvct + 0) != 0.0)
+		{
+			*(rvct + 1) = 0.5 * *(*(rmtx + 0) + 1) / (*(rvct + 0));
+			*(rvct + 2) = 0.5 * *(*(rmtx + 0) + 2) / (*(rvct + 0));
+		}
+		else
+		{
+			*(rvct + 1) = sqrt( ( *(*(rmtx + 1) + 1) + 1.0 ) / 2.0 );
+			if (*(rvct + 1) != 0.0)
+			{
+				*(rvct + 2) = 0.5 * *(*(rmtx + 1) + 2) / (*(rvct + 1));
+			}
+			else
+			{
+				*(rvct + 2) = sqrt( ( *(*(rmtx + 2) + 2) + 1.0 ) / 2.0 );
+			}
+		}
+		*(rvct + 0) *= PI;
+		*(rvct + 1) *= PI;
+		*(rvct + 2) *= PI;
+		//sprintf(str,"%e %e %e\n",s,c,theta);
+		//errormessage(str);
+
 	}
 	else/*theta=0*/
 	{
@@ -2036,6 +2054,7 @@ double* rotationvct(double** rmtx)
 		*(rvct + 1) = 0.0;
 		*(rvct + 2) = 0.0;
 	}
+
 	return rvct;
 }
 
@@ -2054,22 +2073,22 @@ double** rotationmtx(double* rvct)
 		*(rmtx + i) = (double*)malloc(3 * sizeof(double));
 	}
 	theta = sqrt(*(rvct + 0) * *(rvct + 0) + *(rvct + 1) * *(rvct + 1) + *(rvct + 2) * *(rvct + 2));
-	if (theta != 0)
+	if (theta > 1e-15)
 	{
 		for (i = 0; i < 3; i++)
 		{
 			*(n + i) = *(rvct + i) / theta;
 		}
 
-		*(*(rmtx + 0) + 0) = cos(theta) + (1 - cos(theta)) * *(n + 0) * *(n + 0);
+		*(*(rmtx + 0) + 0) =  cos(theta)            + (1 - cos(theta)) * *(n + 0) * *(n + 0);
 		*(*(rmtx + 0) + 1) = -sin(theta) * *(n + 2) + (1 - cos(theta)) * *(n + 0) * *(n + 1);
-		*(*(rmtx + 0) + 2) = sin(theta) * *(n + 1) + (1 - cos(theta)) * *(n + 0) * *(n + 2);
-		*(*(rmtx + 1) + 0) = sin(theta) * *(n + 2) + (1 - cos(theta)) * *(n + 1) * *(n + 0);
-		*(*(rmtx + 1) + 1) = cos(theta) + (1 - cos(theta)) * *(n + 1) * *(n + 1);
+		*(*(rmtx + 0) + 2) =  sin(theta) * *(n + 1) + (1 - cos(theta)) * *(n + 0) * *(n + 2);
+		*(*(rmtx + 1) + 0) =  sin(theta) * *(n + 2) + (1 - cos(theta)) * *(n + 1) * *(n + 0);
+		*(*(rmtx + 1) + 1) =  cos(theta)            + (1 - cos(theta)) * *(n + 1) * *(n + 1);
 		*(*(rmtx + 1) + 2) = -sin(theta) * *(n + 0) + (1 - cos(theta)) * *(n + 1) * *(n + 2);
 		*(*(rmtx + 2) + 0) = -sin(theta) * *(n + 1) + (1 - cos(theta)) * *(n + 2) * *(n + 0);
-		*(*(rmtx + 2) + 1) = sin(theta) * *(n + 0) + (1 - cos(theta)) * *(n + 2) * *(n + 1);
-		*(*(rmtx + 2) + 2) = cos(theta) + (1 - cos(theta)) * *(n + 2) * *(n + 2);
+		*(*(rmtx + 2) + 1) =  sin(theta) * *(n + 0) + (1 - cos(theta)) * *(n + 2) * *(n + 1);
+		*(*(rmtx + 2) + 2) =  cos(theta)            + (1 - cos(theta)) * *(n + 2) * *(n + 2);
 	}
 	else
 	{
@@ -2345,7 +2364,7 @@ double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod)
 		}
 		else
 		{
-			eta = (1.0 - 0.5 * theta * (1.0 / tan(0.5 * theta))) / pow(theta, 2);
+			eta = (1.0 - 0.5 * theta / tan(0.5 * theta)) / pow(theta, 2);
 			mu = (theta * theta + 4.0 * cos(theta) + theta * sin(theta) - 4.0)
 				/ (4.0 * pow(theta, 4) * sin(0.5 * theta) * sin(0.5 * theta));
 		}
@@ -2807,6 +2826,7 @@ double* extractlocalcoord(double* gform, double** drccos, double nnod)
 		/*EACH NODE FROM CENTER*/
 
 		rmtx = rotationmtx(r);
+
 		/*rmtx:Ra*/
 		trmtx = matrixmatrix(drccos, rmtx, 3);/*TRIAD DIRECTION MATRIX(3 VECTOR) IN LOCAL*/
 		tr = rotationvct(trmtx);

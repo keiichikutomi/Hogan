@@ -181,7 +181,8 @@ double** midpointmtx(double** mtx,double** lastmtx,double alpha,int size)
 }
 
 
-double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, double** T, double** Ke, double** midTtPtHt, double** HPT,
+double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, double** T, double** Ke,
+						  double** midTtPtHt, double** HPT,
 						  double* ginertial, double** Me, double** R, double** lastRt, double** lapH,
 						  double alphaf, double alpham, double xi, double beta, double ddt, int nnod)
 {
@@ -223,6 +224,7 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 				*(*(Kmas1 + 6 * n + 3 + ii) + 6 * n + 3 + jj) = - *(*(mspin + ii) + jj);
 			}
 		}
+		freematrix(mspin, 3);
 	}
 
 	RM = matrixmatrix(R, Me, 6*nnod);
@@ -237,7 +239,7 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 		{
 			*(*(Keff + ii) + jj) = (1-alphaf)     **(*(Kint1 + ii) + jj)
 								 + (1-alphaf + xi)**(*(Kint2 + ii) + jj)
-								 //+ (1-alpham)     **(*(Kmas1 + ii) + jj)
+								 + (1-alpham)     **(*(Kmas1 + ii) + jj)
 								 + (1-alpham)     **(*(Kmas2 + ii) + jj) / (beta * ddt * ddt);
 		}
 	}
@@ -246,7 +248,7 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 	freematrix(TPHK,  6 * nnod);
 	freematrix(Kint2, 6 * nnod);
 	free(mvct);
-	freematrix(mspin, 3);
+
 	freematrix(Kmas1, 6 * nnod);
 	freematrix(RM,    6 * nnod);
 	freematrix(RMR,   6 * nnod);
@@ -268,7 +270,7 @@ int gnshnCR(struct arclmframe* af)
 	long int msize;
 
 	int nlap, laps;  /*LAP COUNT*/
-	double ddt = 0.001;/*TIME INCREMENT[sec]*/
+	double ddt = 0.02;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
 	int lognode;
@@ -305,20 +307,31 @@ int gnshnCR(struct arclmframe* af)
 	double* midepressure;
 	double* midgpressure;
 
+	double* midgform;                      	/*GLOBAL COORDINATION OF ELEMENT*/
+	double* mideform;                      	/*LOCAL COORDINATION OF ELEMENT*/
+	double* midedisp;
+	double** middrccos;
+	double* midddisp;
+	double** midHPT2;
+
+	/*FOR DEBUG OF Keff*/
 	int n;
 	double** Kint1, ** Kint2;
 	double** Kmas1, ** Kmas2;
 	double* mvct;
 	double** mspin;
 	double** TPHK;
+
 	double** RM, ** RMR;
 
 
 	double** Keff;
 
 	double* shellstress;                           /*σx,σy,τxy,Mx,My,Mxy OF ELEMENT*/
-	double SEp, SEb, SEe;                             /*STRAIN ENERGY OF ELEMENT*/
-	double KEt, KEr, KEe;                             /*STRAIN ENERGY OF ELEMENT*/
+	double SEp, SEb, SE;                             /*STRAIN ENERGY OF ELEMENT*/
+	double KEt, KEr, KE;                             /*STRAIN ENERGY OF ELEMENT*/
+
+	double* gvel_m, * gmomentum_m;
 
 
 	double area, volumetotal;
@@ -328,7 +341,7 @@ int gnshnCR(struct arclmframe* af)
 	int iteration;
 	int maxiteration = 20;
 	double residual;
-	double tolerance = 1.0E-4;
+	double tolerance = 1.0E-8;
 	double gvctlen;
 
 	double momentumlinear,momentumangular;
@@ -339,12 +352,23 @@ int gnshnCR(struct arclmframe* af)
 	double lastloadfactor;
 	//double lambda = 0.0;
 
+	#if 0
+	/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
+	double rho = 1.0;
+	double alpham = 0.5;  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
+	double alphaf = 0.1;        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
+	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+	/*NEWMARK-BETA'S PARAMETER.*/
+	double beta = 0.25;
+	double gamma = 0.5;
+	#endif
+
 	#if 1
 	/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
 	double rho = 1.0;
 	double alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
 	double alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
-	double xi = 0.05;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
 	/*NEWMARK-BETA'S PARAMETER.*/
 	double beta = pow(1-alpham+alphaf,2)/4.0;
 	double gamma = 0.5-alpham+alphaf;
@@ -358,7 +382,18 @@ int gnshnCR(struct arclmframe* af)
 	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
 	/*NEWMARK-BETA'S PARAMETER.*/
 	double beta = 1.0/pow(rho+1,2);
-	double gamma = (3.0-rho)/(2*(rho+1.0));
+	double gamma = (3.0-rho)/(2.0*(rho+1.0));
+	#endif
+
+	#if 0
+	/*HTT-alpha'S PARAMETER.*/
+	double rho = 0.904762;
+	double alpham = 0.0;  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
+	double alphaf = (1.0-rho)/(1.0+rho);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
+	double xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+	/*NEWMARK-BETA'S PARAMETER.*/
+	double beta = pow(1+alphaf,2)/4.0;
+	double gamma = 0.5+alphaf;
 	#endif
 
 	/*FOR READING ANALYSISDATA*/
@@ -687,7 +722,7 @@ int gnshnCR(struct arclmframe* af)
 	}
 	///FOR DRAWING 1///
 
-	sprintf(string,"beta=%e gamma=%e ",beta,gamma);
+	sprintf(string,"alpham=%e alphaf=%e beta=%e gamma=%e ",alpham,alphaf,beta,gamma);
 	errormessage(string);
 
 	nlap = 1;
@@ -699,7 +734,7 @@ int gnshnCR(struct arclmframe* af)
 		af->nlaps = nlap;
 
 		///FOR DRAWING 2///
-		//setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 		if(iteration==1)clearwindow(*(wdraw.childs+1));
 		///FOR DRAWING 2///
 
@@ -735,7 +770,17 @@ int gnshnCR(struct arclmframe* af)
 			  loadfactor = 5.0e+7;
 			}
 #endif
-#if 1
+#if 0
+			if(time<=1.0)
+			{
+			  loadfactor = 5.0e+2 * time;
+			}
+			else
+			{
+			  loadfactor = 5.0e+2;
+			}
+#endif
+#if 0
 			if(time<=100)
 			{
 			  loadfactor = 0.1 * time;
@@ -746,10 +791,24 @@ int gnshnCR(struct arclmframe* af)
 			}
 #endif
 
+#if 1
+			if(time<=0.5)
+			{
+			  loadfactor = 10.0 * time;
+			}
+			else if(time<=1.0 && time>0.5)
+			{
+			  loadfactor = 10.0-10.0*time;
+			}
+			else
+			{
+			  loadfactor = 0.0;
+			}
+#endif
+
 			for (i = 0; i < msize; i++)
 			{
 				*(lapddisp  + i) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-
 				*(lastddisp + i) = *(ddisp + i);
 
 				*(lastud_m  + i) = *(ud_m  + i);
@@ -781,9 +840,9 @@ int gnshnCR(struct arclmframe* af)
 		for (i = 0; i < msize; i++)
 		{
 			*(finertial  + i) = 0.0;
-			*(finternal + i) = 0.0;
-			*(fexternal + i) = 0.0;
-			*(fpressure + i) = 0.0;
+			*(finternal  + i) = 0.0;
+			*(fexternal  + i) = 0.0;
+			*(fpressure  + i) = 0.0;
 			*(freaction  + i) = 0.0;
 			*(funbalance + i) = 0.0;
 		}
@@ -795,7 +854,7 @@ int gnshnCR(struct arclmframe* af)
 
 		clearwindow(*(wdraw.childs + 1));
 
-
+		#if 0
 		for (i = 1; i <= nelem; i++)
 		{
 			inputelem(elems,melem,i-1,&elem);
@@ -871,7 +930,7 @@ int gnshnCR(struct arclmframe* af)
 			ginertial_m = matrixvector(Me, gacc_m, 6 * nnod);
 			ginertial = pushforward(gform, ginertial_m, nnod);
 
-			lapgform = extractdisplacement(elem, lapddisp);                     /*{Xg+Ug}*/
+			lapgform = extractdisplacement(elem, lapddisp);
 			lapH = blockjacobimtx(lapgform, NULL, NULL, nnod);
 
 
@@ -904,10 +963,6 @@ int gnshnCR(struct arclmframe* af)
 			}
 
 
-
-
-
-
 			///FOR DRAWING 3///
 			if(iteration==1 && (wdraw.childs+1)->hdcC!=NULL)
 			{
@@ -919,7 +974,7 @@ int gnshnCR(struct arclmframe* af)
 
 			///FOR DRAWING 3///
 		}
-
+		#endif
 
 		/*ELEMENTS ASSEMBLAGE.*/
 		for (i = 1; i <= nshell; i++)
@@ -975,8 +1030,11 @@ int gnshnCR(struct arclmframe* af)
 			lastHPT = transmatrixHPT(lasteform, lastedisp, lastT, nnod);
 
 			lastgacc_m = extractshelldisplacement(shell, lastudd_m);
-			lastR = pushforwardmtx(lastgform, nnod);
-			lastRt = matrixtranspose(lastR, 6 * nnod);
+
+			//lastR = pushforwardmtx(lastgform, nnod);
+			//lastRt = matrixtranspose(lastR, 6 * nnod);
+			lastRt = pullbackmtx(lastgform, nnod);
+
 			lastginertial_m = matrixvector(Me, lastgacc_m, 6 * nnod);
 			lastginertial = pushforward(lastgform, lastginertial_m, nnod);
 
@@ -999,7 +1057,9 @@ int gnshnCR(struct arclmframe* af)
 			HPT = transmatrixHPT(eform, edisp, T, nnod);
 
 			gacc_m = extractshelldisplacement(shell, udd_m);
+
 			R=pushforwardmtx(gform,nnod);
+
 			ginertial_m = matrixvector(Me, gacc_m, 6 * nnod);
 			ginertial = pushforward(gform, ginertial_m, nnod);
 
@@ -1009,10 +1069,10 @@ int gnshnCR(struct arclmframe* af)
 			epressure = assemshellpvct(shell, drccos);                		    /*{Pe}*/
 			//volume += shellvolume(shell, drccos, area);                       /*VOLUME*/
 
-
 			/*MID-POINT TRANSFORMATION MATRIX.*/
 			midHPT = midpointmtx(HPT, lastHPT, alphaf, 6 * nnod);
 			midTtPtHt = matrixtranspose(midHPT, 6 * nnod);
+
 			midT = midpointmtx(T, lastT, alphaf, 6 * nnod);
 			midTt = matrixtranspose(midT, 6 * nnod);
 
@@ -1026,9 +1086,140 @@ int gnshnCR(struct arclmframe* af)
 			midgpressure = matrixvector(midTt, midepressure, 6 * nnod);
 
 			/*MID-POINT MASS & STIFFNESS MATRIX.*/
-			Keff=assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Ke, midTtPtHt, HPT,
-								  ginertial, Me, R, lastRt, lapH,
-								  alphaf, alpham, xi, beta, ddt, nnod);
+			Kint1 = assemgmtxCR(eform, edisp, mideinternal, NULL, T, NULL, nnod);
+
+			TPHK = matrixmatrix(midTtPtHt, Ke, 6*nnod);
+			Kint2 = matrixmatrix(TPHK, HPT, 6*nnod);
+
+
+			Kmas1 = (double**)malloc(6*nnod * sizeof(double*));
+			for (ii = 0; ii < 6*nnod; ii++)
+			{
+				*(Kmas1 + ii) = (double*)malloc(6*nnod * sizeof(double));
+				for (jj = 0; jj < 6*nnod; jj++)
+				{
+					*(*(Kmas1 + ii) + jj)=0.0;
+				}
+			}
+			mvct = (double*)malloc(3 * sizeof(double));
+			for (n = 0; n < nnod; n++)
+			{
+				for (ii = 0; ii < 3; ii++)
+				{
+					*(mvct + ii) = *(ginertial + 6 * n + 3 + ii);
+				}
+				mspin = spinmtx(mvct);
+				for (ii = 0; ii < 3; ii++)
+				{
+					for (jj = 0; jj < 3; jj++)
+					{
+						*(*(Kmas1 + 6 * n + 3 + ii) + 6 * n + 3 + jj) = - *(*(mspin + ii) + jj);
+					}
+				}
+				freematrix(mspin, 3);
+			}
+
+			RM = matrixmatrix(R, Me, 6*nnod);
+			RMR = matrixmatrix(RM, lastRt, 6*nnod);
+			Kmas2 = matrixmatrix(RMR, lapH, 6*nnod);
+
+			Keff = (double**)malloc(6*nnod * sizeof(double*));
+			for (ii = 0; ii < 6*nnod; ii++)
+			{
+				*(Keff + ii) = (double*)malloc(6*nnod * sizeof(double));
+				for (jj = 0; jj < 6*nnod; jj++)
+				{
+					*(*(Keff + ii) + jj) = (1-alphaf)     **(*(Kint1 + ii) + jj)
+										 + (1-alphaf + xi)**(*(Kint2 + ii) + jj)
+										 + (1-alpham)     **(*(Kmas1 + ii) + jj)
+										 + (1-alpham)     **(*(Kmas2 + ii) + jj) / (beta * ddt * ddt);
+				}
+			}
+
+
+
+
+
+
+
+
+/*
+ fprintf(flog, "HPT\n");
+
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		for (jj = 0; jj < 6*nnod; jj++)
+		{
+			   fprintf(flog, "%e ",*(*(HPT + ii) + jj) );
+		}
+		fprintf(flog, "\n ");
+	}
+
+  fprintf(flog, "lastHPT\n");
+
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		for (jj = 0; jj < 6*nnod; jj++)
+		{
+			   fprintf(flog, "%e ",*(*(lastHPT + ii) + jj) );
+		}
+		fprintf(flog, "\n ");
+	}
+
+   fprintf(flog, "midHPT\n");
+
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		for (jj = 0; jj < 6*nnod; jj++)
+		{
+			   fprintf(flog, "%e ",*(*(midHPT + ii) + jj) );
+		}
+		fprintf(flog, "\n ");
+	}
+*/
+if(i==5)
+{
+
+	fprintf(flog, "einternal\n");
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		fprintf(flog, "%e ",*(einternal + ii) );
+	}
+	fprintf(flog, "\n ");
+
+	fprintf(flog, "lasteinternal\n");
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		fprintf(flog, "%e ",*(lasteinternal + ii) );
+	}
+	fprintf(flog, "\n ");
+
+
+	fprintf(flog, "mideinternal\n");
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		fprintf(flog, "%e ",*(mideinternal + ii) );
+	}
+	fprintf(flog, "\n ");
+
+}
+
+	freematrix(Kint1, 6 * nnod);
+	freematrix(TPHK,  6 * nnod);
+	freematrix(Kint2, 6 * nnod);
+	free(mvct);
+	freematrix(Kmas1, 6 * nnod);
+	freematrix(RM,    6 * nnod);
+	freematrix(RMR,   6 * nnod);
+	freematrix(Kmas2, 6 * nnod);
+
+
+
+
+
+			//Keff=assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Ke, midTtPtHt, HPT,
+			//					  ginertial, Me, R, lastRt, lapH,
+			//					  alphaf, alpham, xi, beta, ddt, nnod);
 			symmetricmtx(Keff, 6*nnod);
 			assemgstiffnessIIwithDOFelimination(gmtx, Keff, &shell, constraintmain);
 
@@ -1044,9 +1235,9 @@ int gnshnCR(struct arclmframe* af)
 			}
 
 			/*OUTPUT STRAIN ENERGY & STRESS.*/
-			if (iteration == 1)
+			if((outputmode == 0 && iteration == 1) || outputmode == 1)
 			{
-				SEe = 0.0;
+				SE = 0.0;
 				SEp = 0.0;
 				SEb = 0.0;
 				for (ii = 0; ii < nnod; ii++)
@@ -1059,10 +1250,34 @@ int gnshnCR(struct arclmframe* af)
 					{
 						SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
 					}
-					SEe += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
+					SE += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
 				}
-				SEe += SEp + SEb;
-				fprintf(fene, "%5ld %e %e %e\n", shell.code, SEp, SEb, SEe);
+				SE += SEp + SEb;
+
+				gvel_m = extractshelldisplacement(shell, ud_m);
+				gmomentum_m = matrixvector(Me, gvel_m, 6 * nnod);
+				KE = 0.0;
+				KEt = 0.0;
+				KEr = 0.0;
+                for (ii = 0; ii < nnod; ii++)
+				{
+					for (jj = 0; jj < 3; jj++)
+					{
+						KEt += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
+					}
+					for (jj = 3; jj < 6; jj++)
+					{
+						KEr += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
+					}
+				}
+				KE = KEt + KEr;
+				free(gvel_m);
+				free(gmomentum_m);
+
+
+				fprintf(fene, "%5ld %e %e %e %e %e %e\n", shell.code, SEp, SEb, SE, KEt, KEr, KE);
+
+
 
 				shellstress = matrixvector(DBe, edisp, 6 * nnod);
 				for (ii = 0; ii < nnod; ii++)
@@ -1077,42 +1292,38 @@ int gnshnCR(struct arclmframe* af)
 			}
 
 /*FOR DEBUG*/
+
 if(0)
 {
- fprintf(flog, "M\n");
 
-	for (ii = 0; ii < 6*nnod; ii++)
-	{
-		for (jj = 0; jj < 6*nnod; jj++)
-		{
-			   fprintf(flog, "%e ",*(*(Me + ii) + jj) );
-		}
-		fprintf(flog, "\n ");
-	}
-}
-if(i==0)
+fprintf(flog, "NODE = %d\n", i);
+fprintf(flog, "GFORMINIT\n");
+for(ii=0;ii<nnod;ii++)
 {
+  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gforminit+6*ii+0), *(gforminit+6*ii+1), *(gforminit+6*ii+2),*(gforminit+6*ii+3), *(gforminit+6*ii+4), *(gforminit+6*ii+5));
+}
+fprintf(flog, "EFORMINIT\n");
+for(ii=0;ii<nnod;ii++)
+{
+  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eforminit+6*ii+0), *(eforminit+6*ii+1), *(eforminit+6*ii+2),*(eforminit+6*ii+3), *(eforminit+6*ii+4), *(eforminit+6*ii+5));
+}
 fprintf(flog, "GFORM\n");
-	for(ii=0;ii<nnod;ii++)
-	{
-	  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gform+6*ii+0), *(gform+6*ii+1), *(gform+6*ii+2),*(gform+6*ii+3), *(gform+6*ii+4), *(gform+6*ii+5));
-	}
-}
-if(i==0)
+for(ii=0;ii<nnod;ii++)
 {
+  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gform+6*ii+0), *(gform+6*ii+1), *(gform+6*ii+2),*(gform+6*ii+3), *(gform+6*ii+4), *(gform+6*ii+5));
+}
 fprintf(flog, "EFORM\n");
-	for(ii=0;ii<nnod;ii++)
-	{
-	  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eform+6*ii+0), *(eform+6*ii+1), *(eform+6*ii+2),*(eform+6*ii+3), *(eform+6*ii+4), *(eform+6*ii+5));
-	}
-}
-if(i==0)
+for(ii=0;ii<nnod;ii++)
 {
-			fprintf(flog, "EDISP\n");
-	for(ii=0;ii<nnod;ii++)
-	{
-	  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(edisp+6*ii+0), *(edisp+6*ii+1), *(edisp+6*ii+2),*(edisp+6*ii+3), *(edisp+6*ii+4), *(edisp+6*ii+5));
-	}
+  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eform+6*ii+0), *(eform+6*ii+1), *(eform+6*ii+2),*(eform+6*ii+3), *(eform+6*ii+4), *(eform+6*ii+5));
+}
+
+fprintf(flog, "EDISP\n");
+for(ii=0;ii<nnod;ii++)
+{
+  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(edisp+6*ii+0), *(edisp+6*ii+1), *(edisp+6*ii+2),*(edisp+6*ii+3), *(edisp+6*ii+4), *(edisp+6*ii+5));
+}
+
 }
 if(0)
 {
@@ -1163,7 +1374,7 @@ fprintf(flog, "GPRESSURE\n");
 			free(lasteinternal);
 			freematrix(lastHPT, 6 * nnod);
 			free(lastgacc_m);
-			freematrix(lastR, 6 * nnod);
+			//freematrix(lastR, 6 * nnod);
 			freematrix(lastRt, 6 * nnod);
 			free(lastginertial_m);
 			free(lastginertial);
@@ -1190,6 +1401,7 @@ fprintf(flog, "GPRESSURE\n");
 			free(epressure);
 
 			/*MEMORY FREE : MID-POINT.*/
+
 			freematrix(midHPT, 6 * nnod);
 			freematrix(midTtPtHt, 6 * nnod);
 			freematrix(midT, 6 * nnod);
@@ -1210,7 +1422,6 @@ fprintf(flog, "GPRESSURE\n");
 			}
 
 		}
-
 
 		/*DOF ELIMINATION.*/
 		for (i = 0; i < msize; i++)
@@ -1303,12 +1514,12 @@ fprintf(flog, "GPRESSURE\n");
 
 		gvctlen = vectorlength(gvct,msize);
 
-        sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.3f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
-			nlap, iteration, loadfactor,/*residual*/gvctlen, det, sign, 0, 0.0, volume);
+		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.3f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
+			nlap, iteration, loadfactor,residual/*gvctlen*/, det, sign, 0, 0.0, volume);
 		fprintf(ffig, "%s", string);
 		errormessage(string);
 
-        if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
+		if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
 		{
 			nlap++;
 			iteration = 0;
@@ -1354,11 +1565,6 @@ fprintf(flog, "GPRESSURE\n");
 
 		iteration++;
 	}
-
-
-
-
-
 
 	if ((wdraw.childs + 1)->hdcC != NULL && ddisp != NULL)	/*DRAW LAST FRAME.*/
 	{

@@ -138,8 +138,19 @@
 #define FILENAME      "ShellDynaTest"
 //#define FILENAME      "240607LMBosfullwithframeb100"
 #define FILENAME  "240701LMBosfullp1b1"
-#define FILENAME  "LMBosfullmembrane"
-#define FILENAME  "LMBexploration1"
+#define FILENAME  "QuadPoly2mmp02b5"
+#define FILENAME  "ShellDynaTest"
+
+#define FILENAME  "hingeDynaTest"
+#define FILENAME  "OSmockup1"
+
+#define FILENAME  "LMBexploration"
+
+
+
+
+
+//#define FILENAME  "LMBexploration1"
 
 
 
@@ -249,7 +260,7 @@ struct windowparams wdraw={2,0,0,NEUTRAL,"CanDrawWin",
                            NULL,0,0};
 struct windowparams wmesg={3,0,0,NEUTRAL,"CanMesgWin",
                            NULL,NULL,NULL,NULL,
-                           NEUTRAL,NEUTRAL,NEUTRAL,
+						   NEUTRAL,NEUTRAL,NEUTRAL,
                            NULL,0,0};
 struct windowparams wsurf={4,0,0,NEUTRAL,"CanSurfWin",
                            NULL,NULL,NULL,NULL,
@@ -2056,7 +2067,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
             fclose(fout);
 /*
             sprintf(str,"NMULTIWIRE =%d",nmultiwire);
-            errormessage(str);
+			errormessage(str);
 
             for(i=0;i<nmultiwire;i++)
             {
@@ -6453,7 +6464,7 @@ if(loff>=nnode || moff>=nnode)
           for(ii=0;ii<nmultiwire;ii++)
           {
            sprintf(str,"MULTIWIRE[%ld]:CODE=%ld",ii+1,(*(multiwire+ii))->code);
-           errormessage(str);
+		   errormessage(str);
           }
 */
 
@@ -10318,7 +10329,7 @@ LRESULT CALLBACK WindowProcedureMesg(HWND hwnd,
       y = HIWORD(lParam);
       sprintf(str,"POSITION:%d %d",x,y);
 	  SetTextColor((wmesg.childs+1)->hdcC,RGB(0,255,255));
-      TextOut((wmesg.childs+1)->hdcC,x,y,str,strlen(str));
+	  TextOut((wmesg.childs+1)->hdcC,x,y,str,strlen(str));
       SendMessage(hwnd,WM_PAINT,0,0);
       break;
 
