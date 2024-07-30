@@ -255,7 +255,51 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 	freematrix(Kmas2, 6 * nnod);
 
 	return Keff;
+
 }
+
+
+double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* lastudd_m, double* lastlastudd_m, double beta, int msize)
+{
+	int i;
+	char string[100];
+	double eta_upper  = 0.06;
+	double eta_target = 0.05;
+	double eta_lower  = 0.04;
+	double eta, errornorm, dispnorm;
+	double* error;
+
+	error = (double *)malloc(msize * sizeof(double));
+	for (i = 0; i < msize; i++)
+	{
+#if 0
+	  /*Time Step Control Algorithm by Zienkiewics & Xie*/
+	  *(error + i) = ddt * ddt * ((beta-1.0/8.0)**(udd_m + i) + (1.0/12.0 - beta)**(lastudd_m + i) + 1.0/24.0**(lastlastudd_m + i));
+#endif
+#if 1
+	  /*Time Step Control Algorithm by Schweizerhof & Riccius*/
+	  *(error + i) = ddt * ddt * (beta-1.0/6.0) * (*(udd_m + i) - *(lastudd_m + i));
+#endif
+	}
+
+	errornorm = vectorlength(error, msize);
+	dispnorm  = vectorlength(lapddisp_m, msize);
+
+	eta = errornorm / dispnorm;
+
+	sprintf(string, "eta: %e\n",eta);
+	errormessage(string);
+
+	if(eta > eta_upper) eta = eta_upper;
+	if(eta < eta_lower) eta = eta_lower;
+
+	ddt = ddt * sqrt(eta_target/eta);
+
+	free(error);
+	return ddt;
+}
+
+
 
 int gnshnCR(struct arclmframe* af)
 {
@@ -270,7 +314,7 @@ int gnshnCR(struct arclmframe* af)
 	long int msize;
 
 	int nlap, laps;  /*LAP COUNT*/
-	double ddt = 0.02;/*TIME INCREMENT[sec]*/
+	double ddt = 0.001;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
 	int lognode;
@@ -363,7 +407,7 @@ int gnshnCR(struct arclmframe* af)
 	double gamma = 0.5;
 	#endif
 
-	#if 1
+	#if 0
 	/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
 	double rho = 1.0;
 	double alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
@@ -374,7 +418,7 @@ int gnshnCR(struct arclmframe* af)
 	double gamma = 0.5-alpham+alphaf;
 	#endif
 
-	#if 0
+	#if 1
 	/*NEWmark METHOD'S PARAMETER.*/
 	double rho = 1.0;
 	double alpham = 0.0;  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
@@ -588,6 +632,7 @@ int gnshnCR(struct arclmframe* af)
 	/*ud : VELOSITY, udd : ACCELERATION*/
 	/*_m : ROTATIONAL DOFs ARE REPRESENTED IN SPATIAL & MATERIAL FORM*/
 	double* udinit_m,* uddinit_m;
+	double* lastlastudd_m;
 	//double* lastud,* lastudd;
 	double* lastud_m,* lastudd_m;
 	double* ud,* udd;
@@ -595,6 +640,8 @@ int gnshnCR(struct arclmframe* af)
 
 	udinit_m = (double*)malloc(msize * sizeof(double));  	   	/*NEWMARK INITIAL IN LAP*/
 	uddinit_m = (double*)malloc(msize * sizeof(double));
+
+	lastlastudd_m = (double*)malloc(msize * sizeof(double));
 
 	//lastud = (double*)malloc(msize * sizeof(double));  		/*LATEST LAP IN SPATIAL*/
 	//lastudd = (double*)malloc(msize * sizeof(double));
@@ -612,6 +659,8 @@ int gnshnCR(struct arclmframe* af)
 	{
 		*(udinit_m + i) = 0.0;
 		*(uddinit_m + i) = 0.0;
+
+		*(lastlastudd_m + i) = 0.0;
 
 		//*(lastud + i) = 0.0;
 		//*(lastudd + i) = 0.0;
@@ -757,10 +806,11 @@ int gnshnCR(struct arclmframe* af)
 
 		if (iteration == 1)
 		{
-			time+=ddt;
+			time += ddt;
+
 			lastloadfactor = loadfactor;
 
-#if 0
+#if 1/*FOR SHELL*/
 			if(time<=0.2)
 			{
 			  loadfactor = 2.5e+8 * time;
@@ -790,8 +840,7 @@ int gnshnCR(struct arclmframe* af)
 			  loadfactor = 10.0;
 			}
 #endif
-
-#if 1
+#if 0/*FOR CYLINDER*/
 			if(time<=0.5)
 			{
 			  loadfactor = 10.0 * time;
@@ -810,6 +859,8 @@ int gnshnCR(struct arclmframe* af)
 			{
 				*(lapddisp  + i) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
 				*(lastddisp + i) = *(ddisp + i);
+
+				*(lastlastudd_m  + i) = *(lastud_m  + i);
 
 				*(lastud_m  + i) = *(ud_m  + i);
 				*(lastudd_m + i) = *(udd_m + i);
@@ -1514,17 +1565,10 @@ fprintf(flog, "GPRESSURE\n");
 
 		gvctlen = vectorlength(gvct,msize);
 
-		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.3f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
-			nlap, iteration, loadfactor,residual/*gvctlen*/, det, sign, 0, 0.0, volume);
+		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.3f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %8.5f {TIME}= %5.5f\n",
+			nlap, iteration, loadfactor,residual/*gvctlen*/, det, sign, 0, 0.0, volume, time);
 		fprintf(ffig, "%s", string);
 		errormessage(string);
-
-		if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
-		{
-			nlap++;
-			iteration = 0;
-		}
-
 
 		/*INCREMENT DISPLACEMENT OF THIS LAP IN SPATIAL FORM.*/
 		updaterotation(lapddisp,gvct,nnode);
@@ -1542,7 +1586,6 @@ fprintf(flog, "GPRESSURE\n");
 		/*UPDATE POSITION & VELOCITY & ACCELERATION IN SPATIAL FORM.*/
 		updaterotation(ddisp, gvct, nnode);
 
-
 		free(ud);
 		free(udd);
 		ud  = pushforward(ddisp,ud_m,nnode);
@@ -1553,6 +1596,7 @@ fprintf(flog, "GPRESSURE\n");
 			if (*(constraintmain + ii) != ii)
 			{
 				mainoff = *(constraintmain + ii);
+				*(lapddisp_m + ii) = *(lapddisp_m + mainoff);
 				*(ddisp + ii) = *(ddisp + mainoff);
 				*(ud_m + ii)  = *(ud_m + mainoff);
 				*(udd_m + ii) = *(udd_m + mainoff);
@@ -1560,10 +1604,61 @@ fprintf(flog, "GPRESSURE\n");
 				*(udd + ii) = *(udd + mainoff);
 			}
 		}
+
+		if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
+		{
+			nlap++;
+			iteration = 0;
+
+			if(nlap>3)
+			{
+			  ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
+			  sprintf(string, "ddt: %e time: %e\n",ddt, time);
+			  errormessage(string);
+			}
+		}
+
 		free(lapddisp_m);
 
 
 		iteration++;
+
+
+#if 1
+		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
+		{
+		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
+		  {
+			gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+			free(gvct);
+			free(funbalance);
+			free(finternal);
+			free(fexternal);
+			free(fpressure);
+
+
+			if(fonl!=NULL) fprintf(fonl,"\nABORTED.\n");
+
+			fclose(fin);
+			fclose(fonl);
+			fclose(fdsp);
+			fclose(fexf);
+			fclose(finf);
+			fclose(fubf);
+			fclose(frct);
+			fclose(fstr);
+			fclose(fene);
+			fclose(ffig);
+			fclose(fbcl);
+
+			return 1;
+		  }
+
+		  //t2=clock();
+		  //time=(t2-t1)/CLK_TCK;
+		  //if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
+		}
+#endif
 	}
 
 	if ((wdraw.childs + 1)->hdcC != NULL && ddisp != NULL)	/*DRAW LAST FRAME.*/

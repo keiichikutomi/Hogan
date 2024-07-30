@@ -167,6 +167,20 @@ int arclmCR(struct arclmframe* af)
 	long int* constraintmain;
 
 
+	 /*
+	FILE *fgetstofopenII(const char *directory,const char *mode,const char *filename)
+	{
+	  FILE *f=NULL;
+	  char fname[256],dandf[256];
+
+		strcpy(fname,filename);
+		strcpy(dandf,directory);
+		strcat(dandf,fname);
+		f=fopen(dandf,mode);
+
+	  return f;
+	}*/
+
 
 	fdata = fgetstofopenII(dir, "r", "analysisdata.txt");
 	if (fdata == NULL)

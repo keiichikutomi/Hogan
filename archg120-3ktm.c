@@ -68,7 +68,7 @@
 #define SURFACEY 4 // default: 4
 #define SURFACEZ 0
 
-#define DIRECTORY "C:\\Users\\Keiic\\Desktop\\Hogan\\Data\\" /*DATA DIRECTORY*/
+#define DIRECTORY "..\\Data\\" /*DATA DIRECTORY*/
 //#define DIRECTORY "\0"               /*CURRENT*/
 
 #define BOXMOUSE 5 /*BOX MOUSE SIZE.*/
