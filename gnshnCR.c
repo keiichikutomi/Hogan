@@ -273,11 +273,11 @@ double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* la
 	for (i = 0; i < msize; i++)
 	{
 #if 0
-	  /*Time Step Control Algorithm by Zienkiewics & Xie*/
+	  /*Time Step Control Algorithm by Schweizerhof & Riccius*/
 	  *(error + i) = ddt * ddt * ((beta-1.0/8.0)**(udd_m + i) + (1.0/12.0 - beta)**(lastudd_m + i) + 1.0/24.0**(lastlastudd_m + i));
 #endif
 #if 1
-	  /*Time Step Control Algorithm by Schweizerhof & Riccius*/
+	  /*Time Step Control Algorithm by Zienkiewics & Xie*/
 	  *(error + i) = ddt * ddt * (beta-1.0/6.0) * (*(udd_m + i) - *(lastudd_m + i));
 #endif
 	}
@@ -287,13 +287,13 @@ double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* la
 
 	eta = errornorm / dispnorm;
 
-	sprintf(string, "eta: %e\n",eta);
-	errormessage(string);
+	//sprintf(string, "eta: %e\n",eta);
+	//errormessage(string);
 
-	if(eta > eta_upper) eta = eta_upper;
-	if(eta < eta_lower) eta = eta_lower;
-
-	ddt = ddt * sqrt(eta_target/eta);
+	if(eta > eta_upper || eta < eta_lower)
+	{
+	  ddt *= sqrt(eta_target/eta);
+	}
 
 	free(error);
 	return ddt;

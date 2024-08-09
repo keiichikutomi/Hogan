@@ -24712,6 +24712,38 @@ void assemconf(struct oconf *confs,double *gvct,double dsafety,
   return;
 }/*assemconf*/
 
+void assemgivend(struct oconf *confs,double *gvct,double dsafety,
+			   int nnode)
+{
+  signed char iconf;
+  long int ii,jj;
+  double gstiff,disp;
+
+  for(ii=1;ii<=6*nnode;ii++)
+  {
+	disp=*(gvct+ii-1);
+	iconf=(confs+ii-1)->iconf;
+
+	if(iconf==1 && disp!=0.0)
+	{
+	  for(jj=1;jj<=(6*nnode);jj++)
+	  {
+		iconf=(confs+jj-1)->iconf;
+
+		if(iconf!=1)
+		{
+		  gread(gmtx,jj,ii,&gstiff);
+		  if(gstiff!=0.0)
+		  {
+			*(gvct+jj-1)-=gstiff*disp;
+		  }
+		}
+	  }
+	}
+  }
+  return;
+}/*modifygivend*/
+
 
 void assemnodenorm(struct oshell shell,double *gvct)
 /*ASSEMBLAGE CONFINEMENT VALUE INTO GLOBAL VECTOR.*/
