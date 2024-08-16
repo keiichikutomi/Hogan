@@ -24715,34 +24715,27 @@ void assemconf(struct oconf *confs,double *gvct,double dsafety,
 void assemgivend(struct oconf *confs,double *gvct,double dsafety,
 			   int nnode)
 {
+  int i;
+  double conf;
   signed char iconf;
-  long int ii,jj;
-  double gstiff,disp;
 
-  for(ii=1;ii<=6*nnode;ii++)
+
+  for(i=0;i<6*nnode;i++)
   {
-	disp=*(gvct+ii-1);
-	iconf=(confs+ii-1)->iconf;
+	conf=(confs+i)->value;
+	iconf=(confs+i)->iconf;
 
-	if(iconf==1 && disp!=0.0)
+	if(iconf==1 && conf!=0.0)
 	{
-	  for(jj=1;jj<=(6*nnode);jj++)
-	  {
-		iconf=(confs+jj-1)->iconf;
-
-		if(iconf!=1)
-		{
-		  gread(gmtx,jj,ii,&gstiff);
-		  if(gstiff!=0.0)
-		  {
-			*(gvct+jj-1)-=gstiff*disp;
-		  }
-		}
-	  }
+	   *(gvct+i)=dsafety*conf;         /*"=":IF GVECTOR UNINITIALIZED.*/
 	}
+	else
+	{
+	   *(gvct+i)=0.0;
+    }
   }
   return;
-}/*modifygivend*/
+}
 
 
 void assemnodenorm(struct oshell shell,double *gvct)

@@ -42,37 +42,26 @@ PINPOINTMODE
 */
 
 
-
 int arclmCR(struct arclmframe* af)
 {
 	DWORDLONG memory;
 	char dir[]=DIRECTORY;
-	FILE *fdata, *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout;         /*FILE 8 BYTES*/
-	char s[80], string[400], inpname[50], fname[50];
+	char s[80], string[400];
 
 	int i, ii, jj;
+
 	int nnode, nelem, nshell, nsect, nreact, nconstraint;
 	int nlap, laps;
 
 	long int msize, nline;
 	double time;
 
-	/*FOR READING ANALYSISDATA*/
-	int nstr, pstr, readflag, node;
-	char **data, *filename;
-	int fnode=NULL,fnodedrc=NULL;
-	double fnodemin, fnodemax;
-	int outputmode = 0;/*0:ConvergedLaps.1:AllLaps.*/
-	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
-	double arclength, *weight;
 
 	/***GLOBAL MATRIX***/
 	struct gcomponent ginit = { 0,0,0.0,NULL };
 	struct gcomponent* gmtx, * g, * p, * gcomp1;/*GLOBAL MATRIX*/
 	double gg;
 	/***GLOBAL VECTOR*/
-
-
 	double* lastdue;
 	double* gvct;
 
@@ -156,190 +145,210 @@ int arclmCR(struct arclmframe* af)
 
 
 
-
-
-	 /*
-	FILE *fgetstofopenII(const char *directory,const char *mode,const char *filename)
-	{
-	  FILE *f=NULL;
-	  char fname[256],dandf[256];
-
-		strcpy(fname,filename);
-		strcpy(dandf,directory);
-		strcat(dandf,fname);
-		f=fopen(dandf,mode);
-
-	  return f;
-	}*/
+	/*FOR READING ANALYSISDATA*/
+	FILE *fdata;
+	int nstr, pstr, readflag;
+	char **data;
+	char *filename;
+	int fnode=NULL,fnodedrc=NULL;
+	double fnodemin, fnodemax;
+	int outputmode = 0;/*0:ConvergedLaps.1:AllLaps.*/
+	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
+	double arclength, *weight;
+	int node;
 
 
 	fdata = fgetstofopenII(dir, "r", "analysisdata.txt");
 	if (fdata == NULL)
 	{
 		printf("couldn't open analysisdata.txt\n");
-		getchar();
-		exit(EXIT_FAILURE);
-	}
-	readflag = 1;
-	while (readflag)
-	{
-		data = fgetsbrk(fdata, &nstr);
-		if (nstr == 0)
-		{
-			readflag = 0;
-		}
-		else
-		{
-			pstr = 0; /*POSITION IN "DATA".*/
-			while ((nstr - pstr) > 0)
-			{
-				if (nstr - pstr == 1) /*POINTING LAST STRING.*/
-				{
-					pstr++;
-				}
-				else
-				{
-					if (!strcmp(*(data + pstr), "FILENAME"))
-					{
-						pstr++;
-						filename = *(data + pstr);
-					}
-					if (!strcmp(*(data + pstr), "LAPS"))
-					{
-						pstr++;
-						laps = (int)strtol(*(data + pstr), NULL, 10);
-					}
-					if (!strcmp(*(data + pstr), "ITERMAX"))
-					{
-						pstr++;
-						maxiteration = (int)strtol(*(data + pstr), NULL, 10);
-					}
-					if (!strcmp(*(data + pstr), "ARCLENGTH"))
-					{
-						pstr++;
-						arclength = (double)strtod(*(data + pstr), NULL);
-					}
-					if (!strcmp(*(data + pstr), "SCALINGARC"))
-					{
-						SCALINGARCFLAG==1;
-					}
-					if (!strcmp(*(data + pstr), "BIGININGARC"))
-					{
-						BIGININGARCFLAG==1;
-						pstr++;
-						biginingarcratio = (double)strtod(*(data + pstr), NULL);
-						pstr++;
-						biginingarclap = (int)strtol(*(data + pstr), NULL, 10);
-					}
-					if (!strcmp(*(data + pstr), "NNODE"))
-					{
-						pstr++;
-						nnode = (int)strtol(*(data + pstr), NULL, 10);
-						weight = (double *)malloc((6 * nnode + 1) * sizeof(double));
-						for (i = 0;i < 6 * nnode;i++ )
-						{
-							*(weight + i) = 0.0;
-						}
-						*(weight + 6 * nnode) = 0.0;
-					}
-					if (!strcmp(*(data + pstr), "WEIGHT"))
-					{
-						pstr++;
-						if (!strcmp(*(data + pstr), "LOAD"))
-						{
-							pstr++;
-							*(weight + 6 * nnode) = (double)strtod(*(data + pstr), NULL);
-						}
-						if (!strcmp(*(data + pstr), "NODE"))
-						{
-							pstr++;
-							node= (int)strtol(*(data + pstr), NULL, 10);
-							node -= 101;
-							pstr++;
-							i = (int)strtol(*(data + pstr), NULL, 10);
-							pstr++;
-							*(weight+6*node+i) = (double)strtod(*(data + pstr), NULL);
-						}
-					}
-					if (!strcmp(*(data + pstr), "OUTPUTMODE"))
-					{
-						pstr++;
-						outputmode = (int)strtol(*(data + pstr), NULL, 10);
-					}
-					if (!strcmp(*(data + pstr), "PINPOINTMODE"))
-					{
-						pstr++;
-						pinpointmode = (int)strtol(*(data + pstr), NULL, 10);
-					}
-					if (!strcmp(*(data + pstr), "FNODE"))
-					{
-						pstr++;
-						fnode = (int)strtol(*(data + pstr), NULL, 10);
-						pstr++;
-						fnodedrc = (int)strtol(*(data + pstr), NULL, 10);
-						pstr++;
-						fnodemin = (double)strtod(*(data + pstr), NULL);
-						pstr++;
-						fnodemax = (double)strtod(*(data + pstr), NULL);
 
-					}
-					if (!strcmp(*(data + pstr), "LOADFACTOR"))
+		/*OUTPUT FILE NAME IS SAME AS INPUT*/
+		strcpy(filename, (wdraw.childs+1)->inpfile);
+		char* dot = strrchr(filename, '.');
+		*dot = '\0';
+
+		/*READ ARCLENGTH PARAMS*/
+		getincrement((wmenu.childs+2)->hwnd,&laps,&arclength);
+	}
+	else
+	{
+		readflag = 1;
+		while (readflag)
+		{
+			data = fgetsbrk(fdata, &nstr);
+			if (nstr == 0)
+			{
+				readflag = 0;
+			}
+			else
+			{
+				pstr = 0; /*POSITION IN "DATA".*/
+				while ((nstr - pstr) > 0)
+				{
+					if (nstr - pstr == 1) /*POINTING LAST STRING.*/
 					{
 						pstr++;
-						loadfactor = (double)strtod(*(data + pstr), NULL);
 					}
 					else
 					{
-						pstr++;
+						if (!strcmp(*(data + pstr), "FILENAME"))
+						{
+							pstr++;
+							filename = *(data + pstr);
+						}
+						if (!strcmp(*(data + pstr), "LAPS"))
+						{
+							pstr++;
+							laps = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						if (!strcmp(*(data + pstr), "ITERMAX"))
+						{
+							pstr++;
+							maxiteration = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						if (!strcmp(*(data + pstr), "ARCLENGTH"))
+						{
+							pstr++;
+							arclength = (double)strtod(*(data + pstr), NULL);
+						}
+						if (!strcmp(*(data + pstr), "SCALINGARC"))
+						{
+							SCALINGARCFLAG==1;
+						}
+						if (!strcmp(*(data + pstr), "BIGININGARC"))
+						{
+							BIGININGARCFLAG==1;
+							pstr++;
+							biginingarcratio = (double)strtod(*(data + pstr), NULL);
+							pstr++;
+							biginingarclap = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						if (!strcmp(*(data + pstr), "NNODE"))
+						{
+							pstr++;
+							nnode = (int)strtol(*(data + pstr), NULL, 10);
+							weight = (double *)malloc((6 * nnode + 1) * sizeof(double));
+							for (i = 0;i < 6 * nnode;i++ )
+							{
+								*(weight + i) = 0.0;
+							}
+							*(weight + 6 * nnode) = 0.0;
+						}
+						if (!strcmp(*(data + pstr), "WEIGHT"))
+						{
+							pstr++;
+							if (!strcmp(*(data + pstr), "LOAD"))
+							{
+								pstr++;
+								*(weight + 6 * nnode) = (double)strtod(*(data + pstr), NULL);
+							}
+							if (!strcmp(*(data + pstr), "NODE"))
+							{
+								pstr++;
+								node= (int)strtol(*(data + pstr), NULL, 10);
+								node -= 101;
+								pstr++;
+								i = (int)strtol(*(data + pstr), NULL, 10);
+								pstr++;
+								*(weight+6*node+i) = (double)strtod(*(data + pstr), NULL);
+							}
+						}
+						if (!strcmp(*(data + pstr), "OUTPUTMODE"))
+						{
+							pstr++;
+							outputmode = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						if (!strcmp(*(data + pstr), "PINPOINTMODE"))
+						{
+							pstr++;
+							pinpointmode = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						if (!strcmp(*(data + pstr), "FNODE"))
+						{
+							pstr++;
+							fnode = (int)strtol(*(data + pstr), NULL, 10);
+							pstr++;
+							fnodedrc = (int)strtol(*(data + pstr), NULL, 10);
+							pstr++;
+							fnodemin = (double)strtod(*(data + pstr), NULL);
+							pstr++;
+							fnodemax = (double)strtod(*(data + pstr), NULL);
+
+						}
+						if (!strcmp(*(data + pstr), "LOADFACTOR"))
+						{
+							pstr++;
+							loadfactor = (double)strtod(*(data + pstr), NULL);
+						}
+						else
+						{
+							pstr++;
+						}
 					}
 				}
 			}
 		}
 	}
 
-
-
 	sprintf(string, "FILENAME:%s\n LAPS = %d\n MAX ITERATION= %d\n ARCLENGTH = %lf\n", filename, laps, maxiteration, arclength);
 	errormessage(string);
-	if (outputmode == 0)printf("OUTPUT CONVERGED RESULT\n");
-	if (outputmode == 1)printf("OUTPUT ALL RESULT\n");
 
-	strcat(filename,".inl");
+	sprintf(string, "EXEMODE= %d\n ", EXEMODE);
+	errormessage(string);
 
-
-
+	if (outputmode == 0)sprintf(string,"OUTPUT CONVERGED RESULT\n");
+	if (outputmode == 1)sprintf(string,"OUTPUT ALL RESULT\n");
+	errormessage(string);
 
 	sprintf(string, "INITIAL:");
 	memory = availablephysicalmemoryEx(string);   /*MEMORY AVAILABLE*/
 
-	fin = fgetstofopenII(dir, "r", filename);              /*OPEN INPUT FILE*/
 
-	strcpy(inpname, filename);
-	char* dot = strrchr(inpname, '.');
-	*dot = '\0';
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "dsp");
+
+
+
+
+
+
+
+	/*INPUT & OUTPUT FILE OPEN*/
+    FILE *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout;         /*FILE 8 BYTES*/
+	char fname[50];
+
+	fin = fgetstofopenII(dir, "r", (wdraw.childs+1)->inpfile);
+	if(fin==NULL)
+	{
+	  errormessage("ACCESS IMPOSSIBLE.");
+	  return 0;
+	}
+
+
+
+
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
 	fdsp = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "inf");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "inf");
 	finf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "exf");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "exf");
 	fexf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "ubf");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "ubf");
 	fubf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "rct");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "rct");
 	frct = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "str");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "str");
 	fstr = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "onl");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "onl");
 	fonl = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "fig");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "fig");
 	ffig = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "bcl");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "bcl");
 	fbcl = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "ene");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "ene");
 	fene = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "eig");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "eig");
 	feig = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", inpname, "otl");
+	snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
 	fout = fopen(fname, "w");
 
 
@@ -486,7 +495,7 @@ int arclmCR(struct arclmframe* af)
 	residual = 0.0;
 
 	assemconf(confs,fbaseload,1.0,nnode);               /*GLOBAL VECTOR.*/
-	assemgivend(confs,fbaseload,1.0,nnode);
+	assemgivend(confs,fgivendisp,1.0,nnode);
 
 
 	while (nlap <= laps && ENDFLAG == 0)
@@ -1901,6 +1910,16 @@ int arclmCR(struct arclmframe* af)
 			errormessage(string);
 		}
 
+
+
+		//MESSAGE FOR UPDATE UI
+		//AVOID FREEZE ON LONG RUNNING TASK
+		MSG msg;
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+            DispatchMessage(&msg);
+		}
 #if 1
 		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 		{

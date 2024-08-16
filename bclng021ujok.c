@@ -53,12 +53,10 @@
 
 #define MSIZE  24 /*MAX MATRIX SIZE BY ARRAY.*/
 #define KSIZE  12 /*MATRIX SIZE FOR CONDENSATION.*/
-#define NEIGEN 1  /*NUMBERS OF EIGEN VALUES TO BE OBTAINED.*/
-//#define NEIGEN  1 /*NUMBERS OF EIGEN VALUES TO BE OBTAINED.*/
 
-//#define SOLVER 1 /* 0:DEIGABGENERAL, 1:BISECSYLVESTER */
-/* BISECEPS: ACCURACY OF EIGENVALUE FOR BISECSYLVESTER */
-#define BISECEPS 1e-8
+#define NEIGEN 1  /*NUMBERS OF EIGEN VALUES TO BE OBTAINED.*/
+#define SOLVER 1 /* 0:DEIGABGENERAL, 1:BISECSYLVESTER */
+#define BISECEPS 1e-8/* BISECEPS: ACCURACY OF EIGENVALUE FOR BISECSYLVESTER */
 /* BISECRIGHT: INITIAL UPPER BOUND FOR BISECSYLVESTER */
 /*             IT IS ASSUMED THAT EIGENVALUE IS HIGHER THAN INVERSE OF BISECRIGHT */
 /*             i.e. IF BISECRIGHT=1000.0, EIGENVALUE > 0.001 */
@@ -181,8 +179,34 @@ int bclng001(struct arclmframe *af)
   struct owire *elems;
   struct oconf *confs;
 
-  long int neig;
-  double eps=1.0E-16,*eigen,biseceps;
+  long int neig = 1;
+  int solver = 0;
+  double *eigen;
+  double eps=1.0E-16;
+  double biseceps=BISECEPS;
+
+
+
+  /*
+  neig=NEIGEN;
+  solver=SOLVER;
+  */
+  if(solver==1)
+  {
+	neig=1;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
 
   memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
 
@@ -200,15 +224,7 @@ int bclng001(struct arclmframe *af)
   fprintf(fout,"%s\n",string);
 
   msize=6*nnode;                           /*SIZE OF GLOBAL MATRIX.*/
-  neig=NEIGEN;                             /*NUMBERS OF EIGEN VALUES TO BE OBTAINED.*/
 
-  //if(SOLVER==1)
-  //{
-  //  eps=BISECEPS;
-    /* neig=1; */
-  //}
-
-  biseceps=BISECEPS;   //ujok
 
   kmtx=(struct gcomponent *)          /*DIAGONALS OF GLOBAL MATRIX.*/
         malloc(msize*sizeof(struct gcomponent));
@@ -286,16 +302,6 @@ int bclng001(struct arclmframe *af)
     estiff=modifyhinge(elem,estiff);               /*MODIFY MATRIX.*/
     estiff=transformation(estiff,tmatrix);         /*[K]=[Tt][k][T]*/
 
-//for(ii=0;ii<12;ii++)
-//{
-//  sprintf(string,"\0");
-//  for(jj=0;jj<=ii;jj++)
-//  {
-//	sprintf(s," %12.5E",*(*(estiff+ii)+jj));
-//	strcat(string,s);
-//  }
-//  errormessage(string);
-//}
 
     assemgstiffness(kmtx,estiff,&elem);       /*ASSEMBLAGE ELASTIC.*/
 
@@ -307,13 +313,7 @@ int bclng001(struct arclmframe *af)
       for(jj=0;jj<6;jj++) *(estress+6*ii+jj)=elem.stress[ii][jj];
     }
 
-//sprintf(string,"\0");
-//for(ii=0;ii<12;ii++)
-//{
-//  sprintf(s," %12.5E",*(estress+ii));
-//  strcat(string,s);
-//}
-//errormessage(string);
+
 
     estiff=assemgmtx(elem,estress);
     estiff=modifyhinge(elem,estiff);               /*MODIFY MATRIX.*/
@@ -339,14 +339,17 @@ int bclng001(struct arclmframe *af)
   /*currentvalue("GLOBAL MATRIX:[K]",msize,neig,kmtx,NULL,NULL,NULL);*/
   /*currentvalue("GLOBAL MATRIX:[G]",msize,neig,gmtx,NULL,NULL,NULL);*/
 
-  //SOLVER  ujioka
+  //SOLVER
+
+  /*
   if(globalmessageflag==0||MessageBox(NULL,"DEIGABGENERAL","SOLVER",MB_OKCANCEL)==IDOK)
 		deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,gvct);
   else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)
 		bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,gvct);
+  */
 
-  /*
-  if(SOLVER==0)
+
+  if(solver==0)
   {
     deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,gvct);
   }
@@ -354,7 +357,6 @@ int bclng001(struct arclmframe *af)
   {
 	bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,gvct);
   }
-  */
 
   laptime("EIGEN COMPLETED.",t0);
 

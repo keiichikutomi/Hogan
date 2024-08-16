@@ -54,10 +54,10 @@
 #define MSIZE  24 /*MAX MATRIX SIZE BY ARRAY.*/
 #define KSIZE  12 /*MATRIX SIZE FOR CONDENSATION.*/
 #define NEIGEN  1 /*NUMBERS OF EIGEN VALUES TO BE OBTAINED.*/
-//#define NEIGEN  1 /*NUMBERS OF EIGEN VALUES TO BE OBTAINED.*/
-
-//#define SOLVER 1 /* 0:DEIGABGENERAL, 1:BISECSYLVESTER */
+#define SOLVER 1 /* 0:DEIGABGENERAL, 1:BISECSYLVESTER */
 /* BISECEPS: ACCURACY OF EIGENVALUE FOR BISECSYLVESTER */
+
+
 #define BISECEPS 1e-8
 /* BISECRIGHT: INITIAL UPPER BOUND FOR BISECSYLVESTER */
 /*             IT IS ASSUMED THAT EIGENVALUE IS HIGHER THAN INVERSE OF BISECRIGHT */
@@ -166,8 +166,27 @@ int bclng001(struct arclmframe *af)
   struct owire *elems;
   struct oconf *confs;
 
-  long int neig;
-  double eps=1.0E-16,*eigen;
+  long int neig = 1;
+  int solver = 0;
+  /*
+  neig=NEIGEN;
+  solver=SOLVER;
+  */
+  double eps;=1.0E-16;
+
+  if(solver==1)
+  {
+	eps=BISECEPS;
+	neig=1;
+  }
+
+
+
+
+
+
+
+  double *eigen;
 
   memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
 
@@ -185,17 +204,9 @@ int bclng001(struct arclmframe *af)
   fprintf(fout,"%s\n",string);
 
   msize=6*nnode;                           /*SIZE OF GLOBAL MATRIX.*/
-  neig=NEIGEN;                             /*NUMBERS OF EIGEN VALUES TO BE OBTAINED.*/
-
-  //ujioka
-  //if(SOLVER==1)
-  //{
-  //  eps=BISECEPS;
-    /* neig=1; */
-  //}
 
   kmtx=(struct gcomponent *)          /*DIAGONALS OF GLOBAL MATRIX.*/
-        malloc(msize*sizeof(struct gcomponent));
+		malloc(msize*sizeof(struct gcomponent));
   gmtx=(struct gcomponent *)
         malloc(msize*sizeof(struct gcomponent));
   if(kmtx==NULL || gmtx==NULL) return 0;
@@ -323,7 +334,7 @@ int bclng001(struct arclmframe *af)
   /*currentvalue("GLOBAL MATRIX:[K]",msize,neig,kmtx,NULL,NULL,NULL);*/
   /*currentvalue("GLOBAL MATRIX:[G]",msize,neig,gmtx,NULL,NULL,NULL);*/
 
-  //SOLVER  ujioka
+  /*
   if(MessageBox(NULL,"DEIGABGENERAL","SOLVER",MB_OKCANCEL)==IDOK)
 		deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,gvct);
   else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)
@@ -331,9 +342,9 @@ int bclng001(struct arclmframe *af)
         eps=BISECEPS;
 		bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,gvct);
   }
+  */
 
-  /*
-  if(SOLVER==0)
+  if(solver==0)
   {
     deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,gvct);
   }
@@ -341,7 +352,6 @@ int bclng001(struct arclmframe *af)
   {
 	bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,gvct);
   }
-  */
 
   laptime("EIGEN COMPLETED.",t0);
 

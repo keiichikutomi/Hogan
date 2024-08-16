@@ -24,14 +24,14 @@
 
 #include "canhead.h"                    /*DEFINITION OF COMMAND ID.*/
 #include "archg120-3ktm.c"       /*ANALYSIS NONLINEAR,MATH,VIEWING.*/
-#include "archg015ktm.c"                     /*ANALYSIS STATIC LINEAR.*/
-#include "arclmCR.c"                           /*CO-ROTATIONAL METHOD.*/
+#include "archg015ktm.c"                  /*ANALYSIS STATIC LINEAR.*/
+#include "arclmCR.c"                        /*CO-ROTATIONAL METHOD.*/
 #include "bclng021ujok.c"                       /*ELASTIC BUCKLING.*/
 #include "qadhg001.c"               /*ANALYSIS BIQUADRATIC ELEMENT.*/
 #include "srcal007ujok.c"                     /*DRAW SECTIONS LIST.*/
-#include "gnshn103ktm.c"                       /*DYNAMIC ANALYSIS.*/
-//#include "drhg.c"                               /*DYNAMIC ANALYSIS.*/
+#include "gnshn103ktm.c"                        /*DYNAMIC ANALYSIS.*/
 #include "gnshnCR.c"
+#include "vbrat001.c"
 #include "optimization.c"                 			 /*OPTIMIZATION*/
 #include "model001.c"                      /*INP-TO-DXF CONVERSION.*/
 #include "arclm002.c"                     /*FOR GREEN-HOUSE PROJECT*/
@@ -59,16 +59,6 @@
 /*#define DEFAULTFILETYPE F_HOGAN*/
 /*#define DEFAULTFILETYPE F_FRAME*/
 
-/*#define DEFAULTINPUTFILE   "organ10.inp"*/
-/*#define DEFAULTINPUTFILE   "aki.inl"*/
-/*#define DEFAULTINPUTFILE   "quad35.inp"*/
-/*#define DEFAULTSECTIONFILE "hogtxt.lst"*/
-
-/*#define DEFAULTINPUTFILE   "gnshn08.inp"*/
-/*#define DEFAULTINPUTFILE   "Container39A-6.inp"*/ /*E-defense*/
-/*#define DEFAULTINPUTFILE   "Container39A-6-seminar.inp"*/
-/*#define DEFAULTINPUTFILE   "milano03.inp"*/
-/*#define DEFAULTINPUTFILE   "Inaxmodel10.inp"*/
 
 /*
 #define DEFAULTINPUTFILE   "sample01.inp"
@@ -81,91 +71,21 @@
 #define DEFAULTOUTPUTFILEY "sample01.ohy"
 #define DEFAULTSECTIONFILE "sample01.lst"
 */
-/*
-#define DEFAULTINPUTFILE   "stack03.inp"
-#define DEFAULTINPUTFILEZ  "inax12.inl"
-#define DEFAULTINPUTFILEX  "inax12.ihx"
-#define DEFAULTINPUTFILEY  "inax12.ihy"
-#define DEFAULTOUTPUTFILE  "inax12.otp"
-#define DEFAULTOUTPUTFILEZ "inax12.otl"
-#define DEFAULTOUTPUTFILEX "inax12.ohx"
-#define DEFAULTOUTPUTFILEY "inax12.ohy"
-#define DEFAULTSECTIONFILE "inax12.lst"
-*/
-
-/*#define DEFAULTINPUTFILE   "stanpop01.inp"*/
-/*#define DEFAULTINPUTFILE   "naosimple61-28.inp"*/
-/*#define DEFAULTINPUTFILE   "ebis04.inp"*/
-/*#define DEFAULTINPUTFILE   "yokana22.inp"*/
-/*#define DEFAULTINPUTFILE   "nebuta02.inp"*/
-/*#define DEFAULTINPUTFILE   "venhira43a-9.inp"*/
-/*#define DEFAULTINPUTFILE   "stack03.inp"*/
-/*#define DEFAULTINPUTFILE   "inaxhuji01.inp"*/
-/*#define DEFAULTINPUTFILE   "inax12.inp"*/
-/*#define DEFAULTINPUTFILE   "sydney_60m_9.inp"*/
-
-//#define FILENAME       "wakka\\kyonan19"
-//#define FILENAME       "archinet\\standard05_02_opt01_b"
-//#define FILENAME       "yatsugatake\\yatsu02_u01"
-//#define FILENAME       "tsm111_8"
-
-//#define FILENAME       "Buckling\\Vierendeel_Kamaboko02"
-//#define FILENAME       "Buckling\\Vierendeel_Croissant11"
-//#define FILENAME       "bc_lattice_frame_08_t10b"
-//#define FILENAME       "VierendeelArch71b"
-//#define FILENAME       "BezierDomeOpt04"
-//#define FILENAME       "hogtxt_opt3"
-//#define FILENAME       "BezierDomeOpt04_full_optimized3"
-//#define FILENAME       "frame_for_energy_test"
-//#define FILENAME       "FrameTest03"
-
-//#define FILENAME       "Buckling\\bc_ghouse_kawa14test"
-//#define FILENAME       "lmb51_200mm_2_Dimpled_A40I40"
-
-//#define FILENAME       "plywood\\plywood_pavilion02"
-//#define FILENAME       "LunarBaseWhole\\LB8-15pzFloor_03cs_FBchanged1007"
-//#define FILENAME       "snap_cylinder02A200I200"
-//#define FILENAME       "Colloquium2020\\HP_model11_optimized"
-//#define FILENAME       "t5d20s10R8K2_bend1"
 
 //#define LISTFILENAME   "LunarBaseWhole\\LunarBase1007"
-
 //#define FILENAME       "hogtxt"
-//#define LISTFILENAME   "optimization"
 
-//#define FILENAME    "ShellTest230728"
+
 #define FILENAME      "ShellTest"
 #define FILENAME      "ShellDynaTest"
 //#define FILENAME      "240607LMBosfullwithframeb100"
 #define FILENAME  "240701LMBosfullp1b1"
 #define FILENAME  "QuadPoly2mmp02b5"
 #define FILENAME  "ShellDynaTest"
-
 #define FILENAME  "hingeDynaTest"
-
-
 #define FILENAME  "LMBexploration"
-
 #define FILENAME  "OSmockup1"
 
-
-
-//#define FILENAME  "LMBexploration1"
-
-
-
-//#define FILENAME      "fullsimplep1b100ver2"
-//#define FILENAME      "240617LMBosbending"
-
-
-
-//#define FILENAME      "bc_lattice_frame_08_t10"
-
-
-//#define FILENAME      "LanderSolarModel00"
-
-//#define FILENAME      "SnapTest_230921_brate1"
-//#define FILENAME      "SnapTest02_230922_dbrate1"
 //#define FILENAME      "SnapTest_brate2"
 //#define FILENAME      "20231024QuadPolyhedronShellP100B100"
 //#define FILENAME      "CurvedCrease231030"
@@ -173,7 +93,6 @@
 //#define FILENAME      "Segment231019"
 //#define FILENAME      "ShellTest231021"
 //#define FILENAME      "231104QuadPolyhedronShellP100B100"
-
 
 #define DEFAULTFILETYPE F_ARCLM
 //#define DEFAULTINPUTFILE   FILENAME".inp"
@@ -199,6 +118,22 @@
 /*
 #define DEFAULTINPUTFILE   "organ10.inp"
 #define DEFAULTOUTPUTFILE  "organ10.otp"
+*/
+
+int EXEMODE = 0;
+int EXITMODE = 0;
+/*
+EXEMODE
+0:DEFAULT
+1:ARCLM001 AUTO
+2:BCLNG001 AUTO
+3:VBRAT001 AUTO
+4:ARCLMCR AUTO
+5:GNSHNCR AUTO
+
+EXITMODE
+0:DO NOT EXIT
+1:EXIT AFTER ANALYSIS
 */
 
 
@@ -247,17 +182,17 @@ struct viewparam vpdefault={AXONOMETRIC,0,0,
 # endif
 
 struct windowparams wmain={0,0,0,NEUTRAL,"CanMainWin",
-                           NULL,NULL,NULL,NULL,
-                           NEUTRAL,NEUTRAL,NEUTRAL,
-                           NULL};
+						   NULL,NULL,NULL,NULL,
+						   NEUTRAL,NEUTRAL,NEUTRAL,
+						   NULL};
 struct windowparams wmenu={1,0,0,NEUTRAL,"CanMenuWin",
 						   NULL,NULL,NULL,NULL,
-                           NEUTRAL,NEUTRAL,NEUTRAL,
-                           NULL};
+						   NEUTRAL,NEUTRAL,NEUTRAL,
+						   NULL};
 struct windowparams wdraw={2,0,0,NEUTRAL,"CanDrawWin",
-                           NULL,NULL,NULL,NULL,
-                           NEUTRAL,NEUTRAL,NEUTRAL,
-                           NULL,0,0};
+						   NULL,NULL,NULL,NULL,
+						   NEUTRAL,NEUTRAL,NEUTRAL,
+						   NULL,0,0};
 struct windowparams wmesg={3,0,0,NEUTRAL,"CanMesgWin",
                            NULL,NULL,NULL,NULL,
 						   NEUTRAL,NEUTRAL,NEUTRAL,
@@ -408,9 +343,9 @@ struct windowparams *getwindowparams(HWND hwnd);
 void vbarlocation(HWND hparent,HWND hchild,RECT *vbar);
 void hbarlocation(HWND hparent,HWND hchild,RECT *hbar);
 void drawvbar(HDC hdc,long int maxX,long int maxY,
-              struct windowparams *wp);
+			  struct windowparams *wp);
 void drawhbar(HDC hdc,long int maxX,long int maxY,
-              struct windowparams *wp);
+			  struct windowparams *wp);
 
 char flagswitch(char *flag);
 
@@ -529,8 +464,8 @@ struct organ globalorg;
 
 int WINAPI WinMain(HINSTANCE hInstance,
 				   HINSTANCE hPrevInstance,
-                   LPSTR lpszCmdLine,
-				   int nCmdShow)/*WINAPI? APIENTRY?*/
+				   LPSTR lpszCmdLine,
+				   int nCmdShow)/*WINAPI APP ENTRY*/
 {
   HWND hwnd;
   HACCEL hAccel; /*ACCELERATOR*/
@@ -539,9 +474,9 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
   if(!hPrevInstance)                      /*WINDOW CLASS DEFINITION*/
   {
-    if(!classdefinition(hInstance,
-                        wmain.classname,
-                        WindowProcedureMain,
+	if(!classdefinition(hInstance,
+						wmain.classname,
+						WindowProcedureMain,
 						"CANMENU",
 						130,130,130)) return 0;
   }
@@ -573,37 +508,38 @@ int WINAPI WinMain(HINSTANCE hInstance,
   while(GetMessage(&msg,NULL,0,0))
   {
 	if(wmenu.nchilds<(MENUDIALOGS+2) ||
-       !IsDialogMessage(hpopdlg,&msg))
-    {
-      isd=1;
-      for(nc=2;nc<(MENUDIALOGS+2);nc++)
+	   !IsDialogMessage(hpopdlg,&msg))
+	{
+	  isd=1;
+	  for(nc=2;nc<(MENUDIALOGS+2);nc++)
+	  {
+		if(IsDialogMessage((wmenu.childs+nc)->hwnd,&msg)) isd=0;
+	  }
+	  for(nc=wprop.nchilds;nc>=3;nc--)
       {
-        if(IsDialogMessage((wmenu.childs+nc)->hwnd,&msg)) isd=0;
-      }
-      for(nc=wprop.nchilds;nc>=3;nc--)
-      {
-        if(IsDialogMessage((wprop.childs+nc-1)->hwnd,&msg)) isd=0;
-      }
-      for(nc=wsect.nchilds;nc>=3;nc--)
-      {
+		if(IsDialogMessage((wprop.childs+nc-1)->hwnd,&msg)) isd=0;
+	  }
+	  for(nc=wsect.nchilds;nc>=3;nc--)
+	  {
         if(IsDialogMessage((wsect.childs+nc-1)->hwnd,&msg)) isd=0;
-      }
+	  }
 
-      if(isd==1 && !TranslateAccelerator(hwnd,hAccel,&msg))
+	  if(isd==1 && !TranslateAccelerator(hwnd,hAccel,&msg))
       {
         TranslateMessage(&msg);               /*KEY INTO CHARACTER.*/
-        DispatchMessage(&msg);                  /*DISPATCH MESSAGE.*/
+		DispatchMessage(&msg);                  /*DISPATCH MESSAGE.*/
+									  /*SEND MESSAGE TO WINDOWPROC.*/
 	  }
-    }
+	}
   }                                       /*REPEAT UNTIL "WM_QUIT".*/
 
   return msg.wParam;
 }/*WinMain*/
 
 LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
-                                     UINT message,
-                                     WPARAM wParam,
-                                     LPARAM lParam)
+									 UINT message,
+									 WPARAM wParam,
+									 LPARAM lParam)
 /*WINDOW PROCEDURE FOR MAIN WINDOW.CREATION,DESTRUCTION OF WINDOWS.*/
 {
   HDC hdc;
@@ -643,63 +579,384 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
   DWORD cb;                   /* incremental count of bytes */
   BYTE *hp;                   /* byte pointer */
   DWORD dwTmp;
-    /*
+	/*
     HWND hdesktop;
-    BITMAPFILEHEADER fhead;
-    BITMAPINFOHEADER ihead;
-    RGBTRIPLE rgbtri = {0,0,0};
-    COLORREF cr;
-    BYTE l='B',h='M';
-    FILE *file;
-    int j,nblank;
-    short int blank = 0;
-    int px,mt;
+	BITMAPFILEHEADER fhead;
+	BITMAPINFOHEADER ihead;
+	RGBTRIPLE rgbtri = {0,0,0};
+	COLORREF cr;
+	BYTE l='B',h='M';
+	FILE *file;
+	int j,nblank;
+	short int blank = 0;
+	int px,mt;
 	*/
   int laps;
   double dsafety;
 
   switch(message)
   {
-    case WM_PAINT:
-      DefWindowProc(hwnd,message,wParam,lParam);
+	case WM_PAINT:
+	  DefWindowProc(hwnd,message,wParam,lParam);
 	  if(wmenu.hwnd==NULL)
 	  {
-        wparam = MAKEWPARAM((WORD)IDM_OPTIONS,(WORD)0);
-        SendMessage(wmain.hwnd,WM_COMMAND,wparam,0);
+		wparam = MAKEWPARAM((WORD)IDM_OPTIONS,(WORD)0);
+		SendMessage(wmain.hwnd,WM_COMMAND,wparam,0);
 
-        /*Default Window _Drawings ON*/
-        wparam = MAKEWPARAM((WORD)IDM_DRAWINGS,(WORD)0);
-        SendMessage(wmain.hwnd,WM_COMMAND,wparam,(WPARAM)0);
+		/*Default Window _Drawings ON*/
+		wparam = MAKEWPARAM((WORD)IDM_DRAWINGS,(WORD)0);
+		SendMessage(wmain.hwnd,WM_COMMAND,wparam,(WPARAM)0);
 
-        /*Error*/
+		/*Error*/
 		wparam = MAKEWPARAM((WORD)IDM_ERROR,(WORD)0);
 		SendMessage(wmain.hwnd,WM_COMMAND,wparam,(WPARAM)0);
 
+		/*AUTO EXECUTION*/
+		FILE *fdata;
+		fdata = fopen("config.ini","r");
+		if(fdata==NULL)
+		{
+		  /*READ INPUT AND MAKE MODEL VIEW*/
+		  wparam = MAKEWPARAM(IDD_VIEW,0);
+		  SendMessage((wmenu.childs+2)->hwnd,WM_COMMAND,wparam,0);
+		}
+		else
+		{
+		  char **data;
+		  int nstr,pstr;
+		  char *filename/*=argv*/;
 
-		wparam = MAKEWPARAM(IDD_VIEW,0);
-      	SendMessage((wmenu.childs+2)->hwnd,WM_COMMAND,wparam,0);
-      }
-      break;
 
-    case WM_SIZE:
-      DefWindowProc(hwnd,message,wParam,lParam);
+		  while (1)
+		  {
+			data=fgetsbrk(fdata,&nstr);
+
+			pstr=0; /*POSITION IN "DATA".*/
+			if(nstr==0)  break;
+
+			 while((nstr-pstr)>0)
+			 {
+				if(nstr-pstr==1) /*POINTING LAST STRING.*/
+				{
+				  pstr++;
+				}
+				else
+				{
+					if(nstr-pstr>=2 && !strcmp(*(data+pstr),"FILENAME"))
+					{
+					  pstr++;
+					  filename=*(data+pstr);
+					}
+					if(nstr-pstr>=2 && !strcmp(*(data+pstr),"FILETYPE"))
+					{
+					   pstr++;
+					   if (!strcmp(*(data + pstr), "ARCLM"))
+					   {
+						 (wmenu.childs+2)->vparam.vflag.mv.ftype=F_ARCLM;
+					   }
+					   else if (!strcmp(*(data + pstr), "ORGAN"))
+					   {
+						 (wmenu.childs+2)->vparam.vflag.mv.ftype=F_ORGAN;
+					   }
+					}
+					if(nstr-pstr>=2 && !strcmp(*(data+pstr),"EXEMODE"))
+					{
+					   pstr++;
+					   EXEMODE = (int)strtol(*(data + pstr), NULL, 10);
+					}
+					if(nstr-pstr>=2 && !strcmp(*(data+pstr),"EXITMODE"))
+					{
+					   pstr++;
+					   EXITMODE = (int)strtol(*(data + pstr), NULL, 10);
+					}
+				}
+			 }
+		  }
+		  fclose(fdata);
+
+		  /*INPUT FILE SETTING*/
+		  strcpy((wdraw.childs+1)->inpfile,filename);
+		  if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
+		  {
+			strcat((wdraw.childs+1)->inpfile,".inp");
+		  }
+		  else if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
+		  {
+			strcat((wdraw.childs+1)->inpfile,".inl");
+		  }
+		  strcpy((wdraw.childs+1)->inpfilez,filename);
+		  strcat((wdraw.childs+1)->inpfilez,".inl");
+		  strcpy((wdraw.childs+1)->inpfilex,filename);
+		  strcat((wdraw.childs+1)->inpfilex,".ihx");
+		  strcpy((wdraw.childs+1)->inpfiley,filename);
+		  strcat((wdraw.childs+1)->inpfiley,".ihy");
+
+		  /*OUTPUT FILE SETTING*/
+		  strcpy((wdraw.childs+1)->otpfile,filename);
+		  strcat((wdraw.childs+1)->otpfile,".otp");
+		  strcpy((wdraw.childs+1)->otpfilez,filename);
+		  strcat((wdraw.childs+1)->otpfilez,".otl");
+		  strcpy((wdraw.childs+1)->otpfilex,filename);
+		  strcat((wdraw.childs+1)->otpfilex,".ohx");
+		  strcpy((wdraw.childs+1)->otpfiley,filename);
+		  strcat((wdraw.childs+1)->otpfiley,".ohy");
+
+		  /*LST FILE SETTING*/
+		  strcpy((wdraw.childs+1)->sctfile,filename);
+		  strcat((wdraw.childs+1)->sctfile,".lst");
+
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_INPUTFILE,
+					 (wdraw.childs+1)->inpfile);
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_INPUTFILEZ,
+					 (wdraw.childs+1)->inpfilez);
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_INPUTFILEX,
+					 (wdraw.childs+1)->inpfilex);
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_INPUTFILEY,
+					 (wdraw.childs+1)->inpfiley);
+
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_OUTPUTFILE,
+					 (wdraw.childs+1)->otpfile);
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_OUTPUTFILEZ,
+					 (wdraw.childs+1)->otpfilez);
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_OUTPUTFILEX,
+					 (wdraw.childs+1)->otpfilex);
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_OUTPUTFILEY,
+					 (wdraw.childs+1)->otpfiley);
+		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_SECTIONFILE,
+					 (wdraw.childs+1)->sctfile);
+
+		  /*READ INPUT AND MAKE MODEL VIEW*/
+		  wparam = MAKEWPARAM(IDD_VIEW,0);
+		  SendMessage((wmenu.childs+2)->hwnd,WM_COMMAND,wparam,0);
+
+
+
+			/*ARCLM001_LXY AUTO EXECUTION*/
+			if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN && EXEMODE==1)
+			{
+			  globalmessageflag=0;
+
+			  /*EXTRACT ARCLM*/
+			  extractarclmfromorgan(&((wdraw.childs+1)->org),
+									&arc,&arcx,&arcy);
+
+			  (wmenu.childs+2)->vparam.vflag.mv.ftype=F_ARCLM;
+
+			  /*SAVE AS ARCLM*/
+			  saveasarclm((wdraw.childs+1)->inpfilez,&arc);
+			  saveasarclm((wdraw.childs+1)->inpfilex,&arcx);
+			  saveasarclm((wdraw.childs+1)->inpfiley,&arcy);
+
+			  /*ANALYSIS*/
+			  getviewparam((wmenu.childs+2)->hwnd,
+						   &((wdraw.childs+1)->vparam));
+			  (wdraw.childs+1)->vparam.vflag.ev.deformation=0;
+
+			  int idinputs[3],idoutputs[3];
+			  struct arclmframe *arcs[3];
+
+			  arcs[0]=&arc;
+			  arcs[1]=&arcx;
+			  arcs[2]=&arcy;
+
+			  idinputs[0]=ID_INPUTFILEZ;
+			  idinputs[1]=ID_INPUTFILEX;
+			  idinputs[2]=ID_INPUTFILEY;
+
+			  idoutputs[0]=ID_OUTPUTFILEZ;
+			  idoutputs[1]=ID_OUTPUTFILEX;
+			  idoutputs[2]=ID_OUTPUTFILEY;
+
+			  arclm001_lxy(arcs,idinputs,idoutputs);
+
+			  /*SRCAN*/
+			  n=strcspn((wdraw.childs+1)->sctfile,".");
+			  strncpy(str,(wdraw.childs+1)->sctfile,n);
+			  str[n]='\0';
+
+			  i=srcan001(str);
+
+			  if(i==0) MessageBox(NULL,"Failed.","SRCAN001",MB_OK);
+
+			  strcpy((wdraw.childs+1)->otpfile,str);
+			  strcat((wdraw.childs+1)->otpfile,".rat");
+			  SetDlgItemText((wmenu.childs+2)->hwnd,ID_OUTPUTFILE,
+							 (wdraw.childs+1)->otpfile);
+
+			  fout=fopen((wdraw.childs+1)->otpfile,"r");
+			  if(fout==NULL) break;
+			  readsrcanrate(fout,&arc);
+
+			  /*SAFETY FLAG*/
+			  (wdraw.childs+1)->vparam.vflag.ev.srcancolor=1;
+
+			  clearwindow(*(wdraw.childs+1));
+			  drawarclmframe((wdraw.childs+1)->hdcC,
+							 (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
+			  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+
+			  /*ABORT*/
+			  if(EXITMODE == 1)
+			  {
+				fclose(fin);
+				exit(1);
+			  }
+			}
+			/*BCLNG001 AUTO EXECUTION*/
+			else if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN && EXEMODE==2)
+			{
+			  globalmessageflag=0;
+
+			  /*EXTRACT ARCLM*/
+			  extractarclmfromorgan(&((wdraw.childs+1)->org),
+									&arc,&arcx,&arcy);
+
+			  (wmenu.childs+2)->vparam.vflag.mv.ftype=F_ARCLM;
+
+			  /*SAVE AS ARCLM*/
+			  saveasarclm((wdraw.childs+1)->inpfilez,&arc);
+
+			  /*ANALYSIS*/
+			  getviewparam((wmenu.childs+2)->hwnd,
+						   &((wdraw.childs+1)->vparam));
+			  (wdraw.childs+1)->vparam.vflag.ev.deformation=0;
+
+			  arclm001(&arc ,ID_INPUTFILEZ,ID_OUTPUTFILEZ);
+
+			  /*OPEN analysisdata.txt*/
+			  int solver = 0;
+			  int neig = 1;
+
+			  bclng001(&arc/*,solver,neig*/);
+
+			  /*REDRAW MODEL*/
+			  (wdraw.childs+1)->vparam.vflag.ev.deformation=1;
+			  clearwindow(*(wdraw.childs+1));
+			  drawarclmframe((wdraw.childs+1)->hdcC,
+							 (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
+			  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+
+
+			  SendMessage((wmenu.childs+2)->hwnd,WM_INITDIALOG,0,0);
+			  globalmessageflag=1;
+			  globaldrawflag=1;
+
+			  /*ABORT*/
+			  if(EXITMODE == 1)
+			  {
+				fclose(fin);
+				exit(1);
+			  }
+			}
+			/*VBRAT001 AUTO EXECUTION*/
+			else if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM && EXEMODE==3)
+			{
+			  globalmessageflag=0;
+
+			  vbrat001(&arc);
+
+			  clearwindow(*(wdraw.childs+1));
+			  drawarclmframe((wdraw.childs+1)->hdcC,
+							 (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
+			  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+
+			  /*ABORT*/
+			  if(EXITMODE == 1)
+			  {
+				fclose(fin);
+				exit(1);
+			  }
+			}
+			/*ARCLMCR AUTO EXECUTION*/
+			else if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM && EXEMODE==4)
+			{
+			  globalmessageflag=0;
+
+			  arclmCR(&arc);
+
+			  /*SRCAN*/
+			  n=strcspn((wdraw.childs+1)->sctfile,".");
+			  strncpy(str,(wdraw.childs+1)->sctfile,n);
+			  str[n]='\0';
+
+			  i=srcan001(str);
+
+			  if(i==0)
+			  {
+				if(EXITMODE == 1)
+				{
+				  fclose(fin);
+				  exit(1);
+				}
+				else
+				{
+				  MessageBox(NULL,"Failed.","SRCAN001",MB_OK);
+				}
+			  }
+
+			  strcpy((wdraw.childs+1)->otpfile,str);
+			  strcat((wdraw.childs+1)->otpfile,".rat");
+			  SetDlgItemText((wmenu.childs+2)->hwnd,ID_OUTPUTFILE,
+							 (wdraw.childs+1)->otpfile);
+
+			  fout=fopen((wdraw.childs+1)->otpfile,"r");
+			  if(fout==NULL) break;
+			  readsrcanrate(fout,&arc);
+
+			  clearwindow(*(wdraw.childs+1));
+			  drawarclmframe((wdraw.childs+1)->hdcC,
+							 (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
+			  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+
+			  /*ABORT*/
+			  if(EXITMODE == 1)
+			  {
+				fclose(fin);
+				exit(1);
+			  }
+			}
+			else if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM && EXEMODE==5)
+			{
+			  globalmessageflag=0;
+
+			  gnshnCR(&arc);
+
+			  clearwindow(*(wdraw.childs+1));
+			  drawarclmframe((wdraw.childs+1)->hdcC,
+							 (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
+			  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+
+			  /*ABORT*/
+			  if(EXITMODE == 1)
+			  {
+				fclose(fin);
+				exit(1);
+			  }
+			}
+
+		}
+	  }
+	  break;
+
+	case WM_SIZE:
+	  DefWindowProc(hwnd,message,wParam,lParam);
 	  wparam = MAKEWPARAM((WORD)IDM_FITSHEET,(WORD)0);
 	  if(wmenu.hwnd!=NULL)
-      {
-        SendMessage((wmenu.childs+1)->hwnd,WM_COMMAND,wparam,0);
-      }
+	  {
+		SendMessage((wmenu.childs+1)->hwnd,WM_COMMAND,wparam,0);
+	  }
 	  if(wdraw.hwnd!=NULL)
-      {
-        SendMessage((wdraw.childs+1)->hwnd,WM_COMMAND,wparam,0);
-      }
-      break;
+	  {
+		SendMessage((wdraw.childs+1)->hwnd,WM_COMMAND,wparam,0);
+	  }
+	  break;
 
-    case WM_COMMAND:
+	case WM_COMMAND:
 	  switch(LOWORD(wParam))
-      {
-        case IDM_END:                            /*END APPLICATION.*/
-          PostQuitMessage(0);                   /*CREATE "WM_QUIT".*/
-          break;
+	  {
+		case IDM_END:                            /*END APPLICATION.*/
+		  PostQuitMessage(0);                   /*CREATE "WM_QUIT".*/
+		  break;
 
 		case IDM_DRAWINGS:                      /*Drawing Window*/
 		  if(wdraw.hwnd==NULL &&
@@ -729,13 +986,13 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 						 malloc(2*sizeof(struct windowparams));
 
 			windowdefinition(wdraw.childs+0,
-                             hInstGlobal,
-                             "CanDrawBak",
-                             WindowProcedureBack,
-                             NULL,
+							 hInstGlobal,
+							 "CanDrawBak",
+							 WindowProcedureBack,
+							 NULL,
 							 190,190,190,
-                             WS_CLIPCHILDREN |
-                             WS_CLIPSIBLINGS |
+							 WS_CLIPCHILDREN |
+							 WS_CLIPSIBLINGS |
                              WS_CHILD |
 							 WS_VISIBLE,
 							 1,1,maxX-BARWIDTH/*-5*/,maxY-BARWIDTH/*-5*/,
@@ -744,11 +1001,11 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			windowdefinition(wdraw.childs+1,
 							 hInstGlobal,
 							 "CanDrawDsp",
-                             WindowProcedureDraw,
-                             NULL,
+							 WindowProcedureDraw,
+							 NULL,
 							 0,0,0,
-                             /*WS_CLIPCHILDREN |*/
-                             WS_CLIPSIBLINGS |
+							 /*WS_CLIPCHILDREN |*/
+							 WS_CLIPSIBLINGS |
 							 WS_CHILD |
 							 WS_VISIBLE,
 							 0,0,maxX-BARWIDTH/*-5+590*/,maxY-BARWIDTH/*-5+200*/,   //size
@@ -771,14 +1028,14 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			sprintf((wdraw.childs+1)->otpfilez,DEFAULTOUTPUTFILEZ);
             sprintf((wdraw.childs+1)->otpfilex,DEFAULTOUTPUTFILEX);
 			sprintf((wdraw.childs+1)->otpfiley,DEFAULTOUTPUTFILEY);
-            sprintf((wdraw.childs+1)->sctfile, DEFAULTSECTIONFILE);
+			sprintf((wdraw.childs+1)->sctfile, DEFAULTSECTIONFILE);
 
             createviewdata(&vpdefault);
             (wdraw.childs+1)->vparam=vpdefault;
             /*(wdraw.childs+1)->vparam.type=AXONOMETRIC;*/
 			/*(wdraw.childs+1)->vparam.type=PERSPECTIVE;*/
             /*getviewparam((wmenu.childs+2)->hwnd,
-                         &((wdraw.childs+1)->vparam));*/
+						 &((wdraw.childs+1)->vparam));*/
 
 			(wdraw.childs+1)->vparam.vflag.pv.printrange =0;   //by mihara
 			(wdraw.childs+1)->vparam.vflag.pv.a4tate     =1;   //by mihara
@@ -867,7 +1124,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			 (wdraw.childs+1)->vparam.vflag.ev.stress[i][2]=0;
 			 (wdraw.childs+1)->vparam.vflag.ev.stress[i][3]=0;
 			 (wdraw.childs+1)->vparam.vflag.ev.stress[i][4]=0;
-             (wdraw.childs+1)->vparam.vflag.ev.stress[i][5]=0;
+			 (wdraw.childs+1)->vparam.vflag.ev.stress[i][5]=0;
             }
 
             (wmenu.childs+2)->vparam.vflag.mv.draw=1;
@@ -875,13 +1132,13 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
             SendMessage((wmenu.childs+4)->hwnd,WM_INITDIALOG,0,0);
 		  }
 		  else if(wdraw.hwnd!=NULL) /*DESTRUCTION.*/
-          {
+		  {
             for(i=1;i<=wdraw.nchilds;i++)
             {
               ReleaseDC((wdraw.childs+i-1)->hwnd,
 						(wdraw.childs+i-1)->hdcB);
               ReleaseDC((wdraw.childs+i-1)->hwnd,
-                        (wdraw.childs+i-1)->hdcC);
+						(wdraw.childs+i-1)->hdcC);
             }
             ReleaseDC(wdraw.hwnd,wdraw.hdcB);
 			ReleaseDC(wdraw.hwnd,wdraw.hdcC);
@@ -891,9 +1148,9 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			wdraw.nchilds=0;
 			wdraw.hwnd = NULL;
 
-            (wmenu.childs+2)->vparam.vflag.mv.draw=0;
+			(wmenu.childs+2)->vparam.vflag.mv.draw=0;
 			SendMessage((wmenu.childs+2)->hwnd,WM_INITDIALOG,0,0);
-          }
+		  }
 		  break;
 
 		case IDM_ERROR:
@@ -923,22 +1180,22 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			getclientsize(wmesg.hwnd,&maxX,&maxY);
 			windowdefinition(wmesg.childs+0,
 							 hInstGlobal,
-                             "CanMesgBak",
-                             WindowProcedureBack,
-                             NULL,
-                             0,0,0,
-                             WS_CLIPCHILDREN |
-                             WS_CLIPSIBLINGS |
-                             WS_CHILD |
-                             WS_VISIBLE,
-                             1,1,maxX-BARWIDTH-5,maxY-BARWIDTH-5,
-                             wmesg.hwnd);
+							 "CanMesgBak",
+							 WindowProcedureBack,
+							 NULL,
+							 0,0,0,
+							 WS_CLIPCHILDREN |
+							 WS_CLIPSIBLINGS |
+							 WS_CHILD |
+							 WS_VISIBLE,
+							 1,1,maxX-BARWIDTH-5,maxY-BARWIDTH-5,
+							 wmesg.hwnd);
 
-            getclientsize((wmesg.childs+0)->hwnd,&maxX,&maxY);
-            windowdefinition(wmesg.childs+1,
-                             hInstGlobal,
-                             "CanMesgDsp",
-                             WindowProcedureMesg,
+			getclientsize((wmesg.childs+0)->hwnd,&maxX,&maxY);
+			windowdefinition(wmesg.childs+1,
+							 hInstGlobal,
+							 "CanMesgDsp",
+							 WindowProcedureMesg,
                              NULL,
                              0,0,0,
                              /*WS_CLIPCHILDREN |*/
@@ -1112,7 +1369,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
               }
 			  ReleaseDC(wsect.hwnd,wsect.hdcB);
               ReleaseDC(wsect.hwnd,wsect.hdcC);
-              DestroyWindow(wsect.hwnd);
+			  DestroyWindow(wsect.hwnd);
 
               free(wsect.childs);
               wsect.nchilds=0;
@@ -10414,7 +10671,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 
   switch(message)
   {
-    case WM_INITDIALOG:
+	case WM_INITDIALOG:
 	  SetDlgItemText(hdwnd,IDD_TXTDRAWINGS,"Drawings");
       SetDlgItemText(hdwnd,IDD_TXTERROR,"Errors");
       SetDlgItemText(hdwnd,IDD_TXTSURFACE,"Surface");
@@ -11068,13 +11325,13 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
           return 0;
 
 		case IDD_VIEW:
-          getviewparam((wmenu.childs+2)->hwnd,
-                       &((wdraw.childs+1)->vparam));
+		  getviewparam((wmenu.childs+2)->hwnd,
+					   &((wdraw.childs+1)->vparam));
 
-          if(wdraw.nchilds>=2 &&
-             (wdraw.childs+1)->hwnd!=NULL &&
-             (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
-          {
+		  if(wdraw.nchilds>=2 &&
+			 (wdraw.childs+1)->hwnd!=NULL &&
+			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
+		  {
 			fin=fgetstofopen(dir,"r",ID_INPUTFILE);    /*OPEN FILE.*/
 			if(fin==NULL) break;
 
@@ -11125,26 +11382,26 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		  }
 		  if(wdraw.nchilds>=2 &&
 			 (wdraw.childs+1)->hwnd!=NULL &&
-             (wmenu.childs+2)->vparam.vflag.mv.ftype==F_FRAME)
-          {
+			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_FRAME)
+		  {
 			fin=fgetstofopen(dir,"r",ID_INPUTFILE);    /*OPEN FILE.*/
-            if(fin==NULL) break;
+			if(fin==NULL) break;
 
-            inputframeinit(fin,&(arc.nnode),
-                               &(arc.nelem),
-                               &(arc.nsect));
-            arc.sects=(struct osect *)
-                      malloc(arc.nsect*sizeof(struct osect));
-            if(arc.sects==NULL) break;
-            arc.nodes=(struct onode *)
-                      malloc(arc.nnode*sizeof(struct onode));
-            if(arc.nodes==NULL) break;
-            arc.ninit=(struct onode *)
-                      malloc(arc.nnode*sizeof(struct onode));
-            if(arc.ninit==NULL) break;
-            arc.elems=(struct owire *)
-                      malloc(arc.nelem*sizeof(struct owire));
-            if(arc.elems==NULL) break;
+			inputframeinit(fin,&(arc.nnode),
+							   &(arc.nelem),
+							   &(arc.nsect));
+			arc.sects=(struct osect *)
+					  malloc(arc.nsect*sizeof(struct osect));
+			if(arc.sects==NULL) break;
+			arc.nodes=(struct onode *)
+					  malloc(arc.nnode*sizeof(struct onode));
+			if(arc.nodes==NULL) break;
+			arc.ninit=(struct onode *)
+					  malloc(arc.nnode*sizeof(struct onode));
+			if(arc.ninit==NULL) break;
+			arc.elems=(struct owire *)
+					  malloc(arc.nelem*sizeof(struct owire));
+			if(arc.elems==NULL) break;
             arc.confs=(struct oconf *)
                       malloc(6*arc.nnode*sizeof(struct oconf));
             if(arc.confs==NULL) break;
@@ -11158,47 +11415,47 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
             SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
             (wdraw.childs+1)->lstatus=ROTATE;
-          }
-          else if(wdraw.nchilds>=2 &&
-                  (wdraw.childs+1)->hwnd!=NULL &&
-                  (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
-          {
-            freeorganization(&((wdraw.childs+1)->org));
+		  }
+		  else if(wdraw.nchilds>=2 &&
+				  (wdraw.childs+1)->hwnd!=NULL &&
+				  (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
+		  {
+			freeorganization(&((wdraw.childs+1)->org));
 
-            fin=fopen((wdraw.childs+1)->inpfile,"r");
-            if(fin==NULL) break;
+			fin=fopen((wdraw.childs+1)->inpfile,"r");
+			if(fin==NULL) break;
 
-            sprintf(str,"OPENED=%s",(wdraw.childs+1)->inpfile);
-            errormessage(str);
+			sprintf(str,"OPENED=%s",(wdraw.childs+1)->inpfile);
+			errormessage(str);
 
-		    inputorganization(fin,&((wdraw.childs+1)->org),
+			inputorganization(fin,&((wdraw.childs+1)->org),
 								  &((wdraw.childs+1)->vparam));
 
 		   /*  if(!strncmp(extension((wdraw.childs+1)->inpfile),"dxf",3)) // 150228 fukushima for dxf
-            {
-              char data[256];
-              double factor,eps;
-              GetDlgItemText((wmenu.childs+2)->hwnd,ID_LAPS,data,80);
-              factor=strtod(data,NULL);
-              GetDlgItemText((wmenu.childs+2)->hwnd,ID_SAFETY,data,80);
-              eps=strtod(data,NULL);
-              inputorganizationdxf(fin,&((wdraw.childs+1)->org),
-                                       &((wdraw.childs+1)->vparam),factor,eps);
-            }
-            else
-            {
+			{
+			  char data[256];
+			  double factor,eps;
+			  GetDlgItemText((wmenu.childs+2)->hwnd,ID_LAPS,data,80);
+			  factor=strtod(data,NULL);
+			  GetDlgItemText((wmenu.childs+2)->hwnd,ID_SAFETY,data,80);
+			  eps=strtod(data,NULL);
+			  inputorganizationdxf(fin,&((wdraw.childs+1)->org),
+									   &((wdraw.childs+1)->vparam),factor,eps);
+			}
+			else
+			{
 			  inputorganization(fin,&((wdraw.childs+1)->org),
-                                    &((wdraw.childs+1)->vparam));
+									&((wdraw.childs+1)->vparam));
 			}  */
 			fclose(fin);
 
 			/*COPY TEXTS*/
 			for(it=0;it<(wdraw.childs+1)->org.ntext;it++)
-            {
+			{
 			  sn=(wdraw.childs+1)->org.texts+it;
-              wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
-                                   sn->str,sn->n.d[0],sn->n.d[1]);
-            }
+			  wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
+								   sn->str,sn->n.d[0],sn->n.d[1]);
+			}
 
 			createviewdata(&((wdraw.childs+1)->vparam));
 			SendMessage((wmenu.childs+2)->hwnd,WM_INITDIALOG,0,0);
@@ -13877,7 +14134,7 @@ static BOOL CALLBACK DialogProcBond(HWND hdwnd,
       break;
 
     /*default:
-      return DefWindowProc(hdwnd,message,wParam,lParam);*/
+	  return DefWindowProc(hdwnd,message,wParam,lParam);*/
   }
   return 0;
 }/*DialogProcBond*/
@@ -13998,7 +14255,7 @@ HWND windowdefinition(struct windowparams *wp,
 
   wp->hwnd = CreateWindow(wp->classname,
                           wp->classname, /*CAPTION.*/
-                          dwStyle,
+						  dwStyle,
                           x,y,w,h,
                           hparent,
                           NULL,
@@ -14019,15 +14276,15 @@ HWND windowdefinition(struct windowparams *wp,
 }/*windowdefinition*/
 
 int registwindowparams(struct winparamsreg *wrapp,
-                       struct windowparams *wpreg)
+					   struct windowparams *wpreg)
 /*REGIST WINDOWPARAM */
 {
   if(wpreg==NULL) return wrapp->nwin;
 
   (wrapp->nwin)++;
   wrapp->wp=(struct windowparams **)
-            realloc(wrapp->wp,
-                    (wrapp->nwin)*sizeof(struct windowparams *));
+			realloc(wrapp->wp,
+					(wrapp->nwin)*sizeof(struct windowparams *));
   *((wrapp->wp)+(wrapp->nwin-1))=wpreg;
 
   return wrapp->nwin;
@@ -14040,9 +14297,9 @@ void clearwindow(struct windowparams wp)
 
   if(wp.hdcC!=NULL)
   {
-    getclientsize(wp.hwnd,&maxX,&maxY);
+	getclientsize(wp.hwnd,&maxX,&maxY);
 
-    PatBlt(wp.hdcC,0,0,maxX,maxY,PATCOPY);
+	PatBlt(wp.hdcC,0,0,maxX,maxY,PATCOPY);
   }
   return;
 }/*clearwindow*/
@@ -14088,7 +14345,7 @@ struct windowparams *getwindowparams(HWND hwnd)
 
   for(i=0;i<wrglobal.nwin;i++)
   {
-    if(hwnd==(*(wrglobal.wp+i))->hwnd) return *(wrglobal.wp+i);
+	if(hwnd==(*(wrglobal.wp+i))->hwnd) return *(wrglobal.wp+i);
   }
   return NULL;
 }/*getwindowparams*/
@@ -14221,7 +14478,7 @@ void drawvbar(HDC hdc,long int maxX,long int maxY,
 }/*drawvbar*/
 
 void drawhbar(HDC hdc,long int maxX,long int maxY,
-              struct windowparams *wp)
+			  struct windowparams *wp)
 {
   HBRUSH hbrush,pbrush;
   HBITMAP hbit,pbit;
@@ -17277,7 +17534,7 @@ void printorganfigures(FILE *fin,struct viewparam *vp,int mode)
     /*OPEN FILE AND DRAW FRAME.*/
     wparam = MAKEWPARAM(IDD_VIEW,0);
     SendMessage((wmenu.childs+2)->hwnd,WM_COMMAND,wparam,0);
-    globalmessageflag=0;
+	globalmessageflag=0;
 
     wparam = MAKEWPARAM(IDV_UNITNM,0);
     SendMessage((wmenu.childs+3)->hwnd,WM_COMMAND,wparam,0);
@@ -17518,13 +17775,13 @@ void printorganfigures(FILE *fin,struct viewparam *vp,int mode)
           wparam = MAKEWPARAM(IDV_DEFORMATION,0);
           SendMessage((wmenu.childs+3)->hwnd,WM_COMMAND,wparam,0);
           if(i==0) SendMessage((wmenu.childs+3)->hwnd,WM_COMMAND,
-                               MAKEWPARAM(IDV_DZ,0),0);
+							   MAKEWPARAM(IDV_DZ,0),0);
           if(i==1) SendMessage((wmenu.childs+3)->hwnd,WM_COMMAND,
                                MAKEWPARAM(IDV_DX,0),0);
           if(i==2) SendMessage((wmenu.childs+3)->hwnd,WM_COMMAND,
                                MAKEWPARAM(IDV_DY,0),0);
 
-          /*END PAGE*/
+		  /*END PAGE*/
           SendMessage(wmain.hwnd,WM_COMMAND,
                       MAKEWPARAM((WORD)IDM_PRINTOUT,(WORD)0),0);
         }
