@@ -1,4 +1,4 @@
-/*=================================================================*/
+Ôªø/*=================================================================*/
 /*     SUBROUTINE BCLNG001                                         */
 /*     ELASTIC BUCKLING FOR 3D FRAME                               */
 /*     CODED BY JUN SATO                                           */
@@ -60,7 +60,7 @@
 /* BISECRIGHT: INITIAL UPPER BOUND FOR BISECSYLVESTER */
 /*             IT IS ASSUMED THAT EIGENVALUE IS HIGHER THAN INVERSE OF BISECRIGHT */
 /*             i.e. IF BISECRIGHT=1000.0, EIGENVALUE > 0.001 */
-#define BISECRIGHT 1000.0
+#define BISECRIGHT 1e+8
 
 int bclng001(struct arclmframe *af);/*ELASTIC BUCKLING ANALYSIS FOR ARCLM FRAME*/
 /*-----------------------------------------------------------------*/
@@ -156,11 +156,11 @@ int bclng001(struct arclmframe *af)
 /*ELASTIC BUCKLING FOR ARCLM FRAME.*/
 /*AFTER "ARCLM001".*/
 {
-  DWORD memory0,memory1;
+  DWORDLONG memory0,memory1;
 
   FILE /**fin,*/*fout;                               /*FILE 8 BYTES*/
   /*FILE *felem,*fdisp,*freact;*/
-  /*char dir[]=DIRECTORY;*/                        /*DATA DIRECTORY*/
+  char dir[]=DIRECTORY;                        /*DATA DIRECTORY*/
   char /*s[80],*/string[400];
   int i,j,ii,jj;
   int nnode,nelem,nsect/*,nreact*/;
@@ -168,7 +168,6 @@ int bclng001(struct arclmframe *af)
   /*long int time;*/
   struct gcomponent ginit={0,0,0.0,NULL};
   struct gcomponent *kmtx,*gmtx;                    /*GLOBAL MATRIX*/
-  double **gvct;                                    /*GLOBAL VECTOR*/
   double **drccos,**tmatrix,**estiff,*estress;
   /*double determinant,data;*/
   clock_t t0/*,t1,t2*/;
@@ -179,39 +178,98 @@ int bclng001(struct arclmframe *af)
   struct owire *elems;
   struct oconf *confs;
 
-  long int neig = 1;
+  int neig = 1;
   int solver = 0;
+
   double *eigen;
+  double **evct;
+
   double eps=1.0E-16;
   double biseceps=BISECEPS;
-
-
 
   /*
   neig=NEIGEN;
   solver=SOLVER;
   */
-  if(solver==1)
-  {
-	neig=1;
-  }
+
+
+	/*FOR READING ANALYSISDATA*/
+	FILE *fdata;
+	int nstr, pstr, readflag;
+	char **data;
+	char *filename;
+
+	fdata = fgetstofopenII(dir, "r", "analysisdata.txt");
+	if (fdata == NULL)
+	{
+		printf("couldn't open analysisdata.txt\n");
+
+		/*OUTPUT FILE NAME IS SAME AS INPUT*/
+		strcpy(filename, (wdraw.childs+1)->inpfile);
+		char* dot = strrchr(filename, '.');
+		*dot = '\0';
+
+		if(MessageBox(NULL,"DEIGABGENERAL","SOLVER",MB_OKCANCEL)==IDOK)solver=0;
+		else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)solver=1;
+
+		/*READ ARCLENGTH PARAMS*/
+		getincrement((wmenu.childs+2)->hwnd,&neig,NULL);
+
+	}
+	else
+	{
+		readflag = 1;
+		while (readflag)
+		{
+			data = fgetsbrk(fdata, &nstr);
+			if (nstr == 0)
+			{
+				readflag = 0;
+			}
+			else
+			{
+				pstr = 0; /*POSITION IN "DATA".*/
+				while ((nstr - pstr) > 0)
+				{
+					if (nstr - pstr == 1) /*POINTING LAST STRING.*/
+					{
+						pstr++;
+					}
+					else
+					{
+						if (!strcmp(*(data + pstr), "FILENAME"))
+						{
+							pstr++;
+							filename = *(data + pstr);
+						}
+						if (!strcmp(*(data + pstr), "NEIG"))
+						{
+							pstr++;
+							neig = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						if (!strcmp(*(data + pstr), "SOLVER"))
+						{
+							pstr++;
+							solver = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						else
+						{
+							pstr++;
+						}
+					}
+				}
+			}
+		}
+	}
 
 
 
-
-
-
-
-
-
-
-
-
-
-  memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
-
+  memory0=availablephysicalmemoryEx("INITIAL:");   /*MEMORY AVAILABLE*/
 
   fout=fgetstofopen("\0","w",ID_OUTPUTFILE);          /*OUTPUT FILE*/
+
+  //snprintf(fname, sizeof(fname), "%s.%s", filename, "otp");
+  //fout = fopen(fname, "w");
 
   t0=clock();                                        /*CLOCK BEGIN.*/
 
@@ -221,13 +279,12 @@ int bclng001(struct arclmframe *af)
   /*nreact=af->nreact;*/
   sprintf(string,"NODES=%d ELEMS=%d SECTS=%d",nnode,nelem,nsect);
   errormessage(string);
-  fprintf(fout,"%s\n",string);
 
   msize=6*nnode;                           /*SIZE OF GLOBAL MATRIX.*/
 
 
   kmtx=(struct gcomponent *)          /*DIAGONALS OF GLOBAL MATRIX.*/
-        malloc(msize*sizeof(struct gcomponent));
+		malloc(msize*sizeof(struct gcomponent));
   gmtx=(struct gcomponent *)
         malloc(msize*sizeof(struct gcomponent));
   if(kmtx==NULL || gmtx==NULL) return 0;
@@ -237,21 +294,21 @@ int bclng001(struct arclmframe *af)
     (gmtx+i)->down=NULL;
   }
 
-  gvct=(double **)malloc(neig*sizeof(double *));   /*GLOBAL VECTORS*/
+  evct=(double **)malloc(neig*sizeof(double *));   /*GLOBAL VECTORS*/
   eigen=(double *)malloc(neig*sizeof(double));       /*EIGEN VALUES*/
-  if(gvct==NULL || eigen==NULL) return 0;
+  if(evct==NULL || eigen==NULL) return 0;
   for(i=0;i<neig;i++)
   {
-    *(gvct+i)=(double *)malloc(msize*sizeof(double));
-    for(j=0;j<msize;j++) *(*(gvct+i)+j)=0.0;
+	*(evct+i)=(double *)malloc(msize*sizeof(double));
+    for(j=0;j<msize;j++) *(*(evct+i)+j)=0.0;
   }
 
   /*fdisp=af->fdisp;*/                 /*DISPLACEMENT:6 DIRECTIONS.*/
   /*felem=af->felem;*/              /*CODE,12 BOUNDARIES,12 STRESS.*/
   /*freact=af->freact;*/                           /*REACTION FILE.*/
-
   /*sects=af->sects;*/
   /*nodes=af->nodes;*/
+
   ninit=af->ninit;                                /*struct onode*/
   elems=af->elems;
   confs=af->confs;
@@ -260,14 +317,14 @@ int bclng001(struct arclmframe *af)
   GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
 
   errormessage("BCLNG001:BUCKLING LINEAR.");
-  availablephysicalmemory("REMAIN:");            /*MEMORY AVAILABLE*/
+  availablephysicalmemoryEx("REMAIN:");            /*MEMORY AVAILABLE*/
 
   for(i=1;i<=msize;i++)             /*GLOBAL MATRIX INITIALIZATION.*/
   {
 	ginit.m=(unsigned int)i;
 	/*ginit.n=(unsigned int)i;*/
 	*(kmtx+(i-1))=ginit;
-    *(gmtx+(i-1))=ginit;
+	*(gmtx+(i-1))=ginit;
   }
   /*comps=msize;*/ /*INITIAL COMPONENTS=DIAGONALS.*/
 
@@ -281,7 +338,7 @@ int bclng001(struct arclmframe *af)
     inputelem(elems,af->melem,i-1,&elem);
 
     for(ii=0;ii<=1;ii++) /*INITIALIZE COORDINATION.*/
-    {
+	{
       loff=elem.node[ii]->loff;
       for(jj=0;jj<3;jj++)
       {
@@ -295,42 +352,42 @@ int bclng001(struct arclmframe *af)
                            elem.node[1]->d[0],
                            elem.node[1]->d[1],
                            elem.node[1]->d[2],
-                           elem.cangle);                 /*[DRCCOS]*/
+						   elem.cangle);                 /*[DRCCOS]*/
 
     tmatrix=transmatrix(drccos);           /*TRANSFORMATION MATRIX.*/
-    estiff=assememtx(elem);            /*ELASTIC MATRIX OF ELEMENT.*/
+	estiff=assememtx(elem);            /*ELASTIC MATRIX OF ELEMENT.*/
     estiff=modifyhinge(elem,estiff);               /*MODIFY MATRIX.*/
     estiff=transformation(estiff,tmatrix);         /*[K]=[Tt][k][T]*/
 
 
-    assemgstiffness(kmtx,estiff,&elem);       /*ASSEMBLAGE ELASTIC.*/
+	assemgstiffness(kmtx,estiff,&elem);       /*ASSEMBLAGE ELASTIC.*/
 
-    for(ii=0;ii<=11;ii++) free(*(estiff+ii));
+	for(ii=0;ii<=11;ii++) free(*(estiff+ii));
     free(estiff);
 
     for(ii=0;ii<=1;ii++)                                /*STRESSES.*/
-    {
+	{
       for(jj=0;jj<6;jj++) *(estress+6*ii+jj)=elem.stress[ii][jj];
     }
 
 
 
     estiff=assemgmtx(elem,estress);
-    estiff=modifyhinge(elem,estiff);               /*MODIFY MATRIX.*/
+	estiff=modifyhinge(elem,estiff);               /*MODIFY MATRIX.*/
     estiff=transformation(estiff,tmatrix);         /*[K]=[Tt][k][T]*/
     for(ii=0;ii<12;ii++)
     {
       for(jj=0;jj<12;jj++) *(*(estiff+ii)+jj)=-*(*(estiff+ii)+jj);
     }
 
-    assemgstiffness(gmtx,estiff,&elem);     /*ASSEMBLAGE GEOMETRIC.*/
+	assemgstiffness(gmtx,estiff,&elem);     /*ASSEMBLAGE GEOMETRIC.*/
 
     for(ii=0;ii<=11;ii++) free(*(estiff+ii));
 	free(estiff);
 
     for(ii=0;ii<=2;ii++) free(*(drccos+ii));
     free(drccos);
-    for(ii=0;ii<=11;ii++) free(*(tmatrix+ii));
+	for(ii=0;ii<=11;ii++) free(*(tmatrix+ii));
     free(tmatrix);
   }
   free(estress);
@@ -343,19 +400,19 @@ int bclng001(struct arclmframe *af)
 
   /*
   if(globalmessageflag==0||MessageBox(NULL,"DEIGABGENERAL","SOLVER",MB_OKCANCEL)==IDOK)
-		deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,gvct);
+		deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,evct);
   else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)
-		bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,gvct);
+		bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,evct);
   */
 
 
   if(solver==0)
   {
-    deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,gvct);
+	deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,evct);
   }
   else
   {
-	bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,gvct);
+	bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,evct);
   }
 
   laptime("EIGEN COMPLETED.",t0);
@@ -365,36 +422,36 @@ int bclng001(struct arclmframe *af)
     *(eigen+i)=1.0/(*(eigen+i));
     sprintf(string,"EIGEN VALUE %ld=%.5E",(i+1),*(eigen+i));
     fprintf(fout,"%s\n",string);
-    errormessage(string);
+	errormessage(string);
 
-    outputmode(*(gvct+i),fout,nnode,ninit);
+	outputmode(*(evct+i),fout,nnode,ninit);
   }
 
-  updatemode(af,*(gvct+0)); /*FORMATION UPDATE.*/
+  updatemode(af,*(evct+0)); /*FORMATION UPDATE.*/
 
   af->nlaps=neig;
   af->eigenval=eigen;
-  af->eigenvec=gvct;
+  af->eigenvec=evct;
   /*STRESS UPDATE WITH BUCKLING STRESS.*/ //20210917.
   if(globalmessageflag && MessageBox(NULL,"Stress Update with Buckling Stress.","BCLNG011",MB_OKCANCEL)==IDOK)
   {
     for(i=0;i<af->nelem;i++)
-    {
+	{
       for(ii=0;ii<=1;ii++)
-      {
-        for(jj=0;jj<6;jj++)
+	  {
+		for(jj=0;jj<6;jj++)
         {
-          (af->melem+((af->elems+i)->loff))->stress[ii][jj]*=*(eigen+0);
+		  (af->melem+((af->elems+i)->loff))->stress[ii][jj]*=*(eigen+0);
 /*
-          if(ii==0 && jj==0)
+		  if(ii==0 && jj==0)
           {
-            sprintf(string,"ELEM %ld Nz=%.5f",(af->elems+i)->code,(af->elems+i)->stress[ii][jj]);
+			sprintf(string,"ELEM %ld Nz=%.5f",(af->elems+i)->code,(af->elems+i)->stress[ii][jj]);
             errormessage(string);
           }
 */
-        }
+		}
       }
-    }
+	}
    stressintofile(af); //extract
   }
 
@@ -407,7 +464,7 @@ int bclng001(struct arclmframe *af)
 
   fclose(fout);
 
-  memory1=availablephysicalmemory("REMAIN:");
+  memory1=availablephysicalmemoryEx("REMAIN:");
   sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory1));
   errormessage(string);
 
@@ -2276,7 +2333,7 @@ for(ii=0;ii<msize;ii++)
     laptime("MATRIX ELIMINATION BEGIN.",t0);
 
 	/*CONDENSATION*/ /*WITH CONSIDERING CONF*/
-	for(j=/*0*/6*nmultinode;j<msize;j++)/*j:èkñÒÇ≈çÌèúÇ∑ÇÈçsÅAóÒ*/
+	for(j=/*0*/6*nmultinode;j<msize;j++)/*j:Á∏ÆÁ¥Ñ„ÅßÂâäÈô§„Åô„ÇãË°å„ÄÅÂàó*/
 	{
 	  if(j>=msize) break;
 /*
@@ -2320,10 +2377,10 @@ MessageBox(NULL,string,"CONDENSE",MB_OK);
 			  if(!(confs+jj)->iconf)
 			  /*if(jj!=j)*/
 			  {
-              /*èkñÒÅiíeê´çÑê´É}ÉgÉäÉNÉXÅj*/
+              /*Á∏ÆÁ¥ÑÔºàÂºæÊÄßÂâõÊÄß„Éû„Éà„É™„ÇØ„ÇπÔºâ*/
 				*(*(ktmtx+ii)+jj)=(*(*(kcmtx+ii)+jj))-(*(*(kcmtx+ii)+j))*(*(*(kcmtx+j)+jj))/(*(*(kcmtx+j)+j));
 
-              /*èkñÒÅiäÙâΩçÑê´É}ÉgÉäÉNÉXÅj*/
+              /*Á∏ÆÁ¥ÑÔºàÂπæ‰ΩïÂâõÊÄß„Éû„Éà„É™„ÇØ„ÇπÔºâ*/
 				/*
 				*(*(gtmtx+ii)+jj)=(*(*(gcmtx+ii)+jj))-(*(*(kcmtx+ii)+j))*(*(*(gcmtx+j)+jj))/(*(*(kcmtx+j)+j));
 				*/
@@ -2422,7 +2479,7 @@ for(ii=ioff;ii<joff+6;ii++)
 }
 */
 
-/*èkñÒÇ≥ÇÍÇΩçÑê´É}ÉgÉäÉNÉXÇÃèoóÕ*/
+/*Á∏ÆÁ¥Ñ„Åï„Çå„ÅüÂâõÊÄß„Éû„Éà„É™„ÇØ„Çπ„ÅÆÂá∫Âäõ*/
 #if 0
 fprintf(fout,"[ke']\n");
 for(ii=0;ii<6*nmultinode;ii++)
@@ -3305,7 +3362,7 @@ for(ii=0;ii<msize;ii++)
     laptime("MATRIX ELIMINATION BEGIN.",t0);
 
 	/*CONDENSATION*/ /*WITH CONSIDERING CONF*/
-	for(j=/*0*/6*nmultinode;j<msize;j++)/*j:èkñÒÇ≈çÌèúÇ∑ÇÈçsÅAóÒ*/
+	for(j=/*0*/6*nmultinode;j<msize;j++)/*j:Á∏ÆÁ¥Ñ„ÅßÂâäÈô§„Åô„ÇãË°å„ÄÅÂàó*/
 	{
 	  if(j>=msize) break;
 /*
@@ -3349,10 +3406,10 @@ MessageBox(NULL,string,"CONDENSE",MB_OK);
 			  if(!(confs+jj)->iconf)
 			  /*if(jj!=j)*/
 			  {
-              /*èkñÒÅiíeê´çÑê´É}ÉgÉäÉNÉXÅj*/
+              /*Á∏ÆÁ¥ÑÔºàÂºæÊÄßÂâõÊÄß„Éû„Éà„É™„ÇØ„ÇπÔºâ*/
 				*(*(ktmtx+ii)+jj)=(*(*(kcmtx+ii)+jj))-(*(*(kcmtx+ii)+j))*(*(*(kcmtx+j)+jj))/(*(*(kcmtx+j)+j));
 
-              /*èkñÒÅiäÙâΩçÑê´É}ÉgÉäÉNÉXÅj*/
+              /*Á∏ÆÁ¥ÑÔºàÂπæ‰ΩïÂâõÊÄß„Éû„Éà„É™„ÇØ„ÇπÔºâ*/
 				/*
 				*(*(gtmtx+ii)+jj)=(*(*(gcmtx+ii)+jj))-(*(*(kcmtx+ii)+j))*(*(*(gcmtx+j)+jj))/(*(*(kcmtx+j)+j));
 				*/
@@ -3451,7 +3508,7 @@ for(ii=ioff;ii<joff+6;ii++)
 }
 */
 
-/*èkñÒÇ≥ÇÍÇΩçÑê´É}ÉgÉäÉNÉXÇÃèoóÕ*/
+/*Á∏ÆÁ¥Ñ„Åï„Çå„ÅüÂâõÊÄß„Éû„Éà„É™„ÇØ„Çπ„ÅÆÂá∫Âäõ*/
 #if 0
 fprintf(fout,"[ke']\n");
 for(ii=0;ii<6*nmultinode;ii++)
@@ -3816,10 +3873,10 @@ fprintf(globalfile,"\n");
 }/*bclng003*/
 #endif
 void currentvalues(char *str,
-                   long int n,long int ne,
+				   long int n,long int ne,
                    double A[][MSIZE],
                    double W[][MSIZE],
-                   double E[],double V[][MSIZE])
+				   double E[],double V[][MSIZE])
 /*CHECK CURRENT VALUES FOR DEBUG.*/
 {
   char non[10];
@@ -3835,7 +3892,7 @@ void currentvalues(char *str,
       for(j=0;j<n;j++)
       {
         fprintf(stdout," %12.5f",A[i][j]);
-      }
+	  }
       fprintf(stdout,"\n");
     }
   }
@@ -6305,7 +6362,6 @@ fprintf(globalfile," %d %d %d : %12.5E\n",
 
   return;
 }/*deigrs*/
-
 /*=================================================================*/
 void currentvalue(char *string,
                   long int n,long int ne,
@@ -8309,7 +8365,7 @@ void bisecsylvester(struct gcomponent *A,
     while(1)
 	{
 bisecstart:
-	  /* CALCULATE (A-É…B)x=b */
+	  /* CALCULATE (A-ŒªB)x=b */
       gmtx=gcomponentadd2(A,B,-1.0*lambda,N);
 	  croutlu(gmtx,confs,N,&determinant,&sign,gcomp1);
 
@@ -8536,11 +8592,11 @@ void definencr(struct arclmframe *af,double *ncr)       /*UJIOKA*/
       {
       	  ncr[i]=nz[i]/bsafety[i]/nu;                    /*Ncr*/
 /*
-	  	  sprintf(str,"ELEM %d :Nz=%5.8f,1/É…'=%12.5f,Ncr=%5.8f\n",
+	  	  sprintf(str,"ELEM %d :Nz=%5.8f,1/Œª'=%12.5f,Ncr=%5.8f\n",
       				(af->elems+i)->code,nz[i],bsafety[i],ncr[i]);
      	  errormessage(str);
 */
-	  	  sprintf(str,"ELEM %d SECT %d :Nz= %5.8f 1/É…'=%12.5f Ncr'= %5.8f\n",
+	  	  sprintf(str,"ELEM %d SECT %d :Nz= %5.8f 1/Œª'=%12.5f Ncr'= %5.8f\n",
       				(af->elems+i)->code,(af->elems+i)->sect->code,
                     nz[i],bsafety[i],ncr[i]);
 //     	  errormessage(str);
@@ -8561,7 +8617,7 @@ return;                                            /*Return Ncr*/
 int bclng011(struct arclmframe *af,struct arclmframe *af0)
 /*ELASTIC BUCKLING FOR ARCLM FRAME WITH PRE-STRESS.
 
-  ([KE]-[KG0]){Ue}=É…[KG]{Ue}
+  ([KE]-[KG0]){Ue}=Œª[KG]{Ue}
   [KE]:ELASTIC
   [KG0]:GEOMETRIC FROM PRE-STRESS
   [KG]:GEOMETRIC FROM LOAD

@@ -1,4 +1,4 @@
-/*ARCHG120-2i”’“‡‰“š—pj‚Æ‚Ì“¯Šú–¢Š®—¹, directioncosine ‚Æ directioncosineII ‚Ì‚İƒRƒs[*/
+ï»¿/*ARCHG120-2ï¼ˆç™½å³¶å¿œç­”ç”¨ï¼‰ã¨ã®åŒæœŸæœªå®Œäº†, directioncosine ã¨ directioncosineII ã®ã¿ã‚³ãƒ”ãƒ¼*/
 
 /*ARCLM101.C FOR WIN32 SINCE 1995.11.24.JUNSATO.*/
 /*LAST CHANGE:22-Jan-2013.*/
@@ -143,10 +143,9 @@ struct elemcolor{struct rgbcolor code,
 struct orgcolor{struct rgbcolor code,
                                 axis;};             /*ORGAN COLORS.*/
 
-struct onode{long int code,loff;     /*CODE NUMBER,OFFSET POSITION.*/   /*code=ß“_”Ô†, loff=’Ê‚µ”Ô†*/
+struct onode{long int code,loff;     /*CODE NUMBER,OFFSET POSITION.*/   /*code=ç¯€ç‚¹ç•ªå·, loff=é€šã—ç•ªå·*/
 			 double d[3];
-			 double r[3];
-			 /*double **rmtx;*/};          /*ROTATIONAL DOF BY KUTOMI*/
+			 double r[3];};          /*ROTATIONAL DOF BY KUTOMI*/
 struct oconf{signed char iconf;
 			 double value;}; /*ONLY FOR ANALYSIS.*/
 struct oprop{long int code,loff;
@@ -205,7 +204,7 @@ struct obans{long int code,loff;
              struct onode **nods;}; /*PLANE OF ELEMENT.*/
 struct surface{double exp,fmax[6],fmin[6];};
 struct owire{long int code,loff;
-			 int nnod;/*KUTOMI*/
+			 int nnod;
 			 double cangle;
 			 signed char iconf[2][6];
 			 double stress[2][6];
@@ -219,12 +218,13 @@ struct oshell{long int code,loff;
 			  int nnod;
 			  signed char iconf[4][6];
 			  double stress[4][6];
+			  double edisp[4][6];
 			  struct onode *(node[4]);
 			  struct osect *sect;
-			  double Ee[4],Ep[4]; /*STRAIN ENERGY.*/
+			  //double Ee[4],Ep[4]; /*STRAIN ENERGY.*/
 			  double prate;/*IN-PLANE STIFFNESS RATIO*/
 			  double brate;/*BENDING STIFFNESS RATIO*/
-			 }; /*SHELL ELEM FOR ARCLM001,101.*/
+			 }; /*SHELL ELEM*/
 
 
 
@@ -419,6 +419,9 @@ struct memoryelem{
 struct memoryshell{
 					long int code;
 					double stress[4][6];
+					double shellstress[4][6];
+					double SE,SEp,SEb;
+					double KE,KEt,KEr;
 				  };                     /*SHELL ELEMENT MEMORY FOR ARCLM.*/
 
 struct arclmframe{long int code,loff;
@@ -438,7 +441,6 @@ struct arclmframe{long int code,loff;
 				  double *constraintval,**constraintvec;
 				  long int *constraintmain;
 				  double *nmass;             /*NODE MASS FOR GNSHN.*/
-				  double *weight;
 				  int nosect; /****SRCANMAX****/
 				  long int *iosect; /****SRCANMAX****/
 				  int *eosect; /****SRCANMAX****/
@@ -446,7 +448,7 @@ struct arclmframe{long int code,loff;
 				 };                                  /*ARCLM FRAME.*/
 
 struct print{
-             char pflag; /*0:NOT PRINTING 1:UNDER PRINTING*/
+			 char pflag; /*0:NOT PRINTING 1:UNDER PRINTING*/
 			 char pageflag; /*0:PAGE BEGIN 1:PAGE WAITING*/
 			 int margin[4];
              int jiheight,jiwidth,jipitch;
@@ -6227,7 +6229,7 @@ void draworganization(HDC hdc,struct viewparam vp,
 						   (wdraw.childs+1)->vparam.section,
                            (wdraw.childs+1)->vparam.subsection);
 
-	if(mode==ONPRINTER) TextOut(hdc,4400,6600,str,strlen(str));   //—v’²®
+	if(mode==ONPRINTER) TextOut(hdc,4400,6600,str,strlen(str));   //è¦èª¿æ•´
 	else if(mode==ONPREVIEW) TextOut(hdc,1200,1000,str,strlen(str));
 	else                     TextOut(hdc,1250,1000,str,strlen(str));
   }
@@ -6283,26 +6285,26 @@ void draworganization(HDC hdc,struct viewparam vp,
   if(vp.vflag.nv.code)
   {
     imax[1]+=size.cy;
-    sprintf(str,"ß“_”Ô†");
+    sprintf(str,"ç¯€ç‚¹ç•ªå·");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
 /*mihara for zahyo 20190329///////////////////////////////////////////////////*/
   if(vp.vflag.nv.d[0])
   {
     imax[1]+=size.cy;
-	sprintf(str,"XÀ•W[m]");
+	sprintf(str,"Xåº§æ¨™[m]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.d[1])
   {
 	imax[1]+=size.cy;
-	sprintf(str,"YÀ•W[m]");
+	sprintf(str,"Yåº§æ¨™[m]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.d[2])
   {
     imax[1]+=size.cy;
-	sprintf(str,"ZÀ•W[m]");
+	sprintf(str,"Zåº§æ¨™[m]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
 /*mihara for zahyo 20190329///////////////////////////////////////////////////*/
@@ -6310,39 +6312,39 @@ void draworganization(HDC hdc,struct viewparam vp,
   if(vp.vflag.ev.code)
   {
     imax[1]+=size.cy;
-	sprintf(str,"•”Ş”Ô†");
+	sprintf(str,"éƒ¨æç•ªå·");
 	TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.sectioncode)
   {
     imax[1]+=size.cy;
-	sprintf(str,"’f–Ê”Ô†");
+	sprintf(str,"æ–­é¢ç•ªå·");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.mcircle)
   {
     imax[1]+=size.cy;
-    sprintf(str,"ß“_d—Ê}");
+    sprintf(str,"ç¯€ç‚¹é‡é‡å›³");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.mvalue)
   {
     imax[1]+=size.cy;
-    if(globalunit==1.0)         sprintf(str,"ß“_d—Ê’l [tf]");
-    else if(globalunit==SIUNIT) sprintf(str,"ß“_d—Ê’l [kN]");
-    else                        sprintf(str,"ß“_d—Ê’l");
+    if(globalunit==1.0)         sprintf(str,"ç¯€ç‚¹é‡é‡å€¤ [tf]");
+    else if(globalunit==SIUNIT) sprintf(str,"ç¯€ç‚¹é‡é‡å€¤ [kN]");
+    else                        sprintf(str,"ç¯€ç‚¹é‡é‡å€¤");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.axis)
   {
     imax[1]+=size.cy;
-    sprintf(str,"•”ŞÀ•W²");
+    sprintf(str,"éƒ¨æåº§æ¨™è»¸");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.cmqline)
   {
     imax[1]+=size.cy;
-    sprintf(str,"•ªŠ„ü•\¦");
+    sprintf(str,"åˆ†å‰²ç·šè¡¨ç¤º");
 	TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.etype[0] ||
@@ -6356,52 +6358,52 @@ void draworganization(HDC hdc,struct viewparam vp,
   {
     flag=0;
     imax[1]+=size.cy;
-    sprintf(str,"•\¦•”ŞF");
+    sprintf(str,"è¡¨ç¤ºéƒ¨æï¼š");
 	/*if(vp.vflag.ev.etype[0])
     {
-      strcat(str,"•â•");
+      strcat(str,"è£œåŠ©");
       flag=1;
 	}*/
     if(vp.vflag.ev.etype[1])
     {
       if(flag) strcat(str,", ");
-	  strcat(str,"’Œ");
+	  strcat(str,"æŸ±");
       flag=1;
     }
     if(vp.vflag.ev.etype[2])
 	{
       if(flag) strcat(str,", ");
-      strcat(str,"—À");
+      strcat(str,"æ¢");
       flag=1;
     }
     /*if(vp.vflag.ev.etype[3])
     {
 	  if(flag) strcat(str,", ");
-      strcat(str,"¬—À");
+      strcat(str,"å°æ¢");
       flag=1;
     }*/
     if(vp.vflag.ev.etype[4])
     {
       if(flag) strcat(str,", ");
-	  strcat(str,"ƒuƒŒ[ƒX");
+	  strcat(str,"ãƒ–ãƒ¬ãƒ¼ã‚¹");
       flag=1;
     }
     if(vp.vflag.ev.etype[5])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"•Ç");
+      strcat(str,"å£");
       flag=1;
     }
 	if(vp.vflag.ev.etype[6])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"°");
+      strcat(str,"åºŠ");
       flag=1;
     }
     /*if(vp.vflag.ev.etype[7])
     {
       if(flag) strcat(str,", ");
-	  strcat(str,"’£•Ç");
+	  strcat(str,"å¼µå£");
       flag=1;
     }*/
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
@@ -6443,41 +6445,41 @@ void draworganization(HDC hdc,struct viewparam vp,
   {
     imax[1]+=size.cy;
     imax[1]+=size.cy;
-    sprintf(str,"£ˆó‚Íx“_ˆÊ’u‚ğ•\‚·");
+    sprintf(str,"â–²å°ã¯æ”¯ç‚¹ä½ç½®ã‚’è¡¨ã™");
 	TextOut(hdc,imin[0],imax[1],str,strlen(str));
    imax[1]+=size.cy;
-    sprintf(str,"(X,Y,Z,ƒÆx,ƒÆy,ƒÆz‚Ì‚¤‚¿CX,Y,Z‚ğS‘©‚µ‚Ä‚¢‚é)");
+    sprintf(str,"(X,Y,Z,Î¸x,Î¸y,Î¸zã®ã†ã¡ï¼ŒX,Y,Zã‚’æ‹˜æŸã—ã¦ã„ã‚‹)");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
 
-//    sprintf(str,"¡ˆó‚Íx“_ˆÊ’u‚ğ•\‚·");
+//    sprintf(str,"â– å°ã¯æ”¯ç‚¹ä½ç½®ã‚’è¡¨ã™");
 //    TextOut(hdc,imin[0],imax[1],str,strlen(str));
 //    imax[1]+=size.cy;
-//    sprintf(str,"(X,Y,Z,ƒÆx,ƒÆy,ƒÆz‚Ì‚¤‚¿CX,Y,Z,ƒÆx,ƒÆy,ƒÆz‚ğS‘©‚µ‚Ä‚¢‚é)");
+//    sprintf(str,"(X,Y,Z,Î¸x,Î¸y,Î¸zã®ã†ã¡ï¼ŒX,Y,Z,Î¸x,Î¸y,Î¸zã‚’æ‹˜æŸã—ã¦ã„ã‚‹)");
 //    TextOut(hdc,imin[0],imax[1],str,strlen(str));
 
     /*FOR OUTPUT REACTION LONG*/
 /*    imax[1]+=size.cy;
     imax[1]+=size.cy;
-    sprintf(str,"”’l‚Ì–}—á");
+    sprintf(str,"æ•°å€¤ã®å‡¡ä¾‹");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
     imax[1]+=size.cy;
-	sprintf(str,"ã’i@‚y•ûŒü”½—Í [kN]");
+	sprintf(str,"ä¸Šæ®µã€€ï¼ºæ–¹å‘ååŠ› [kN]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
     imax[1]+=size.cy;
-    sprintf(str,"’†’i@x“_d—Ê@ [kN]");
+    sprintf(str,"ä¸­æ®µã€€æ”¯ç‚¹é‡é‡ã€€ [kN]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
     imax[1]+=size.cy;
-    sprintf(str,"‰º’i@‡Œv@@@ [kN]");
+    sprintf(str,"ä¸‹æ®µã€€åˆè¨ˆã€€ã€€ã€€ [kN]");
 	TextOut(hdc,imin[0],imax[1],str,strlen(str));
 */
 
     /*FOR OUTPUT REACTION SHORT*/
 /*    imax[1]+=size.cy;
     imax[1]+=size.cy;
-    sprintf(str,"”’l‚Ì–}—á");
+    sprintf(str,"æ•°å€¤ã®å‡¡ä¾‹");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
     imax[1]+=size.cy;
-    sprintf(str,"‚y•ûŒü”½—Í@[kN]");
+    sprintf(str,"ï¼ºæ–¹å‘ååŠ›ã€€[kN]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
 */
   }
@@ -7249,12 +7251,12 @@ void drawglobalwire(HDC hdc,struct viewparam vp,
   {
     SetTextColor(hdc,RGB(cred,cgreen,cblue)); /*ELEM CODE.*/
 	/****SRCANMAX****/
-	if(vp.vflag.ev.srcanmax) sprintf(str,"•”Ş %d",elem.code);
+	if(vp.vflag.ev.srcanmax) sprintf(str,"éƒ¨æ %d",elem.code);
 	else                     sprintf(str,"%d",elem.code);
 	if(vp.vflag.ev.srcanmax && mode==ONSRCANMAX)
 	{
 	  setfontformat(hdc,(int)(1.2*gprn.jiheight),
-						(int)(1.2*gprn.jiwidth),"‚l‚r –¾’©",0,0,0);
+						(int)(1.2*gprn.jiwidth),"ï¼­ï¼³ æ˜æœ",0,0,0);
 	}
 	//sprintf(str,"%d",elem.code);
 	TextOut(hdc,(0.55*(ix2-ix1)+ix1),
@@ -7279,12 +7281,12 @@ void drawglobalwire(HDC hdc,struct viewparam vp,
     else SetTextColor(hdc,RGB(150,150,150));
 
 	/****SRCANMAX****/
-	if(vp.vflag.ev.srcanmax) sprintf(str,"’f–Ê %d",elem.sect->ocode);
+	if(vp.vflag.ev.srcanmax) sprintf(str,"æ–­é¢ %d",elem.sect->ocode);
 	else                     sprintf(str,"%d",elem.sect->code);
 	if(vp.vflag.ev.srcanmax && mode==ONSRCANMAX)
 	{
 	  setfontformat(hdc,(int)(1.2*gprn.jiheight),
-						(int)(1.2*gprn.jiwidth),"‚l‚r –¾’©",0,0,0);
+						(int)(1.2*gprn.jiwidth),"ï¼­ï¼³ æ˜æœ",0,0,0);
 	}
 	if(vp.vflag.ev.code)
 	{
@@ -7430,13 +7432,13 @@ void drawglobalwire(HDC hdc,struct viewparam vp,
 		  {
 			  hpen=CreatePen(PS_DASH,1,RGB(120,120,120));
           }
-		  else hpen=CreatePen(PS_SOLID,1,RGB(0,0,255));  /*•ÏŒ`Œã‚Ì•”Ş‚ÌFiˆóü—pj*/
+		  else hpen=CreatePen(PS_SOLID,1,RGB(0,0,255));  /*å¤‰å½¢å¾Œã®éƒ¨æã®è‰²ï¼ˆå°åˆ·ç”¨ï¼‰*/
 //          else hpen=CreatePen(PS_DASH,1,RGB(120,120,120));
 	  }
 
       //else hpen=CreatePen(PS_DASH,1,RGB(ered,egreen,eblue));
 	  //ujioka for deformation
-	  else hpen=CreatePen(PS_SOLID,1,RGB(100,100,255));         /*•ÏŒ`Œã‚Ì•”Ş‚ÌF*/
+	  else hpen=CreatePen(PS_SOLID,1,RGB(100,100,255));         /*å¤‰å½¢å¾Œã®éƒ¨æã®è‰²*/
 
 	  ppen=(HPEN)SelectObject(hdc,hpen);
 
@@ -7842,7 +7844,8 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
   SIZE size; /****SRCANMAX****/
   DWORD rop; /*RASTER OPERATION.*/
   char str[10];
-  int ix1,iy1,ix2,iy2,ix3,iy3,ix4,iy4,dx1,dy1,dx2,dy2,dx3,dy3;    /*PROJECTED COORDINATION.*/
+  int ix1,iy1,ix2,iy2,ix3,iy3,ix4,iy4;
+  int dx1,dy1,dx2,dy2,dx3,dy3,dx4,dy4;    /*PROJECTED COORDINATION.*/
   int maxX,minX,maxY,minY;
   long int loff;
   double dx,dy;
@@ -7853,6 +7856,8 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
   int i,ndiv;
   double rate;
 
+
+  /*MAKE NODES*/
   initialnode(af.ninit,af.nnode,(shell.node[0]->code),&inode1);
   if(!insiderange(inode1,vp.range)) return;
   if(af.ddisp==NULL || !vp.vflag.ev.deformation)
@@ -7929,11 +7934,10 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
 
 
 
-
+  /*NODE CODE PRINT*/
   if(vp.vflag.nv.code)
   {
-	if(globalstatus==SELECTNODE &&
-	   shell.node[0]->code==selectcode)
+	if(globalstatus==SELECTNODE && shell.node[0]->code==selectcode)
     {
 	  SetTextColor(hdc,RGB(0,255,255));
     }
@@ -7968,8 +7972,7 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
 
 
 
-	if(globalstatus==SELECTNODE &&
-	   shell.node[1]->code==selectcode)
+	if(globalstatus==SELECTNODE && shell.node[1]->code==selectcode)
 	{
 	  SetTextColor(hdc,RGB(0,255,255));
 	}
@@ -8004,8 +8007,7 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
 
 
 
-	if(globalstatus==SELECTNODE &&
-	   shell.node[2]->code==selectcode)
+	if(globalstatus==SELECTNODE && shell.node[2]->code==selectcode)
 	{
 	  SetTextColor(hdc,RGB(0,255,255));
 	}
@@ -8041,21 +8043,22 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
 
 
   }
+  /*PRINT ELEMENT CODE*/
   if(vp.vflag.ev.code)
   {
 	SetTextColor(hdc,RGB(cred,cgreen,cblue)); /*ELEM CODE.*/
 	/****SRCANMAX****/
-	if(vp.vflag.ev.srcanmax) sprintf(str,"•”Ş %d",shell.code);
+	if(vp.vflag.ev.srcanmax) sprintf(str,"éƒ¨æ %d",shell.code);
 	else                     sprintf(str,"%d",shell.code);
 	if(vp.vflag.ev.srcanmax && mode==ONSRCANMAX)
 	{
 	  setfontformat(hdc,(int)(1.2*gprn.jiheight),
-						(int)(1.2*gprn.jiwidth),"‚l‚r –¾’©",0,0,0);
+						(int)(1.2*gprn.jiwidth),"ï¼­ï¼³ æ˜æœ",0,0,0);
 	}
-	//sprintf(str,"%d",elem.code);
 	TextOut(hdc,0.33*(ix1+ix2+ix3),
 	            0.33*(iy1+iy2+iy3),str,strlen(str));
   }
+  /*PRINT SECTION CODE*/
   if(vp.vflag.ev.sectioncode) /*SECTION CODE.*/
   {
 
@@ -8070,12 +8073,12 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
     else SetTextColor(hdc,RGB(150,150,150));
 
 	/****SRCANMAX****/
-	if(vp.vflag.ev.srcanmax) sprintf(str,"’f–Ê %d",shell.sect->ocode);
+	if(vp.vflag.ev.srcanmax) sprintf(str,"æ–­é¢ %d",shell.sect->ocode);
 	else                     sprintf(str,"%d",shell.sect->code);
 	if(vp.vflag.ev.srcanmax && mode==ONSRCANMAX)
 	{
 	  setfontformat(hdc,(int)(1.2*gprn.jiheight),
-						(int)(1.2*gprn.jiwidth),"‚l‚r –¾’©",0,0,0);
+						(int)(1.2*gprn.jiwidth),"ï¼­ï¼³ æ˜æœ",0,0,0);
 	}
 	if(vp.vflag.ev.code)
 	{
@@ -8166,6 +8169,8 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
   }
 #endif
   else hpen=CreatePen(PS_SOLID,1,RGB(ered,egreen,eblue));
+  //else hpen=CreatePen(PS_SOLID,1,RGB(255,255,255));
+
 
   ppen=(HPEN)SelectObject(hdc,hpen);
   MoveToEx(hdc,ix1,iy1,NULL);
@@ -8226,9 +8231,9 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
 
   PatBlt(hdcC,0,0,(maxX-minX),(maxY-minY),PATCOPY);
 
-  hbrush = (HBRUSH)CreateSolidBrush(RGB(0.3*ered,0.3*egreen,0.3*eblue));
+  hbrush = (HBRUSH)CreateSolidBrush(RGB(0.1*ered,0.1*egreen,0.1*eblue));
   SelectObject(hdcC,hbrush);
-  hpen=CreatePen(PS_SOLID,1,RGB(0.3*ered,0.3*egreen,0.3*eblue));
+  hpen=CreatePen(PS_SOLID,1,RGB(0.1*ered,0.1*egreen,0.1*eblue));
   ppen=(HPEN)SelectObject(hdcC,hpen);
 
   for(i=0;i<shell.nnod;i++)
@@ -8317,13 +8322,13 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
 		  {
 			  hpen=CreatePen(PS_DASH,1,RGB(120,120,120));
           }
-		  else hpen=CreatePen(PS_SOLID,1,RGB(0,0,255));  /*•ÏŒ`Œã‚Ì•”Ş‚ÌFiˆóü—pj*/
-//          else hpen=CreatePen(PS_DASH,1,RGB(120,120,120));
+		  else hpen=CreatePen(PS_SOLID,1,RGB(0,0,255));  /*å¤‰å½¢å¾Œã®éƒ¨æã®è‰²ï¼ˆå°åˆ·ç”¨ï¼‰*/
+//        else hpen=CreatePen(PS_DASH,1,RGB(120,120,120));
 	  }
 
-      //else hpen=CreatePen(PS_DASH,1,RGB(ered,egreen,eblue));
-	  //ujioka for deformation
-	  else hpen=CreatePen(PS_SOLID,1,RGB(100,100,255));         /*•ÏŒ`Œã‚Ì•”Ş‚ÌF*/
+	  //else hpen=CreatePen(PS_DASH,1,RGB(ered,egreen,eblue));
+	  //else hpen=CreatePen(PS_SOLID,1,RGB(100,100,255));         /*å¤‰å½¢å¾Œã®éƒ¨æã®è‰²*/
+	  else hpen=CreatePen(PS_SOLID,1,RGB(255,255,255));         /*å¤‰å½¢å¾Œã®éƒ¨æã®è‰²*/
 
 	  ppen=(HPEN)SelectObject(hdc,hpen);
 
@@ -8356,6 +8361,12 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
   SelectObject(hdc,ppen);
   DeleteObject(hpen);
   */
+
+
+
+
+
+
 #if 0
   if(vp.vflag.ev.axis)                              /*ELEMENT AXIS.*/
   {
@@ -8894,11 +8905,11 @@ void drawglobalwireII(HDC hdc,struct viewparam vp,
       if(mode==ONPRINTER)
       {
 //        hpen=CreatePen(PS_SOLID,2,RGB(ered,egreen,eblue));
-          hpen=CreatePen(PS_SOLID,2,RGB(0,0,255));  /*•ÏŒ`Œã‚Ì•”Ş‚ÌFiˆóü—pj*/
+          hpen=CreatePen(PS_SOLID,2,RGB(0,0,255));  /*å¤‰å½¢å¾Œã®éƒ¨æã®è‰²ï¼ˆå°åˆ·ç”¨ï¼‰*/
       }
       //else hpen=CreatePen(PS_DASH,1,RGB(ered,egreen,eblue));
       //ujioka for deformation
-      else hpen=CreatePen(PS_SOLID,1,RGB(100,100,255));         /*•ÏŒ`Œã‚Ì•”Ş‚ÌF*/
+      else hpen=CreatePen(PS_SOLID,1,RGB(100,100,255));         /*å¤‰å½¢å¾Œã®éƒ¨æã®è‰²*/
 
       ppen=(HPEN)SelectObject(hdc,hpen);
 
@@ -9762,7 +9773,7 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
   {
     if(mode==ONPRINTER || mode==ONPREVIEW)
     {
-      setfontformat(hdc,150,50,"‚l‚r –¾’©",0,0,0);
+      setfontformat(hdc,150,50,"ï¼­ï¼³ æ˜æœ",0,0,0);
     }
     if(mode==ONPRINTER)      SetTextColor(hdc,RGB(0,0,0));
     else if(mode==ONPREVIEW) SetTextColor(hdc,RGB(0,0,0));
@@ -9771,19 +9782,19 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
 	/****SRCANMAX****/
 	if(mode==ONPRINTER && vp.vflag.ev.srcanmax)
 	{
-//	  setfontformat(hdc,120,40,"‚l‚r –¾’©",0,0,0);
-	  //sprintf(str,"4.3 : ’ŒC—ÀC•ÇC°‚Ì’f–ÊZ’èŒ‹‰Ê");
-	  //sprintf(str,"4.3 : ’ŒC—ÀC•Ç‚Ì’f–ÊZ’èŒ‹‰Ê");
-	  //sprintf(str,"4.3 : ’ŒC—ÀCƒuƒŒ[ƒXC•ÇC°‚Ì’f–ÊZ’èŒ‹‰Ê");
-	  sprintf(str,"4.3 : ’ŒC—ÀCƒuƒŒ[ƒX‚Ì’f–ÊZ’èŒ‹‰Ê");
+//	  setfontformat(hdc,120,40,"ï¼­ï¼³ æ˜æœ",0,0,0);
+	  //sprintf(str,"4.3 : æŸ±ï¼Œæ¢ï¼Œå£ï¼ŒåºŠã®æ–­é¢ç®—å®šçµæœ");
+	  //sprintf(str,"4.3 : æŸ±ï¼Œæ¢ï¼Œå£ã®æ–­é¢ç®—å®šçµæœ");
+	  //sprintf(str,"4.3 : æŸ±ï¼Œæ¢ï¼Œãƒ–ãƒ¬ãƒ¼ã‚¹ï¼Œå£ï¼ŒåºŠã®æ–­é¢ç®—å®šçµæœ");
+	  sprintf(str,"4.3 : æŸ±ï¼Œæ¢ï¼Œãƒ–ãƒ¬ãƒ¼ã‚¹ã®æ–­é¢ç®—å®šçµæœ");
 //	  TextOut(hdc,900,500,str,strlen(str));
 	  TextOut(hdc,700,300,str,strlen(str));
 
 	  setfontformat(hdc,(int)(1.5*gprn.jiheight),
-						(int)(1.5*gprn.jiwidth),"‚l‚r –¾’©",0,0,0);
-	  sprintf(str,"Še’f–Êí•Ê‚É‚¨‚¢‚ÄAŒŸ’è”ä‚ªÅ‘å‚Ì•”Ş‚Í‰º}‚Ì’Ê‚èB");
+						(int)(1.5*gprn.jiwidth),"ï¼­ï¼³ æ˜æœ",0,0,0);
+	  sprintf(str,"å„æ–­é¢ç¨®åˆ¥ã«ãŠã„ã¦ã€æ¤œå®šæ¯”ãŒæœ€å¤§ã®éƒ¨æã¯ä¸‹å›³ã®é€šã‚Šã€‚");
 	  TextOut(hdc,900,700,str,strlen(str));
-	  sprintf(str,"‚±‚ê‚ç‚É‚Â‚¢‚Ä‚Ì‚İ’f–ÊZ’è‚ÌÚ×‚ğÚ‚¹‚Ä‚¨‚­B");
+	  sprintf(str,"ã“ã‚Œã‚‰ã«ã¤ã„ã¦ã®ã¿æ–­é¢ç®—å®šã®è©³ç´°ã‚’è¼‰ã›ã¦ãŠãã€‚");
 	  TextOut(hdc,900,700+(int)(2.0*gprn.jiheight),str,strlen(str));
 	}
 	else
@@ -9819,7 +9830,7 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
                            (wdraw.childs+1)->vparam.section,
                            (wdraw.childs+1)->vparam.subsection);
 
-	if(mode==ONPRINTER) TextOut(hdc,4400,6600,str,strlen(str));   //—v’²®
+	if(mode==ONPRINTER) TextOut(hdc,4400,6600,str,strlen(str));   //è¦èª¿æ•´
 	else if(mode==ONPREVIEW) TextOut(hdc,1200,1000,str,strlen(str));
 	else                     TextOut(hdc,1250,1000,str,strlen(str));
   }
@@ -9875,87 +9886,87 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
   if(vp.vflag.nv.code)
   {
     imax[1]+=size.cy;
-    sprintf(str,"ß“_”Ô†");
+    sprintf(str,"ç¯€ç‚¹ç•ªå·");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.code)
   {
     imax[1]+=size.cy;
-    sprintf(str,"•”Ş”Ô†");
+    sprintf(str,"éƒ¨æç•ªå·");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.sectioncode)
   {
     imax[1]+=size.cy;
-    sprintf(str,"’f–Ê”Ô†");
+    sprintf(str,"æ–­é¢ç•ªå·");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.mcircle)
   {
     imax[1]+=size.cy;
-    sprintf(str,"ß“_d—Ê}");
+    sprintf(str,"ç¯€ç‚¹é‡é‡å›³");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.mvalue)
   {
     imax[1]+=size.cy;
-    sprintf(str,"ß“_d—Ê’l");
+    sprintf(str,"ç¯€ç‚¹é‡é‡å€¤");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.ecircle)
   {
     imax[1]+=size.cy;
-    sprintf(str,"‹zûƒGƒlƒ‹ƒM[}");
+    sprintf(str,"å¸åã‚¨ãƒãƒ«ã‚®ãƒ¼å›³");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.evalue)
   {
     imax[1]+=size.cy;
-    sprintf(str,"‹zûƒGƒlƒ‹ƒM[’l");
+    sprintf(str,"å¸åã‚¨ãƒãƒ«ã‚®ãƒ¼å€¤");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.ev.deformation)
   {
     imax[1]+=size.cy;
-    sprintf(str,"•ÏŒ`}");
+    sprintf(str,"å¤‰å½¢å›³");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.disps[0])
   {
     imax[1]+=size.cy;
-    sprintf(str,"‚w•ûŒü•ÏˆÊ [cm]");
+    sprintf(str,"ï¼¸æ–¹å‘å¤‰ä½ [cm]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.disps[1])
   {
     imax[1]+=size.cy;
-    sprintf(str,"‚x•ûŒü•ÏˆÊ [cm]");
+    sprintf(str,"ï¼¹æ–¹å‘å¤‰ä½ [cm]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   if(vp.vflag.nv.disps[2])
   {
     imax[1]+=size.cy;
-    sprintf(str,"‚y•ûŒü•ÏˆÊ [cm]");
+    sprintf(str,"ï¼ºæ–¹å‘å¤‰ä½ [cm]");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   /*if(vp.vflag.nv.mcircle)
   {
     imax[1]+=size.cy;
-    sprintf(str,"ß“_d—Ê}");
+    sprintf(str,"ç¯€ç‚¹é‡é‡å›³");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }*/
   /*if(vp.vflag.nv.mvalue)
   {
     imax[1]+=size.cy;
-    if(globalunit==1.0)         sprintf(str,"ß“_d—Ê’l [tf]");
-    else if(globalunit==SIUNIT) sprintf(str,"ß“_d—Ê’l [kN]");
-    else                        sprintf(str,"ß“_d—Ê’l");
+    if(globalunit==1.0)         sprintf(str,"ç¯€ç‚¹é‡é‡å€¤ [tf]");
+    else if(globalunit==SIUNIT) sprintf(str,"ç¯€ç‚¹é‡é‡å€¤ [kN]");
+    else                        sprintf(str,"ç¯€ç‚¹é‡é‡å€¤");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }*/
   if(vp.vflag.ev.axis)
   {
     imax[1]+=size.cy;
-    sprintf(str,"•”ŞÀ•W²");
+    sprintf(str,"éƒ¨æåº§æ¨™è»¸");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
   for(i=0;i<8;i++)
@@ -9963,9 +9974,9 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     if(vp.vflag.ev.stress[i][0])
     {
       imax[1]+=size.cy;
-      if(globalunit==1.0)         sprintf(str,"²—Í [tf]");
-      else if(globalunit==SIUNIT) sprintf(str,"²—Í [kN]");
-      else                        sprintf(str,"²—Í");
+      if(globalunit==1.0)         sprintf(str,"è»¸åŠ› [tf]");
+      else if(globalunit==SIUNIT) sprintf(str,"è»¸åŠ› [kN]");
+      else                        sprintf(str,"è»¸åŠ›");
       TextOut(hdc,imin[0],imax[1],str,strlen(str));
       break;
     }
@@ -9975,9 +9986,9 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     if(vp.vflag.ev.stress[i][1] || vp.vflag.ev.stress[i][2])
     {
       imax[1]+=size.cy;
-      if(globalunit==1.0)         sprintf(str,"‚¹‚ñ’f—Í [tf]");
-      else if(globalunit==SIUNIT) sprintf(str,"‚¹‚ñ’f—Í [kN]");
-      else                        sprintf(str,"‚¹‚ñ’f—Í");
+      if(globalunit==1.0)         sprintf(str,"ã›ã‚“æ–­åŠ› [tf]");
+      else if(globalunit==SIUNIT) sprintf(str,"ã›ã‚“æ–­åŠ› [kN]");
+      else                        sprintf(str,"ã›ã‚“æ–­åŠ›");
       TextOut(hdc,imin[0],imax[1],str,strlen(str));
       break;
     }
@@ -9987,9 +9998,9 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     if(vp.vflag.ev.stress[i][3])
     {
       imax[1]+=size.cy;
-      if(globalunit==1.0)         sprintf(str,"‚Ë‚¶‚èƒ‚[ƒƒ“ƒg [tfm]");
-      else if(globalunit==SIUNIT) sprintf(str,"‚Ë‚¶‚èƒ‚[ƒƒ“ƒg [kNm]");
-      else                        sprintf(str,"‚Ë‚¶‚èƒ‚[ƒƒ“ƒg");
+      if(globalunit==1.0)         sprintf(str,"ã­ã˜ã‚Šãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ [tfm]");
+      else if(globalunit==SIUNIT) sprintf(str,"ã­ã˜ã‚Šãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ [kNm]");
+      else                        sprintf(str,"ã­ã˜ã‚Šãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ");
       TextOut(hdc,imin[0],imax[1],str,strlen(str));
       break;
     }
@@ -9999,9 +10010,9 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     if(vp.vflag.ev.stress[i][4] || vp.vflag.ev.stress[i][5])
     {
       imax[1]+=size.cy;
-      if(globalunit==1.0)         sprintf(str,"‹È‚°ƒ‚[ƒƒ“ƒg [tfm]");
-      else if(globalunit==SIUNIT) sprintf(str,"‹È‚°ƒ‚[ƒƒ“ƒg [kNm]");
-      else                        sprintf(str,"‹È‚°ƒ‚[ƒƒ“ƒg");
+      if(globalunit==1.0)         sprintf(str,"æ›²ã’ãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ [tfm]");
+      else if(globalunit==SIUNIT) sprintf(str,"æ›²ã’ãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ [kNm]");
+      else                        sprintf(str,"æ›²ã’ãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ");
       TextOut(hdc,imin[0],imax[1],str,strlen(str));
       break;
     }
@@ -10009,7 +10020,7 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
   /*if(vp.vflag.ev.cmqline)
   {
     imax[1]+=size.cy;
-    sprintf(str,"•ªŠ„ü•\¦");
+    sprintf(str,"åˆ†å‰²ç·šè¡¨ç¤º");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }*/
 
@@ -10019,189 +10030,189 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
   if(vp.vflag.ev.srcanrate || vp.vflag.ev.srcancolor)   /*Modified by Ujioka*/
   {
     imax[1]+=size.cy;
-    sprintf(str,"ˆÀ‘S—¦ (’f–ÊŒŸ’è”ä})");
+    sprintf(str,"å®‰å…¨ç‡ (æ–­é¢æ¤œå®šæ¯”å›³)");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
 
     if(mode==ONPRINTER)
     {
-	sprintf(str,"ˆÀ‘S—¦‚Ì–}—á");
+	sprintf(str,"å®‰å…¨ç‡ã®å‡¡ä¾‹");
 #if 1
 	TextOut(hdc,3500,imax[1]+size.cy,str,strlen(str));
-    sprintf(str,"@ : †1.0");
+    sprintf(str,"ã€€ : â‰§1.0");
     TextOut(hdc,3500,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.9`1.0");
+    sprintf(str,"ã€€ : 0.9ï½1.0");
     TextOut(hdc,3500,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.71428`0.9");
+    sprintf(str,"ã€€ : 0.71428ï½0.9");
     TextOut(hdc,3500,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.7`0.71428");
+    sprintf(str,"ã€€ : 0.7ï½0.71428");
     TextOut(hdc,3500,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.6`0.7");
+    sprintf(str,"ã€€ : 0.6ï½0.7");
     TextOut(hdc,3500,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.5`0.6");
+    sprintf(str,"ã€€ : 0.5ï½0.6");
     TextOut(hdc,3500,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"@ : ƒ0.5");
+    sprintf(str,"ã€€ : ï¼œ0.5");
     TextOut(hdc,3500,imax[1]+9*size.cy,str,strlen(str));
 #endif
 #if 0
 /*******FOR BUCKLING SAFETY******/
-    sprintf(str,"@ : †1.0");
+    sprintf(str,"ã€€ : â‰§1.0");
     TextOut(hdc,3500,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.5`1.0");
+    sprintf(str,"ã€€ : 0.5ï½1.0");
     TextOut(hdc,3500,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.2`0.5");
+    sprintf(str,"ã€€ : 0.2ï½0.5");
     TextOut(hdc,3500,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.1`0.2");
+    sprintf(str,"ã€€ : 0.1ï½0.2");
     TextOut(hdc,3500,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.05`0.1");
+    sprintf(str,"ã€€ : 0.05ï½0.1");
     TextOut(hdc,3500,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.02`0.05");
+    sprintf(str,"ã€€ : 0.02ï½0.05");
     TextOut(hdc,3500,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"@ : ƒ0.02");
+    sprintf(str,"ã€€ : ï¼œ0.02");
     TextOut(hdc,3500,imax[1]+9*size.cy,str,strlen(str));
 #endif
     SetTextColor(hdc,RGB(255,0,150));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,3500,imax[1]+3*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(255,150,50));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,3500,imax[1]+4*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(150,150,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,3500,imax[1]+5*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(150,255,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,3500,imax[1]+6*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,255,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,3500,imax[1]+7*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,255,150));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
 	TextOut(hdc,3500,imax[1]+8*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,150,255));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,3500,imax[1]+9*size.cy,str,strlen(str));
     }
 
     else if (mode==ONPREVIEW)
     {
-        sprintf(str,"ˆÀ‘S—¦‚Ì–}—á");
+        sprintf(str,"å®‰å…¨ç‡ã®å‡¡ä¾‹");
     TextOut(hdc,imin[0]+1000,imax[1]+size.cy,str,strlen(str));
 #if 1
-    sprintf(str,"@ : †1.0");
+    sprintf(str,"ã€€ : â‰§1.0");
     TextOut(hdc,imin[0]+1000,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.9`1.0");
+    sprintf(str,"ã€€ : 0.9ï½1.0");
     TextOut(hdc,imin[0]+1000,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.71428`0.9");
+    sprintf(str,"ã€€ : 0.71428ï½0.9");
     TextOut(hdc,imin[0]+1000,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.7`0.71428");
+    sprintf(str,"ã€€ : 0.7ï½0.71428");
     TextOut(hdc,imin[0]+1000,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.6`0.7");
+    sprintf(str,"ã€€ : 0.6ï½0.7");
     TextOut(hdc,imin[0]+1000,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.5`0.6");
+    sprintf(str,"ã€€ : 0.5ï½0.6");
     TextOut(hdc,imin[0]+1000,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"@ : ƒ0.5");
+    sprintf(str,"ã€€ : ï¼œ0.5");
     TextOut(hdc,imin[0]+1000,imax[1]+9*size.cy,str,strlen(str));
 #endif
 #if 0
 /*******FOR BUCKLING SAFETY******/
-    sprintf(str,"@ : †1.0");
+    sprintf(str,"ã€€ : â‰§1.0");
     TextOut(hdc,imin[0]+1000,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.5`1.0");
+    sprintf(str,"ã€€ : 0.5ï½1.0");
     TextOut(hdc,imin[0]+1000,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.2`0.5");
+    sprintf(str,"ã€€ : 0.2ï½0.5");
     TextOut(hdc,imin[0]+1000,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.1`0.2");
+    sprintf(str,"ã€€ : 0.1ï½0.2");
     TextOut(hdc,imin[0]+1000,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.05`0.1");
+    sprintf(str,"ã€€ : 0.05ï½0.1");
     TextOut(hdc,imin[0]+1000,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.02`0.5");
+    sprintf(str,"ã€€ : 0.02ï½0.5");
     TextOut(hdc,imin[0]+1000,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"@ : ƒ0.02");
+    sprintf(str,"ã€€ : ï¼œ0.02");
     TextOut(hdc,imin[0]+1000,imax[1]+9*size.cy,str,strlen(str));
 #endif
 
     SetTextColor(hdc,RGB(255,0,150));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+1000,imax[1]+3*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(255,150,50));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+1000,imax[1]+4*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(255,255,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+1000,imax[1]+5*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(150,255,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+1000,imax[1]+6*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,255,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+1000,imax[1]+7*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,255,150));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+1000,imax[1]+8*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,150,255));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+1000,imax[1]+9*size.cy,str,strlen(str));
     }
     
     else
     {
-    sprintf(str,"ˆÀ‘S—¦‚Ì–}—á");
+    sprintf(str,"å®‰å…¨ç‡ã®å‡¡ä¾‹");
 //    TextOut(hdc,imin[0]+250,imax[1]+size.cy,str,strlen(str));        //ujioka
     TextOut(hdc,imin[0]+500,imax[1]+size.cy,str,strlen(str));
 #if 1
-    sprintf(str,"@ : †1.0");
+    sprintf(str,"ã€€ : â‰§1.0");
     TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.9`1.0");
+    sprintf(str,"ã€€ : 0.9ï½1.0");
     TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.71428`0.9");
+    sprintf(str,"ã€€ : 0.71428ï½0.9");
     TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.7`0.71428");
+    sprintf(str,"ã€€ : 0.7ï½0.71428");
     TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.6`0.7");
+    sprintf(str,"ã€€ : 0.6ï½0.7");
     TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.5`0.6");
+    sprintf(str,"ã€€ : 0.5ï½0.6");
     TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"@ : ƒ0.5");
+    sprintf(str,"ã€€ : ï¼œ0.5");
     TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
 #endif
 #if 0
 /*******FOR BUCKLING SAFETY******/
-    sprintf(str,"@ : †1.0");
+    sprintf(str,"ã€€ : â‰§1.0");
     TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.5`1.0");
+    sprintf(str,"ã€€ : 0.5ï½1.0");
     TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.2`0.5");
+    sprintf(str,"ã€€ : 0.2ï½0.5");
     TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.1`0.2");
+    sprintf(str,"ã€€ : 0.1ï½0.2");
     TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.05`0.1");
+    sprintf(str,"ã€€ : 0.05ï½0.1");
     TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"@ : 0.02`0.05");
+    sprintf(str,"ã€€ : 0.02ï½0.05");
     TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"@ : ƒ0.02");
+    sprintf(str,"ã€€ : ï¼œ0.02");
     TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
 #endif
 
     SetTextColor(hdc,RGB(255,0,150));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(255,150,50));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(255,255,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(150,255,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,255,0));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,255,150));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,150,255));
-    sprintf(str,"¡");
+    sprintf(str,"â– ");
     TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
     }
 
@@ -10223,52 +10234,52 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
   {
     flag=0;
     imax[1]+=size.cy;
-    sprintf(str,"•\¦•”ŞF");
+    sprintf(str,"è¡¨ç¤ºéƒ¨æï¼š");
     /*if(vp.vflag.ev.etype[0])
     {
-      strcat(str,"•â•");
+      strcat(str,"è£œåŠ©");
       flag=1;
     }*/
     if(vp.vflag.ev.etype[1])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"’Œ");
+      strcat(str,"æŸ±");
       flag=1;
     }
     if(vp.vflag.ev.etype[2])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"—À");
+      strcat(str,"æ¢");
       flag=1;
     }
     /*if(vp.vflag.ev.etype[3])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"¬—À");
+      strcat(str,"å°æ¢");
       flag=1;
     }*/
     if(vp.vflag.ev.etype[4])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"ƒuƒŒ[ƒX");
+      strcat(str,"ãƒ–ãƒ¬ãƒ¼ã‚¹");
       flag=1;
     }
     if(vp.vflag.ev.etype[5])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"•Ç");
+      strcat(str,"å£");
       flag=1;
     }
     if(vp.vflag.ev.etype[6])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"°");
+      strcat(str,"åºŠ");
       flag=1;
     }
     /*if(vp.vflag.ev.etype[7])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"’£•Ç");
+      strcat(str,"å¼µå£");
       flag=1;
     }*/
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
@@ -10332,10 +10343,10 @@ if(vp.vflag.nv.conffig)
     }
     imax[1]+=size.cy;
     imax[1]+=size.cy;
-    sprintf(str,"£ˆó‚Íx“_ˆÊ’u‚ğ•\‚·");
+    sprintf(str,"â–²å°ã¯æ”¯ç‚¹ä½ç½®ã‚’è¡¨ã™");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
     imax[1]+=size.cy;
-    sprintf(str,"(X,Y,Z,ƒÆx,ƒÆy,ƒÆz‚Ì‚¤‚¿CX,Y,Z‚ğS‘©‚µ‚Ä‚¢‚é)");
+    sprintf(str,"(X,Y,Z,Î¸x,Î¸y,Î¸zã®ã†ã¡ï¼ŒX,Y,Zã‚’æ‹˜æŸã—ã¦ã„ã‚‹)");
     TextOut(hdc,imin[0],imax[1],str,strlen(str));
   }
 
@@ -10757,56 +10768,56 @@ void savearclmasdxf(FILE *fout,struct viewparam vp,
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"ß“_”Ô†");
+    sprintf(str,"ç¯€ç‚¹ç•ªå·");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.code)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"•”Ş”Ô†");
+    sprintf(str,"éƒ¨æç•ªå·");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.sectioncode)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"’f–Ê”Ô†");
+    sprintf(str,"æ–­é¢ç•ªå·");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.deformation)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"•ÏŒ`}");
+    sprintf(str,"å¤‰å½¢å›³");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.nv.disps[0])
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"‚w•ûŒü•ÏˆÊ [cm]");
+    sprintf(str,"ï¼¸æ–¹å‘å¤‰ä½ [cm]");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.nv.disps[1])
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"‚x•ûŒü•ÏˆÊ [cm]");
+    sprintf(str,"ï¼¹æ–¹å‘å¤‰ä½ [cm]");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.nv.disps[2])
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"‚y•ûŒü•ÏˆÊ [cm]");
+    sprintf(str,"ï¼ºæ–¹å‘å¤‰ä½ [cm]");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.axis)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"•”ŞÀ•W²");
+    sprintf(str,"éƒ¨æåº§æ¨™è»¸");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   for(i=0;i<8;i++)
@@ -10815,9 +10826,9 @@ void savearclmasdxf(FILE *fout,struct viewparam vp,
     {
       code++;
       dmin[1]-=jipitch;
-      if(globalunit==1.0)         sprintf(str,"²—Í [tf]");
-      else if(globalunit==SIUNIT) sprintf(str,"²—Í [kN]");
-      else                        sprintf(str,"²—Í");
+      if(globalunit==1.0)         sprintf(str,"è»¸åŠ› [tf]");
+      else if(globalunit==SIUNIT) sprintf(str,"è»¸åŠ› [kN]");
+      else                        sprintf(str,"è»¸åŠ›");
       outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
       break;
     }
@@ -10828,9 +10839,9 @@ void savearclmasdxf(FILE *fout,struct viewparam vp,
     {
       code++;
       dmin[1]-=jipitch;
-      if(globalunit==1.0)         sprintf(str,"‚¹‚ñ’f—Í [tf]");
-      else if(globalunit==SIUNIT) sprintf(str,"‚¹‚ñ’f—Í [kN]");
-      else                        sprintf(str,"‚¹‚ñ’f—Í");
+      if(globalunit==1.0)         sprintf(str,"ã›ã‚“æ–­åŠ› [tf]");
+      else if(globalunit==SIUNIT) sprintf(str,"ã›ã‚“æ–­åŠ› [kN]");
+      else                        sprintf(str,"ã›ã‚“æ–­åŠ›");
       outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
       break;
     }
@@ -10841,9 +10852,9 @@ void savearclmasdxf(FILE *fout,struct viewparam vp,
     {
       code++;
       dmin[1]-=jipitch;
-      if(globalunit==1.0)         sprintf(str,"‚Ë‚¶‚èƒ‚[ƒƒ“ƒg [tfm]");
-      else if(globalunit==SIUNIT) sprintf(str,"‚Ë‚¶‚èƒ‚[ƒƒ“ƒg [kNm]");
-      else                        sprintf(str,"‚Ë‚¶‚èƒ‚[ƒƒ“ƒg");
+      if(globalunit==1.0)         sprintf(str,"ã­ã˜ã‚Šãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ [tfm]");
+      else if(globalunit==SIUNIT) sprintf(str,"ã­ã˜ã‚Šãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ [kNm]");
+      else                        sprintf(str,"ã­ã˜ã‚Šãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ");
       outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
       break;
     }
@@ -10854,9 +10865,9 @@ void savearclmasdxf(FILE *fout,struct viewparam vp,
     {
       code++;
       dmin[1]-=jipitch;
-      if(globalunit==1.0)         sprintf(str,"‹È‚°ƒ‚[ƒƒ“ƒg [tfm]");
-      else if(globalunit==SIUNIT) sprintf(str,"‹È‚°ƒ‚[ƒƒ“ƒg [kNm]");
-      else                        sprintf(str,"‹È‚°ƒ‚[ƒƒ“ƒg");
+      if(globalunit==1.0)         sprintf(str,"æ›²ã’ãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ [tfm]");
+      else if(globalunit==SIUNIT) sprintf(str,"æ›²ã’ãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ [kNm]");
+      else                        sprintf(str,"æ›²ã’ãƒ¢ãƒ¼ãƒ¡ãƒ³ãƒˆ");
       outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
       break;
     }
@@ -10873,52 +10884,52 @@ void savearclmasdxf(FILE *fout,struct viewparam vp,
     flag=0;
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"•\¦•”ŞF");
+    sprintf(str,"è¡¨ç¤ºéƒ¨æï¼š");
     /*if(vp.vflag.ev.etype[0])
     {
-      strcat(str,"•â•");
+      strcat(str,"è£œåŠ©");
       flag=1;
     }*/
     if(vp.vflag.ev.etype[1])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"’Œ");
+      strcat(str,"æŸ±");
       flag=1;
     }
     if(vp.vflag.ev.etype[2])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"—À");
+      strcat(str,"æ¢");
       flag=1;
     }
     /*if(vp.vflag.ev.etype[3])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"¬—À");
+      strcat(str,"å°æ¢");
       flag=1;
     }*/
     if(vp.vflag.ev.etype[4])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"ƒuƒŒ[ƒX");
+      strcat(str,"ãƒ–ãƒ¬ãƒ¼ã‚¹");
       flag=1;
     }
     if(vp.vflag.ev.etype[5])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"•Ç");
+      strcat(str,"å£");
       flag=1;
     }
     if(vp.vflag.ev.etype[6])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"°");
+      strcat(str,"åºŠ");
       flag=1;
     }
     /*if(vp.vflag.ev.etype[7])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"’£•Ç");
+      strcat(str,"å¼µå£");
       flag=1;
     }*/
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
@@ -13546,51 +13557,51 @@ int saveorganasdxf(FILE *fout,
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"ß“_”Ô†");
+    sprintf(str,"ç¯€ç‚¹ç•ªå·");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.code)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"•”Ş”Ô†");
+    sprintf(str,"éƒ¨æç•ªå·");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.sectioncode)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"’f–Ê”Ô†");
+    sprintf(str,"æ–­é¢ç•ªå·");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.nv.mcircle)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"ß“_d—Ê}");
+    sprintf(str,"ç¯€ç‚¹é‡é‡å›³");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.nv.mvalue)
   {
     code++;
     dmin[1]-=jipitch;
-    if(globalunit==1.0)         sprintf(str,"ß“_d—Ê’l [tf]");
-    else if(globalunit==SIUNIT) sprintf(str,"ß“_d—Ê’l [kN]");
-    else                        sprintf(str,"ß“_d—Ê’l");
+    if(globalunit==1.0)         sprintf(str,"ç¯€ç‚¹é‡é‡å€¤ [tf]");
+    else if(globalunit==SIUNIT) sprintf(str,"ç¯€ç‚¹é‡é‡å€¤ [kN]");
+    else                        sprintf(str,"ç¯€ç‚¹é‡é‡å€¤");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.axis)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"•”ŞÀ•W²");
+    sprintf(str,"éƒ¨æåº§æ¨™è»¸");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.cmqline)
   {
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"•ªŠ„ü•\¦");
+    sprintf(str,"åˆ†å‰²ç·šè¡¨ç¤º");
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
   }
   if(vp.vflag.ev.etype[0] ||
@@ -13605,52 +13616,52 @@ int saveorganasdxf(FILE *fout,
     flag=0;
     code++;
     dmin[1]-=jipitch;
-    sprintf(str,"•\¦•”ŞF");
+    sprintf(str,"è¡¨ç¤ºéƒ¨æï¼š");
     /*if(vp.vflag.ev.etype[0])
     {
-      strcat(str,"•â•");
+      strcat(str,"è£œåŠ©");
       flag=1;
     }*/
     if(vp.vflag.ev.etype[1])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"’Œ");
+      strcat(str,"æŸ±");
       flag=1;
     }
     if(vp.vflag.ev.etype[2])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"—À");
+      strcat(str,"æ¢");
       flag=1;
     }
     /*if(vp.vflag.ev.etype[3])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"¬—À");
+      strcat(str,"å°æ¢");
       flag=1;
     }*/
     if(vp.vflag.ev.etype[4])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"ƒuƒŒ[ƒX");
+      strcat(str,"ãƒ–ãƒ¬ãƒ¼ã‚¹");
       flag=1;
     }
     if(vp.vflag.ev.etype[5])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"•Ç");
+      strcat(str,"å£");
       flag=1;
     }
     if(vp.vflag.ev.etype[6])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"°");
+      strcat(str,"åºŠ");
       flag=1;
     }
     /*if(vp.vflag.ev.etype[7])
     {
       if(flag) strcat(str,", ");
-      strcat(str,"’£•Ç");
+      strcat(str,"å¼µå£");
       flag=1;
     }*/
     outputtextasdxf(fout,str,code,dmin[0],dmin[1],0.0,jiheight);
@@ -15859,10 +15870,10 @@ void getincrement(HWND hdwnd,int *laps,double *dsafety)
   char data[80];
 
   GetDlgItemText(hdwnd,ID_LAPS,data,80);
-  *laps=(int)strtol(data,NULL,10);
+  if(laps!=NULL)*laps=(int)strtol(data,NULL,10);
 
   GetDlgItemText(hdwnd,ID_SAFETY,data,80);
-  *dsafety=strtod(data,NULL);
+  if(dsafety!=NULL)*dsafety=strtod(data,NULL);
 
   return;
 }/*getincrement*/
@@ -16103,7 +16114,7 @@ MessageBox(NULL,str,"Band",MB_OK);
             fprintf(fband,"m=%ld, ",m);
             fprintf(fband,"n=%ld, ",n);
             fprintf(fband,"k=%ld\n",k);
-            fprintf(fband,"%lds–Ú‚ğ%lds–Ú‚Æ“ü‚ê‘Ö‚¦‚½Œ‹‰Ê\n",m,k);
+            fprintf(fband,"%ldè¡Œç›®ã‚’%ldè¡Œç›®ã¨å…¥ã‚Œæ›¿ãˆãŸçµæœ\n",m,k);
             for(s=0;s<nnode;s++)
             {
               for(t=0;t<=s;t++)
@@ -17504,7 +17515,7 @@ int arclm101(struct arclmframe *af,int idinput)
   msize=6*nnode;                           /*SIZE OF GLOBAL MATRIX.*/
 
   gmtx=(struct gcomponent *)          /*DIAGONALS OF GLOBAL MATRIX.*/
-        malloc(msize*sizeof(struct gcomponent));
+		malloc(msize*sizeof(struct gcomponent));
   gvct=(double *)malloc(msize*sizeof(double));      /*GLOBAL VECTOR*/
 
   /*****CMQ ZOBUN*****/
@@ -17587,7 +17598,7 @@ int arclm101(struct arclmframe *af,int idinput)
     if(nreact!=af->nreact)
     {
       MessageBox(NULL,"Input Error.","Arclm101",MB_OK);
-      return 0;
+	  return 0;
     }
   }
 
@@ -17640,9 +17651,9 @@ int arclm101(struct arclmframe *af,int idinput)
   for(nlap=1;nlap<=laps;nlap++)
   {
     /*sprintf(fname,"arclm%d.lap",nlap);*/
-    /*fout=fopen(fname,"w");*/                          /*LAP FILE*/
+	/*fout=fopen(fname,"w");*/                          /*LAP FILE*/
 
-    /*af->nlaps=nlap;*/
+	/*af->nlaps=nlap;*/
     af->nlaps=1;
 
     sprintf(string,"LAP:%d/%d",nlap,laps);
@@ -17651,9 +17662,9 @@ int arclm101(struct arclmframe *af,int idinput)
     if(ffig!=NULL) fprintf(ffig,"%s",string);
 
     setincrement((wmenu.childs+2)->hwnd,
-                 laps,nlap,dsafety,(nlap*dsafety));
+				 laps,nlap,dsafety,(nlap*dsafety));
 
-    memory1=availablephysicalmemory("REMAIN:");  /*MEMORY AVAILABLE*/
+	memory1=availablephysicalmemory("REMAIN:");  /*MEMORY AVAILABLE*/
 
     for(i=1;i<=msize;i++)           /*GLOBAL MATRIX INITIALIZATION.*/
     {
@@ -17687,27 +17698,11 @@ int arclm101(struct arclmframe *af,int idinput)
       inputnode(ddisp,elem.node[0]);                         /*HEAD*/
       inputnode(ddisp,elem.node[1]);                         /*TAIL*/
 
-      elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
-
-/*FOR STAINEDGLASS TEST CASE.*/
-/*
-if(nlap==1 && i==1) MessageBox(NULL,"Clearance for Staindglass","Arclm101",MB_OK);
-if(nlap*dsafety<0.07)
-{
-  if(elem.sect->code==611 ||
-     elem.sect->code==612 ||
-     elem.sect->code==613 ||
-     elem.sect->code==614 ||
-     elem.sect->code==615)
-  {
-    initarea = elem.sect->area;
-    elem.sect->area=0.0;
-  }
-}*/
+	  elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
       if((wdraw.childs+1)->hdcC!=NULL)     /*DRAW DEFORMED ELEMENT.*/
       {
-        drawglobalwire((wdraw.childs+1)->hdcC,
+		drawglobalwire((wdraw.childs+1)->hdcC,
                        (wdraw.childs+1)->vparam,
                        *af,elem,255,255,255,
                                 255,255,255,0,ONSCREEN);
@@ -17723,7 +17718,7 @@ if(nlap*dsafety<0.07)
 
       tmatrix=transmatrix(drccos);         /*TRANSFORMATION MATRIX.*/
       estiff=assememtx(elem);          /*ELASTIC MATRIX OF ELEMENT.*/
-      estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
+	  estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
       estiff=assempmtx(elem,estiff);          /*ADD PLASTIC MATRIX.*/
       estiff=transformation(estiff,tmatrix);       /*[K]=[Tt][k][T]*/
 
@@ -17736,33 +17731,18 @@ if(nlap*dsafety<0.07)
       for(ii=0;ii<=11;ii++) free(*(estiff+ii));
       free(estiff);
 
-/*FOR STAINEDGLASS TEST CASE.*/
-/*if(nlap*dsafety<0.1)
-{
-  if(elem.sect->code==611 ||
-     elem.sect->code==612 ||
-     elem.sect->code==613 ||
-     elem.sect->code==614 ||
-     elem.sect->code==615)
-  {
-    elem.sect->area=initarea;
-  }
-}*/
     }
     sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
     laptime(string,t0);
 
     overlayhdc(*(wdraw.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
 
-    /*errormessage("ASSEMBLAGE GLOBAL VECTOR.");*/
-#if 1
-    /*****CMQ ZOBUN*****/
+	/*****CMQ ZOBUN*****/
     for(i=0;i<=msize-1;i++)
     {
       *(gvct+i)=*(gvctcmq+i);                      /*GLOBAL VECTOR.*/
     }
-  	/*****CMQ ZOBUN*****/
-#endif
+
 
 	assemconf(confs,gvct,dsafety,nnode);           /*GLOBAL VECTOR.*/
 //  assemconf201(confs,gvct,dsafety,nnode);        /*GLOBAL VECTOR.*/
@@ -17796,14 +17776,10 @@ if(nlap*dsafety<0.07)
 
       fclose(fin);
       fclose(fout);
-      fclose(ffig);
-      /*fclose(felem);*/
-      /*fclose(fdisp);*/
-      /*fclose(freact);*/
+	  fclose(ffig);
 
       gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
-      free(gvct);
-      /*free(confs);*/
+	  free(gvct);
 
       memory2=availablephysicalmemory("REMAIN:");
       sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory2));
@@ -17814,65 +17790,27 @@ if(nlap*dsafety<0.07)
 
     laptime("OUTPUT INTO FILE.",t0);
 
-if(ferr!=NULL) fprintf(ferr,"LAP %3d / %3d",nlap,laps);
+	if(ferr!=NULL) fprintf(ferr,"LAP %3d / %3d",nlap,laps);
 
-    if(fout!=NULL) fprintf(fout,"\"DISPLACEMENT\"\n");
-    outputdisp(gvct,fout,nnode,nodes);  /*INCREMENTAL DISPLACEMENT.*/
-    /*while(!GetAsyncKeyState(VK_LBUTTON))
-    ;*/                                   /*LEFT CLICK TO CONTINUE.*/
+	if(fout!=NULL) fprintf(fout,"\"DISPLACEMENT\"\n");
+	outputdisp(gvct,fout,nnode,nodes);  /*INCREMENTAL DISPLACEMENT.*/
 
     if(fout!=NULL) fprintf(fout,"\"STRESS\"\n");
-    for(i=1;i<=nelem;i++)                   /*STRESS OUTPUT,UPDATE.*/
+	for(i=1;i<=nelem;i++)                   /*STRESS OUTPUT,UPDATE.*/
     {
-      inputelem(elems,melem,i-1,&elem);
+	  inputelem(elems,melem,i-1,&elem);
 
       inputnode(ddisp,elem.node[0]);
       inputnode(ddisp,elem.node[1]);
 
       elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
-/*FOR STAINEDGLASS TEST CASE.*/
-/*if(nlap*dsafety<0.1)
-{
-  if(elem.sect->code==611 ||
-     elem.sect->code==612 ||
-     elem.sect->code==613 ||
-     elem.sect->code==614 ||
-     elem.sect->code==615)
-  {
-    initarea = elem.sect->area;
-    elem.sect->area=0.0;
-  }
-}*/
 
-      estress=elemstress(&elem,gvct,melem,fout,func);
-
-/*FOR STAINEDGLASS TEST CASE.*/
-/*if(elem.code==1004 ||
-   elem.code==1007 ||
-   elem.code==1011 ||
-   elem.code==1013 ||
-   elem.code==1016)
-{
-  fprintf(ferr," ELEM %5ld Nz %12.8f Mx %12.8f",
-		  elem.code,elem.stress[0][0],elem.stress[0][4]);
-}*/
+	  estress=elemstress(&elem,gvct,melem,fout,func);
 
       outputstress(elem,estress,fout,func);
       free(estress);
 
-/*FOR STAINEDGLASS TEST CASE.*/
-/*if(nlap*dsafety<0.1)
-{
-  if(elem.sect->code==611 ||
-     elem.sect->code==612 ||
-     elem.sect->code==613 ||
-     elem.sect->code==614 ||
-     elem.sect->code==615)
-  {
-    elem.sect->area=initarea;
-  }
-}*/
     }
     if(wsurf.hwnd!=NULL)
     {
@@ -17882,9 +17820,7 @@ if(ferr!=NULL) fprintf(ferr,"LAP %3d / %3d",nlap,laps);
                        SURFACEX,SURFACEY,SURFACEZ,
                        af->fsurface);
       overlayhdc(*(wsurf.childs+1),SRCPAINT);     /*UPDATE DISPLAY.*/
-    }
-    /*while(!GetAsyncKeyState(VK_LBUTTON))
-	;*/                                   /*LEFT CLICK TO CONTINUE.*/
+	}
 
 	if(fout!=NULL) fprintf(fout,"\"REACTION\"\n");
 	outputreaction(gmtx,gvct,nodes,confs,dreact,fout,nnode);
@@ -17902,38 +17838,9 @@ if(ferr!=NULL) fprintf(ferr,"LAP %3d / %3d",nlap,laps);
 		strcat(string,s);
 	  }
 	  if(fout!=NULL) fprintf(fout,"%s\n",string);
-
-	  if(ffig!=NULL && (nodes+ii)->code==108)
-	  /*if(ffig!=NULL && (nodes+ii)->code==101)*/
-	  /*if(ffig!=NULL && (nodes+ii)->code==164)*/ /*2FL*/
-	  /*if(ffig!=NULL && (nodes+ii)->code==162)*/ /*3FL*/
-	  /*if(ffig!=NULL && (nodes+ii)->code==194)*/ /*4FL*/
-	  /*if(ffig!=NULL && (nodes+ii)->code==226)*/ /*5FL*/
-	  /*if(ffig!=NULL && (nodes+ii)->code==258)*/ /*RFL*/
-	  {
-		fprintf(ffig," NODE:%5ld %s\n",(nodes+ii)->code,string);
-	  }
-
-/*FOR STAINEDGLASS TEST CASE.*/
-/*if(ferr!=NULL &&
-   (nodes+ii)->code==119 ||
-   (nodes+ii)->code==128 ||
-   (nodes+ii)->code==136 ||
-   (nodes+ii)->code==145)
-{
-  fprintf(ferr," NODE %5ld Ux %12.8f",(nodes+ii)->code,*(ddisp+6*ii+0));
-}*/
-if(ferr!=NULL &&
-   (nodes+ii)->code==122 ||
-   (nodes+ii)->code==155 ||
-   (nodes+ii)->code==192)
-{
-  fprintf(ferr," NODE %5ld Ux %12.8f",(nodes+ii)->code,*(ddisp+6*ii+0));
-  /*fprintf(ferr," NODE %5ld Uy %12.8f",(nodes+ii)->code,*(ddisp+6*ii+1));*/
-}
 	}
 
-if(ferr!=NULL) fprintf(ferr,"\n");
+	if(ferr!=NULL) fprintf(ferr,"\n");
 
 	t1=laptime("\0",t0);
 
@@ -17947,13 +17854,11 @@ if(ferr!=NULL) fprintf(ferr,"\n");
 	  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
 	  {
 		fclose(fin);
-		/*fclose(felem);*/
-		/*fclose(fdisp);*/
-		/*fclose(freact);*/
+
 
 		gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
 		free(gvct);
-        /*free(confs);*/
+
 
         errormessage(" ");
         errormessage("ABORTED.");
@@ -17968,9 +17873,7 @@ if(ferr!=NULL) fprintf(ferr,"\n");
       t2=clock();
       time=(t2-t1)/CLK_TCK;
       if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
-    }
-
-    /*fclose(fout);*/
+	}
   }                                        /*REPEAT UNTIL INSTABLE.*/
 
   if((wdraw.childs+1)->hdcC!=NULL &&
@@ -17999,13 +17902,9 @@ if(ferr!=NULL) fprintf(ferr,"\n");
   }
 
   fclose(fin);
-  /*fclose(felem);*/
-  /*fclose(fdisp);*/
-  /*fclose(freact);*/
 
   gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
-  /*free(gvct);*/
-  /*free(confs);*/
+
 
   af->eigenvec=(double **)malloc(1*sizeof(double *));
   *((af->eigenvec)+0)=gvct;
@@ -18586,8 +18485,8 @@ else              safety-=dsafety;
       {
       estress=elemstressbc(&elem,gvct,melem,fout,fsrf,func,0);
       /*
-        •Ö‹XãNcr=0‚Æ‚µA‚±‚Ìê‡~•š‹È–Ê‚ÍC³‚µ‚È‚¢B
-        (updatestressbc,coefficientsbc‚Å‚ÌğŒ•ªŠò‚É‚æ‚é)
+        ä¾¿å®œä¸ŠNcr=0ã¨ã—ã€ã“ã®å ´åˆé™ä¼æ›²é¢ã¯ä¿®æ­£ã—ãªã„ã€‚
+        (updatestressbc,coefficientsbcã§ã®æ¡ä»¶åˆ†å²ã«ã‚ˆã‚‹)
       */
       }
 	/***UJIOKA***/
@@ -19665,12 +19564,12 @@ int arclm203(struct arclmframe *af,int idinput)
   double *weight;    /*Arc-Length weight parameter*/
   double *gvct,*gvct2,*lastgvct,*cmqvct,*evct,*pvct,*dpvct,*lastdpvct,*tarf,*truef,*lasttarf,*ue,*up,*re,*rp;
   /*GLOBAL VECTOR*/
-  /*pvct:P vector Šî€‰×dƒxƒNƒgƒ‹*/
-  /*dpvct:dP vector ‘•ª‰×dƒxƒNƒgƒ‹*/
-  /*tarf:target force vector –Ú•W“_‚Ì‰×d*/
-  /*lasttarf:target force vector ‘Olap‚Ìû‘©‚Ì–Ú•W“_‚Ì‰×d*/
-  /*truef:true force vector •ÏŒ`‚©‚çZo‚µ‚½“à—Í‡Œv‚Ì^‚Ì‰×d*/
-  /*ubf:unbalanced force vector –Ú•W“_‚Æ^‚Ì‰×d‚ÌŠÔ‚Ì•s’Ş‡—Í*/
+  /*pvct:P vector åŸºæº–è·é‡ãƒ™ã‚¯ãƒˆãƒ«*/
+  /*dpvct:dP vector å¢—åˆ†è·é‡ãƒ™ã‚¯ãƒˆãƒ«*/
+  /*tarf:target force vector ç›®æ¨™ç‚¹ã®è·é‡*/
+  /*lasttarf:target force vector å‰lapã®åæŸæ™‚ã®ç›®æ¨™ç‚¹ã®è·é‡*/
+  /*truef:true force vector å¤‰å½¢ã‹ã‚‰ç®—å‡ºã—ãŸå†…åŠ›åˆè¨ˆã®çœŸã®è·é‡*/
+  /*ubf:unbalanced force vector ç›®æ¨™ç‚¹ã¨çœŸã®è·é‡ã®é–“ã®ä¸é‡£åˆåŠ›*/
   double **drccos,**drccosinit,**estiff,**estiff2,**gstiff,*estress2,**tt;
   double determinant,sign,lastsign,safety,dsafety;
   double arcsum,arclength,arcsign;
@@ -19946,8 +19845,8 @@ int arclm203(struct arclmframe *af,int idinput)
 		  *(estress2+(6*ii+jj))=elem.stress[ii][jj];
 		}
 	  }
-	  /*estress:•”Ş’[—ÍCMQ{df}.*/
-	  /*estress2:•”Ş’[—ÍCMQ{f}={f+df}.*/
+	  /*estress:éƒ¨æç«¯åŠ›CMQ{df}.*/
+	  /*estress2:éƒ¨æç«¯åŠ›CMQ{f}={f+df}.*/
 	  /*laptime("OUTPUT INTO FILE.",t0);*/
 	  /*if(nlap==laps && fout!=NULL)
 	  {
@@ -20060,7 +19959,7 @@ int arclm203(struct arclmframe *af,int idinput)
 
 	overlayhdc(*(wdraw.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
 
-	/*—\‘ªqŒvZ*/
+	/*äºˆæ¸¬å­è¨ˆç®—*/
 	if(iteration==1)
 	{
 	  /*
@@ -20076,7 +19975,7 @@ int arclm203(struct arclmframe *af,int idinput)
 	  }
 	  */
 
-	  assemconf(confs,pvct,1.0,nnode);/*pvct:‘•ª‰×ddƒ©P‚ÌŠî€‚Æ‚È‚é‰×dƒxƒNƒgƒ‹P “¯lap‚Å‚Íí‚ÉXV‚¹‚¸‚É•Û‚·‚é*/
+	  assemconf(confs,pvct,1.0,nnode);/*pvct:å¢—åˆ†è·é‡dÎ›Pã®åŸºæº–ã¨ãªã‚‹è·é‡ãƒ™ã‚¯ãƒˆãƒ«P åŒlapã§ã¯å¸¸ã«æ›´æ–°ã›ãšã«ä¿æŒã™ã‚‹*/
 
 	  bucklingflag=0;
 	  residual=0;
@@ -20084,8 +19983,8 @@ int arclm203(struct arclmframe *af,int idinput)
 	  {
 		*(up+i)=*(pvct+i);
 		if((confs+i)->iconf==1) *(truef+ii)=0.0;
-		*(evct+i)=*(tarf+i)-*(truef+i);   /*unblf:”ñ•½t—Í-E@UNBALANCED FORCE.*/
-		residual+=*(evct+i)**(evct+i);   /*residual:c·@”ñ•½t—Í‚Ìƒmƒ‹ƒ€‚Ì“ñæ*/
+		*(evct+i)=*(tarf+i)-*(truef+i);   /*unblf:éå¹³è¡¡åŠ›-Eã€€UNBALANCED FORCE.*/
+		residual+=*(evct+i)**(evct+i);   /*residual:æ®‹å·®ã€€éå¹³è¡¡åŠ›ã®ãƒãƒ«ãƒ ã®äºŒä¹—*/
 		*(ue+i)=*(evct+i);
 	  }
 	  if(fout!=NULL) fprintf(fonl,"RESIDUAL=%12.9f\n",residual);
@@ -20152,7 +20051,7 @@ int arclm203(struct arclmframe *af,int idinput)
 	  }
 
 
-	  if(lastsign<sign && nlap!=1)/*Å‰‚ÌC³qŒvZ‚É‘O‚Ìlap‚©‚ç‚Ìpivot‚Ì•„†•Ï‰»‚ªŒŸo‚³‚ê‚½ê‡À‹ü“_¸Z(PIN-POINTING)ŠJn*/
+	  if(lastsign<sign && nlap!=1)/*æœ€åˆã®ä¿®æ­£å­è¨ˆç®—æ™‚ã«å‰ã®lapã‹ã‚‰ã®pivotã®ç¬¦å·å¤‰åŒ–ãŒæ¤œå‡ºã•ã‚ŒãŸå ´åˆåº§å±ˆç‚¹ç²¾ç®—(PIN-POINTING)é–‹å§‹*/
 	  {
 		bucklingflag=sign;
 		fprintf(fbcl,"\nLAP:%d/%d\n",nlap,laps);
@@ -20186,14 +20085,14 @@ int arclm203(struct arclmframe *af,int idinput)
 	  {
 		if((confs+ii)->iconf!=1)
 		{
-			arcsum+=*(weight+ii)*(*(up+ii))*(*(up+ii));/*•ÏˆÊƒXƒP[ƒŠƒ“ƒOU_p*G*U_p*/
+			arcsum+=*(weight+ii)*(*(up+ii))*(*(up+ii));/*å¤‰ä½ã‚¹ã‚±ãƒ¼ãƒªãƒ³ã‚°U_p*G*U_p*/
 		}
 	  }
 	  if(fout!=NULL) fprintf(fonl,"ARCSUM=%12.9f\n",arcsum);
-	  lambda=arclength/sqrt(arcsum);/*‰×d”{—¦dƒ©=ƒ¢/ã(U_p*weight*U_p+ƒÁ)*/
+	  lambda=arclength/sqrt(arcsum);/*è·é‡å€ç‡dÎ›=Î”/âˆš(U_p*weight*U_p+Î³)*/
 	  if(fout!=NULL) fprintf(fonl,"LAMBDA=%12.9f\n",lambda);
 
-	  /*—\‘ªq•„†Œˆ’è*/
+	  /*äºˆæ¸¬å­ç¬¦å·æ±ºå®š*/
 	  if(nlap==1)
 	  {
 		arcsign=1.0;
@@ -20221,11 +20120,11 @@ int arclm203(struct arclmframe *af,int idinput)
 	  {
 		if((confs+ii)->iconf!=1)
 		{
-		  *(gvct+ii)*=*(up+ii)*lambda*arcsign;/*gvct:‘•ª•ÏˆÊdƒ©U_p*/
+		  *(gvct+ii)*=*(up+ii)*lambda*arcsign;/*gvct:å¢—åˆ†å¤‰ä½dÎ›U_p*/
 		  *(lastgvct+ii)=*(gvct+ii);
-		  *(dpvct+ii)=*(pvct+ii)*lambda*arcsign;/*dpvct:‘•ª‰×ddƒ©P*/
+		  *(dpvct+ii)=*(pvct+ii)*lambda*arcsign;/*dpvct:å¢—åˆ†è·é‡dÎ›P*/
 		  *(lastdpvct+ii)=*(dpvct+ii);
-		  *(tarf+ii)+=*(dpvct+ii);/*tarf:‘•ªŒã‚Ì–Ú•W‰×dP+dP*/
+		  *(tarf+ii)+=*(dpvct+ii);/*tarf:å¢—åˆ†å¾Œã®ç›®æ¨™è·é‡P+dP*/
 		}
 	  }
 
@@ -20240,7 +20139,7 @@ int arclm203(struct arclmframe *af,int idinput)
 		}
 	  }
 	}
-	/*C³qŒvZ*/
+	/*ä¿®æ­£å­è¨ˆç®—*/
 	if(iteration!=1)
 	{
 	  /*
@@ -20262,8 +20161,8 @@ int arclm203(struct arclmframe *af,int idinput)
 	  {
 		*(up+i)=*(pvct+i);
 		if((confs+i)->iconf==1) *(truef+i)=0.0;
-		*(evct+i)=*(tarf+i)-*(truef+i);   /*unblf:”ñ•½t—Í-E@UNBALANCED FORCE.*/
-		residual+=*(evct+i)**(evct+i);   /*residual:c·@”ñ•½t—Í‚Ìƒmƒ‹ƒ€‚Ì“ñæ*/
+		*(evct+i)=*(tarf+i)-*(truef+i);   /*unblf:éå¹³è¡¡åŠ›-Eã€€UNBALANCED FORCE.*/
+		residual+=*(evct+i)**(evct+i);   /*residual:æ®‹å·®ã€€éå¹³è¡¡åŠ›ã®ãƒãƒ«ãƒ ã®äºŒä¹—*/
 		*(ue+i)=*(evct+i);
 	  }
 	  if(fout!=NULL) fprintf(fonl,"RESIDUAL=%12.9f\n",residual);
@@ -20343,20 +20242,20 @@ int arclm203(struct arclmframe *af,int idinput)
 	  }
 
 
-		/*•s•½tc·Å¬–@*/
+		/*ä¸å¹³è¡¡æ®‹å·®æœ€å°æ³•*/
 		upue=0;
 		upup=*(weight+msize);
 		for(ii=0;ii<=msize;ii++)
 		{
 		  if((confs+ii)->iconf!=1)
 		  {
-			upue+=*(weight+ii)*(*(up+ii))*(*(ue+ii));/*U_p*G*ƒÂU_e*/
+			upue+=*(weight+ii)*(*(up+ii))*(*(ue+ii));/*U_p*G*Î´U_e*/
 			upup+=*(weight+ii)*(*(up+ii))*(*(up+ii));/*U_p*G*U_p*/
 			/*if(fout!=NULL) fprintf(fonl,"gvct=%12.9f ubf=%12.9f\n",*(gvct+ii),*(ubf+ii));*/
 		  }
 		}
 		if(fout!=NULL) fprintf(fonl,"upue=%12.9f upup=%12.9f\n",upue,upup);
-		lambda=-upue/upup;/*‰×d”{—¦ƒÂƒ©=(U_p*ƒÂU_e)/(U_p*U_p)*/
+		lambda=-upue/upup;/*è·é‡å€ç‡Î´Î›=(U_p*Î´U_e)/(U_p*U_p)*/
 
 
 	  if(fout!=NULL) fprintf(fonl,"LAMBDA=%12.9f\n",lambda);
@@ -20364,9 +20263,9 @@ int arclm203(struct arclmframe *af,int idinput)
 	  {
 		if((confs+ii)->iconf!=1)
 		{
-		  *(gvct+ii)=*(up+ii)*lambda+*(ue+ii);/*gvct:‘•ª•ÏˆÊƒÂU_e+ƒÂƒ©U_p*/
-		  *(dpvct+ii)=*(pvct+ii)*lambda;/*dpvct:‘•ª‰×dƒÂƒ©P*/
-		  *(tarf+ii)+=*(dpvct+ii);/*tarf:‘•ªŒã‚Ì‰×dP+dP*/
+		  *(gvct+ii)=*(up+ii)*lambda+*(ue+ii);/*gvct:å¢—åˆ†å¤‰ä½Î´U_e+Î´Î›U_p*/
+		  *(dpvct+ii)=*(pvct+ii)*lambda;/*dpvct:å¢—åˆ†è·é‡Î´Î›P*/
+		  *(tarf+ii)+=*(dpvct+ii);/*tarf:å¢—åˆ†å¾Œã®è·é‡P+dP*/
 		}
 	  }
 	  if(fonl!=NULL)
@@ -20378,7 +20277,7 @@ int arclm203(struct arclmframe *af,int idinput)
 		  *(tarf+(6*i+0)),*(tarf+(6*i+1)),*(tarf+(6*i+2)),
 		  *(tarf+(6*i+3)),*(tarf+(6*i+4)),*(tarf+(6*i+5)));
 		}
-		  /*tarf:‘O‚Ìiteration‚Ì‘•ª‰×d‚ğ‘«‚µ‚½ŠO—Í*/
+		  /*tarf:å‰ã®iterationã®å¢—åˆ†è·é‡ã‚’è¶³ã—ãŸå¤–åŠ›*/
 	  }
 	}
 
@@ -20912,6 +20811,10 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
   }
+  for (i = 0; i < 6*(af->nnode); i++)
+  {
+	*((af->constraintmain) + i) = i;
+  }
   for(i=1;i<=(af->nconstraint);i++) /*CONF VECTOR:CONFINEMENT,VALUE.*/
   {
 	data=fgetsbrk(ftext,&n);
@@ -20953,7 +20856,13 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	free(data);
   }
   /*LONGREACTION:UNDER CONSTRUCTION.*/
-
+  for (i = 0; i < 6*(af->nnode); i++)
+  {
+	if (*((af->constraintmain) + i) != i)
+	{
+	  (af->confs + i)->iconf = (signed char)1;
+	}
+  }
   return;
 }/*inputtexttomemory*/
 
@@ -21928,7 +21837,7 @@ void initialshell(struct oshell *shells,
   }
 
   return;
-}/*initialelem*/
+}/*initialshell*/
 
 void initialreact(FILE *fin,double *dreact,int nreact)
 /*ASSEMBLAGE LONG REACTIONS.*/
@@ -22042,10 +21951,11 @@ void inputelem(struct owire *elems,
 {
   int i;
 
+  elem->nnod=2;                                      /*KUTOMI*/
   elem->code=(elems+offset)->code;                  /*ELEMENT CODE.*/
   elem->loff=offset;
-  elem->nnod=2;                                  /*KUTOMI*/
   elem->sect=(elems+offset)->sect;               /*SECTION POINTER.*/
+
   elem->node[0]=(elems+offset)->node[0];            /*HEAD POINTER.*/
   elem->node[1]=(elems+offset)->node[1];            /*TAIL POINTER.*/
   elem->cangle=(elems+offset)->cangle;               /*COORD ANGLE.*/
@@ -22064,7 +21974,7 @@ void inputelem(struct owire *elems,
     }
 	for(i=0;i<6;i++)                                      /*STRESS.*/
 	{
-      elem->stress[0][i]=(melem+offset)->stress[0][i];
+	  elem->stress[0][i]=(melem+offset)->stress[0][i];
 	  elem->stress[1][i]=(melem+offset)->stress[1][i];
 	}
   }
@@ -22097,13 +22007,6 @@ void inputshell(struct oshell *shells,
 	shell->node[i]=(shells+offset)->node[i];
   }
 
-  for(i=0;i<shell->nnod;i++)
-  {
-	shell->Ee[i]=(shells+offset)->Ee[i];
-	shell->Ep[i]=(shells+offset)->Ep[i];
-  }
-
-
   if(mshell!=NULL)
   {
 	for(i=0;i<shell->nnod;i++)
@@ -22120,7 +22023,7 @@ void inputshell(struct oshell *shells,
 	{
 	  for(j=0;j<6;j++)                                      /*STRESS.*/
 	  {
-		shell->stress[i][j]=(shells+offset)->stress[i][j];
+		shell->stress[i][j]=0.0;
 	  }
 	}
   }
@@ -22961,7 +22864,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 	}
 
 
-	/*Zienkiewicz‚ç‚Ì”ñ“K‡OŠpŒ`—v‘fT-9N*/
+	/*Zienkiewiczã‚‰ã®éé©åˆä¸‰è§’å½¢è¦ç´ T-9N*/
 #if 0
 	for(i=0;i<3;i++)
 	{
@@ -23052,7 +22955,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 #endif
 
 
-	/*Stricklin/Dhatt‚ç‚Ì—£UKirchhoff‰¼’èOŠpŒ`(DKT:Discrete Kirchhoff Triangular)—v‘fT-9D*/
+	/*Stricklin/Dhattã‚‰ã®é›¢æ•£Kirchhoffä»®å®šä¸‰è§’å½¢(DKT:Discrete Kirchhoff Triangular)è¦ç´ T-9D*/
 #if 1
 	for(i=0;i<3;i++)
 	{
@@ -23153,7 +23056,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 }
 
 void addktemtx(double **Ke,double E,double t,double det)
-{   /*–Ê“à‰ñ“]ˆÀ’è‰»—ps—ñ*/
+{   /*é¢å†…å›è»¢å®‰å®šåŒ–ç”¨è¡Œåˆ—*/
 	*(*(Ke+5)+5)=0.03*E*t*det;
 	*(*(Ke+5)+11)=-0.015*E*t*det;
 	*(*(Ke+5)+17)=*(*(Ke+5)+11);
@@ -23167,175 +23070,6 @@ void addktemtx(double **Ke,double E,double t,double det)
 }
 
 
-#if 0
-double **finertial(struct oshell shell,
-				   double **drccos, double **drccosinit,
-				   double *gvel_m, double *gacc_m)
-/*ASSEMBLAGE ELASTIC MATRIX.*/
-{
-  int i,j,k,ii;
-  double **m,**exy,**N,**Nt,**NtN,**L;
-  double t,hiju;
-  double Ip_0,Mp;
-  double **Ip;
-  double *b,*c;
-  double *a;
-  double det;
-  double Liij,Lijj,Liik,Likk,Lijk;
-
-  double *udvct;
-  double *uddvct;
-  double **udspin;
-
-
-
-  /*WEIGHT OF EACH NODE*/
-  a=(double *)malloc(7*sizeof(double));
-  *(a+0)=27.0/60.0;
-  *(a+1)=8.0/60.0;
-  *(a+2)=8.0/60.0;
-  *(a+3)=8.0/60.0;
-  *(a+4)=3.0/60.0;
-  *(a+5)=3.0/60.0;
-  *(a+6)=3.0/60.0;
-  /*TRIANGLE COORDINATION*/
-  L=(double **)malloc(7*sizeof(double *));
-  for(i=0;i<7;i++)
-  {
-	*(L+i)=(double *)malloc(3*sizeof(double));
-  }
-  for(i=0;i<3;i++)
-  {
-	*(*(L+0)+i)=1.0/3.0;
-	for(j=0;j<3;j++)
-	{
-	  if(i==j)
-	  {
-		*(*(L+(4+j))+i)=1.0;
-	  }
-	  else
-	  {
-		*(*(L+(4+j))+i)=0.0;
-	  }
-
-	  if((i+1)%3==j)
-	  {
-		*(*(L+(1+j))+i)=0.0;
-	  }
-	  else
-	  {
-		*(*(L+(1+j))+i)=0.5;
-	  }
-	}
-  }
-  /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
-
-
-  b=(double *)malloc(3*sizeof(double));
-  c=(double *)malloc(3*sizeof(double));
-  exy=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
-  {
-	*(exy+i)=(double *)malloc(2*sizeof(double));
-	for(j=0;j<2;j++)/*IN-PLANE 2D VECTOR*/   /*NODE 0-0, 0-1, 0-2*/
-	{
-	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
-				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
-				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
-	  /*shell local coordinate {xi,yi(,zi=0)}*/
-	}
-  }
-  det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));/*AREA*/
-
-  for(i=0;i<3;i++)
-  {
-	  j=i+1;
-	  k=i+2;
-	  if(j>=3)j-=3;
-	  if(k>=3)k-=3;
-	  *(b+i)=*(*(exy+j)+1)-*(*(exy+k)+1);/*yj-yk*/
-	  *(c+i)=*(*(exy+k)+0)-*(*(exy+j)+0);/*xk-xj*/
-  }
-
-  t=shell.sect->area;
-  hiju=shell.sect->hiju[0];
-  Mp=hiju*h;
-  Ip_0=hiju*pow(t,3)/12.0;/*ROTATIONAL INERTIA MATRIX*/
-  Ip=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Ip+i)=(double *)malloc(3*sizeof(double));
-	for(j=0;j<3;j++)
-	{
-		*(*(Ip+i)+j)=Ip_0**(*(drccosinit+0)+i)**(*(drccosinit+0)+j)+*(*(drccosinit+1)+i)**(*(drccosinit+1)+j);
-	}
-  }
-
-
-  uddvct=(double *)malloc(3*sizeof(double));
-  udvct=(double *)malloc(3*sizeof(double));
-  udspin=(double **)malloc(3*sizeof(double *));
-  for (i = 0; i < 3; i++)
-  {
-	*(udspin+i)=(double *)malloc(3*sizeof(double));
-  }
-
-  for(ii=0;ii<7;ii++)
-  {
-  /*
-	N=(double **)malloc(3*sizeof(double *));
-	for(i=0;i<3;i++)
-	{
-	  *(N+i)=(double *)malloc(18*sizeof(double));
-	  for(j=0;j<18;j++)
-	  {
-		*(*(N+i)+j)=0.0;
-	  }
-	}
-	for(i=0;i<3;i++)
-	{
-		j=i+1;
-		k=i+2;
-		if(j>=3)j-=3;
-		if(k>=3)k-=3;
-		Liij=*(*(L+ii)+i)**(*(L+ii)+i)**(*(L+ii)+j);
-		Lijj=*(*(L+ii)+i)**(*(L+ii)+j)**(*(L+ii)+j);
-		Liik=*(*(L+ii)+i)**(*(L+ii)+i)**(*(L+ii)+k);
-		Likk=*(*(L+ii)+i)**(*(L+ii)+k)**(*(L+ii)+k);
-		Lijk=*(*(L+ii)+i)**(*(L+ii)+j)**(*(L+ii)+k);
-
-		*(*(N+0)+6*i+0) = *(*(L+ii)+i);
-		*(*(N+1)+6*i+1) = *(*(L+ii)+i);
-		*(*(N+2)+6*i+2) = *(*(L+ii)+i) + Liij - Lijj + Liik - Likk;
-		*(*(N+2)+6*i+3) = *(b+j) * (Liik+0.5*Lijk) - *(b+k) * (Liij+0.5*Lijk);
-		*(*(N+2)+6*i+4) = *(c+j) * (Liik+0.5*Lijk) - *(c+k) * (Liij+0.5*Lijk);
-	}
-	Nt=matrixtransposeIII(N,3,18);
-	NtN=matrixmatrixIII(Nt,N,18,3,18);
-	for(i=0;i<18;i++)
-	{
-	  for(j=0;j<18;j++)
-	  {
-		*(*(m+i)+j) += *(*(NtN+i)+j)**(a+ii)*det*t*hiju;
-	  }
-	}
-	freematrix(N,3);
-	freematrix(Nt,18);
-	freematrix(NtN,18);
-  */
-  }
-
-
-  freematrix(L,7);
-  freematrix(exy,3);
-  free(a);
-  free(b);
-  free(c);
-
-  return m;
-}
-
-#endif
 
 double **assemshellmmtx(struct oshell shell,double **drccos)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
@@ -23378,7 +23112,7 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   /*shell local coordinate {xi,yi(,zi=0)}*/
   det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
 
-#if 0
+#if 1
   /*WEIGHT OF EACH NODE*/
   a=(double *)malloc(7*sizeof(double));
   *(a+0)=27.0/60.0;
@@ -23483,7 +23217,7 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   free(b);
   free(c);
 #endif
-#if 1
+#if 0
   for(i=0;i<3;i++)
   {
 	for(j=0;j<3;j++)
@@ -23512,16 +23246,13 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 }/*assemshellmmtx*/
 
 
-
-
-
 double *assemshellpvct(struct oshell shell,double **drccos)
 {/*nodal force equivalent to surface force*/
   int i,j,k,ii;
   double *q,*p,**exy,**Nt,**L;
   double t;
   double *b,*c;
-double *a;
+  double *a;
   double det;
   double Liij,Lijj,Liik,Likk,Lijk;
   double *perpl,*lload;
@@ -23915,22 +23646,20 @@ double **assempmtx(struct owire elem,double **estiff)
 			if((a[0][0]*a[1][1]-a[0][1]*a[1][0])==0.0)
 			{
 
-if(globalfile!=NULL)
-{
-  fprintf(globalfile,"Assem : Matrix Singular.ELEM=%d SECT=%d i=%d j=%d\n",
-		  elem.code,elem.sect->code,i,j);
-  fprintf(globalfile,"%10.5f x %10.5f - %10.5f x %10.5f = 0.0\n",
-		  a[0][0],a[1][1],a[0][1],a[1][0]);
-}
+				if(globalfile!=NULL)
+				{
+				  fprintf(globalfile,"Assem : Matrix Singular.ELEM=%d SECT=%d i=%d j=%d\n",
+						  elem.code,elem.sect->code,i,j);
+				  fprintf(globalfile,"%10.5f x %10.5f - %10.5f x %10.5f = 0.0\n",
+						  a[0][0],a[1][1],a[0][1],a[1][0]);
+				}
 
               errormessage("ASSEMPMTX:UNDER CONSIDERATION.");
               sprintf(str,"Matrix Singular.ELEM=%d SECT=%d i=%d j=%d",
                       elem.code,elem.sect->code,i,j);
-/*
-MessageBox(NULL,str,"Assempmtx",MB_OK);
-*/
+
               /*DELETE THIS ELEMENT*/
-              *(*(estiff+i)+j)=0.0;
+			  *(*(estiff+i)+j)=0.0;
               p[i][j]=0.0;
             }
             else
@@ -23940,7 +23669,7 @@ MessageBox(NULL,str,"Assempmtx",MB_OK);
                           -a[0][1]*q[i][0]*q[j][1]
                           -a[1][0]*q[i][1]*q[j][0]
                           +a[0][0]*q[i][1]*q[j][1]);
-            }
+			}
           }
         }
 	  }
@@ -24248,14 +23977,14 @@ if(globalfile!=NULL) fprintf(globalfile,"   CENTER fc   WIDTH fu\n");
                              i,fc[i],fu[i]);*/
   }
 
-  /***UJIOKA:ˆ³k•”Ş‚É‚Â‚¢‚ÄA~•š‹È–Ê‚ğk–ñ‚É‚æ‚éÀ‹ü‰×d(Ncr)‚ÉC³***/
+  /***UJIOKA:åœ§ç¸®éƒ¨æã«ã¤ã„ã¦ã€é™ä¼æ›²é¢ã‚’ç¸®ç´„ã«ã‚ˆã‚‹åº§å±ˆè·é‡(Ncr)ã«ä¿®æ­£***/
   /*
-ˆø’£•”Ş‚É‚Â‚¢‚ÄA‚±‚±‚Å‚Í•Ö‹XãNcr=0‚É‚È‚Á‚Ä‚¨‚èA~•š‹È–Ê‚ÌC³‚ğ‚µ‚È‚¢iˆ³k‘¤‚Æˆø’£‘¤‚Å~•š‹È–Ê‚Ì®‚ğê‡•ª‚¯‚µ‚Ä‚¢‚È‚¢‚½‚ßj
+å¼•å¼µéƒ¨æã«ã¤ã„ã¦ã€ã“ã“ã§ã¯ä¾¿å®œä¸ŠNcr=0ã«ãªã£ã¦ãŠã‚Šã€é™ä¼æ›²é¢ã®ä¿®æ­£ã‚’ã—ãªã„ï¼ˆåœ§ç¸®å´ã¨å¼•å¼µå´ã§é™ä¼æ›²é¢ã®å¼ã‚’å ´åˆåˆ†ã‘ã—ã¦ã„ãªã„ãŸã‚ï¼‰
   */
   if(ncr>0 && ncr<elem.sect->fmax[0])
   {
     fc[0]=0;
-    fu[0]=ncr;       /*ˆ³kEˆø’£‚Ì—¼‘¤‚ğC³‚µ‚Ä‚¢‚é*/
+    fu[0]=ncr;       /*åœ§ç¸®ãƒ»å¼•å¼µã®ä¸¡å´ã‚’ä¿®æ­£ã—ã¦ã„ã‚‹*/
 //    sprintf(string,"fu[0]=%.5E\n",fu[0]);
 //    errormessage(string);
 
@@ -24265,7 +23994,7 @@ if(globalfile!=NULL) fprintf(globalfile,"   CENTER fc   WIDTH fu\n");
   */
   }
   /*
-@@ˆ³k•”Ş‚ÌÀ‹ü‰×d‚ª•‰‚Ì’l‚Æ‚È‚éê‡F–¢ŒŸ“¢AŒ³‚Ì~•š‹È–Ê‚Ì‚Ü‚Ü
+ã€€ã€€åœ§ç¸®éƒ¨æã®åº§å±ˆè·é‡ãŒè² ã®å€¤ã¨ãªã‚‹å ´åˆï¼šæœªæ¤œè¨ã€å…ƒã®é™ä¼æ›²é¢ã®ã¾ã¾
   */
   else if (ncr<0) /*negative buckling load in compression element:yet*/
   {
@@ -25009,19 +24738,19 @@ double *elemstress(struct owire *elem,double *gvct,
   ee=mallocdoublematrix(12);
 
   drccos=directioncosine(elem->node[0]->d[0],
-                         elem->node[0]->d[1],
-                         elem->node[0]->d[2],
-                         elem->node[1]->d[0],
-                         elem->node[1]->d[1],
-                         elem->node[1]->d[2],
-                         elem->cangle);                  /*[DRCCOS]*/
+						 elem->node[0]->d[1],
+						 elem->node[0]->d[2],
+						 elem->node[1]->d[0],
+						 elem->node[1]->d[1],
+						 elem->node[1]->d[2],
+						 elem->cangle);                  /*[DRCCOS]*/
   tmatrix=transmatrix(/* *elem,*/drccos);                     /*[T]*/
   estiff=assememtx(*elem);                                   /*[ke]*/
   estiff=modifyhinge(*elem,estiff);
 
   for(i=0;i<12;i++)
   {
-    for(j=0;j<12;j++) *(*(ee+i)+j)=*(*(estiff+i)+j);
+	for(j=0;j<12;j++) *(*(ee+i)+j)=*(*(estiff+i)+j);
   }
 
   estiff=assempmtx(*elem,estiff);                   /*[k]=[ke]+[kp]*/
@@ -25758,10 +25487,10 @@ void updatestressbc(struct memoryelem *melem,FILE *fout,FILE *fsrf,
     fu[i]=0.5*(elem->sect->fmax[i]-elem->sect->fmin[i]);
   }
 
-  /***UJIOKA:ˆ³k•”Ş‚É‚Â‚¢‚ÄA~•š‹È–Ê‚ğk–ñ‚É‚æ‚éÀ‹ü‰×d(Ncr)‚ÉC³***/
+  /***UJIOKA:åœ§ç¸®éƒ¨æã«ã¤ã„ã¦ã€é™ä¼æ›²é¢ã‚’ç¸®ç´„ã«ã‚ˆã‚‹åº§å±ˆè·é‡(Ncr)ã«ä¿®æ­£***/
   /*
-  @ˆø’£•”Ş‚É‚Â‚¢‚ÄA‚±‚±‚Å‚Í•Ö‹XãNcr=0‚É‚È‚Á‚Ä‚¨‚èA~•š‹È–Ê‚ÌC³‚ğ‚µ‚È‚¢
-  @iˆ³k‘¤‚Æˆø’£‘¤‚Å~•š‹È–Ê‚Ì®‚ğê‡•ª‚¯‚µ‚Ä‚¢‚È‚¢‚½‚ßj@
+  ã€€å¼•å¼µéƒ¨æã«ã¤ã„ã¦ã€ã“ã“ã§ã¯ä¾¿å®œä¸ŠNcr=0ã«ãªã£ã¦ãŠã‚Šã€é™ä¼æ›²é¢ã®ä¿®æ­£ã‚’ã—ãªã„
+  ã€€ï¼ˆåœ§ç¸®å´ã¨å¼•å¼µå´ã§é™ä¼æ›²é¢ã®å¼ã‚’å ´åˆåˆ†ã‘ã—ã¦ã„ãªã„ãŸã‚ï¼‰ã€€
   */
   if(ncr>0 && ncr<elem->sect->fmax[0])
   {
@@ -25776,7 +25505,7 @@ void updatestressbc(struct memoryelem *melem,FILE *fout,FILE *fsrf,
   */
   }
   /*
-@@ˆ³k•”Ş‚ÌÀ‹ü‰×d‚ª•‰‚Ì’l‚Æ‚È‚éê‡F–¢ŒŸ“¢AŒ³‚Ì~•š‹È–Ê‚Ì‚Ü‚Ü
+ã€€ã€€åœ§ç¸®éƒ¨æã®åº§å±ˆè·é‡ãŒè² ã®å€¤ã¨ãªã‚‹å ´åˆï¼šæœªæ¤œè¨ã€å…ƒã®é™ä¼æ›²é¢ã®ã¾ã¾
   */
   else if (ncr<0) /*negative buckling load in compression element:yet*/
   {
@@ -26557,7 +26286,7 @@ void outputreaction02(struct gcomponent *gmtx,
 
     if(iconf==1)
     {
-      reaction=*(dreact+nreact)-*(reactlong+nreact);     /*ƒ°{dR}={R}-{RL}*/
+      reaction=*(dreact+nreact)-*(reactlong+nreact);     /*Î£{dR}={R}-{RL}*/
 
       sprintf(string,"%4ld %10ld %14.6f     1",
               (nodes+offset)->code,(i-1)%6+1,reaction);
@@ -32334,19 +32063,19 @@ MessageBox(NULL,non,"Distribute",MB_OK);
   {
    if(globalunit==1.0)
    {
-   fprintf(fout,"3.2 : ß“_d—Ê\n\n");
-   fprintf(fout,"ß“_‚²‚Æ‚Éd—Ê‚ğWŒv‚µ‚½Œ‹‰Ê‚ğ‹L‚·B\n");
-   fprintf(fout,"’ŒC•Ç‚ÍŠK‚‚Ì’†‰›‚Åã‰º‚É•ª”z‚·‚é‚à‚Ì‚Æ‚·‚éB\n\n");
-   fprintf(fout," ß“_”Ô†          ÏÚ‰×d•Ê‚Ìd—Ê [tf]\n\n");
-   fprintf(fout,"                 °—p     ’Œ—À—p     ’nk—p\n");
+   fprintf(fout,"3.2 : ç¯€ç‚¹é‡é‡\n\n");
+   fprintf(fout,"ç¯€ç‚¹ã”ã¨ã«é‡é‡ã‚’é›†è¨ˆã—ãŸçµæœã‚’è¨˜ã™ã€‚\n");
+   fprintf(fout,"æŸ±ï¼Œå£ã¯éšé«˜ã®ä¸­å¤®ã§ä¸Šä¸‹ã«åˆ†é…ã™ã‚‹ã‚‚ã®ã¨ã™ã‚‹ã€‚\n\n");
+   fprintf(fout," ç¯€ç‚¹ç•ªå·          ç©è¼‰è·é‡åˆ¥ã®é‡é‡ [tf]\n\n");
+   fprintf(fout,"                 åºŠç”¨     æŸ±æ¢ç”¨     åœ°éœ‡ç”¨\n");
    }
    else
    {
-   fprintf(fout,"3.2 : ß“_d—Ê\n\n");
-   fprintf(fout,"ß“_‚²‚Æ‚Éd—Ê‚ğWŒv‚µ‚½Œ‹‰Ê‚ğ‹L‚·B\n");
-   fprintf(fout,"’ŒC•Ç‚ÍŠK‚‚Ì’†‰›‚Åã‰º‚É•ª”z‚·‚é‚à‚Ì‚Æ‚·‚éB\n\n");
-   fprintf(fout," ß“_”Ô†          ÏÚ‰×d•Ê‚Ìd—Ê [kN]\n\n");
-   fprintf(fout,"                 °—p     ’Œ—À—p     ’nk—p\n");
+   fprintf(fout,"3.2 : ç¯€ç‚¹é‡é‡\n\n");
+   fprintf(fout,"ç¯€ç‚¹ã”ã¨ã«é‡é‡ã‚’é›†è¨ˆã—ãŸçµæœã‚’è¨˜ã™ã€‚\n");
+   fprintf(fout,"æŸ±ï¼Œå£ã¯éšé«˜ã®ä¸­å¤®ã§ä¸Šä¸‹ã«åˆ†é…ã™ã‚‹ã‚‚ã®ã¨ã™ã‚‹ã€‚\n\n");
+   fprintf(fout," ç¯€ç‚¹ç•ªå·          ç©è¼‰è·é‡åˆ¥ã®é‡é‡ [kN]\n\n");
+   fprintf(fout,"                 åºŠç”¨     æŸ±æ¢ç”¨     åœ°éœ‡ç”¨\n");
    }
   }
 ////////////////////////////////////////////////////////////////////////////////
@@ -32410,8 +32139,8 @@ MessageBox(NULL,non,"Distribute",MB_OK);
   if(fout!=NULL)
   {
 	/*fprintf(fout,"\nVOLUME OF EACH SECTIONS\n");*/
-	fprintf(fout,"\nŠe’f–Ê‚Ì•”Ş‘—ÊiQl‘—¿j\n");
-	fprintf(fout,"\n ’f–Ê”Ô†   ’·‚³,–ÊÏ[m,m2]\n");
+	fprintf(fout,"\nå„æ–­é¢ã®éƒ¨æç·é‡ï¼ˆå‚è€ƒè³‡æ–™ï¼‰\n");
+	fprintf(fout,"\n æ–­é¢ç•ªå·   é•·ã•,é¢ç©[m,m2]\n");
 
 	for(i=0;i<(org->nsect);i++)
 	{
@@ -33598,19 +33327,19 @@ if(!strncmp(prj,"stick",5)) ai.hmax=3.840;
     else
     fprintf(fout," \"Unknown Units\"\n");
 
-    fprintf(fout,"\n3.3 : Ai•ª•zŒ^’nk‰×d\n\n");
-    fprintf(fout,"…•½‰×d‚ÍŒš’zŠî€–@{s—ß‘æ88ğ‚¨‚æ‚ÑŒšİÈ¦1793†‚É]‚¢A‚`i•ª•zŒ^‚Ì’nk—Í‚Æ‚·‚éB\n\n");
+    fprintf(fout,"\n3.3 : Aiåˆ†å¸ƒå‹åœ°éœ‡è·é‡\n\n");
+    fprintf(fout,"æ°´å¹³è·é‡ã¯å»ºç¯‰åŸºæº–æ³•æ–½è¡Œä»¤ç¬¬88æ¡ãŠã‚ˆã³å»ºè¨­çœå‘Šç¤º1793å·ã«å¾“ã„ã€ï¼¡iåˆ†å¸ƒå‹ã®åœ°éœ‡åŠ›ã¨ã™ã‚‹ã€‚\n\n");
 
 //    fprintf(fout,"Floors     n =%d\n",ai.nfloor);
 //    fprintf(fout,"Height     H =%.3f\n",ai.hmax);
 
-    fprintf(fout,"ŠK”       @@@    n =%d\n",ai.nfloor);
-	fprintf(fout,"‚‚³         @@@  H =%.3f\n",ai.hmax);
+    fprintf(fout,"éšæ•°       ã€€ã€€ã€€    n =%d\n",ai.nfloor);
+	fprintf(fout,"é«˜ã•         ã€€ã€€ã€€  H =%.3f\n",ai.hmax);
 
 //    if(ai.hmax!=0.0) fprintf(fout,"Period     T1=%.3fH=%.3f\n",(ai.T1/ai.hmax),ai.T1);
 //    else             fprintf(fout,"Period     T1       =%.3f\n",ai.T1);
-    if(ai.hmax!=0.0) fprintf(fout,"‚PŸŒÅ—LüŠú         T1=%.3fH=%.3f\n",(ai.T1/ai.hmax),ai.T1);
-    else             fprintf(fout,"‚PŸŒÅ—LüŠú         T1       =%.3f\n",ai.T1);
+    if(ai.hmax!=0.0) fprintf(fout,"ï¼‘æ¬¡å›ºæœ‰å‘¨æœŸ         T1=%.3fH=%.3f\n",(ai.T1/ai.hmax),ai.T1);
+    else             fprintf(fout,"ï¼‘æ¬¡å›ºæœ‰å‘¨æœŸ         T1       =%.3f\n",ai.T1);
 /*
     fprintf(fout,"Period     Tc=%.3f\n",ai.Tc);
     fprintf(fout,"           Rt=%.3f\n",ai.Rt);
@@ -33618,20 +33347,20 @@ if(!strncmp(prj,"stick",5)) ai.hmax=3.840;
     fprintf(fout,"Base Shear Co=%.3f\n",ai.Co);
     fprintf(fout,"Foundation Cf=%.3f\n",ai.Cf);
 */
-    fprintf(fout,"’n”ÕüŠú             Tc=%.3f\n",ai.Tc);
-    fprintf(fout,"U“®“Á«ŒW”         Rt=%.3f\n",ai.Rt);
-    fprintf(fout,"’nˆæŒW”             Z =%.3f\n",ai.Z);
+    fprintf(fout,"åœ°ç›¤å‘¨æœŸ             Tc=%.3f\n",ai.Tc);
+    fprintf(fout,"æŒ¯å‹•ç‰¹æ€§ä¿‚æ•°         Rt=%.3f\n",ai.Rt);
+    fprintf(fout,"åœ°åŸŸä¿‚æ•°             Z =%.3f\n",ai.Z);
     if (ai.Cox==ai.Coy)
     {
-      fprintf(fout,"•W€‘w‚¹‚ñ’f—ÍŒW”   Co=%.3f\n",ai.Cox);
-      fprintf(fout,"Šî‘b•”•ª‚Ìk“x       Cf=%.3f\n",ai.Cfx);
+      fprintf(fout,"æ¨™æº–å±¤ã›ã‚“æ–­åŠ›ä¿‚æ•°   Co=%.3f\n",ai.Cox);
+      fprintf(fout,"åŸºç¤éƒ¨åˆ†ã®éœ‡åº¦       Cf=%.3f\n",ai.Cfx);
     }
     else
     {
-      fprintf(fout,"•W€‘w‚¹‚ñ’f—ÍŒW”iX•ûŒüj   Co=%.3f\n",ai.Cox);
-      fprintf(fout,"•W€‘w‚¹‚ñ’f—ÍŒW”iY•ûŒüj   Co=%.3f\n",ai.Coy);
-      fprintf(fout,"Šî‘b•”•ª‚Ìk“xiX•ûŒüj       Cf=%.3f\n",ai.Cfx);
-      fprintf(fout,"Šî‘b•”•ª‚Ìk“xiY•ûŒüj       Cf=%.3f\n",ai.Cfy);
+      fprintf(fout,"æ¨™æº–å±¤ã›ã‚“æ–­åŠ›ä¿‚æ•°ï¼ˆXæ–¹å‘ï¼‰   Co=%.3f\n",ai.Cox);
+      fprintf(fout,"æ¨™æº–å±¤ã›ã‚“æ–­åŠ›ä¿‚æ•°ï¼ˆYæ–¹å‘ï¼‰   Co=%.3f\n",ai.Coy);
+      fprintf(fout,"åŸºç¤éƒ¨åˆ†ã®éœ‡åº¦ï¼ˆXæ–¹å‘ï¼‰       Cf=%.3f\n",ai.Cfx);
+      fprintf(fout,"åŸºç¤éƒ¨åˆ†ã®éœ‡åº¦ï¼ˆYæ–¹å‘ï¼‰       Cf=%.3f\n",ai.Cfy);
     }
 
   }
@@ -33639,32 +33368,32 @@ if(!strncmp(prj,"stick",5)) ai.hmax=3.840;
 #if 0
   if(globalunit==1.0)
   {
-    fprintf(fout,"\n°—pÏÚ‰×d‚É‚æ‚é‘d—Ê   = %.3f [tf]\n",      //mihara
+    fprintf(fout,"\nåºŠç”¨ç©è¼‰è·é‡ã«ã‚ˆã‚‹ç·é‡é‡   = %.3f [tf]\n",      //mihara
             globalunit*total[WEIGHTSLAB]);
-    fprintf(fout,"’Œ—À—pÏÚ‰×d‚É‚æ‚é‘d—Ê   = %.3f [tf]\n",
+    fprintf(fout,"æŸ±æ¢ç”¨ç©è¼‰è·é‡ã«ã‚ˆã‚‹ç·é‡é‡   = %.3f [tf]\n",
             globalunit*total[WEIGHTFRAME]);
-    fprintf(fout,"’nk—pÏÚ‰×d‚É‚æ‚é‘d—Ê   = %.3f [tf]\n",
+    fprintf(fout,"åœ°éœ‡ç”¨ç©è¼‰è·é‡ã«ã‚ˆã‚‹ç·é‡é‡   = %.3f [tf]\n",
             globalunit*total[WEIGHTEQ]);
   }
   if(globalunit==SIUNIT)
   {
-    fprintf(fout,"\n°—pÏÚ‰×d‚É‚æ‚é‘d—Ê   = %.3f [kN]\n",      //mihara
+    fprintf(fout,"\nåºŠç”¨ç©è¼‰è·é‡ã«ã‚ˆã‚‹ç·é‡é‡   = %.3f [kN]\n",      //mihara
             globalunit*total[WEIGHTSLAB]);
-	fprintf(fout,"’Œ—À—pÏÚ‰×d‚É‚æ‚é‘d—Ê   = %.3f [kN]\n",
+	fprintf(fout,"æŸ±æ¢ç”¨ç©è¼‰è·é‡ã«ã‚ˆã‚‹ç·é‡é‡   = %.3f [kN]\n",
             globalunit*total[WEIGHTFRAME]);
-    fprintf(fout,"’nk—pÏÚ‰×d‚É‚æ‚é‘d—Ê   = %.3f [kN]\n",
+    fprintf(fout,"åœ°éœ‡ç”¨ç©è¼‰è·é‡ã«ã‚ˆã‚‹ç·é‡é‡   = %.3f [kN]\n",
             globalunit*total[WEIGHTEQ]);
   }
 #endif
 
-  sprintf(ss1,"ŠeŠK•½‹Ï‚‚³      :");
-  sprintf(ss2,"ŠeŠKd—Ê       wi :");
-  sprintf(ss3,"        Wi = ƒ°wi :");
+  sprintf(ss1,"å„éšå¹³å‡é«˜ã•      :");
+  sprintf(ss2,"å„éšé‡é‡       wi :");
+  sprintf(ss3,"        Wi = Î£wi :");
   sprintf(ss4,"               Ai :           ");
-  sprintf(ss5,"‘w‚¹‚ñ’f—ÍŒW” Ci :           ");
-  sprintf(ss6,"‘w‚¹‚ñ’f—Í     Qi :           ");
-  sprintf(ss7,"ŠeŠKŠO—Í       Hi :           ");
-  sprintf(ss8,"ŠO—ÍŒW”    Hi/wi :");
+  sprintf(ss5,"å±¤ã›ã‚“æ–­åŠ›ä¿‚æ•° Ci :           ");
+  sprintf(ss6,"å±¤ã›ã‚“æ–­åŠ›     Qi :           ");
+  sprintf(ss7,"å„éšå¤–åŠ›       Hi :           ");
+  sprintf(ss8,"å¤–åŠ›ä¿‚æ•°    Hi/wi :");
 
   for(i=0;i<ai.nfloor;i++)
   {
@@ -33694,14 +33423,14 @@ if(!strncmp(prj,"stick",5)) ai.hmax=3.840;
   sprintf(non,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		  ss1,ss2,ss3,ss4,ss5,ss6,ss7,ss8);
 #if 1
-  sprintf(ss11,"ŠeŠK•½‹Ï‚‚³      :");
-  sprintf(ss12,"ŠeŠKd—Ê       wi :");
-  sprintf(ss13,"        Wi = ƒ°wi :");
+  sprintf(ss11,"å„éšå¹³å‡é«˜ã•      :");
+  sprintf(ss12,"å„éšé‡é‡       wi :");
+  sprintf(ss13,"        Wi = Î£wi :");
   sprintf(ss14,"               Ai :           ");
-  sprintf(ss15,"‘w‚¹‚ñ’f—ÍŒW” Ci :           ");
-  sprintf(ss16,"‘w‚¹‚ñ’f—Í     Qi :           ");
-  sprintf(ss17,"ŠeŠKŠO—Í       Hi :           ");
-  sprintf(ss18,"ŠO—ÍŒW”    Hi/wi :");
+  sprintf(ss15,"å±¤ã›ã‚“æ–­åŠ›ä¿‚æ•° Ci :           ");
+  sprintf(ss16,"å±¤ã›ã‚“æ–­åŠ›     Qi :           ");
+  sprintf(ss17,"å„éšå¤–åŠ›       Hi :           ");
+  sprintf(ss18,"å¤–åŠ›ä¿‚æ•°    Hi/wi :");
 
   for(i=0;i<ai.nfloor;i++)
   {

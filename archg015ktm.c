@@ -1,4 +1,4 @@
-/*ARCLM001.C FOR WIN32 SINCE 1995.11.24.JUNSATO.*/
+ï»¿/*ARCLM001.C FOR WIN32 SINCE 1995.11.24.JUNSATO.*/
 /*LAST CHANGE:2000.1.22.*/
 /*DIRECTIONCOSINE MODIFIED:2012.5.22*/
 
@@ -69,6 +69,13 @@ int stressintofile(struct arclmframe *af);
 
 
 extern void clearwindow(struct windowparams wp);
+extern void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,
+			   struct gcomponent* mmtx, struct gcomponent* gmtx,
+			   double* iform, double* ddisp, double* finternal, double* fexternal);
+extern void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,
+			   struct gcomponent* mmtx, struct gcomponent* gmtx,
+			   double* iform, double* ddisp, double* finternal, double* fexternal);
+
 
 int arclm001(struct arclmframe *af,int idinput,int idoutput)
 {
@@ -231,6 +238,11 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
   laptime("ASSEMBLING GLOBAL MATRIX.",t0);
 
+
+  assemelem(elems, NULL, nelem, constraintmain, NULL, gmtx, ddisp, ddisp, NULL, NULL);
+  assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx, ddisp, ddisp, NULL, NULL);
+
+#if 0
 	  for(i=1;i<=nelem;i++)               /*ASSEMBLAGE GLOBAL MATRIX.*/
 	  {
 		elem=*(elems+i-1);                       /*READ ELEMENT DATA.*/
@@ -275,7 +287,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		free(estiff);
 	  }
 
-
 	  for(i=1;i<=nshell;i++)               /*ASSEMBLAGE GLOBAL MATRIX.*/
 	  {
 		shell=*(shells+i-1);                       /*READ ELEMENT DATA.*/
@@ -313,6 +324,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		for(ii=0;ii<6*shell.nnod;ii++) free(*(estiff+ii));
 		free(estiff);
 	  }
+
+#endif
 
 
 	  /*ASSEMBLAGE CONSTRAINT MATRIX.*/
@@ -1154,7 +1167,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
   fprintf(fout,"OUTPUT:MODEL01.OTP\n");
 
   inputinit(fin,&nnode,&nelem,&nsect);             /*INPUT INITIAL.*/
-  fprintf(fout,"ß“_”=%d —v‘f”=%d ’f–Êƒ^ƒCƒv”=%d\n",nnode,nelem,nsect);
+  fprintf(fout,"ç¯€ç‚¹æ•°=%d è¦ç´ æ•°=%d æ–­é¢ã‚¿ã‚¤ãƒ—æ•°=%d\n",nnode,nelem,nsect);
   fprintf(fout,"\n");
 
   msize=6*nnode; /*SIZE OF GLOBAL MATRIX.*/
@@ -1229,29 +1242,29 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
 
     inputnode(ddisp,elem.node[0]);                         /*HEAD*/
     inputnode(ddisp,elem.node[1]);                         /*TAIL*/
-    fprintf(fout,"—v‘f %4d n’[=%3d À•W={%6.3f %6.3f %6.3f}\n",
+    fprintf(fout,"è¦ç´  %4d å§‹ç«¯=%3d åº§æ¨™={%6.3f %6.3f %6.3f}\n",
             elem.code,elem.node[0]->code,elem.node[0]->d[0]
                                         ,elem.node[0]->d[1]
                                         ,elem.node[0]->d[2]);
-    fprintf(fout,"          I’[=%3d À•W={%6.3f %6.3f %6.3f}\n",
+    fprintf(fout,"          çµ‚ç«¯=%3d åº§æ¨™={%6.3f %6.3f %6.3f}\n",
             elem.node[1]->code,elem.node[1]->d[0]
                               ,elem.node[1]->d[1]
                               ,elem.node[1]->d[2]);
 
     elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
-    fprintf(fout,"          ’f–Ê=%3d\n",elem.sect->code);
-    fprintf(fout,"          ‚k=%.3f",sqrt((elem.node[1]->d[0]-elem.node[0]->d[0])
+    fprintf(fout,"          æ–­é¢=%3d\n",elem.sect->code);
+    fprintf(fout,"          ï¼¬=%.3f",sqrt((elem.node[1]->d[0]-elem.node[0]->d[0])
                                      *(elem.node[1]->d[0]-elem.node[0]->d[0])
                                      +(elem.node[1]->d[1]-elem.node[0]->d[1])
                                      *(elem.node[1]->d[1]-elem.node[0]->d[1])
                                      +(elem.node[1]->d[2]-elem.node[0]->d[2])
                                      *(elem.node[1]->d[2]-elem.node[0]->d[2])));
-    fprintf(fout," ‚d=%.5E"    ,elem.sect->E);
-    fprintf(fout," ƒË=%.5f"    ,elem.sect->poi);
-    fprintf(fout," ‚`=%.4f"    ,elem.sect->area);
-    fprintf(fout," ‚hxx=%.8f"  ,elem.sect->Ixx);
-    fprintf(fout," ‚hyy=%.8f"  ,elem.sect->Iyy);
-    fprintf(fout," ‚izz=%.8f\n",elem.sect->Jzz);
+    fprintf(fout," ï¼¥=%.5E"    ,elem.sect->E);
+    fprintf(fout," Î½=%.5f"    ,elem.sect->poi);
+    fprintf(fout," ï¼¡=%.4f"    ,elem.sect->area);
+    fprintf(fout," ï¼©xx=%.8f"  ,elem.sect->Ixx);
+    fprintf(fout," ï¼©yy=%.8f"  ,elem.sect->Iyy);
+    fprintf(fout," ï¼ªzz=%.8f\n",elem.sect->Jzz);
 
     drccos=directioncosine(elem.node[0]->d[0],
                            elem.node[0]->d[1],
@@ -1260,7 +1273,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
                            elem.node[1]->d[1],
                            elem.node[1]->d[2],
                            elem.cangle);               /*[DRCCOS]*/
-    fprintf(fout,"•ûŒü—]Œ· [‚c] =");
+    fprintf(fout,"æ–¹å‘ä½™å¼¦ [ï¼¤] =");
     for(ii=0;ii<3;ii++)
     {
       if(ii>0) fprintf(fout,"               ");
@@ -1272,7 +1285,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     }
 
     tmatrix=transmatrix(drccos);         /*TRANSFORMATION MATRIX.*/
-    fprintf(fout,"À•W•ÏŠ·s—ñ [‚s] =");
+    fprintf(fout,"åº§æ¨™å¤‰æ›è¡Œåˆ— [ï¼´] =");
     for(ii=0;ii<12;ii++)
     {
       if(ii>0) fprintf(fout,"                   ");
@@ -1284,7 +1297,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     }
 
     estiff=assememtx(elem);          /*ELASTIC MATRIX OF ELEMENT.*/
-    fprintf(fout,"•”Ş„«s—ñ [‚‹e] =");
+    fprintf(fout,"éƒ¨æå‰›æ€§è¡Œåˆ— [ï½‹e] =");
     for(ii=0;ii<12;ii++)
     {
       if(ii>0) fprintf(fout,"                    ");
@@ -1298,7 +1311,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
 
     estiff=transformation(estiff,tmatrix);       /*[K]=[Tt][k][T]*/
-    fprintf(fout,"À•W•ÏŠ·Œã‚Ì•”Ş„«s—ñ [‚je] =");
+    fprintf(fout,"åº§æ¨™å¤‰æ›å¾Œã®éƒ¨æå‰›æ€§è¡Œåˆ— [ï¼«e] =");
     for(ii=0;ii<12;ii++)
     {
       if(ii>0) fprintf(fout,"                                ");
@@ -1310,7 +1323,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     }
 
     assemgstiffness(gmtx,estiff,&elem);             /*ASSEMBLAGE.*/
-    fprintf(fout,"‘S‘Ì„«s—ñ [‚jg] =");
+    fprintf(fout,"å…¨ä½“å‰›æ€§è¡Œåˆ— [ï¼«g] =");
     for(ii=0;ii<6*nnode;ii++)
     {
       if(ii>0) fprintf(fout,"                    ");
@@ -1321,7 +1334,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
       }
       fprintf(fout,"\n");
     }
-    fprintf(fout,"Œã”¼\n");
+    fprintf(fout,"å¾ŒåŠ\n");
     for(ii=0;ii<6*nnode;ii++)
     {
       for(jj=3*nnode;jj<6*nnode;jj++)
@@ -1343,8 +1356,8 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     free(estiff);
   }
 
-  fprintf(fout,"‘S‘Ì„«s—ñÅI’l\n");
-  fprintf(fout,"[‚jg] =");
+  fprintf(fout,"å…¨ä½“å‰›æ€§è¡Œåˆ—æœ€çµ‚å€¤\n");
+  fprintf(fout,"[ï¼«g] =");
   for(ii=0;ii<6*nnode;ii++)
   {
     if(ii>0) fprintf(fout,"       ");
@@ -1355,7 +1368,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     }
     fprintf(fout,"\n");
   }
-  fprintf(fout,"Œã”¼\n");
+  fprintf(fout,"å¾ŒåŠ\n");
   for(ii=0;ii<6*nnode;ii++)
   {
     for(jj=3*nnode;jj<6*nnode;jj++)
@@ -1369,8 +1382,8 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
   assemconf001(confs,gvct,1.0,nnode);            /*GLOBAL VECTOR.*/
   modifygivend(gmtx,gvct,confs,nnode);   /*0:LOAD 1:DISPLACEMENT.*/
 
-  fprintf(fout,"S‘©ğŒ‚É‚æ‚èC³‚³‚ê‚½‘S‘Ì„«s—ñ\n");
-  fprintf(fout,"{‚e} = [‚jg]{‚t}\n");
+  fprintf(fout,"æ‹˜æŸæ¡ä»¶ã«ã‚ˆã‚Šä¿®æ­£ã•ã‚ŒãŸå…¨ä½“å‰›æ€§è¡Œåˆ—\n");
+  fprintf(fout,"{ï¼¦} = [ï¼«g]{ï¼µ}\n");
   for(ii=0;ii<6*nnode;ii++)
   {
     if((confs+ii)->iconf==1) fprintf(fout,"   R%d%d",ii/6+1,ii%6+1);
@@ -1386,7 +1399,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     }
     fprintf(fout,"\n");
   }
-  fprintf(fout,"Œã”¼\n");
+  fprintf(fout,"å¾ŒåŠ\n");
   for(ii=0;ii<6*nnode;ii++)
   {
     for(jj=3*nnode;jj<6*nnode;jj++)
@@ -1398,7 +1411,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     if((confs+ii)->iconf==1) fprintf(fout,"  %.3f",(confs+ii)->value);
     else                     fprintf(fout,"   U%d%d",ii/6+1,ii%6+1);
 
-    if((confs+ii)->iconf==1) fprintf(fout,"  S‘©");
+    if((confs+ii)->iconf==1) fprintf(fout,"  æ‹˜æŸ");
 
     fprintf(fout,"\n");
   }
@@ -1434,10 +1447,10 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     return 1;
   }
 
-  fprintf(fout,"“¾‚ç‚ê‚½‰ğ‚ÌŒŸZ\n");
+  fprintf(fout,"å¾—ã‚‰ã‚ŒãŸè§£ã®æ¤œç®—\n");
   for(ii=0;ii<6*nnode;ii++)
   {
-    if(ii==0) fprintf(fout,"[‚jg]{‚t} =");
+    if(ii==0) fprintf(fout,"[ï¼«g]{ï¼µ} =");
     else      fprintf(fout,"           ");
 
     for(jj=0;jj<3*nnode;jj++)
@@ -1447,7 +1460,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     }
     fprintf(fout,"\n");
   }
-  fprintf(fout,"Œã”¼\n");
+  fprintf(fout,"å¾ŒåŠ\n");
   for(ii=0;ii<6*nnode;ii++)
   {
     for(jj=3*nnode;jj<6*nnode;jj++)
@@ -1461,10 +1474,10 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     fprintf(fout,"\n");
   }
 
-  fprintf(fout,"Œë·\n");
+  fprintf(fout,"èª¤å·®\n");
   for(ii=0;ii<6*nnode;ii++)
   {
-    if(ii==0) fprintf(fout,"[‚jg]{‚t} =");
+    if(ii==0) fprintf(fout,"[ï¼«g]{ï¼µ} =");
     else      fprintf(fout,"           ");
 
     value=0.0;
@@ -1476,22 +1489,22 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
     }
     fprintf(fout," %4.1f",value);
 
-    if(ii==0) fprintf(fout," {‚e} =");
+    if(ii==0) fprintf(fout," {ï¼¦} =");
     else      fprintf(fout,"       ");
 
     if((confs+ii)->iconf==1) fprintf(fout,"  R%d%d",ii/6+1,ii%6+1);
     else                     fprintf(fout," %4.1f",(confs+ii)->value);
 
-    if(ii==0) fprintf(fout," Œë· [‚jg]{‚t}-{‚e} =");
+    if(ii==0) fprintf(fout," èª¤å·® [ï¼«g]{ï¼µ}-{ï¼¦} =");
     else      fprintf(fout,"                      ");
 
-    if((confs+ii)->iconf==1) fprintf(fout,"  S‘©");
+    if((confs+ii)->iconf==1) fprintf(fout,"  æ‹˜æŸ");
     else                     fprintf(fout," %10.3E",((confs+ii)->value)-value);
 
     fprintf(fout,"\n");
   }
 
-  fprintf(fout,"•”Ş‰—Í\n");
+  fprintf(fout,"éƒ¨æå¿œåŠ›\n");
   /*if(fout!=NULL)
   {
     fprintf(fout,"\n\n");
@@ -1508,7 +1521,7 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
 
     elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
-    fprintf(fout,"—v‘f %4d n’[=%3d I’[=%3d\n",
+    fprintf(fout,"è¦ç´  %4d å§‹ç«¯=%3d çµ‚ç«¯=%3d\n",
             elem.code,elem.node[0]->code,elem.node[1]->code);
     estress=elemstress003(fout,&elem,gvct,melem);
 
@@ -1657,7 +1670,7 @@ double *elemstress003(FILE *fout,struct owire *elem,
                          elem->node[1]->d[2],
                          elem->cangle);                  /*[DRCCOS]*/
 
-  /*fprintf(fout,"•ûŒü—]Œ· [‚c] =");
+  /*fprintf(fout,"æ–¹å‘ä½™å¼¦ [ï¼¤] =");
   for(ii=0;ii<3;ii++)
   {
     if(ii>0) fprintf(fout,"               ");
@@ -1670,7 +1683,7 @@ double *elemstress003(FILE *fout,struct owire *elem,
 
   tmatrix=transmatrix(/* *elem,*/drccos);                     /*[T]*/
 
-  /*fprintf(fout,"À•W•ÏŠ·s—ñ [‚s] =");
+  /*fprintf(fout,"åº§æ¨™å¤‰æ›è¡Œåˆ— [ï¼´] =");
   for(ii=0;ii<12;ii++)
   {
     if(ii>0) fprintf(fout,"                   ");
@@ -1684,7 +1697,7 @@ double *elemstress003(FILE *fout,struct owire *elem,
   estiff=assememtx(*elem);                                   /*[ke]*/
   estiff=modifyhinge(*elem,estiff);
 
-  fprintf(fout,"•”Ş„«s—ñ [‚‹e] =");
+  fprintf(fout,"éƒ¨æå‰›æ€§è¡Œåˆ— [ï½‹e] =");
   for(ii=0;ii<12;ii++)
   {
     if(ii>0) fprintf(fout,"                    ");
@@ -1697,7 +1710,7 @@ double *elemstress003(FILE *fout,struct owire *elem,
 
   gdisp=extractdisplacement(*elem,gvct);                     /*{dU}*/
 
-  fprintf(fout,"‘S‘ÌÀ•W‚Å‚Ì•”Ş•ÏˆÊ {‚t} =");
+  fprintf(fout,"å…¨ä½“åº§æ¨™ã§ã®éƒ¨æå¤‰ä½ {ï¼µ} =");
   for(ii=0;ii<12;ii++)
   {
     if(ii>0) fprintf(fout,"                           ");
@@ -1706,7 +1719,7 @@ double *elemstress003(FILE *fout,struct owire *elem,
 
   edisp=matrixvector(tmatrix,gdisp,12);              /*{du}=[T]{dU}*/
 
-  fprintf(fout,"•”ŞÀ•W‚Å‚Ì•”Ş•ÏˆÊ {‚•} = [‚s]{‚t} =");
+  fprintf(fout,"éƒ¨æåº§æ¨™ã§ã®éƒ¨æå¤‰ä½ {ï½•} = [ï¼´]{ï¼µ} =");
   for(ii=0;ii<12;ii++)
   {
     if(ii>0) fprintf(fout,"                                    ");
@@ -1715,7 +1728,7 @@ double *elemstress003(FILE *fout,struct owire *elem,
 
   estress=matrixvector(estiff,edisp,12);             /*{df}=[k]{du}*/
 
-  fprintf(fout,"•”Ş‰—Í {‚†} = [‚‹e]{‚•} =");
+  fprintf(fout,"éƒ¨æå¿œåŠ› {ï½†} = [ï½‹e]{ï½•} =");
   for(ii=0;ii<12;ii++)
   {
     if(ii>0) fprintf(fout,"                           ");

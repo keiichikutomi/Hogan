@@ -249,7 +249,7 @@ struct arclmframe arci={0,0,
 						NULL,NULL,NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
-						NULL,NULL,NULL,
+						NULL,NULL,
 						0,NULL,NULL,NULL};       /*NULL ARCLM FRAME.*/
 struct arclmframe arc ={0,0,
 						"\0",
@@ -259,7 +259,7 @@ struct arclmframe arc ={0,0,
 						NULL,NULL,NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
-						NULL,NULL,NULL,
+						NULL,NULL,
 						0,NULL,NULL,NULL};     /*GLOBAL ARCLM FRAME.*/
 struct arclmframe arcx={0,0,
 						"\0",
@@ -269,7 +269,7 @@ struct arclmframe arcx={0,0,
 						NULL,NULL,NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
-						NULL,NULL,NULL,
+						NULL,NULL,
 						0,NULL,NULL,NULL}; /*ARCLM FRAME FOR X LOAD.*/
 struct arclmframe arcy={0,0,
 						"\0",
@@ -279,7 +279,7 @@ struct arclmframe arcy={0,0,
 						NULL,NULL,NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
-						NULL,NULL,NULL,
+						NULL,NULL,
 						0,NULL,NULL,NULL}; /*ARCLM FRAME FOR Y LOAD.*/
 
 struct biquadframe bqf={0,0,
@@ -668,6 +668,10 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 					{
 					   pstr++;
 					   EXITMODE = (int)strtol(*(data + pstr), NULL, 10);
+					}
+					else
+					{
+						pstr++;
 					}
 				}
 			 }
@@ -11221,7 +11225,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 										NULL,NULL,NULL,NULL,
 										NULL,NULL,
 										NULL,NULL,NULL,
-										NULL,NULL,NULL,
+										NULL,NULL,
 										0,NULL,NULL,NULL}; /*ARCLM FRAME.*/
 		  #if 1
           /*STRESS OF LOAD*/
@@ -11303,7 +11307,16 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		  {
 			  if(MessageBox(NULL,"Gnshn101:Begin.","GNSHN101",MB_OKCANCEL)==IDCANCEL)
 			  {
-				break;
+				  if(MessageBox(NULL,"Vbrat001:Begin.","VBRAT101",MB_OKCANCEL)==IDCANCEL)
+				  {
+					break;
+				  }
+				  else
+				  {
+					getviewparam((wmenu.childs+2)->hwnd,&((wdraw.childs+1)->vparam));
+					/*clearwindow(*(wdraw.childs+1));*/
+					vbrat001(&arc);
+				  }
 			  }
 			  else
 			  {

@@ -612,10 +612,7 @@ int gnshnCR(struct arclmframe* af)
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
-    for (i = 0; i < msize; i++)
-	{
-		*(constraintmain + i) = i;
-	}
+
 
 	///POSITION VECTOR INITIALIZATION///
 	/*IN SPATIAL FORM*/
@@ -743,14 +740,6 @@ int gnshnCR(struct arclmframe* af)
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
 	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
-
-	for (i = 0; i < msize; i++)
-	{
-		if (*(constraintmain + i) != i)
-		{
-			(confs + i)->iconf = (signed char)1;
-		}
-	}
 
 	setviewpoint((wdraw.childs+0)->hwnd,arc,
 						 &((wdraw.childs+1)->vparam));
@@ -1136,6 +1125,11 @@ int gnshnCR(struct arclmframe* af)
 			midepressure = midpointvct(epressure, lastepressure, alphaf, 6*nnod);
 			midgpressure = matrixvector(midTt, midepressure, 6 * nnod);
 
+
+
+
+
+
 			/*MID-POINT MASS & STIFFNESS MATRIX.*/
 			Kint1 = assemgmtxCR(eform, edisp, mideinternal, NULL, T, NULL, nnod);
 
@@ -1188,81 +1182,28 @@ int gnshnCR(struct arclmframe* af)
 			}
 
 
+			/*
+			 fprintf(flog, "HPT\n");
 
+				for (ii = 0; ii < 6*nnod; ii++)
+				{
+					for (jj = 0; jj < 6*nnod; jj++)
+					{
+						   fprintf(flog, "%e ",*(*(HPT + ii) + jj) );
+					}
+					fprintf(flog, "\n ");
+				}
 
+			*/
 
-
-
-
-/*
- fprintf(flog, "HPT\n");
-
-	for (ii = 0; ii < 6*nnod; ii++)
-	{
-		for (jj = 0; jj < 6*nnod; jj++)
-		{
-			   fprintf(flog, "%e ",*(*(HPT + ii) + jj) );
-		}
-		fprintf(flog, "\n ");
-	}
-
-  fprintf(flog, "lastHPT\n");
-
-	for (ii = 0; ii < 6*nnod; ii++)
-	{
-		for (jj = 0; jj < 6*nnod; jj++)
-		{
-			   fprintf(flog, "%e ",*(*(lastHPT + ii) + jj) );
-		}
-		fprintf(flog, "\n ");
-	}
-
-   fprintf(flog, "midHPT\n");
-
-	for (ii = 0; ii < 6*nnod; ii++)
-	{
-		for (jj = 0; jj < 6*nnod; jj++)
-		{
-			   fprintf(flog, "%e ",*(*(midHPT + ii) + jj) );
-		}
-		fprintf(flog, "\n ");
-	}
-*/
-if(i==5)
-{
-
-	fprintf(flog, "einternal\n");
-	for (ii = 0; ii < 6*nnod; ii++)
-	{
-		fprintf(flog, "%e ",*(einternal + ii) );
-	}
-	fprintf(flog, "\n ");
-
-	fprintf(flog, "lasteinternal\n");
-	for (ii = 0; ii < 6*nnod; ii++)
-	{
-		fprintf(flog, "%e ",*(lasteinternal + ii) );
-	}
-	fprintf(flog, "\n ");
-
-
-	fprintf(flog, "mideinternal\n");
-	for (ii = 0; ii < 6*nnod; ii++)
-	{
-		fprintf(flog, "%e ",*(mideinternal + ii) );
-	}
-	fprintf(flog, "\n ");
-
-}
-
-	freematrix(Kint1, 6 * nnod);
-	freematrix(TPHK,  6 * nnod);
-	freematrix(Kint2, 6 * nnod);
-	free(mvct);
-	freematrix(Kmas1, 6 * nnod);
-	freematrix(RM,    6 * nnod);
-	freematrix(RMR,   6 * nnod);
-	freematrix(Kmas2, 6 * nnod);
+				freematrix(Kint1, 6 * nnod);
+				freematrix(TPHK,  6 * nnod);
+				freematrix(Kint2, 6 * nnod);
+				free(mvct);
+				freematrix(Kmas1, 6 * nnod);
+				freematrix(RM,    6 * nnod);
+				freematrix(RMR,   6 * nnod);
+				freematrix(Kmas2, 6 * nnod);
 
 
 
@@ -1310,7 +1251,7 @@ if(i==5)
 				KE = 0.0;
 				KEt = 0.0;
 				KEr = 0.0;
-                for (ii = 0; ii < nnod; ii++)
+				for (ii = 0; ii < nnod; ii++)
 				{
 					for (jj = 0; jj < 3; jj++)
 					{
@@ -1342,68 +1283,6 @@ if(i==5)
 				free(shellstress);
 			}
 
-/*FOR DEBUG*/
-
-if(0)
-{
-
-fprintf(flog, "NODE = %d\n", i);
-fprintf(flog, "GFORMINIT\n");
-for(ii=0;ii<nnod;ii++)
-{
-  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gforminit+6*ii+0), *(gforminit+6*ii+1), *(gforminit+6*ii+2),*(gforminit+6*ii+3), *(gforminit+6*ii+4), *(gforminit+6*ii+5));
-}
-fprintf(flog, "EFORMINIT\n");
-for(ii=0;ii<nnod;ii++)
-{
-  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eforminit+6*ii+0), *(eforminit+6*ii+1), *(eforminit+6*ii+2),*(eforminit+6*ii+3), *(eforminit+6*ii+4), *(eforminit+6*ii+5));
-}
-fprintf(flog, "GFORM\n");
-for(ii=0;ii<nnod;ii++)
-{
-  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(gform+6*ii+0), *(gform+6*ii+1), *(gform+6*ii+2),*(gform+6*ii+3), *(gform+6*ii+4), *(gform+6*ii+5));
-}
-fprintf(flog, "EFORM\n");
-for(ii=0;ii<nnod;ii++)
-{
-  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(eform+6*ii+0), *(eform+6*ii+1), *(eform+6*ii+2),*(eform+6*ii+3), *(eform+6*ii+4), *(eform+6*ii+5));
-}
-
-fprintf(flog, "EDISP\n");
-for(ii=0;ii<nnod;ii++)
-{
-  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(edisp+6*ii+0), *(edisp+6*ii+1), *(edisp+6*ii+2),*(edisp+6*ii+3), *(edisp+6*ii+4), *(edisp+6*ii+5));
-}
-
-}
-if(0)
-{
-fprintf(flog, "EINTERNAL\n");
-	for(ii=0;ii<nnod;ii++)
-	{
-	  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(mideinternal+6*ii+0), *(mideinternal+6*ii+1), *(mideinternal+6*ii+2),*(mideinternal+6*ii+3), *(mideinternal+6*ii+4), *(mideinternal+6*ii+5));
-	}
-fprintf(flog, "GINTERNAL\n");
-	for(ii=0;ii<nnod;ii++)
-	{
-	  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(midginternal+6*ii+0), *(midginternal+6*ii+1), *(midginternal+6*ii+2),*(midginternal+6*ii+3), *(midginternal+6*ii+4), *(midginternal+6*ii+5));
-	}
-}
-if(0)
-{
-
-fprintf(flog, "AREA %e\n", area);
-fprintf(flog, "EPRESSURE\n");
-	for(ii=0;ii<nnod;ii++)
-	{
-	  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(midepressure+6*ii+0), *(midepressure+6*ii+1), *(midepressure+6*ii+2),*(midepressure+6*ii+3), *(midepressure+6*ii+4), *(midepressure+6*ii+5));
-	}
-fprintf(flog, "GPRESSURE\n");
-	for(ii=0;ii<nnod;ii++)
-	{
-	  fprintf(flog, "%5.8f %5.8f %5.8f %5.8f %5.8f %5.8f\n", *(midgpressure+6*ii+0), *(midgpressure+6*ii+1), *(midgpressure+6*ii+2),*(midgpressure+6*ii+3), *(midgpressure+6*ii+4), *(midgpressure+6*ii+5));
-	}
-}
 
 
 			/*MEMORY FREE : INITIAL CONFIGURATION.*/
@@ -1490,7 +1369,7 @@ fprintf(flog, "GPRESSURE\n");
 			}
 		}
 
-		overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+
 
 
 		/*UNBALANCED FORCE & RESIDUAL AT MID-POINT.*/
@@ -1623,8 +1502,6 @@ fprintf(flog, "GPRESSURE\n");
 
 		iteration++;
 
-
-#if 1
 		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 		{
 		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
@@ -1658,7 +1535,7 @@ fprintf(flog, "GPRESSURE\n");
 		  //time=(t2-t1)/CLK_TCK;
 		  //if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
 		}
-#endif
+
 	}
 
 	if ((wdraw.childs + 1)->hdcC != NULL && ddisp != NULL)	/*DRAW LAST FRAME.*/
