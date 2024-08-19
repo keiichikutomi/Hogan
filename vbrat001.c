@@ -1,3 +1,11 @@
+int vbrat001(struct arclmframe* af);
+void bisecsylvesterII(struct gcomponent *A,
+				struct gcomponent *B,
+				struct oconf *confs,
+				long int N,long int NE,long int NV,
+				double EPS,
+				double *E,double **V);
+
 int vbrat001(struct arclmframe* af)
 {
   DWORDLONG memory0,memory1;
@@ -120,7 +128,7 @@ int vbrat001(struct arclmframe* af)
   t0=clock();                                        /*CLOCK BEGIN.*/
 
   double eps=1.0E-16;
-  double biseceps=BISECEPS;
+  double biseceps=1.0E-16;
 
   nnode=af->nnode;
   nelem=af->nelem;
@@ -224,7 +232,8 @@ int vbrat001(struct arclmframe* af)
   }
   else
   {
-	bisecsylvester(mmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,evct);
+	//bisecsylvester(mmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,evct);
+	bisecsylvesterII(mmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,evct);
   }
   laptime("EIGEN COMPLETED.",t0);
 
@@ -249,7 +258,7 @@ int vbrat001(struct arclmframe* af)
 	}
 	else // bisecsylvester
 	{
-		if (fout != NULL)fprintf(fout,"BISECSYLVESTER EIGEN VALUE = %.8f ", 1.0 / (*(eigen + i))); // bisecsylvester
+		if (fout != NULL)fprintf(fout,"BISECSYLVESTER EIGEN VALUE = %.8f ", *(eigen + i)); // bisecsylvester
 		if (*(eigen + i) > 0.0)
 		{
 			T = 2.0 * PI * sqrt(*(eigen + i));
@@ -304,6 +313,134 @@ int vbrat001(struct arclmframe* af)
 
 
 
+
+
+
+void bisecsylvesterII(struct gcomponent *A,
+				struct gcomponent *B,
+				struct oconf *confs,
+				long int N,long int NE,long int NV,
+				double EPS,
+				double *E,double **V)
+{
+  char err[256],str[256];
+  int i,j,k,ii;
+  double lambda,lastlambda,sum;
+  double determinant,sign;
+  struct gcomponent *gmtx,*gcomp1;
+  double *lastevct,*evct;
+  int neg;
+  double len;
+  int inverseiter=20;
+  double evctlastevct,evctevct;
+
+
+  int nnode=N/6;
+
+  double LL,LR,LM;
+  LL=0.0;
+  LR=BISECRIGHT;
+
+  lastevct=(double *)malloc(N*sizeof(double));
+  evct=(double *)malloc(N*sizeof(double));
+  if(lastevct==NULL || evct==NULL) return;
+
+  for(i=0;i<NE;i++)
+  {
+	sprintf(err,"NEIG=%ld",i);
+	errormessage(err);
+	neg=0;
+
+	LM=0.5*(LL+LR);
+	lambda=LR;
+	  /* BISECTION METHOD */
+    while(1)
+	{
+	  bisecstart:
+	  if(LR-LL<EPS)break;
+	    /* CALCULATE (A-ƒÉB)x=b */
+	  gmtx=gcomponentadd2(A,B,-1.0*LM,N);
+	  croutlu(gmtx,confs,N,&determinant,&sign,gcomp1);
+
+	  neg=0;
+      for(j=0;j<N;j++)
+	  {
+        /* CHECK IF QUADRATIC FORM xAx<0.0 */
+		if((confs+j)->iconf==0 && (gmtx+j)->value>0.0)
+        {
+		  neg++;
+		  if(neg>i)
+          {
+			sprintf(err,"LAMBDA<%.14f",1.0/LM);
+			errormessage(err);
+			LL=LM;
+			LM=0.5*(LL+LR);
+			gfree(gmtx,nnode);
+				  goto bisecstart;
+		  }
+		}
+	  }
+	  sprintf(err,"LAMBDA>%.14f",1.0/LM);
+	  errormessage(err);
+	  lambda=LM;
+	  LR=LM;
+	  LM=0.5*(LL+LR);
+	  gfree(gmtx,nnode);
+	}
+
+
+      for (ii = 0; ii < N; ii++)
+	  {
+		*(lastevct + ii)=0.0;
+		*(evct + ii)=0.0;
+	  }
+
+	/* CALCULATE CANDIDATE FOR EIGENVECTOR */
+    for(j=0;j<N;j++)
+	{
+	  if((confs+j)->iconf==0)*(evct+j)=((double)rand()+1.0)/((double)RAND_MAX+2.0);
+    }
+    vectornormalize(evct, N);
+	len = 1.0;
+    inverseiter = 0;
+
+	while (len > 1.0e-8 && inverseiter < 20)/*INVERSE METHOD*/
+    {
+	  for (ii = 0; ii < N; ii++)
+	  {
+		*(lastevct + ii) = *(evct + ii);
+	  }
+	  forwardbackward(gmtx, evct, confs, N, gcomp1);
+
+      /*RAYLEIGH*/
+	  //evctlastevct = dotproduct(evct, lastevct, N);
+	  //evctevct = dotproduct(evct, evct, N);
+	  //eigen = evctlastevct / evctevct;
+
+      vectornormalize(evct, N);
+
+      /*CHECK CONVERGENCE*/
+      for (ii = 0; ii < N; ii++)
+      {
+        *(lastevct + ii) = abs(*(lastevct + ii)) - abs(*(evct + ii));
+      }
+	  len = vectorlength(lastevct, N);
+	  inverseiter++;
+    }
+
+    /* SET EIGENVALUE & EIGENVECTOR */
+    E[i]=LM/*lambda*/;
+    for(j=0;j<N;j++)
+    {
+      V[i][j]=evct[j];
+    }
+
+	  /* SHIFT FOR NEXT EIGENVALUE */
+    LL=0.0;
+  }
+  free(lastevct);
+  return;
+}/*bisecsylvesterII*/
 
 
 
