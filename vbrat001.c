@@ -234,11 +234,11 @@ int vbrat001(struct arclmframe* af)
 
 	if (solver==0)
 	{
-		if (fout != NULL)fprintf(fout,"DEIGABGENERAL EIGEN VALUE %ld=%.8f\n", (i + 1),*(eigen + i));
+		if (fout != NULL)fprintf(fout,"DEIGABGENERAL EIGEN VALUE = %.8f ", *(eigen + i));
 		if (*(eigen + i) > 0.0)
 		{
 			T = 2.0 * PI * sqrt(*(eigen + i));
-			sprintf(string, "PERIOD T%ld=%.8f [sec] FREQUENCY f%ld=%.8f [Hz]",(i + 1), T, (i + 1), 1/T);
+			sprintf(string, "PERIOD = %.8f [sec] FREQUENCY = %.8f [Hz]",T,1/T);
 			if (fout != NULL)fprintf(fout, "%s\n", string);
 		}
 		else
@@ -249,11 +249,11 @@ int vbrat001(struct arclmframe* af)
 	}
 	else // bisecsylvester
 	{
-		if (fout != NULL)fprintf(fout,"BISECSYLVESTER EIGEN VALUE %ld=%.8f\n", (i + 1),1.0 / (*(eigen + i))); // bisecsylvester
+		if (fout != NULL)fprintf(fout,"BISECSYLVESTER EIGEN VALUE = %.8f ", 1.0 / (*(eigen + i))); // bisecsylvester
 		if (*(eigen + i) > 0.0)
 		{
 			T = 2.0 * PI * sqrt(*(eigen + i));
-			sprintf(string, "PERIOD T%ld=%.8f [sec] FREQUENCY f%ld=%.8f [Hz]",(i + 1), T, (i + 1), 1/T);
+			sprintf(string, "PERIOD = %.8f [sec] FREQUENCY = %.8f [Hz]",T,1/T);
 			if (fout != NULL)fprintf(fout, "%s\n", string);
 
 		}
@@ -264,7 +264,7 @@ int vbrat001(struct arclmframe* af)
 		}
 	}
 
-	if (fout != NULL)fprintf(fout, "\nEIGEN VECTOR %ld\n",(i + 1));
+	//if (fout != NULL)fprintf(fout, "EIGEN VECTOR %ld\n",(i + 1));
 	for (ii = 0; ii < nnode; ii++)
 	{
 		if (fout != NULL)

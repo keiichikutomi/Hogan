@@ -2472,7 +2472,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		}
 		Ke = assemshellemtx(shell, drccosinit, DBe);                        /*[Ke].*/
 		Me = assemshellmmtx(shell, drccosinit);         					/*[Me]*/
-		if(mmtx!=NULL)assemgstiffnessIIwithDOFelimination(mmtx, Me, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+
 
 		/*DEFORMED CONFIGFURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -2501,6 +2501,9 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		Kt = assemtmtxCR(Ke, eform, edisp, einternal, ginternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
 		symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+
+		Me = transformationIII(Me, T, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
+		if(mmtx!=NULL)assemgstiffnessIIwithDOFelimination(mmtx, Me, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
 		gexternal = matrixvector(Tt, eexternal, 6 * nnod);  /*GLOBAL EXTERNAL FORCE{Pg}.*/
 

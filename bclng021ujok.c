@@ -60,7 +60,7 @@
 /* BISECRIGHT: INITIAL UPPER BOUND FOR BISECSYLVESTER */
 /*             IT IS ASSUMED THAT EIGENVALUE IS HIGHER THAN INVERSE OF BISECRIGHT */
 /*             i.e. IF BISECRIGHT=1000.0, EIGENVALUE > 0.001 */
-#define BISECRIGHT 1e+8
+#define BISECRIGHT 1e+15
 
 int bclng001(struct arclmframe *af);/*ELASTIC BUCKLING ANALYSIS FOR ARCLM FRAME*/
 /*-----------------------------------------------------------------*/
