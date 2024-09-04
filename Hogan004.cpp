@@ -245,7 +245,8 @@ struct arclmframe arci={0,0,
 						"\0",
 						0,0,0,0,0,0,0,
 						NULL,NULL,
-						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
 						NULL,NULL,NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
@@ -255,7 +256,8 @@ struct arclmframe arc ={0,0,
 						"\0",
 						0,0,0,0,0,0,0,
 						NULL,NULL,
-						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
 						NULL,NULL,NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
@@ -265,7 +267,8 @@ struct arclmframe arcx={0,0,
 						"\0",
 						0,0,0,0,0,0,0,
 						NULL,NULL,
-						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
 						NULL,NULL,NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
@@ -275,7 +278,8 @@ struct arclmframe arcy={0,0,
 						"\0",
 						0,0,0,0,0,0,0,
 						NULL,NULL,
-						NULL,NULL,NULL,NULL,
+						NULL,NULL,
+						NULL,NULL,NULL,
 						NULL,NULL,NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
@@ -610,6 +614,8 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 		/*Error*/
 		wparam = MAKEWPARAM((WORD)IDM_ERROR,(WORD)0);
 		SendMessage(wmain.hwnd,WM_COMMAND,wparam,(WPARAM)0);
+
+
 
 		/*AUTO EXECUTION*/
 		FILE *fdata;
@@ -11064,18 +11070,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
             clearwindow(*(wdraw.childs+1));
 			arclm002(&arc,ID_INPUTFILE,ID_OUTPUTFILE);
             }
-          }
-
-          /*
-          if (MessageBox(NULL, "Arclm201:Begin.", "ARCLM201",
-                MB_OKCANCEL) == IDCANCEL)
-            break;
-           getviewparam((wmenu.childs + 2)->hwnd,
-            &((wdraw.childs + 1)->vparam));
-           clearwindow(*(wdraw.childs + 1));
-           arclm201(&arc, ID_INPUTFILE);
-		   break;
-         */
+		  }
          break;
 
 
@@ -11122,36 +11117,27 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 				{
 					if (MessageBox(NULL, "Arclm202:Begin.", "ARCLM202",MB_OKCANCEL) == IDCANCEL)
 					{
-							if (MessageBox(NULL, "Arclm203:Begin.", "ARCLM203",MB_OKCANCEL) == IDCANCEL)
-							{
-							break;
-							}
-							else
-							{
-							getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-							clearwindow(*(wdraw.childs + 1));
-							arclm203(&arc, ID_INPUTFILE);
-							}
+					  break;
 					}
 					else
 					{
-					getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-					clearwindow(*(wdraw.childs + 1));
-					arclm202(&arc, ID_INPUTFILE);
+						getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
+						clearwindow(*(wdraw.childs + 1));
+						arclm202(&arc, ID_INPUTFILE);
 					}
 				}
 				else
 				{
-				getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-				clearwindow(*(wdraw.childs + 1));
-				arclm201(&arc, ID_INPUTFILE);
+					getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
+					clearwindow(*(wdraw.childs + 1));
+					arclm201(&arc, ID_INPUTFILE);
 				}
 		   }
 		   else
 		   {
-		   getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-		   clearwindow(*(wdraw.childs + 1));
-		   arclmCR(&arc);
+			   getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
+			   clearwindow(*(wdraw.childs + 1));
+			   arclmCR(&arc);
 		   }
 		   break;
 
@@ -11221,7 +11207,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 										"\0",
 										0,0,0,0,0,0,0,
 										NULL,NULL,
-										NULL,NULL,NULL,NULL,
+										NULL,NULL,NULL,NULL,NULL,
 										NULL,NULL,NULL,NULL,
 										NULL,NULL,
 										NULL,NULL,NULL,
@@ -11349,24 +11335,25 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			if(fin==NULL) break;
 
 			inputinitII(fin,&(arc.nnode),&(arc.nelem),&(arc.nshell),&(arc.nsect),&(arc.nconstraint));
-			arc.sects=(struct osect *)
-					  malloc(arc.nsect*sizeof(struct osect));
+			arc.sects=(struct osect *)malloc(arc.nsect*sizeof(struct osect));
 			if(arc.sects==NULL) break;
-			arc.nodes=(struct onode *)
-					  malloc(arc.nnode*sizeof(struct onode));
+			arc.nodes=(struct onode *)malloc(arc.nnode*sizeof(struct onode));
 			if(arc.nodes==NULL) break;
-			arc.ninit=(struct onode *)
-					  malloc(arc.nnode*sizeof(struct onode));
+			arc.ninit=(struct onode *)malloc(arc.nnode*sizeof(struct onode));
 			if(arc.ninit==NULL) break;
-			arc.elems=(struct owire *)
-					  malloc(arc.nelem*sizeof(struct owire));
+			arc.elems=(struct owire *)malloc(arc.nelem*sizeof(struct owire));
 			if(arc.elems==NULL) break;
-			arc.shells=(struct oshell *)
-					  malloc(arc.nshell*sizeof(struct oshell));
+			arc.shells=(struct oshell *)malloc(arc.nshell*sizeof(struct oshell));
 			if(arc.shells==NULL) break;
-			arc.confs=(struct oconf *)
-					  malloc(6*arc.nnode*sizeof(struct oconf));
+			arc.melem=(struct memoryelem *)malloc(arc.nelem*sizeof(struct memoryelem));
+			if(arc.melem==NULL) break;
+			arc.mshell=(struct memoryshell *)malloc(arc.nshell*sizeof(struct memoryshell));
+			if(arc.mshell==NULL) break;
+			arc.confs=(struct oconf *)malloc(6*arc.nnode*sizeof(struct oconf));
 			if(arc.confs==NULL) break;
+
+			arc.iform=(double *)malloc(6*arc.nnode*sizeof(double));
+			arc.ddisp=(double *)malloc(6*arc.nnode*sizeof(double));
 
 			/*arc.constraintval=(double *)malloc(arc.nconstraint*sizeof(double));*/        /*MULTI POINT CONSTRAINTS.*/
 			/*arc.constraintvec=(double **)malloc(arc.nconstraint*sizeof(double *));
@@ -11374,6 +11361,8 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			{
 			  *(arc.constraintvec+i)=(double *)malloc(6*arc.nnode*sizeof(double));
 			}*/
+
+
 			arc.constraintmain=(long int *)malloc(6*arc.nnode*sizeof(long int));
 			arc.nmass=(double *)malloc(6*arc.nnode*sizeof(double));
 
@@ -11385,7 +11374,6 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			setviewparam((wmenu.childs+2)->hwnd,
 						 (wdraw.childs+1)->vparam);
 
-/*MessageBox(NULL,"Pass 1","Input",MB_OK);*/
 			clearwindow(*(wdraw.childs+1));
 			drawarclmframe((wdraw.childs+1)->hdcC,
 						   (wdraw.childs+1)->vparam,arc,0,ONSCREEN);

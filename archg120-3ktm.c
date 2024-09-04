@@ -218,7 +218,7 @@ struct oshell{long int code,loff;
 			  int nnod;
 			  signed char iconf[4][6];
 			  double stress[4][6];
-			  double edisp[4][6];
+			  //double edisp[4][6];
 			  struct onode *(node[4]);
 			  struct osect *sect;
 			  //double Ee[4],Ep[4]; /*STRAIN ENERGY.*/
@@ -428,6 +428,7 @@ struct arclmframe{long int code,loff;
 				  char *appelation;
 				  int nnode,nelem,nshell,nsect,nreact,nlaps,nconstraint;
 				  double *eigenval,**eigenvec;
+				  double *iform;
 				  double *ddisp;
 				  struct memoryelem *melem;
 				  struct memoryshell *mshell;
@@ -932,7 +933,6 @@ int vwrite(FILE *fvct,long int i,double *data);
 int arclm101(struct arclmframe *af,int idinput);
 int arclm101_bc(struct arclmframe *af,int idinput);  /*by Ujioka for Buckling Condensation Application*/
 int arclm201(struct arclmframe *af,int idinput);  /*by Mihara for Non-Linear Shape Analysis 100510*/
-int arclm203(struct arclmframe *af,int idinput);  /*by Kutomi for Non-Linear Shape Analysis (Using Arc-length Method) 230617*/
 DWORD availablephysicalmemory(char *comment);
 DWORDLONG availablephysicalmemoryEx(char *comment);
 FILE *fgetstofopen(const char *directory,const char *mode,
@@ -2468,83 +2468,95 @@ void errormessage(char *str)
   {
     GetAsyncKeyState(VK_RBUTTON);                /*CLEAR KEY RIGHT.*/
 
-    tx=(wmesg.childs+1)->tx;
-    ty=(wmesg.childs+1)->ty;
+	tx=(wmesg.childs+1)->tx;
+	ty=(wmesg.childs+1)->ty;
 
-    GetTextExtentPoint32((wmesg.childs+1)->hdcC,
-                         str,strlen(str),&size);
+	GetTextExtentPoint32((wmesg.childs+1)->hdcC,
+						 str,strlen(str),&size);
 
-    pc.x=0;
-    pc.y=0;
-    ClientToScreen((wmesg.childs+1)->hwnd,&pc); /*TOPLEFT OF CHILD.*/
+	pc.x=0;
+	pc.y=0;
+	ClientToScreen((wmesg.childs+1)->hwnd,&pc); /*TOPLEFT OF CHILD.*/
 
-    hoya=GetParent((wmesg.childs+1)->hwnd);
-    pp.x=0;
-    pp.y=0;
-    ClientToScreen(hoya,&pp); /*TOPLEFT OF PARENT.*/
+	hoya=GetParent((wmesg.childs+1)->hwnd);
+	pp.x=0;
+	pp.y=0;
+	ClientToScreen(hoya,&pp); /*TOPLEFT OF PARENT.*/
 
-    x=pp.x-pc.x;
-    y=pp.y-pc.y;
+	x=pp.x-pc.x;
+	y=pp.y-pc.y;
 
-    getclientsize(hoya,&pw,&ph);
-    getclientsize((wmesg.childs+1)->hwnd,&cw,&ch);
+	getclientsize(hoya,&pw,&ph);
+	getclientsize((wmesg.childs+1)->hwnd,&cw,&ch);
 
-    if(ch<(ty+size.cy-2)) /*EXTEND HEIGHT IF FILLED UP.*/
-    {
-      ch=ty+size.cy-2;
-      extendhdc((wmesg.childs+1)->hdcC,cw,ch);
-      extendhdc((wmesg.childs+1)->hdcB,cw,ch);
+	if(ch<(ty+size.cy-2)) /*EXTEND HEIGHT IF FILLED UP.*/
+	{
+	  ch=ty+size.cy-2;
+	  extendhdc((wmesg.childs+1)->hdcC,cw,ch);
+	  extendhdc((wmesg.childs+1)->hdcB,cw,ch);
+	  MoveWindow((wmesg.childs+1)->hwnd,-x,-y,cw,ch,TRUE);
+	}
+	if(cw<size.cx) /*EXTEND WIDTH FOR LONG TEXT.*/
+	{
+	  cw=size.cx;
+	  extendhdc((wmesg.childs+1)->hdcC,cw,ch);
+	  extendhdc((wmesg.childs+1)->hdcB,cw,ch);
       MoveWindow((wmesg.childs+1)->hwnd,-x,-y,cw,ch,TRUE);
-    }
-    if(cw<size.cx) /*EXTEND WIDTH FOR LONG TEXT.*/
-    {
-      cw=size.cx;
-      extendhdc((wmesg.childs+1)->hdcC,cw,ch);
-      extendhdc((wmesg.childs+1)->hdcB,cw,ch);
-      MoveWindow((wmesg.childs+1)->hwnd,-x,-y,cw,ch,TRUE);
-    }
+	}
+
+
+   #if 0
     if((y+ph)<(ty+size.cy-2)) /*SCROLL IF OVERFLOW FROM PARENT.*/
-    {
-      MoveWindow((wmesg.childs+1)->hwnd,
-                 (-x),(ph-(ty+size.cy-2)),cw,ch,TRUE);
-    }
-    SendMessage(wmesg.hwnd,WM_PAINT,0,0);
+	{
+	  MoveWindow((wmesg.childs+1)->hwnd,
+				 (-x),(ph-(ty+size.cy-2)),cw,ch,TRUE);
+	}
+   #endif
 
-    SetTextColor((wmesg.childs+1)->hdcC,RGB(255,255,255));
-    TextOut((wmesg.childs+1)->hdcC,tx,ty,str,strlen(str));
+	if (ty + size.cy > ch)/* Scroll the existing content up */
+	{
+		ScrollWindow((wmesg.childs + 1)->hwnd, 0, -(size.cy), NULL, NULL);
+		ty -= size.cy;
+	}
 
-    overlayhdc(*(wmesg.childs+1),SRCPAINT);
+	SendMessage(wmesg.hwnd,WM_PAINT,0,0);
 
-    (wmesg.childs+1)->ty+=size.cy-2;
+	SetTextColor((wmesg.childs+1)->hdcC,RGB(255,255,255));
+	TextOut((wmesg.childs+1)->hdcC,tx,ty,str,strlen(str));
 
-    /*while(!GetAsyncKeyState(VK_RBUTTON))
-    ;*/                               /*RIGHT CLICK TO CONTINUE.*/
+	overlayhdc(*(wmesg.childs+1),SRCPAINT);
+
+	(wmesg.childs+1)->ty+=size.cy-2;
+
+
+	/*while(!GetAsyncKeyState(VK_RBUTTON))
+	;*/                               /*RIGHT CLICK TO CONTINUE.*/
   }
   return;
 }/*errormessage*/
 
 void setfontformat(HDC hdc,int h,int w,
-                   char *fontname,int r,int g,int b)
+				   char *fontname,int r,int g,int b)
 /*SET FORMAT OF FONT.*/
 {
   HFONT hfont,pfont;
 
   if(hdc!=NULL)
   {
-    hfont=CreateFont(h,w,                            /*HEIGHT,WIDTH*/
-                     0,0,      /*TANGENT OF LINE,LETTER[0.1 DEGREE]*/
-                     100,                                  /*WEIGHT*/
-                     0,0,0,            /*ITALIC,UNDERLINE,STRIKEOUT*/
-                     /*ANSI_CHARSET,*/
-                     DEFAULT_CHARSET,
+	hfont=CreateFont(h,w,                            /*HEIGHT,WIDTH*/
+					 0,0,      /*TANGENT OF LINE,LETTER[0.1 DEGREE]*/
+					 100,                                  /*WEIGHT*/
+					 0,0,0,            /*ITALIC,UNDERLINE,STRIKEOUT*/
+					 /*ANSI_CHARSET,*/
+					 DEFAULT_CHARSET,
                      /*SHIFTJIS_CHARSET,*/    /*CHAR SET*/
-                     OUT_DEFAULT_PRECIS,
-                     CLIP_DEFAULT_PRECIS,
-                     DEFAULT_QUALITY,
-                     DEFAULT_PITCH | FF_DONTCARE,
-                     fontname);                         /*FONT NAME*/
-    pfont=(HFONT)SelectObject(hdc,hfont);
-    DeleteObject(pfont);
+					 OUT_DEFAULT_PRECIS,
+					 CLIP_DEFAULT_PRECIS,
+					 DEFAULT_QUALITY,
+					 DEFAULT_PITCH | FF_DONTCARE,
+					 fontname);                         /*FONT NAME*/
+	pfont=(HFONT)SelectObject(hdc,hfont);
+	DeleteObject(pfont);
 
     SetBkMode(hdc,TRANSPARENT);               /*BACKGROUND OF TEXT.*/
     SetTextColor(hdc,RGB(r,g,b));                     /*TEXT COLOR.*/
@@ -17616,7 +17628,6 @@ int arclm101(struct arclmframe *af,int idinput)
   }
   af->fsurface=fopen("canbin.sfc","wb+");      /*STRESS ON SURFACE.*/
 
-  /*fclose(fout);*/
 
   /*****CMQ ZOBUN*****/
   for(i=1;i<=nelem;i++)               /*ASSEMBLAGE GLOBAL MATRIX.*/
@@ -17654,7 +17665,7 @@ int arclm101(struct arclmframe *af,int idinput)
 	/*fout=fopen(fname,"w");*/                          /*LAP FILE*/
 
 	/*af->nlaps=nlap;*/
-    af->nlaps=1;
+	af->nlaps=1;
 
     sprintf(string,"LAP:%d/%d",nlap,laps);
     errormessage(string);
@@ -17717,10 +17728,10 @@ int arclm101(struct arclmframe *af,int idinput)
                              elem.cangle);               /*[DRCCOS]*/
 
       tmatrix=transmatrix(drccos);         /*TRANSFORMATION MATRIX.*/
-      estiff=assememtx(elem);          /*ELASTIC MATRIX OF ELEMENT.*/
+	  estiff=assememtx(elem);          /*ELASTIC MATRIX OF ELEMENT.*/
 	  estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
-      estiff=assempmtx(elem,estiff);          /*ADD PLASTIC MATRIX.*/
-      estiff=transformation(estiff,tmatrix);       /*[K]=[Tt][k][T]*/
+	  estiff=assempmtx(elem,estiff);          /*ADD PLASTIC MATRIX.*/
+	  estiff=transformation(estiff,tmatrix);       /*[K]=[Tt][k][T]*/
 
 	  assemgstiffness(gmtx,estiff,&elem);             /*ASSEMBLAGE.*/
 
@@ -19264,10 +19275,8 @@ for(ii=1;ii<=msize;ii++)
 		{
 		  *(estress2+(6*ii+jj))=0.0;
 		  *(estress2+(6*ii+jj))=elem.stress[ii][jj];
-
-/*if(jj>=3) *(estress2+(6*ii+jj))=0.0;*/ /*NONLINEAR TEST*/
         }
-      }
+	  }
 
       /*outputstress(elem,estress,fonl,func);
       if(nlap==laps) outputstressnl(elem,estress,fout);*/
@@ -19289,31 +19298,11 @@ for(ii=1;ii<=msize;ii++)
 
 	  estiff=assemgmtx(elem,estress2);/*GEOMETRIC MATRIX OF ELEMENT.*/
 
-#if 0
-for(ii=0;ii<12;ii++)
-{
-  fprintf(fonl,"[kg](%2d)",ii);
-  for(jj=0;jj<=ii;jj++)
-  {
-    fprintf(fonl," %14.5f",estiff[ii][jj]);
-  }
-  fprintf(fonl,"\n");
-}
-#endif
+
 
 //      estiff=assemgmtx(elem,estress);/*GEOMETRIC MATRIX OF ELEMENT.*/
 //      estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
-#if 0
-for(ii=0;ii<12;ii++)
-{
-  fprintf(fonl,"[kg](%2d)",ii);
-  for(jj=0;jj<=ii;jj++)
-  {
-	fprintf(fonl," %14.5f",estiff[ii][jj]);
-  }
-  fprintf(fonl,"\n");
-}
-#endif
+
 
       estiff=transformation(estiff,tmatrix);       /*[K]=[Tt][k][T]*/
       assemgstiffness(gemtx,estiff,&elem);  /*ASSEMBLAGE GEOMETRIC.*/
@@ -19544,896 +19533,8 @@ for(ii=0;ii<12;ii++)
   return 0;
 }/*arclm201*/
 
-int arclm203(struct arclmframe *af,int idinput)
-{
-  DWORD memory0,memory1,memory2;
 
-  FILE *fin,*fout,*fonl,*ffig,*ffig2,*fbcl;                       /*FILE 8 BYTES*/
-  double *ddisp,*ddisp2,*dreact,*iform,*lastddisp;
-  struct memoryelem *melem;
-  struct memoryshell *mshell;
-  char dir[]=DIRECTORY;                            /*DATA DIRECTORY*/
-  char s[80],string[400];
-  int i,ii,jj;
-  int nnode,nelem,nshell,nsect,nlap,laps,nreact;
-  long int loffset,msize,fnode,nline;
-  long int time;
-  struct gcomponent ginit={0,0,0.0,NULL};
-  struct gcomponent *gemtx,*gmtx,*k,*ge,*g,*p;/*GLOBAL MATRIX*/
-  double gg,kk;
-  double *weight;    /*Arc-Length weight parameter*/
-  double *gvct,*gvct2,*lastgvct,*cmqvct,*evct,*pvct,*dpvct,*lastdpvct,*tarf,*truef,*lasttarf,*ue,*up,*re,*rp;
-  /*GLOBAL VECTOR*/
-  /*pvct:P vector 基準荷重ベクトル*/
-  /*dpvct:dP vector 増分荷重ベクトル*/
-  /*tarf:target force vector 目標点の荷重*/
-  /*lasttarf:target force vector 前lapの収束時の目標点の荷重*/
-  /*truef:true force vector 変形から算出した内力合計の真の荷重*/
-  /*ubf:unbalanced force vector 目標点と真の荷重の間の不釣合力*/
-  double **drccos,**drccosinit,**estiff,**estiff2,**gstiff,*estress2,**tt;
-  double determinant,sign,lastsign,safety,dsafety;
-  double arcsum,arclength,arcsign;
-  double *lastpivot;
-  double **mode;/*normalized LDLmode*/
-  double *norm,*dm;/*norm & pivot of LDLmode*/
-  double lambda;
-  double upue,upup;
 
-  double *gdisp,*edisp;
-  double *gform,*eform;
-
-  double *estress,*pstress,*gstress;
-
-  double **T,**Tt;
-
-  long int *loffset2,*m;
-  /***KUTOMI FOR ARC-LENGTH INCREMENTAL***/
-  int iteration;
-  double residual;
-  int bucklingflag=0;
-  int maxiteration=20;
-  double tolerance=0.001;
-  double eps;
-  /***KUTOMI FOR ARC-LENGTH INCREMENTAL***/
-
-
-  clock_t t0,t1,t2;
-
-  struct osect *sects;
-  struct onode *nodes,*ninit;
-  struct owire elem;
-  struct owire *elems;
-  struct oshell shell;
-  struct oshell *shells;
-  struct oconf *confs;
-
-  memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
-
-  fin=fgetstofopen(dir,"r",idinput);              /*OPEN INPUT FILE*/
-  if(fin==NULL)
-  {
-	errormessage("fin ACCESS IMPOSSIBLE.");
-	return 0;
-  }
-  fout=fgetstofopen("\0","w",ID_OUTPUTFILE);          /*OUTPUT FILE*/
-  fonl=fopen("hognon.onl","w");             /*ITELATION OUTPUT FILE*/
-  if(fonl==NULL)
-  {
-	errormessage("fonl ACCESS IMPOSSIBLE.");
-	return 0;
-  }
-  fnode=364;
-  ffig=fopen("hognon.fig","w");
-  ffig2=fopen("hognon.fig2","w");
-  fbcl=fopen("hognon.bcl","w");
-
-  t0=clock();                                        /*CLOCK BEGIN.*/
-
-  getincrement((wmenu.childs+2)->hwnd,&laps,&dsafety);  /*lap,dsafety*/
-
-  inputinit(fin,&nnode,&nelem,&nsect);             /*INPUT INITIAL.*/
-
-
-  msize=6*nnode;                           /*SIZE OF GLOBAL MATRIX.*/
-
-  gemtx=(struct gcomponent *)      /*DIAGONALS OF GEOMETRIC MATRIX.*/
-		malloc(msize*sizeof(struct gcomponent));
-  gmtx=(struct gcomponent *)          /*DIAGONALS OF GLOBAL MATRIX.*/
-		malloc(msize*sizeof(struct gcomponent));
-  gvct=(double *)malloc(msize*sizeof(double));           /*GLOBAL VECTOR.*/
-  lastgvct=(double *)malloc(msize*sizeof(double));       /*GLOBAL VECTOR.*/
-  cmqvct=(double *)malloc(msize*sizeof(double));         /*GLOBAL VECTOR ONLY CMQ.*/
-  pvct=(double *)malloc(msize*sizeof(double));           /*BASE FORCE VECTOR.*/
-  evct=(double *)malloc(msize*sizeof(double));           /*UNBALANCED FORCE VECTOR.*/
-  dpvct=(double *)malloc(msize*sizeof(double));          /*INCREMENT FORCE VECTOR.*/
-  lastdpvct=(double *)malloc(msize*sizeof(double));      /*LAST INCREMENT FORCE VECTOR.*/
-  tarf=(double *)malloc(msize*sizeof(double));           /*TARGET FORCE VECTOR.*/
-  lasttarf=(double *)malloc(msize*sizeof(double));       /*LAST TARGET FORCE VECTOR.*/
-  truef=(double *)malloc(msize*sizeof(double));          /*TRUE FORCE VECTOR.*/
-  ue=(double *)malloc(msize*sizeof(double));
-  up=(double *)malloc(msize*sizeof(double));
-  weight=(double *)malloc((msize+1)*sizeof(double));          /*ARC-LENGTH WEIGHT.*/
-  lastpivot=(double *)malloc(msize*sizeof(double));       /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
-  loffset2=(long int *)malloc(12*sizeof(long int));
-
-  if(gemtx==NULL || gmtx==NULL || gvct==NULL || cmqvct==NULL || pvct==NULL || evct==NULL || dpvct==NULL || tarf==NULL || truef==NULL || up==NULL || ue==NULL || weight==NULL) return 0;
-  for(i=0;i<=msize-1;i++)
-  {
-	/*(gemtx+i)->down=NULL;*/        /*GEOMETRIC MATRIX INITIALIZATION.*/
-	(gmtx+i)->down=NULL;
-	*(gvct+i)=0.0;                  /*GLOBAL VECTOR INITIALIZATION.*/
-	*(cmqvct+i)=0.0;
-	*(evct+i)=0.0;
-	*(pvct+i)=0.0;
-	*(dpvct+i)=0.0;
-	*(tarf+i)=0.0;
-	*(truef+i)=0.0;
-	*(ue+i)=0.0;
-	*(up+i)=0.0;
-	if(i==5*6-4)
-	{
-	  *(weight+i)=10000000.0;
-	}
-	else
-	{
-	  *(weight+i)=0.0;
-	}
-  }
-  *(weight+msize)=1.0;
-
-  free(af->sects);
-  free(af->nodes);
-  free(af->ninit);
-  free(af->elems);
-  free(af->confs);
-  free(af->ddisp);
-  free(af->melem);
-
-  sects=(struct osect *)malloc(nsect*sizeof(struct osect));
-  if(sects==NULL) return 0;
-  nodes=(struct onode *)malloc(nnode*sizeof(struct onode));
-  if(nodes==NULL) return 0;
-  ninit=(struct onode *)malloc(nnode*sizeof(struct onode));
-  if(ninit==NULL) return 0;
-  elems=(struct owire *)malloc(nelem*sizeof(struct owire));
-  if(elems==NULL) return 0;
-  confs=(struct oconf *)malloc(msize*sizeof(struct oconf));
-  if(confs==NULL) return 0;
-  ddisp=(double *)malloc(6*nnode*sizeof(double));
-  if(ddisp==NULL) return 0;
-  lastddisp=(double *)malloc(6*nnode*sizeof(double));
-  if(lastddisp==NULL) return 0;
-  iform=(double *)malloc(6*nnode*sizeof(double));
-  if(iform==NULL) return 0;
-  melem=(struct memoryelem *)
-		malloc(nelem*sizeof(struct memoryelem));
-  if(melem==NULL) return 0;
-
-
-  af->sects=sects;
-  af->nodes=nodes;
-  af->ninit=ninit;
-  af->elems=elems;
-  af->confs=confs;
-  af->ddisp=ddisp;                     /*DISPLACEMENT:6 DIRECTIONS.*/
-  af->melem=melem;
-
-  inputtexttomemory(fin,af);        /*READY TO READ LONG REACTIONS.*/
-  nnode=af->nnode;
-  nelem=af->nelem;
-  nsect=af->nsect;
-  nreact=af->nreact;
-
-  initialform(nodes,ddisp,nnode);           /*ASSEMBLAGE FORMATION.*/
-  initialelem(elems,melem,nelem);            /*ASSEMBLAGE ELEMENTS.*/
-
-  initialform(nodes,iform,nnode);              /*INITIAL FORMATION.*/
-
-  dreact=(double *)malloc(nreact*sizeof(double));       /*REACTION.*/
-  af->dreact=dreact;
-  initialreact(fin,dreact,nreact);     /*ASSEMBLAGE LONG REACTIONS.*/
-
-  GetAsyncKeyState(VK_LBUTTON);                   /*CLEAR KEY LEFT.*/
-  GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
-
-  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,
-				 0,0,255);                      /*DRAW GLOBAL AXIS.*/
-
-  /*fclose(fout);*/
-  nlap=1;
-  iteration=1;
-  residual=0.0;
-
-  while(nlap<=laps)      /***KUTOMI FOR ARC-LENGTH INCREMENTAL***/
-  {
-	af->nlaps=nlap;
-
-
-	if(iteration==1)
-	{
-	  sprintf(string,"\nLAP:%d/%d",nlap,laps);
-	  /*errormessage(string);*/
-	  if(fonl!=NULL) fprintf(fonl,"%s\n",string);
-	}
-
-	sprintf(string,"\nITERATION:%d",iteration);
-	/*errormessage(string);*/
-	if(fonl!=NULL) fprintf(fonl,"%s\n",string);
-
-	arclength=dsafety;
-
-	/*setincrement((wmenu.childs+2)->hwnd,laps,nlap,dsafety,safety);*/
-	/*memory1=availablephysicalmemory("REMAIN:");*/  /*MEMORY AVAILABLE*/
-
-
-	for(i=1;i<=msize;i++)        /*MATRIX INITIALIZATION.*/
-	{
-	  g=(gmtx+(i-1))->down;   /*NEXT OF DIAGONAL.*/
-	  while(g!=NULL) 	      /*CLEAR ROW.*/
-	  {
-		p=g;
-		g=g->down;
-		free(p);
-	  }
-
-	  /*
-	  ge=(gemtx+(i-1))->down;
-	  while(ge!=NULL)
-	  {
-		p=ge;
-		ge=ge->down;
-		free(p);
-	  }*/
-
-	  ginit.m=(unsigned short int)i;
-
-	  *(gmtx+(i-1))=ginit;
-	  /**(gemtx+(i-1))=ginit;*/
-	  *(truef+(i-1))=0.0;			 /*GLOBAL VECTOR INITIALIZATION.*/
-	}
-	comps=msize; /*INITIAL COMPONENTS=DIAGONALS.*/
-
-	for(i=1;i<=nelem;i++)
-	{
-	  inputelem(elems,melem,i-1,&elem);
-	  for(ii=0;ii<2;ii++)
-	  {
-		for(jj=0;jj<6;jj++)
-		{
-		  (elems+i-1)->iconf[ii][jj]=elem.iconf[ii][jj];
-		}
-
-	  }
-	  inputnode(ddisp,elem.node[0]);
-	  inputnode(ddisp,elem.node[1]);
-	  elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
-
-	  drccos=directioncosine(elem.node[0]->d[0],
-							 elem.node[0]->d[1],
-							 elem.node[0]->d[2],
-							 elem.node[1]->d[0],
-							 elem.node[1]->d[1],
-							 elem.node[1]->d[2],
-							 elem.cangle);               /*[DRCCOS]*/
-	  T=transmatrix(drccos);         /*TRANSFORMATION MATRIX.*/
-
-	  estiff=assememtx(elem);          /*ELASTIC MATRIX OF ELEMENT.*/
-
-	  estiff2=(double **)malloc(12*sizeof(double *));
-	  for(ii=0;ii<12;ii++)
-	  {
-		*(estiff2+ii)=(double *)malloc(12*sizeof(double));
-		for(jj=0;jj<12;jj++)
-		{
-		  *(*(estiff2+ii)+jj)=*(*(estiff+ii)+jj);
-		}
-	  }
-	  estiff2=modifyhinge(elem,estiff2);
-
-	  gdisp=extractdisplacement(elem,gvct);                     /*{dU}*/
-	  edisp=matrixvector(T,gdisp,12);              /*{du}=[T]{dU}*/
-	  estress=matrixvector(estiff2,edisp,12);             /*{df}=[k]{du}*/
-
-	  estress2=(double *)malloc(12*sizeof(double));  /*ACCUMULATION STRESS*/
-	  for(ii=0;ii<2;ii++)                                 /*UPDATE STRESS.*/
-	  {
-		for(jj=0;jj<6;jj++)
-		{
-
-		  elem.stress[ii][jj]+=*(estress+6*ii+jj);
-		  (melem+(elem.loff))->stress[ii][jj]=elem.stress[ii][jj];
-		  *(estress2+(6*ii+jj))=elem.stress[ii][jj];
-		}
-	  }
-	  /*estress:部材端力CMQ{df}.*/
-	  /*estress2:部材端力CMQ{f}={f+df}.*/
-	  /*laptime("OUTPUT INTO FILE.",t0);*/
-	  /*if(nlap==laps && fout!=NULL)
-	  {
-		fprintf(fout,"\n\n");
-		fprintf(fout,"** FORCES OF MEMBER\n\n");
-		fprintf(fout,"  NO   KT NODE         N        Q1        Q2");
-		fprintf(fout,"        MT        M1        M2\n\n");
-		outputstress(elem,estress,fonl,func);
-		outputstressnl(elem,estress,fout);
-	  }*/
-
-	  gstiff=assemgmtx(elem,estress2);/*GEOMETRIC MATRIX OF ELEMENT.*/
-
-	  for(ii=0;ii<12;ii++)   /*ADDITION OF ELASTIC & GEOMETRIC.*/
-	  {
-		/*fprintf(fonl,"[kg](%2d)",ii);*/
-		for(jj=0;jj<12;jj++)
-		{
-		  *(*(estiff+ii)+jj)+=*(*(gstiff+ii)+jj);
-		  /*fprintf(fonl," %14.5f",estiff[ii][jj]);*/
-		}
-		/*fprintf(fonl,"\n");*/
-	  }
-	  estiff=modifyhinge(elem,estiff);
-	  estiff=transformation(estiff,T);       /*[K]=[Tt][k][T]*/
-	  assemgstiffness(gmtx,estiff,&elem);     /*ASSEMBLAGE ELASTIC & GEOMETRIC.*/
-
-	  tt=matrixtranspose(T,12);                       /*[Tt].*/
-	  estress2=matrixvectorIII(tt,estress2,12); /*TRUE FORCE OF ELEMENT {F}=[Tt]{f}.*/
-	  for(ii=0;ii<6;ii++)                             /*truef:TRUE FORCE.*/
-	  {
-		*(truef+((6*elem.node[0]->loff)+ii))+=*(estress2+ii);
-		*(truef+((6*elem.node[1]->loff)+ii))+=*(estress2+(6+ii));
-	  }
-
-	  freematrix(drccos,3);
-	  freematrix(T,12);
-	  freematrix(tt,12);
-	  freematrix(estiff,12);
-	  freematrix(estiff2,12);
-	  freematrix(gstiff,12);
-
-	  free(estress);
-	  free(estress2);
-
-	  if(iteration==1 && (wdraw.childs+1)->hdcC!=NULL)     /*DRAW DEFORMED ELEMENT.*/
-	  {
-		drawglobalwire((wdraw.childs+1)->hdcC,
-					   (wdraw.childs+1)->vparam,
-					   *af,elem,255,255,255,
-								255,255,255,0,ONSCREEN/*,i*/);
-	  }
-
-	}
-	
-	if(fonl!=NULL)
-	{
-	  fprintf(fonl,"\"CURRENT FORM\"\n");
-	  for(ii=0;ii<nnode;ii++)
-	  {
-		sprintf(string,"NODE:%5ld {U}=",(nodes+ii)->code);
-		for(jj=0;jj<6;jj++)
-		{
-		  loffset=6*ii+jj;
-		  sprintf(s," %16.12f",*(ddisp+loffset));
-		  strcat(string,s);
-		}
-		fprintf(fonl,"%s\n",string);
-	  }
-	  /*fprintf(fonl,"\"REACTION\"\n");*/
-	  /*outputreaction(gmtx,gvct,nodes,confs,dreact,fonl,nnode);*/
-	}
-	/*sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);*/
-	/*laptime(string,t0);*/
-
-	for(ii=0;ii<nnode;ii++)
-	{
-	  if(iteration==1)
-	  {
-		if((nodes+ii)->code==fnode && ffig2!=NULL)
-		{
-		  fprintf(ffig2,"LAP: %3d / %3d NODE %3d {Fz}= %18.12f {U}= %16.12f {RESISUAL}= %16.12f {DETERMINANT}= %16.12f {SIGN}= %5.0f {BUCKLINGFLAG}= %1d\n",
-				  nlap,laps,(nodes+ii)->code,*(truef+(6*ii+2)),*(ddisp+6*ii+2),residual,determinant,sign,bucklingflag);
-		}
-	  }
-	  if((nodes+ii)->code==fnode && ffig!=NULL)
-	  {
-		fprintf(ffig,"LAP: %3d / %3d ITERATION: %2d NODE %3d {Fz}= %18.12f {U}= %16.12f {RESISUAL}= %16.12f {DETERMINANT}= %16.12f {SIGN}= %5.0f {BUCKLINGFLAG}= %1d\n",
-				  nlap,laps,iteration,(nodes+ii)->code,*(truef+(6*ii+2)),*(ddisp+6*ii+2),residual,determinant,sign,bucklingflag);
-	  }
-	}
-
-	/*
-	for(ii=1;ii<=msize;ii++)
-	{
-	  for(jj=1;jj<=ii;jj++)
-	  {
-		gg=0.0;
-
-		gread(gmtx,ii,jj,&gg);
-
-		if(gg!=0)
-		{
-		  fprintf(fonl,"%12.9f ",gg);
-		}
-	  }
-	  fprintf(fonl,"\n");
-	}
-	*/
-
-	overlayhdc(*(wdraw.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
-
-	/*予測子計算*/
-	if(iteration==1)
-	{
-	  /*
-	  if(fonl!=NULL)
-	  {
-		fprintf(fonl,"\"TRUE FORCE {F-dF}:BEFORE MODIFY CONF\"\n");
-		for(i=0;i<nnode;i++)
-		{
-			fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,
-					*(truef+(6*i+0)),*(truef+(6*i+1)),*(truef+(6*i+2)),
-					*(truef+(6*i+3)),*(truef+(6*i+4)),*(truef+(6*i+5)));
-		}
-	  }
-	  */
-
-	  assemconf(confs,pvct,1.0,nnode);/*pvct:増分荷重dΛPの基準となる荷重ベクトルP 同lapでは常に更新せずに保持する*/
-
-	  bucklingflag=0;
-	  residual=0;
-	  for(i=0;i<msize;i++)
-	  {
-		*(up+i)=*(pvct+i);
-		if((confs+i)->iconf==1) *(truef+ii)=0.0;
-		*(evct+i)=*(tarf+i)-*(truef+i);   /*unblf:非平衡力-E　UNBALANCED FORCE.*/
-		residual+=*(evct+i)**(evct+i);   /*residual:残差　非平衡力のノルムの二乗*/
-		*(ue+i)=*(evct+i);
-	  }
-	  if(fout!=NULL) fprintf(fonl,"RESIDUAL=%12.9f\n",residual);
-	  /*laptime("LDL^t DECOMPOSITION.",t0);*/
-	  nline=croutludecomposition_arclength(gmtx,
-								 up,ue,confs,
-								 6*nnode,
-								 &determinant,&sign,iteration);        /*[K]{U_p}={P} gvct:U_p*/
-	  /*sprintf(string,"LOG{DETERMINANT}=%.5E SIGN=%.1f COMPS=%ld",determinant,sign,comps);
-	  if(fonl!=NULL) fprintf(fonl,"%s\n",string);
-
-	  sprintf(string,"SAFETY FACTOR=%.5f",safety);
-	  if(fonl!=NULL) fprintf(fonl,"%s\n",string);*/
-
-	  if(sign<0.0)
-	  {
-		for(ii=1;ii<=msize;ii++)
-		{
-		  gg=0.0;
-		  gread(gmtx,ii,ii,&gg);
-
-		  if(gg<0.0)
-		  {
-			sprintf(string,"INSTABLE TERMINATION AT NODE %ld.",
-					  (nodes+int((ii-1)/6))->code);
-			errormessage(" ");
-			errormessage(string);
-			if(fonl!=NULL) fprintf(fonl,"%s\n",string);
-		  }
-		}
-
-		/*laptime("\0",t0);*/
-
-		fclose(fin);
-		fclose(fonl);
-		fclose(fout);
-		fclose(ffig);
-		fclose(ffig2);
-		/*fclose(felem);*/
-		/*fclose(fdisp);*/
-		/*fclose(freact);*/
-
-		gfree(gemtx,nnode); /*FREE GEOMETRIC MATRIX.*/
-		gfree(gmtx,nnode);  /*FREE GLOBAL MATRIX.*/
-		free(gvct);
-		free(evct);
-		free(cmqvct);
-		free(pvct);
-		free(dpvct);
-		free(truef);
-		free(tarf);
-		free(cmqvct);
-		free(ue);
-		free(up);
-		free(weight);
-		/*free(estress2);*/
-		/*free(confs);*/
-
-		/*memory2=availablephysicalmemory("REMAIN:");
-		sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory2));
-		errormessage(string);*/
-
-		return 1;
-	  }
-
-
-	  if(lastsign<sign && nlap!=1)/*最初の修正子計算時に前のlapからのpivotの符号変化が検出された場合座屈点精算(PIN-POINTING)開始*/
-	  {
-		bucklingflag=sign;
-		fprintf(fbcl,"\nLAP:%d/%d\n",nlap,laps);
-		fprintf(fbcl,"ITERATION:%d\n",iteration);
-		m=(long int *)malloc(bucklingflag*sizeof(long int));
-		jj=0;
-		for(ii=0;ii<msize;ii++)
-		{
-			if((confs+ii)->iconf==0 && *(lastpivot+ii)*((gmtx+ii)->value)<0)
-			{
-				*(m+jj)=ii;
-				jj++;
-			}
-		}
-		for(ii=0;ii<bucklingflag;ii++)
-		{
-		  fprintf(fbcl,"m=%5ld\n",*(m+ii));
-		}
-	  }
-	  else
-	  {
-		for(ii=0;ii<msize;ii++)
-		{
-		*(lastpivot+ii)=(gmtx+ii)->value;
-		}
-      }
-
-	  lastsign=sign;
-	  arcsum=*(weight+msize);
-	  for(ii=0;ii<msize;ii++)
-	  {
-		if((confs+ii)->iconf!=1)
-		{
-			arcsum+=*(weight+ii)*(*(up+ii))*(*(up+ii));/*変位スケーリングU_p*G*U_p*/
-		}
-	  }
-	  if(fout!=NULL) fprintf(fonl,"ARCSUM=%12.9f\n",arcsum);
-	  lambda=arclength/sqrt(arcsum);/*荷重倍率dΛ=Δ/√(U_p*weight*U_p+γ)*/
-	  if(fout!=NULL) fprintf(fonl,"LAMBDA=%12.9f\n",lambda);
-
-	  /*予測子符号決定*/
-	  if(nlap==1)
-	  {
-		arcsign=1.0;
-		for(ii=0;ii<msize;ii++)
-		{
-		  *(lastddisp+ii)=*(ddisp+ii);
-		  *(lasttarf+ii)=0.0;
-		}
-	  }
-	  else
-	  {
-		arcsign=0.0;
-		for(ii=0;ii<msize;ii++)
-		{
-		  arcsign+=(*(ddisp+ii)-*(lastddisp+ii))**(up+ii);
-		  *(lastddisp+ii)=*(ddisp+ii);
-		  *(lasttarf+ii)=*(tarf+ii);
-		}
-		if(fout!=NULL) fprintf(fonl,"ARCSIGN=%12.5f\n",arcsign);
-		arcsign/=abs(arcsign);
-	  }
-
-
-	  for(ii=0;ii<msize;ii++)
-	  {
-		if((confs+ii)->iconf!=1)
-		{
-		  *(gvct+ii)*=*(up+ii)*lambda*arcsign;/*gvct:増分変位dΛU_p*/
-		  *(lastgvct+ii)=*(gvct+ii);
-		  *(dpvct+ii)=*(pvct+ii)*lambda*arcsign;/*dpvct:増分荷重dΛP*/
-		  *(lastdpvct+ii)=*(dpvct+ii);
-		  *(tarf+ii)+=*(dpvct+ii);/*tarf:増分後の目標荷重P+dP*/
-		}
-	  }
-
-	  if(fonl!=NULL)
-	  {
-		fprintf(fonl,"\"NEW TARGET FORCE {F}\"\n");
-		for(i=0;i<nnode;i++)
-		{
-		  fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,
-				  *(tarf+(6*i+0)),*(tarf+(6*i+1)),*(tarf+(6*i+2)),
-				  *(tarf+(6*i+3)),*(tarf+(6*i+4)),*(tarf+(6*i+5)));
-		}
-	  }
-	}
-	/*修正子計算*/
-	if(iteration!=1)
-	{
-	  /*
-	  if(fonl!=NULL)
-	  {
-		fprintf(fonl,"\"TRUE FORCE {F-dF}:BEFORE MODIFY CONF\"\n");
-		for(i=0;i<nnode;i++)
-		{
-			fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,
-					*(truef+(6*i+0)),*(truef+(6*i+1)),*(truef+(6*i+2)),
-					*(truef+(6*i+3)),*(truef+(6*i+4)),*(truef+(6*i+5)));
-		}
-	  }
-	  */
-
-	  residual=0;
-	  eps=1e-12;
-	  for(i=0;i<msize;i++)
-	  {
-		*(up+i)=*(pvct+i);
-		if((confs+i)->iconf==1) *(truef+i)=0.0;
-		*(evct+i)=*(tarf+i)-*(truef+i);   /*unblf:非平衡力-E　UNBALANCED FORCE.*/
-		residual+=*(evct+i)**(evct+i);   /*residual:残差　非平衡力のノルムの二乗*/
-		*(ue+i)=*(evct+i);
-	  }
-	  if(fout!=NULL) fprintf(fonl,"RESIDUAL=%12.9f\n",residual);
-
-
-	  if(fonl!=NULL)
-	  {
-		fprintf(fonl,"\"TRUE FORCE {F-dF}:AFTER MODIFY CONF\"\n");
-		for(i=0;i<nnode;i++)
-		{
-		  fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,*(truef+(6*i+0)),*(truef+(6*i+1)),*(truef+(6*i+2)),*(truef+(6*i+3)),*(truef+(6*i+4)),*(truef+(6*i+5)));
-		}
-		fprintf(fonl,"\"UNBALANCED FORCE {dF}\"\n");
-		for(i=0;i<nnode;i++)
-		{
-		  fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,*(evct+(6*i+0)),*(evct+(6*i+1)),*(evct+(6*i+2)),*(evct+(6*i+3)),*(evct+(6*i+4)),*(evct+(6*i+5)));
-		}
-	  }
-
-
-	  /*laptime("LDL^t DECOMPOSITION.",t0);*/
-
-	  nline=croutludecomposition_arclength(gmtx,
-								 up,ue,confs,
-								 6*nnode,
-								 &determinant,&sign,iteration);        /*[K]{U_p}={P} gvct:U_p*/
-
-	  sprintf(string,"LOG{DETERMINANT}=%.5E SIGN=%.1f COMPS=%ld",determinant,sign,comps);
-	  if(fonl!=NULL) fprintf(fonl,"%s\n",string);
-	  if(sign<0.0)
-	  {
-		for(ii=1;ii<=msize;ii++)
-		{
-		  gg=0.0;
-		  gread(gmtx,ii,ii,&gg);
-
-		  if(gg<0.0)
-		  {
-			sprintf(string,"INSTABLE TERMINATION AT NODE %ld.",
-					  (nodes+int((ii-1)/6))->code);
-			errormessage(" ");
-			errormessage(string);
-			if(fonl!=NULL) fprintf(fonl,"%s\n",string);
-		  }
-		}
-
-		/*laptime("\0",t0);*/
-
-		fclose(fin);
-		fclose(fonl);
-		fclose(fout);
-		fclose(ffig);
-		fclose(ffig2);
-		/*fclose(felem);*/
-		/*fclose(fdisp);*/
-		/*fclose(freact);*/
-
-		gfree(gemtx,nnode); /*FREE GEOMETRIC MATRIX.*/
-		gfree(gmtx,nnode);  /*FREE GLOBAL MATRIX.*/
-		free(gvct);
-		free(evct);
-		free(pvct);
-		free(dpvct);
-		free(truef);
-		free(tarf);
-		free(cmqvct);
-		free(ue);
-		free(up);
-		/*free(estress2);*/
-		/*free(confs);*/
-
-		/*memory2=availablephysicalmemory("REMAIN:");
-		sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory2));
-		errormessage(string);*/
-
-		return 1;
-	  }
-
-
-		/*不平衡残差最小法*/
-		upue=0;
-		upup=*(weight+msize);
-		for(ii=0;ii<=msize;ii++)
-		{
-		  if((confs+ii)->iconf!=1)
-		  {
-			upue+=*(weight+ii)*(*(up+ii))*(*(ue+ii));/*U_p*G*δU_e*/
-			upup+=*(weight+ii)*(*(up+ii))*(*(up+ii));/*U_p*G*U_p*/
-			/*if(fout!=NULL) fprintf(fonl,"gvct=%12.9f ubf=%12.9f\n",*(gvct+ii),*(ubf+ii));*/
-		  }
-		}
-		if(fout!=NULL) fprintf(fonl,"upue=%12.9f upup=%12.9f\n",upue,upup);
-		lambda=-upue/upup;/*荷重倍率δΛ=(U_p*δU_e)/(U_p*U_p)*/
-
-
-	  if(fout!=NULL) fprintf(fonl,"LAMBDA=%12.9f\n",lambda);
-	  for(ii=0;ii<=msize;ii++)
-	  {
-		if((confs+ii)->iconf!=1)
-		{
-		  *(gvct+ii)=*(up+ii)*lambda+*(ue+ii);/*gvct:増分変位δU_e+δΛU_p*/
-		  *(dpvct+ii)=*(pvct+ii)*lambda;/*dpvct:増分荷重δΛP*/
-		  *(tarf+ii)+=*(dpvct+ii);/*tarf:増分後の荷重P+dP*/
-		}
-	  }
-	  if(fonl!=NULL)
-	  {
-		fprintf(fonl,"\"NEW TARGET FORCE {F}:\"\n");
-		for(i=0;i<nnode;i++)
-		{
-		  fprintf(fonl,"NODE:%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",(nodes+i)->code,
-		  *(tarf+(6*i+0)),*(tarf+(6*i+1)),*(tarf+(6*i+2)),
-		  *(tarf+(6*i+3)),*(tarf+(6*i+4)),*(tarf+(6*i+5)));
-		}
-		  /*tarf:前のiterationの増分荷重を足した外力*/
-	  }
-	}
-
-	/*if(fonl!=NULL) fprintf(fonl,"\"DISPLACEMENT\"\n");*/
-	/*outputdisp(gvct,fonl,nnode,nodes);*/ /*INCREMENTAL DISPLACEMENT OUTPUT.*/
-	/*if(fonl!=NULL) fprintf(fonl,"\"STRESS\"\n");*/
-
-	updateform(ddisp,gvct,nnode);               /*FORMATION UPDATE.*/
-
-	/***KUTOMI FOR ARC-LENGTH INCREMENTAL***/
-	if( (residual<tolerance || iteration==maxiteration)&& iteration!=1 && bucklingflag==0)
-	{
-	  nlap++;
-	  iteration=0;
-	}
-	iteration++;
-	/*sprintf(string,"\nITERATION:%d",iteration);
-	errormessage(string);*/
-
-
-
-
-	/*
-	if(nlap==laps && fout!=NULL)
-	{
-	  fprintf(fout,"\n\n");
-	  fprintf(fout,"** DISPLACEMENT OF NODE\n\n");
-	  fprintf(fout,"  NO          U          V          W");
-	  fprintf(fout,"        KSI        ETA      OMEGA\n\n");
-
-      for(ii=0;ii<nnode;ii++)
-      {
-		sprintf(string,"%4d",(nodes+ii)->code);
-        for(jj=0;jj<6;jj++)
-		{
-          loffset=6*ii+jj;
-		  sprintf(s," %10.6f",*(ddisp+loffset)-*(iform+loffset));
-		  strcat(string,s);
-        }
-		fprintf(fout,"%s\n",string);
-      }
-
-      fprintf(fout,"\n\n");
-      fprintf(fout,"** INITIAL FORM\n\n");
-	  fprintf(fout,"  NO          U          V          W");
-      fprintf(fout,"        KSI        ETA      OMEGA\n\n");
-
-      for(ii=0;ii<nnode;ii++)
-	  {
-		sprintf(string,"%4d",(nodes+ii)->code);
-		for(jj=0;jj<6;jj++)
-        {
-          loffset=6*ii+jj;
-          sprintf(s," %10.6f",*(iform+loffset));
-		  strcat(string,s);
-        }
-        fprintf(fout,"%s\n",string);
-      }
-
-	  fprintf(fout,"\n\n");
-	  fprintf(fout,"** REACTION\n\n");
-	  fprintf(fout,"  NO  DIRECTION              R    NC\n\n");
-
-	  outputreactionnl(gmtx,gvct,nodes,confs,dreact,fout,nnode);
-	}*/
-
-	/*t1=laptime("\0",t0);*/
-
-	/*memory2=availablephysicalmemory(NULL);
-	sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory1-memory2));
-	errormessage(string);*/
-
-	/*errormessage("L:CONTINUE R:ABORT");*/            /*L=LEFT R=RIGHT*/
-    while(!GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
-	{
-      if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
-	  {
-		fclose(fin);
-		gfree(gemtx,nnode); /*FREE GEOMETRIC MATRIX.*/
-		gfree(gmtx,nnode);  /*FREE GLOBAL MATRIX.*/
-		free(gvct);
-		free(pvct);
-		free(dpvct);
-		free(truef);
-		free(tarf);
-		free(cmqvct);
-		free(ue);
-		free(up);
-		free(estress2);
-
-		errormessage(" ");
-        errormessage("ABORTED.");
-        if(fonl!=NULL) fprintf(fonl,"ABORTED.\n");
-
-		fclose(fonl);
-
-		laptime("\0",t0);
-        return 1;
-      }
-      t2=clock();
-	  time=(t2-t1)/CLK_TCK;
-      if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
-	}
-
-	/*fclose(fonl);*/
-  }                                        /*REPEAT UNTIL INSTABLE.*/
-
-  if((wdraw.childs+1)->hdcC!=NULL &&
-	 melem!=NULL && ddisp!=NULL)                 /*DRAW LAST FRAME.*/
-  {
-	for(i=1;i<=nelem;i++)
-    {
-	  inputelem(elems,melem,i-1,&elem);
-      for(ii=0;ii<=1;ii++) /*COPY HINGE DATA.*/
-      {
-		for(jj=0;jj<=5;jj++)
-        {
-		  (elems+i-1)->iconf[ii][jj]=elem.iconf[ii][jj];
-		}
-      }
-
-	  inputnode(ddisp,elem.node[0]);
-	  inputnode(ddisp,elem.node[1]);
-
-	  drawglobalwire((wdraw.childs+1)->hdcC,
-					 (wdraw.childs+1)->vparam,
-					 *af,elem,255,255,255,
-							  255,255,255,0,ONSCREEN/*,i*/);
-	}
-	overlayhdc(*(wdraw.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
-  }
-
-  fclose(fin);
-  fclose(fout);
-  fclose(ffig);
-  fclose(ffig2);
-
-  gfree(gemtx,nnode); /*FREE GEOMETRIC MATRIX.*/
-  gfree(gmtx,nnode);  /*FREE GLOBAL MATRIX.*/
-
-  af->eigenvec=(double **)malloc(1*sizeof(double *));
-  *((af->eigenvec)+0)=gvct;
-
-  errormessage(" ");
-  errormessage("COMPLETED.");
-  if(fonl!=NULL) fprintf(fonl,"COMPLETED.\n");
-
-  if(fonl!=NULL) fclose(fonl);
-
-  /*memory2=availablephysicalmemory("REMAIN:");
-  sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory2));
-  errormessage(string);
-  errormessage(" ");*/
-
-  return 0;
-}/*arclm203*/
 
 DWORD availablephysicalmemory(char *comment)
 /*RETURN:PHYSICAL MEMORY AVAILABLE [BYTES].*/
@@ -20460,18 +19561,18 @@ DWORDLONG availablephysicalmemoryEx(char *comment)
 /*RETURN: PHYSICAL MEMORY AVAILABLE [BYTES].*/
 {
     MEMORYSTATUSEX memstat;
-    memstat.dwLength = sizeof(memstat); // This is important for MEMORYSTATUSEX!
+	memstat.dwLength = sizeof(memstat); // This is important for MEMORYSTATUSEX!
     char com[256], str[256];
 
     if (!GlobalMemoryStatusEx(&memstat)) {
         // Handle the error, maybe return 0 or another indicator
-        return 0;
+		return 0;
     }
 
     if (comment != NULL) {
         sprintf(str, "%llu/%llu[BYTES] AVAILABLE.", memstat.ullAvailPhys, memstat.ullTotalPhys);
 		strcpy(com, comment);
-        strcat(com, str);
+		strcat(com, str);
 		errormessage(com); // Assuming errormessage handles the message appropriately
 	}
 
@@ -20575,14 +19676,12 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	(af->nodes+i)->loff=i;
 
 	data=fgetsbrk(ftext,&n);
-
 	//sprintf(str,"%d",n);
-
+	(af->nodes + i)->code = strtol(*(data + 0), NULL, 10);
+	(af->ninit + i)->code = (af->nodes + i)->code;
 
 	if (n == 13)
 	{
-		(af->nodes + i)->code = strtol(*(data + 0), NULL, 10);
-		(af->ninit + i)->code = strtol(*(data + 0), NULL, 10);
 		for (ii = 0; ii < 3; ii++)
 		{
 			(af->nodes + i)->d[ii] = strtod(*(data + 1 + ii), NULL);
@@ -20593,19 +19692,21 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	}
 	if (n == 4)
 	{
-		(af->nodes + i)->code = strtol(*(data + 0), NULL, 10);
 		for (ii = 0; ii < 3; ii++)
 		{
 			(af->nodes + i)->d[ii] = strtod(*(data + 1 + ii), NULL);
 			(af->nodes + i)->r[ii] = 0.0;
+			(af->ninit + i)->d[ii] = (af->nodes + i)->d[ii];
+			(af->ninit + i)->r[ii] = (af->nodes + i)->r[ii];
 		}
-		*(af->ninit + i) = *(af->nodes + i);
 	}
-	//errormessage(str);
 
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
   }
+
+  initialform(af->ninit, af->iform, af->nnode);           /*ASSEMBLAGE FORMATION.*/
+  initialform(af->nodes, af->ddisp, af->nnode);           /*ASSEMBLAGE FORMATION.*/
 
   for(i=1;i<=(af->nelem);i++)
   {
@@ -21277,7 +20378,7 @@ int savebanddecreasedarclm(struct arclmframe *af)
   fin=fopen(dandf,"w");                                /*SAVE FILE.*/
   if(fin==NULL)
   {
-    errormessage("ACCESS IMPOSSIBLE.");
+	errormessage("ACCESS IMPOSSIBLE.");
     return 0;
   }
 
@@ -21768,9 +20869,9 @@ void initialform(struct onode *nodes,double *ddisp,int nnode)
 	*(ddisp+6*i+0)=(nodes+i)->d[0];
 	*(ddisp+6*i+1)=(nodes+i)->d[1];
 	*(ddisp+6*i+2)=(nodes+i)->d[2];
-	*(ddisp+6*i+3)=0.0;
-	*(ddisp+6*i+4)=0.0;
-	*(ddisp+6*i+5)=0.0;
+	*(ddisp+6*i+3)=(nodes+i)->r[0];
+	*(ddisp+6*i+4)=(nodes+i)->r[1];
+	*(ddisp+6*i+5)=(nodes+i)->r[2];
   }
 
   return;
@@ -21941,6 +21042,9 @@ void inputnode(double *ddisp,struct onode *node)
   node->d[0]=*(ddisp+loff+0);
   node->d[1]=*(ddisp+loff+1);
   node->d[2]=*(ddisp+loff+2);
+  node->r[0]=*(ddisp+loff+3);
+  node->r[1]=*(ddisp+loff+4);
+  node->r[2]=*(ddisp+loff+5);
 
   return;
 }/*inputnode*/
@@ -22865,7 +21969,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 
 
 	/*Zienkiewiczらの非適合三角形要素T-9N*/
-#if 0
+#if 1
 	for(i=0;i<3;i++)
 	{
 	  j=(i+1)%3;
@@ -22956,7 +22060,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 
 
 	/*Stricklin/Dhattらの離散Kirchhoff仮定三角形(DKT:Discrete Kirchhoff Triangular)要素T-9D*/
-#if 1
+#if 0
 	for(i=0;i<3;i++)
 	{
 	  j=(i+1)%3;
@@ -23112,7 +22216,7 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   /*shell local coordinate {xi,yi(,zi=0)}*/
   det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
 
-#if 1
+#if 0
   /*WEIGHT OF EACH NODE*/
   a=(double *)malloc(7*sizeof(double));
   *(a+0)=27.0/60.0;
@@ -23217,7 +22321,7 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   free(b);
   free(c);
 #endif
-#if 0
+#if 1
   for(i=0;i<3;i++)
   {
 	for(j=0;j<3;j++)
@@ -24429,13 +23533,25 @@ void assemconf(struct oconf *confs,double *gvct,double dsafety,
 {
   int i;
   double conf;
+  signed char iconf;
 
   for(i=0;i<6*nnode;i++)      /*LOADS OR DISPS GIVEN INCREMENTALLY.*/
   {
 	conf=(confs+i)->value;
+	iconf=(confs+i)->iconf;
 
-	/**(gvct+i-1)+=dsafety*conf;*/   /*"+=":IF GVECTOR INITIALIZED.*/
-	*(gvct+i)=dsafety*conf;         /*"=":IF GVECTOR UNINITIALIZED.*/
+	//*(gvct+i-1)+=dsafety*conf;   /*"+=":IF GVECTOR INITIALIZED.*/
+	//*(gvct+i)=dsafety*conf;         /*"=":IF GVECTOR UNINITIALIZED.*/
+
+	if(iconf!=1 && conf!=0.0)
+	{
+	   *(gvct+i)=dsafety*conf;         /*"=":IF GVECTOR UNINITIALIZED.*/
+	}
+	else
+	{
+	   *(gvct+i)=0.0;
+	}
+
   }
 
   return;
@@ -24461,7 +23577,7 @@ void assemgivend(struct oconf *confs,double *gvct,double dsafety,
 	else
 	{
 	   *(gvct+i)=0.0;
-    }
+	}
   }
   return;
 }
@@ -25532,7 +24648,7 @@ void updatestressbc(struct memoryelem *melem,FILE *fout,FILE *fsrf,
     for(j=0;j<6;j++)
     {
       dup[0][j]=lamda[0]*dfdpe[0][j];
-    }
+	}
   }
   else if(ae[0][0]==0.0 && ae[1][1]!=0.0)  /*IF I:ELASTIC J:PLASTIC*/
   {
@@ -25558,7 +24674,7 @@ void updatestressbc(struct memoryelem *melem,FILE *fout,FILE *fsrf,
         if(detinverse==0.0)
         {
           det=0.0;                           /*UNDER CONSIDERATION.*/
-          errormessage("UPDATESTRESS:UNDER CONSIDERATION.");
+		  errormessage("UPDATESTRESS:UNDER CONSIDERATION.");
           sprintf(string,"Update : Matrix Singular.SECT=%d",elem->sect->code);
 /*
 MessageBox(NULL,string,"Updatestress",MB_OK);
@@ -26081,7 +25197,7 @@ void outputstress(struct owire elem,
 
 void outputshellstress(struct oshell shell,
     double* estress, FILE* fout)
-    /*ELEMENT STRESS OUTPUT.*/
+	/*ELEMENT STRESS OUTPUT.*/
 {
     char s[80], string[256];
     long int i, n;
@@ -26099,7 +25215,7 @@ void outputshellstress(struct oshell shell,
         }
 
         for (i = 0; i < 6; i++)
-        {
+		{
             sprintf(s, " %12.8f", shell.stress[n][i]);
             strcat(string, s);
         }
@@ -26107,13 +25223,13 @@ void outputshellstress(struct oshell shell,
 	}
     */
 
-    sprintf(string, "%5d",shell.code);
+	sprintf(string, "%5d",shell.code);
     for (i = 0; i < 6; i++)
     {
-        sprintf(s, " %e", shell.stress[0][i]);
+		sprintf(s, " %e", shell.stress[0][i]);
         strcat(string, s);
     }
-    if (fout != NULL) fprintf(fout, "%s\n", string);
+	if (fout != NULL) fprintf(fout, "%s\n", string);
     return;
 }/*outputshellstress*/
 
@@ -34306,7 +33422,7 @@ MessageBox(NULL,str,"CADRE",MB_OK);
     for(j=3;j<=5;j++)
     {
       ddata=strtod(*(data+j+1),NULL);
-      *(af->ddisp+6*i+j)=ddata;
+	  *(af->ddisp+6*i+j)=ddata;
     }
 
     for(;n>0;n--) free(*(data+n-1));

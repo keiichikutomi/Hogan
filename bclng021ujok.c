@@ -60,7 +60,7 @@
 /* BISECRIGHT: INITIAL UPPER BOUND FOR BISECSYLVESTER */
 /*             IT IS ASSUMED THAT EIGENVALUE IS HIGHER THAN INVERSE OF BISECRIGHT */
 /*             i.e. IF BISECRIGHT=1000.0, EIGENVALUE > 0.001 */
-#define BISECRIGHT 1e+15
+#define BISECRIGHT 1.0
 
 int bclng001(struct arclmframe *af);/*ELASTIC BUCKLING ANALYSIS FOR ARCLM FRAME*/
 /*-----------------------------------------------------------------*/
@@ -151,6 +151,9 @@ void definencr(struct arclmframe *af,double *ncr);
 /*EXTERNAL PARAMETERS*/
 extern FILE *globalfile; /*GLOBAL FILE.*/
 
+
+
+
 /*-----------------------------------------------------------------*/
 int bclng001(struct arclmframe *af)
 /*ELASTIC BUCKLING FOR ARCLM FRAME.*/
@@ -158,8 +161,7 @@ int bclng001(struct arclmframe *af)
 {
   DWORDLONG memory0,memory1;
 
-  FILE /**fin,*/*fout;                               /*FILE 8 BYTES*/
-  /*FILE *felem,*fdisp,*freact;*/
+  FILE *fout;                               /*FILE 8 BYTES*/
   char dir[]=DIRECTORY;                        /*DATA DIRECTORY*/
   char /*s[80],*/string[400];
   int i,j,ii,jj;
@@ -470,6 +472,8 @@ int bclng001(struct arclmframe *af)
 
   return 1;
 }/*bclng001*/
+
+
 
 /*-----------------------------------------------------------------*/
 #if 1
@@ -8325,6 +8329,7 @@ void eigenmodeoutputtomemory(FILE *ftext,struct arclmframe *af,double *dfact)
   return;
 }/*eigenmodeoutputtomemory*/
 
+#if 0
 void bisecsylvester(struct gcomponent *A,
                     struct gcomponent *B,
                     struct oconf *confs,
@@ -8478,6 +8483,153 @@ bisecend:
   free(lastvec);
   return;
 }/*bisecsylvester*/
+#endif
+
+#if 1
+void bisecsylvester(struct gcomponent *A,
+				struct gcomponent *B,
+				struct oconf *confs,
+				long int N,long int NE,long int NV,
+				double EPS,
+				double *E,double **V)
+{
+  char err[256],str[256];
+  int i,j,k,ii;
+  double lambda,lastlambda,sum;
+  double determinant,sign;
+  struct gcomponent *gmtx,*gcomp1;
+  double *lastevct,*evct;
+  int neg;
+  double len;
+  int inverseiter=20;
+  double evctlastevct,evctevct;
+  MSG msg;
+
+
+  int nnode=N/6;
+
+  double LL,LR,LM;
+  LL=0.0;
+  LR=BISECRIGHT;
+
+  lastevct=(double *)malloc(N*sizeof(double));
+  evct=(double *)malloc(N*sizeof(double));
+  if(lastevct==NULL || evct==NULL) return;
+
+  for(i=0;i<NE;i++)
+  {
+	sprintf(err,"NEIG=%ld",i);
+	errormessage(err);
+	neg=0;
+
+	LM=0.5*(LL+LR);
+	lambda=LR;
+	  /* BISECTION METHOD */
+    while(1)
+	{
+      		//MESSAGE FOR UPDATE UI
+		//AVOID FREEZE ON LONG RUNNING TASK
+
+
+
+	  bisecstart:
+
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		/* CALCULATE (A-��B)x=b */
+	  gmtx=gcomponentadd2(A,B,-1.0*LM,N);
+	  croutlu(gmtx,confs,N,&determinant,&sign,gcomp1);
+
+	  if(LR-LL<EPS)break;
+
+	  neg=0;
+      for(j=0;j<N;j++)
+	  {
+		/* CHECK IF QUADRATIC FORM xAx<0.0 */
+		if((confs+j)->iconf==0 && (gmtx+j)->value>0.0)
+        {
+		  neg++;
+		  if(neg>i)
+          {
+			sprintf(err,"LAMBDA<%.14f",1.0/LM);
+			errormessage(err);
+			LL=LM;
+			LM=0.5*(LL+LR);
+			gfree(gmtx,nnode);
+			goto bisecstart;
+		  }
+		}
+	  }
+	  sprintf(err,"LAMBDA>%.14f",1.0/LM);
+	  errormessage(err);
+	  lambda=LM;
+	  LR=LM;
+	  LM=0.5*(LL+LR);
+	  gfree(gmtx,nnode);
+	}
+
+
+      for (ii = 0; ii < N; ii++)
+	  {
+		*(lastevct + ii)=0.0;
+		*(evct + ii)=0.0;
+	  }
+
+	/* CALCULATE CANDIDATE FOR EIGENVECTOR */
+    for(j=0;j<N;j++)
+	{
+	  if((confs+j)->iconf==0)*(evct+j)=((double)rand()+1.0)/((double)RAND_MAX+2.0);
+    }
+    vectornormalize(evct, N);
+	len = 1.0;
+    inverseiter = 0;
+
+	while (len > 1.0e-8 && inverseiter < 20)/*INVERSE METHOD*/
+    {
+	  for (ii = 0; ii < N; ii++)
+	  {
+		*(lastevct + ii) = *(evct + ii);
+	  }
+	  forwardbackward(gmtx, evct, confs, N, gcomp1);
+
+      /*RAYLEIGH*/
+	  //evctlastevct = dotproduct(evct, lastevct, N);
+	  //evctevct = dotproduct(evct, evct, N);
+	  //eigen = evctlastevct / evctevct;
+
+      vectornormalize(evct, N);
+
+      /*CHECK CONVERGENCE*/
+	  for (ii = 0; ii < N; ii++)
+	  {
+        *(lastevct + ii) = abs(*(lastevct + ii)) - abs(*(evct + ii));
+	  }
+	  len = vectorlength(lastevct, N);
+	  inverseiter++;
+	}
+
+    /* SET EIGENVALUE & EIGENVECTOR */
+	E[i]=LM/*lambda*/;
+	for(j=0;j<N;j++)
+    {
+	  V[i][j]=evct[j];
+    }
+
+	  /* SHIFT FOR NEXT EIGENVALUE */
+	LL=0.0;
+  }
+  free(lastevct);
+  return;
+}/*bisecsylvester*/
+#endif
+
+
+
+
+
 
 struct gcomponent *gcomponentadd2(struct gcomponent *mtx1,
                                   struct gcomponent *mtx2,

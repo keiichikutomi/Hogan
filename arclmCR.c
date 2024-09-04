@@ -37,7 +37,7 @@ double* extractlocalcoord(double* gform, double** drccos, double nnod);
 double* extractshelldisplacement(struct oshell shell, double* ddisp);
 double* extractdeformation(double* eforminit, double* eform, int nnod);
 
-void initialformCR(struct onode* nodes, double* ddisp, int nnode);
+//void initialformCR(struct onode* nodes, double* ddisp, int nnode);
 void LDLmode(struct gcomponent* gmtx, struct oconf* confs, int* m, int nmode, double** mode, double* norm, double* dm, long int msize);
 double shellvolume(struct oshell shell, double** drccos, double area);
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);
@@ -49,19 +49,20 @@ PINPOINTMODE
 */
 
 
+
 int arclmCR(struct arclmframe* af)
 {
 	DWORDLONG memory0,memory1;
 	char dir[]=DIRECTORY;
 	char string[400];
+	char fname[256];
 	clock_t t0;
 	/*INPUT & OUTPUT FILE*/
-	FILE *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout;         /*FILE 8 BYTES*/
-	char fname[50];
+	FILE * fin, * fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout;         /*FILE 8 BYTES*/
 
 	int i, ii, jj;
 
-	/*MODEL SIZE*/
+
 	int nnode, nelem, nshell, nsect, nconstraint;
 	long int msize;
 
@@ -74,21 +75,20 @@ int arclmCR(struct arclmframe* af)
 	struct oconf* confs;
 	struct memoryelem* melem;
 	struct memoryshell* mshell;
-	//long int mainoff;
 	long int* constraintmain;
 
-
 	/*GLOBAL MATRIX*/
-    struct gcomponent ginit = { 0,0,0.0,NULL };
+	struct gcomponent ginit = { 0,0,0.0,NULL };
 	struct gcomponent* gmtx, * g, * p, * gcomp1;
 	double gg;
 	double sign, determinant;
 	long int nline;
 
-	/***GLOBAL VECTOR*/
+	/*GLOBAL VECTOR*/
 	double* ddisp, * iform;
 	double* gvct;
 	double* funbalance, * fexternal, * finternal, * freaction, * fpressure, * fbaseload, * fgivendisp, * fswitching;
+    double* givendisp;
 
 	///FOR ARC-LENGTH PARAMETER///
 	int nlap, laps;
@@ -163,21 +163,48 @@ int arclmCR(struct arclmframe* af)
 	/*FOR READING ANALYSISDATA*/
 	FILE *fdata;
 	int nstr, pstr, readflag;
-	char **data;
-	char *filename;
+	char** data;
+	char filename[256];
+	char* dot;
 
+
+#if 0
+	fin = fgetstofopenII(dir, "r", (wdraw.childs+1)->inpfile);
+	if(fin==NULL)
+	{
+	  errormessage("ACCESS IMPOSSIBLE.");
+	  return 0;
+	}
+	inputinitII(fin, &nnode, &nelem, &nshell, &nsect, &nconstraint); /*INPUT INITIAL.*/
+#endif
+#if 1
+	nnode=af->nnode;
+	nelem=af->nelem;
+	nshell=af->nshell;
+	nsect=af->nsect;
+	nconstraint=af->nconstraint;
+#endif
+
+	msize = 6 * nnode;                                      /*SIZE OF GLOBAL MATRIX.*/
+
+	weight = (double *)malloc((6*nnode + 1) * sizeof(double));
+	for (i=0;i<6*nnode;i++)
+	{
+		*(weight + i) = 0.0;
+	}
+	*(weight + 6*nnode) = 1.0;
+
+
+
+	strcpy(filename, (wdraw.childs+1)->inpfile);
+	dot = strrchr(filename, '.');
+	*dot = '\0';
 
 	fdata = fgetstofopenII(dir, "r", "analysisdata.txt");
+
 	if (fdata == NULL)
 	{
-		printf("couldn't open analysisdata.txt\n");
-
-		/*OUTPUT FILE NAME IS SAME AS INPUT*/
-		strcpy(filename, (wdraw.childs+1)->inpfile);
-		char* dot = strrchr(filename, '.');
-		*dot = '\0';
-
-		/*READ ARCLENGTH PARAMS*/
+		errormessage("couldn't open analysisdata.txt\n");
 		getincrement((wmenu.childs+2)->hwnd,&laps,&arclength);
 	}
 	else
@@ -204,7 +231,15 @@ int arclmCR(struct arclmframe* af)
 						if (!strcmp(*(data + pstr), "FILENAME"))
 						{
 							pstr++;
-							filename = *(data + pstr);
+							if(strstr(*(data + pstr),filename)==NULL)
+							{
+								readflag = 0;
+								getincrement((wmenu.childs+2)->hwnd,&laps,&arclength);
+							}
+							else
+							{
+								strcpy(filename, *(data + pstr));
+                            }
 						}
 						if (!strcmp(*(data + pstr), "LAPS"))
 						{
@@ -223,26 +258,15 @@ int arclmCR(struct arclmframe* af)
 						}
 						if (!strcmp(*(data + pstr), "SCALINGARC"))
 						{
-							SCALINGARCFLAG==1;
+							SCALINGARCFLAG=1;
 						}
 						if (!strcmp(*(data + pstr), "BIGININGARC"))
 						{
-							BIGININGARCFLAG==1;
+							BIGININGARCFLAG=1;
 							pstr++;
 							biginingarcratio = (double)strtod(*(data + pstr), NULL);
 							pstr++;
 							biginingarclap = (int)strtol(*(data + pstr), NULL, 10);
-						}
-						if (!strcmp(*(data + pstr), "NNODE"))
-						{
-							pstr++;
-							nnode = (int)strtol(*(data + pstr), NULL, 10);
-							weight = (double *)malloc((6 * nnode + 1) * sizeof(double));
-							for (i = 0;i < 6 * nnode;i++ )
-							{
-								*(weight + i) = 0.0;
-							}
-							*(weight + 6 * nnode) = 0.0;
 						}
 						if (!strcmp(*(data + pstr), "WEIGHT"))
 						{
@@ -300,21 +324,13 @@ int arclmCR(struct arclmframe* af)
 		}
 	}
 
-	sprintf(string, "FILENAME:%s\n LAPS = %d\n MAX ITERATION= %d\n ARCLENGTH = %lf\n", filename, laps, maxiteration, arclength);
+	sprintf(string, "FILENAME : %s\n LAPS = %d\n MAX ITERATION= %d\n ARCLENGTH = %lf\n", filename, laps, maxiteration, arclength);
 	errormessage(string);
 
-	if (outputmode == 0)sprintf(string,"OUTPUT CONVERGED RESULT\n");
-	if (outputmode == 1)sprintf(string,"OUTPUT ALL RESULT\n");
-	errormessage(string);
+	if (outputmode == 0)errormessage("OUTPUT CONVERGED RESULT\n");
+	if (outputmode == 1)errormessage("OUTPUT ALL RESULT\n");
 
 	memory0 = availablephysicalmemoryEx("INITIAL:");   /*MEMORY AVAILABLE*/
-
-	fin = fgetstofopenII(dir, "r", (wdraw.childs+1)->inpfile);
-	if(fin==NULL)
-	{
-	  errormessage("ACCESS IMPOSSIBLE.");
-	  return 0;
-	}
 
 	snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
 	fdsp = fopen(fname, "w");
@@ -343,33 +359,48 @@ int arclmCR(struct arclmframe* af)
 
 	t0 = clock();                                                   /*CLOCK BEGIN.*/
 
-	inputinitII(fin, &nnode, &nelem, &nshell, &nsect, &nconstraint); /*INPUT INITIAL.*/
-	msize = 6 * nnode;                                      /*SIZE OF GLOBAL MATRIX.*/
 
+#if 0
 	/*MEMORY NOT ALLOCATED*/
-	//sects = (struct osect*)malloc(nsect * sizeof(struct osect));
-	//nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
-	//ninit = (struct onode*)malloc(nnode * sizeof(struct onode));
-	//elems = (struct owire*)malloc(nelem * sizeof(struct owire));
-	//shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
-	//confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
-	iform = (double*)malloc(msize * sizeof(double));          /*INITIAL GLOBAL VECTOR.*/
+	free(af->sects);
+	free(af->nodes);
+	free(af->elems);
+	free(af->shells);
+	free(af->confs);
+	free(af->iform);
+	free(af->ddisp);
+	free(af->melem);
+	free(af->mshell);
+	free(af->constraintmain);
+
+	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
+	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
+	ninit = (struct onode*)malloc(nnode * sizeof(struct onode));
+	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
+	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
+	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
+	iform = (double*)malloc(msize * sizeof(double));
 	ddisp = (double*)malloc(msize * sizeof(double));
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
-	//constraintmain = (long int*)malloc(msize * sizeof(long int));
+	constraintmain = (long int*)malloc(msize * sizeof(long int));
 
-	//af->sects = sects;
-	//af->nodes = nodes;
-	//af->ninit = ninit;
-	//af->elems = elems;
-	//af->shells = shells;
-	//af->confs = confs;
+	af->sects = sects;
+	af->nodes = nodes;
+	af->ninit = ninit;
+	af->elems = elems;
+	af->shells = shells;
+	af->confs = confs;
+	af->iform = iform;
 	af->ddisp = ddisp;
 	af->melem = melem;
 	af->mshell = mshell;
-	//af->constraintmain = constraintmain;
+	af->constraintmain = constraintmain;
 
+	inputtexttomemory(fin, af);
+	fclose(fin);
+#endif
+#if 1
 	/*MEMORY ALREADY ALLOCATED*/
 	sects = af->sects;
 	nodes = af->nodes;
@@ -377,10 +408,12 @@ int arclmCR(struct arclmframe* af)
 	elems = af->elems;
 	shells = af->shells;
 	confs = af->confs;
-	//ddisp = af->ddisp;
-	//melem = af->melem;
-	//mshell = af->mshell;
+	iform = af->iform;
+	ddisp = af->ddisp;
+	melem = af->melem;
+	mshell = af->mshell;
 	constraintmain = af->constraintmain;
+#endif
 
 	/***GLOBAL MATRIX***/
 	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
@@ -397,6 +430,7 @@ int arclmCR(struct arclmframe* af)
 	fgivendisp = (double*)malloc(msize * sizeof(double));           /*BASE LOAD VECTOR.*/
 	fswitching = (double*)malloc(msize * sizeof(double));
 
+
 	due = (double*)malloc(msize * sizeof(double));
 	dup = (double*)malloc(msize * sizeof(double));
 
@@ -405,12 +439,10 @@ int arclmCR(struct arclmframe* af)
 	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
 	lapddisp = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
 	nextddisp = (double*)malloc(msize * sizeof(double));
-
-
+	givendisp = (double*)malloc(msize * sizeof(double));
 
 	evct = (double*)malloc(msize * sizeof(double));
 	lastevct = (double*)malloc(msize * sizeof(double));
-
 
 	epsddisp = (double*)malloc(6 * nnode * sizeof(double));
 	epsgvct = (double*)malloc(6 * nnode * sizeof(double));
@@ -421,35 +453,20 @@ int arclmCR(struct arclmframe* af)
 	re = (double*)malloc(msize * sizeof(double));
 	rp = (double*)malloc(msize * sizeof(double));
 
+
+
+
+
+
 	for (i = 0; i < msize; i++)
 	{
 		(gmtx + i)->down = NULL;
 		*(gvct + i) = 0.0;
-		*(constraintmain + i) = i;
 	}
 
-	inputtexttomemory(fin, af);
-	fclose(fin);
 
-	//nnode = af->nnode;
-	//nelem = af->nelem;
-	//nshell = af->nshell;
-	//nsect = af->nsect;
-	//nconstraint = af->nconstraint;
-
-	initialformCR(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
-	initialformCR(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
 	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
-
-
-	for (ii = 0; ii < msize; ii++)
-	{
-		if (*(constraintmain + ii) != ii)
-		{
-			(confs + ii)->iconf = (signed char)1;
-		}
-	}
 
 	setviewpoint((wdraw.childs+0)->hwnd,*af,&((wdraw.childs+1)->vparam));
 	setviewparam((wmenu.childs+2)->hwnd,(wdraw.childs+1)->vparam);
@@ -461,24 +478,21 @@ int arclmCR(struct arclmframe* af)
 	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);                     /*DRAW GLOBAL AXIS.*/
 	}
 
-
 	nlap = 1;
 	iteration = 1;
 	residual = 0.0;
 
 	assemconf(confs,fbaseload,1.0,nnode);               /*GLOBAL VECTOR.*/
-	assemgivend(confs,fgivendisp,1.0,nnode);
+	assemgivend(confs,givendisp,1.0,nnode);
 
 
 	while (nlap <= laps && ENDFLAG == 0)
 	{
-
-		sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
 		af->nlaps = nlap;
-
 
 		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
 		{
+			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
 			fprintf(fdsp, string);
 			fprintf(finf, string);
 			fprintf(fexf, string);
@@ -513,7 +527,7 @@ int arclmCR(struct arclmframe* af)
 		assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, finternal, fpressure);
 		assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp, finternal, fpressure);
 
-		if(iteration==1)
+		if(/*iteration==*/1)
 		{
 		  clearwindow(*(wdraw.childs+1));
 		  drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
@@ -523,10 +537,14 @@ int arclmCR(struct arclmframe* af)
 		/*EXTERNAL FORCE & UNBALANCED FORCE*/
 		if(iteration==1)
 		{
-		  modifygivend(gmtx,fbaseload,confs,nnode);      /*0:LOAD 1:DISPLACEMENT.*/
+			for (i = 0; i < msize; i++)/*IMPOSED DISP.*/
+			{
+				*(fgivendisp + i) = *(givendisp + i);
+			}
+			modifygivend(gmtx,fgivendisp,confs,nnode);      /*0:LOAD 1:DISPLACEMENT.*/
 		}
 		residual = 0.0;
-		if(UNLOADFLAG==1)
+		if(/*UNLOADFLAG==1*/0)
 		{
 			for (i = 0; i < msize; i++)
 			{
@@ -561,6 +579,7 @@ int arclmCR(struct arclmframe* af)
 				}
 				residual += *(funbalance + i) * *(funbalance + i);
 				*(due + i) = *(funbalance + i);
+				if(iteration==1)*(dup + i) += *(fgivendisp + i);
 			}
 		}
 
@@ -573,6 +592,18 @@ int arclmCR(struct arclmframe* af)
 			outputdisp(funbalance, fubf, nnode, nodes);               /*FORMATION OUTPUT.*/
 			outputdisp(freaction, frct, nnode, nodes);                /*FORMATION OUTPUT.*/
 			/*STRESS & ENERGY OUTPUT*/
+
+			for(i = 0; i < nshell; i++)
+			{
+				fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
+				fprintf(fstr, "%5ld %e %e %e %e %e %e\n", (shells+i)->code,
+				(mshell+i)->shellstress[0][0],
+				(mshell+i)->shellstress[0][1],
+				(mshell+i)->shellstress[0][2],
+				(mshell+i)->shellstress[0][3],
+				(mshell+i)->shellstress[0][4],
+				(mshell+i)->shellstress[0][5]);
+			}
 		}
 
 
@@ -594,7 +625,7 @@ int arclmCR(struct arclmframe* af)
 			//	}
 			//}
 
-			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
+			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %8.5f\n",
 				nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, 0.0, volume);
 			fprintf(ffig, "%s", string);
 			errormessage(string);
@@ -616,7 +647,6 @@ int arclmCR(struct arclmframe* af)
 					}
 				}
 
-				fclose(fin);
 				fclose(fonl);
 				fclose(fdsp);
 				fclose(fexf);
@@ -628,14 +658,34 @@ int arclmCR(struct arclmframe* af)
 				fclose(ffig);
 				fclose(fbcl);
 
-				gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+				gfree(gmtx,nnode);
+				free(weight);
 				free(gvct);
 				free(funbalance);
-				free(finternal);
+				free(freaction);
 				free(fexternal);
+				free(finternal);
+				free(fpressure);
+				free(fbaseload);
+				free(fgivendisp);
+				free(fswitching);
 				free(due);
 				free(dup);
-				free(weight);
+				free(lastddisp);
+				free(lastgvct);
+				free(lastpivot);
+				free(lapddisp);
+				free(nextddisp);
+				free(evct);
+				free(lastevct);
+				free(epsddisp);
+				free(epsgvct);
+				free(epsfunbalance);
+				free(epsfinternal);
+				free(epsfexternal);
+				free(epsfpressure);
+				free(re);
+				free(rp);
 
 				return 1;
 			}
@@ -891,7 +941,6 @@ int arclmCR(struct arclmframe* af)
 				{
 					if (*(constraintmain + ii) != ii)
 					{
-						//mainoff = *(constraintmain + ii);
 						*(gvct + ii) = *(gvct + *(constraintmain + ii));
 					}
 				}
@@ -911,21 +960,13 @@ int arclmCR(struct arclmframe* af)
                 loadfactor += lambda;
 				updaterotation(ddisp, gvct, nnode);
 
-
-
 				if(iteration==1)
 				{
-
-
-					//for (i = 0; i < msize; i++)/*IMPOSED DISP.*/
-					//{
-					//	if((confs+i)->iconf==1 && *(fexternal+i)!=0.0)
-					//	{
-					//		*(ddisp + i) += loadfactor**(fexternal+i);
-					//	}
-					//}
+					for (i = 0; i < msize; i++)/*IMPOSED DISP.*/
+					{
+						*(ddisp + i) += lambda**(givendisp+i);
+					}
 				}
-
 
 				if ((residual < tolerance || iteration > maxiteration) && iteration != 1)
 				{
@@ -980,14 +1021,34 @@ int arclmCR(struct arclmframe* af)
 				fclose(ffig);
 				fclose(fbcl);
 
-				gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+				gfree(gmtx,nnode);
+				free(weight);
 				free(gvct);
 				free(funbalance);
-				free(finternal);
+				free(freaction);
 				free(fexternal);
+				free(finternal);
+				free(fpressure);
+				free(fbaseload);
+				free(fgivendisp);
+				free(fswitching);
 				free(due);
 				free(dup);
-				free(weight);
+				free(lastddisp);
+				free(lastgvct);
+				free(lastpivot);
+				free(lapddisp);
+				free(nextddisp);
+				free(evct);
+				free(lastevct);
+				free(epsddisp);
+				free(epsgvct);
+				free(epsfunbalance);
+				free(epsfinternal);
+				free(epsfexternal);
+				free(epsfpressure);
+				free(re);
+				free(rp);
 
 				return 1;
 			}
@@ -1042,7 +1103,6 @@ int arclmCR(struct arclmframe* af)
 				{
 					if (*(constraintmain + ii) != ii)
 					{
-						//mainoff = );
 						*(epsgvct + ii) = *(gvct + *(constraintmain + ii));
 					}
 				}
@@ -1205,7 +1265,6 @@ int arclmCR(struct arclmframe* af)
 				{
 					if (*(constraintmain + ii) != ii)
 					{
-						//mainoff = *(constraintmain + ii);
 						*(gvct + ii) = *(gvct + *(constraintmain + ii));
 					}
 				}
@@ -1242,7 +1301,6 @@ int arclmCR(struct arclmframe* af)
 					}
 				}
 
-				fclose(fin);
 				fclose(fonl);
 				fclose(fdsp);
 				fclose(fexf);
@@ -1254,15 +1312,34 @@ int arclmCR(struct arclmframe* af)
 				fclose(ffig);
 				fclose(fbcl);
 
-				gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+				gfree(gmtx,nnode);
+				free(weight);
 				free(gvct);
 				free(funbalance);
-				free(finternal);
+				free(freaction);
 				free(fexternal);
+				free(finternal);
 				free(fpressure);
+				free(fbaseload);
+				free(fgivendisp);
+				free(fswitching);
 				free(due);
 				free(dup);
-				free(weight);
+				free(lastddisp);
+				free(lastgvct);
+				free(lastpivot);
+				free(lapddisp);
+				free(nextddisp);
+				free(evct);
+				free(lastevct);
+				free(epsddisp);
+				free(epsgvct);
+				free(epsfunbalance);
+				free(epsfinternal);
+				free(epsfexternal);
+				free(epsfpressure);
+				free(re);
+				free(rp);
 
 				return 1;
 			}
@@ -1500,6 +1577,17 @@ int arclmCR(struct arclmframe* af)
 				nmode = 0;
 			}*/
 		}
+
+
+
+
+
+
+
+
+
+
+
 		/*TERMINATION FLAG*/
 		if (iteration == 1)
 		{
@@ -1542,26 +1630,15 @@ int arclmCR(struct arclmframe* af)
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
-            DispatchMessage(&msg);
+			DispatchMessage(&msg);
 		}
 #if 1
 		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 		{
 		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
 		  {
-			gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
-			free(gvct);
-			free(funbalance);
-			free(finternal);
-			free(fexternal);
-			free(fpressure);
-			free(due);
-			free(dup);
-			free(weight);
-
 			if(fonl!=NULL) fprintf(fonl,"\nABORTED.\n");
 
-			fclose(fin);
 			fclose(fonl);
 			fclose(fdsp);
 			fclose(fexf);
@@ -1573,6 +1650,36 @@ int arclmCR(struct arclmframe* af)
 			fclose(ffig);
 			fclose(fbcl);
 
+
+			gfree(gmtx,nnode);
+			free(weight);
+			free(gvct);
+			free(funbalance);
+			free(freaction);
+			free(fexternal);
+			free(finternal);
+			free(fpressure);
+			free(fbaseload);
+			free(fgivendisp);
+			free(fswitching);
+			free(due);
+			free(dup);
+			free(lastddisp);
+			free(lastgvct);
+			free(lastpivot);
+			free(lapddisp);
+			free(nextddisp);
+			free(evct);
+			free(lastevct);
+			free(epsddisp);
+			free(epsgvct);
+			free(epsfunbalance);
+			free(epsfinternal);
+			free(epsfexternal);
+			free(epsfpressure);
+			free(re);
+			free(rp);
+
 			laptime("\0",t0);
 			return 1;
 		  }
@@ -1582,33 +1689,36 @@ int arclmCR(struct arclmframe* af)
 		}
 #endif
 	}
-		  ////////// OUTPUT RESULT //////////
-	  laptime("OUTPUT INTO FILE.",t0);
 
-	  errormessage("STRESS.");
-	  if(fout!=NULL)
-	  {
+#if 0
+	////////// OUTPUT RESULT FOR SRCAN//////////
+	laptime("OUTPUT INTO FILE.",t0);
+
+	errormessage("STRESS.");
+	if(fout!=NULL)
+	{
 		fprintf(fout,"\n\n");
 		fprintf(fout,"** FORCES OF MEMBER\n\n");
 		fprintf(fout,"   NO   KT NODE            N           Q1           Q2");
 		fprintf(fout,"           MT           M1           M2\n\n");
-	  }
+	}
 
-	  assemelem(elems, melem, nelem, constraintmain,
-				NULL, NULL,
-				iform, ddisp, NULL, NULL);
+	assemelem(elems, melem, nelem, constraintmain,NULL,NULL,iform, ddisp, NULL, NULL);
 
-		if(fout!=NULL) fprintf(fout,"\n\n");
-		for (i = 0; i < msize; i++)
-		{
-		  *(gvct+i)=*(ddisp+i)-*(iform+i);
-		}
-		outputdisp001(gvct,fout,nnode,nodes);
-		if(fout!=NULL) fprintf(fout,"\n\n");
-
+	if(fout!=NULL) fprintf(fout,"\n\n");
+	for (i = 0; i < msize; i++)
+	{
+	  *(gvct+i)=*(ddisp+i)-*(iform+i);
+	}
+	outputdisp001(gvct,fout,nnode,nodes);
+	if(fout!=NULL) fprintf(fout,"\n\n");
+#endif
 
 
-	fclose(fin);
+	clearwindow(*(wdraw.childs+1));
+	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+
 	fclose(fonl);
 	fclose(fdsp);
 	fclose(fexf);
@@ -1620,15 +1730,42 @@ int arclmCR(struct arclmframe* af)
 	fclose(ffig);
 	fclose(fbcl);
 	fclose(fout);
-	gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+
+	gfree(gmtx,nnode);
+	free(weight);
+	free(gvct);
+	free(funbalance);
+	free(freaction);
+	free(fexternal);
+	free(finternal);
+	free(fpressure);
+	free(fbaseload);
+	free(fgivendisp);
+	free(fswitching);
+	free(due);
+	free(dup);
+	free(lastddisp);
+	free(lastgvct);
+	free(lastpivot);
+	free(lapddisp);
+	free(nextddisp);
+	free(evct);
+	free(lastevct);
+	free(epsddisp);
+	free(epsgvct);
+	free(epsfunbalance);
+	free(epsfinternal);
+	free(epsfexternal);
+	free(epsfpressure);
+	free(re);
+	free(rp);
+
 	errormessage(" ");
 	errormessage("COMPLETED.");
-
 
 	memory1=availablephysicalmemoryEx("REMAIN:");
 	sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory1));
 	errormessage(string);
-
 
 	return 0;
 }
@@ -1661,7 +1798,10 @@ void vectornormalize(double* vct, int vsize)
 	int i;
 	double len;
 	len = vectorlength(vct,vsize);
-	for (i = 0; i < vsize; i++) *(vct + i)/=len;
+	if(len!=0.0)
+	{
+		for (i = 0; i < vsize; i++) *(vct + i)/=len;
+    }
 	return;
 }/*vectorlength*/
 
@@ -2309,7 +2449,7 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 	double* edisp;
 	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 	//double* gexternal, * eexternal;                          /*EXTERNAL FORCE OF ELEMENT*/
-	double Ep, Eb, Ee;                           /*STRAIN ENERGY OF ELEMENT*/
+	double SEp, SEb, SE;                           /*STRAIN ENERGY OF ELEMENT*/
 	double** Me,** Ke,** Kt,** DBe,** drccos,** drccosinit;                           /*MATRIX*/
 	double** T,** Tt, **HPT,**TtPtHt;
 	int* loffset;
@@ -2430,7 +2570,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 	double* gexternal, * eexternal;                          /*EXTERNAL FORCE OF ELEMENT*/
 	double* shellstress;                        /*ƒÐx,ƒÐy,ƒÑxy,Mx,My,Mxy OF ELEMENT*/
-	double Ep, Eb, Ee;                           /*STRAIN ENERGY OF ELEMENT*/
+	double SEp, SEb, SE;                           /*STRAIN ENERGY OF ELEMENT*/
 	double** Me,** Ke,** Kt,** DBe,** drccos,** drccosinit;                           /*MATRIX*/
 	double** T,** Tt,** HP,**PtHt,**HPT,**TtPtHt;
 	int* loffset;
@@ -2480,7 +2620,6 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 			inputnode(ddisp, shell.node[ii]);
 		}
 		drccos = shelldrccos(shell, &area);
-
 		gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
 		eform = extractlocalcoord(gform,drccos,nnod); 			       	    /*{Xe+Ue}*/
 
@@ -2526,25 +2665,29 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 
 		/*OUTPUT STRAIN ENERGY & STRESS*/
-		/*
-		Ee = 0.0;
-		Ep = 0.0;
-		Eb = 0.0;
+
+		SE = 0.0;
+		SEp = 0.0;
+		SEb = 0.0;
 		for (ii = 0; ii < nnod; ii++)
 		{
 			for (jj = 0; jj < 2; jj++)
 			{
-				Ep += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+				SEp += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
 			}
 			for (jj = 2; jj < 5; jj++)
 			{
-				Eb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+				SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
 			}
-			Ee += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
+			SE += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
 		}
-		Ee += Ep + Eb;
-		fprintf(fene, "%5ld %e %e %e\n", shell.code, Ep, Eb, Ee);
-		*/
+		SE += SEp + SEb;
+
+		(mshell+i-1)->SE = SE;
+		(mshell+i-1)->SEp = SEp;
+		(mshell+i-1)->SEb = SEb;
+
+
 
 		free(shellstress);
 
@@ -2863,6 +3006,7 @@ double*  extractdeformation(double* eforminit, double* eform, int nnod)
 	return edisp;
 }
 
+#if 0
 void initialformCR(struct onode* nodes, double* ddisp, int nnode)
 /*INITIAL FORMATION INTO DISPLACEMENT.WITHOUT NODE CODE.*/
 {
@@ -2887,6 +3031,7 @@ void initialformCR(struct onode* nodes, double* ddisp, int nnode)
 
 	return;
 }/*initialformCR*/
+#endif
 
 void LDLmode(struct gcomponent* gmtx, struct oconf* confs, int*  m, int nmode, double** mode, double* norm, double* dm, long int msize)
 {

@@ -80,153 +80,153 @@ extern void assemshell(struct oshell* shells, struct memoryshell* mshell, int ns
 int arclm001(struct arclmframe *af,int idinput,int idoutput)
 {
   DWORD memory0,memory1,memory2;
-
-  FILE *fin,*fout,*fonl;                                   /*FILE 8 BYTES*/
-  double *ddisp,*dreact;
-  struct memoryelem *melem;
-  struct memoryshell *mshell;
-  /*FILE *felem,*fdisp,*freact;*/
   char dir[]=DIRECTORY;                            /*DATA DIRECTORY*/
   char s[20],string[1024];
+  clock_t t0;
+
+
+  FILE *fin,*fout,*fonl;
+
   int i,ii,jj;
+
+
+  double *ddisp,*iform,*dreact;
+
+  /*FILE *felem,*fdisp,*freact;*/
+
+  /*MODEL SIZE*/
   int nnode,nelem,nshell,nsect,nreact,nconstraint;
-  long int msize,nline,*moff,*noff;
+  long int msize;
+
+  long int nline,*moff,*noff;
   struct gcomponent ginit={0,0,0.0,NULL};
   struct gcomponent *gmtx,*gmtx2;                   /*GLOBAL MATRIX*/
   double gdata;
   double *gvct,*gvct2;                              /*GLOBAL VECTOR*/
   double **drccos,**tmatrix,**estiff,*estress;
   double determinant,sign;
-  clock_t t0;
 
+  /*ARCLMFRAME*/
   struct osect *sects;
   struct onode *nodes;
+  struct onode *ninit;
   struct owire elem;
   struct owire *elems;
   struct oshell shell;
   struct oshell *shells;
   struct oconf *confs,*confs2;
-  double *constraintval,**constraintvec;
+  struct memoryelem *melem;
+  struct memoryshell *mshell;
+  //double *constraintval,**constraintvec;
   long int mainoff,*constraintmain;
 
 
-  memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
+#if 0
+	//fin = fgetstofopenII(dir, "r", (wdraw.childs+1)->inpfile);
+	fin=fgetstofopen(dir,"r",idinput);              /*OPEN INPUT FILE*/
+	if(fin==NULL)
+	{
+	  errormessage("ACCESS IMPOSSIBLE.");
+	  return 0;
+	}
+	inputinitII(fin, &nnode, &nelem, &nshell, &nsect, &nconstraint); /*INPUT INITIAL.*/
+#endif
+#if 1
+	nnode=af->nnode;
+	nelem=af->nelem;
+	nshell=af->nshell;
+	nsect=af->nsect;
+	//nreact=af->nreact;
+	nconstraint=af->nconstraint;
+#endif
 
-  fin=fgetstofopen(dir,"r",idinput);              /*OPEN INPUT FILE*/
-  if(fin==NULL)
-  {
-	errormessage("ACCESS IMPOSSIBLE.");
-	return 0;
-  }
-  fout=fgetstofopen("\0","w",idoutput);               /*OUTPUT FILE*/
-  fonl=fopen("hognon.onl","w");
+	msize=6*nnode; /*SIZE OF GLOBAL MATRIX.*/
 
-  /*fgets(string,256,fin);*/                    /*INPUT APPELATION.*/
-  /*errormessage(string);*/
+	sprintf(string,"NODES=%d ELEMS=%d SHELLS=%d SECTS=%d CONSTRAINTS=%d",nnode,nelem,nshell,nsect,nconstraint);
+	errormessage(string);
 
-  t0=clock();                                        /*CLOCK BEGIN.*/
+	fout=fgetstofopen("\0","w",idoutput);               /*OUTPUT FILE*/
+	fonl=fopen("hognon.onl","w");
 
-  inputinitII(fin,&nnode,&nelem,&nshell,&nsect,&nconstraint);             /*INPUT INITIAL.*/
-  sprintf(string,"NODES=%d ELEMS=%d SHELLS=%d SECTS=%d CONSTRAINTS=%d",nnode,nelem,nshell,nsect,nconstraint);
-  errormessage(string);
-  /*if(fout!=NULL) fprintf(fout,"%s\n",string);*/
+	memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
+	t0=clock();                                        /*CLOCK BEGIN.*/
 
-  msize=6*nnode; /*SIZE OF GLOBAL MATRIX.*/
 
-  /*gmtx=(struct gcomponent *)malloc((msize+nconstraint)*sizeof(struct gcomponent));*/ /*DIAGONALS OF GLOBAL MATRIX.*/
-  /*gvct=(double *)malloc((msize+nconstraint)*sizeof(double));*/ /*GLOBAL VECTOR*/
+#if 0
+	/*MEMORY NOT ALLOCATED*/
+	free(af->sects);
+	free(af->nodes);
+	free(af->elems);
+	free(af->shells);
+	free(af->confs);
+	free(af->iform);
+	free(af->ddisp);
+	free(af->melem);
+	free(af->mshell);
+	free(af->constraintmain);
+	//free(af->constraintval);
+	//free(af->constraintvec);
+
+
+	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
+	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
+	ninit = (struct onode*)malloc(nnode * sizeof(struct onode));
+	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
+	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
+	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
+	iform = (double*)malloc(msize * sizeof(double));		/*INITIAL*/
+	ddisp = (double*)malloc(msize * sizeof(double));		/*LATEST ITERATION*/
+	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
+	constraintmain = (long int*)malloc(msize * sizeof(long int));
+	/*
+	constraintval=(double *)malloc(nconstraint*sizeof(double));
+	constraintvec=(double **)malloc(nconstraint*sizeof(double *));
+	for(ii=0;ii<nconstraint;ii++)
+	{
+	  *(constraintvec+ii)=(double *)malloc(msize*sizeof(double));
+	}
+	*/
+
+	af->sects = sects;
+	af->nodes = nodes;
+	af->ninit = ninit;
+	af->elems = elems;
+	af->shells = shells;
+	af->confs = confs;
+	af->iform = iform;
+	af->ddisp = ddisp;
+	af->melem = melem;
+	af->mshell = mshell;
+	af->constraintmain = constraintmain;
+	//af->constraintval=constraintval;
+	//af->constraintvec=constraintvec;
+
+	inputtexttomemory(fin, af);
+	fclose(fin);
+#endif
+#if 1
+	/*MEMORY ALREADY ALLOCATED*/
+	sects = af->sects;
+	nodes = af->nodes;
+	ninit = af->ninit;
+	elems = af->elems;
+	shells = af->shells;
+	confs = af->confs;
+	iform = af->iform;
+	ddisp = af->ddisp;
+	melem = af->melem;
+	mshell = af->mshell;
+	constraintmain = af->constraintmain;
+#endif
+
+  //gmtx=(struct gcomponent *)malloc((msize+nconstraint)*sizeof(struct gcomponent)); /*DIAGONALS OF GLOBAL MATRIX.*/
+  //gvct=(double *)malloc((msize+nconstraint)*sizeof(double)); /*GLOBAL VECTOR*/
+
   gmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent)); /*DIAGONALS OF GLOBAL MATRIX.*/
   gvct=(double *)malloc(msize*sizeof(double)); /*GLOBAL VECTOR*/
-  if(gmtx==NULL || gvct==NULL) return 0;
 
-
-  free(af->sects);
-  free(af->nodes);
-  free(af->elems);
-  free(af->shells);
-  free(af->confs);
-  free(af->ddisp);
-  free(af->melem);
-  free(af->mshell);
-  /*free(af->constraintval);*/
-  /*free(af->constraintvec);*/
-  free(af->constraintmain);
-
-  sects=(struct osect *)malloc(nsect*sizeof(struct osect));
-  if(sects==NULL) return 0;
-  nodes=(struct onode *)malloc(nnode*sizeof(struct onode));
-  if(nodes==NULL) return 0;
-  elems=(struct owire *)malloc(nelem*sizeof(struct owire));
-  if(elems==NULL) return 0;
-  shells=(struct oshell *)malloc(nshell*sizeof(struct oshell));
-  if(shells==NULL) return 0;
-  /*confs=(struct oconf *)malloc((msize+nconstraint)*sizeof(struct oconf));*/
-  confs=(struct oconf *)malloc(msize*sizeof(struct oconf));
-  if(confs==NULL) return 0;
-  ddisp=(double *)malloc(6*nnode*sizeof(double));
-  if(ddisp==NULL) return 0;
-
-  melem=(struct memoryelem *)malloc(nelem*sizeof(struct memoryelem));
-  if(melem==NULL) return 0;
-  mshell=(struct memoryshell *)malloc(nshell*sizeof(struct memoryshell));
-  if(mshell==NULL) return 0;
-
-
-  /*constraintval=(double *)malloc(nconstraint*sizeof(double));*/        /*MULTI POINT CONSTRAINTS.*/
-  /*constraintvec=(double **)malloc(nconstraint*sizeof(double *));
-  for(ii=0;ii<nconstraint;ii++)
-  {
-	*(constraintvec+ii)=(double *)malloc(msize*sizeof(double));
-  }*/
-  constraintmain=(long int *)malloc(msize*sizeof(long int));
-  for(ii=0;ii<msize;ii++)
-  {
-	*(constraintmain+ii)=ii;
-  }
-
-  af->sects=sects;
-  af->nodes=nodes;
-  af->elems=elems;
-  af->shells=shells;
-  af->confs=confs;
-  af->ddisp=ddisp;
-  af->melem=melem;
-  af->mshell=mshell;
-  /*af->constraintval=constraintval;*/
-  /*af->constraintvec=constraintvec;*/
-  af->constraintmain=constraintmain;
-
-  inputtexttomemory(fin,af);        /*READY TO READ LONG REACTIONS.*/
-
-  nnode=af->nnode;
-  nelem=af->nelem;
-  nshell=af->nshell;
-  nsect=af->nsect;
-  nreact=af->nreact;
-  nconstraint=af->nconstraint;
-
-  initialform(nodes,ddisp,nnode);           /*ASSEMBLAGE FORMATION.*/
-
-  initialelem001(elems,melem,nelem);         /*ASSEMBLAGE ELEMENTS.*/
-  initialshell(shells,mshell,nshell);         /*ASSEMBLAGE ELEMENTS.*/
-
-  dreact=(double *)malloc(nreact*sizeof(double));       /*REACTION.*/
-  af->dreact=dreact;
-  initialreact(fin,dreact,nreact);     /*ASSEMBLAGE LONG REACTIONS.*/
-
-  GetAsyncKeyState(VK_LBUTTON);                   /*CLEAR KEY LEFT.*/
-  GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
-
-  if(globaldrawflag==1)
-  {
-	drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,255,0,0);                      /*DRAW GLOBAL AXIS.*/
-  }
-  errormessage("ARCLM001:ANALYSIS LINEAR.");
-  memory1=availablephysicalmemory("REMAIN:");    /*MEMORY AVAILABLE*/
-
-
-
-  /*for(i=1;i<=msize+nconstraint;i++)*/             /*GLOBAL MATRIX & VECTOR INITIALIZATION.*/
+  //for(i=1;i<=msize+nconstraint;i++)             /*GLOBAL MATRIX & VECTOR INITIALIZATION.*/
   for(i=1;i<=msize;i++)
   {
 	ginit.m=(unsigned short int)i;
@@ -236,11 +236,33 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   }
   comps=msize/*+nconstraint*/; /*INITIAL COMPONENTS=DIAGONALS.*/
 
-  laptime("ASSEMBLING GLOBAL MATRIX.",t0);
+
+  initialelem001(elems,melem,nelem);         /*ASSEMBLAGE ELEMENTS.*/
+  initialshell(shells,mshell,nshell);         /*ASSEMBLAGE ELEMENTS.*/
+
+#if 0
+  dreact=(double *)malloc(nreact*sizeof(double));       /*REACTION.*/
+  af->dreact=dreact;
+  initialreact(fin,dreact,nreact);     /*ASSEMBLAGE LONG REACTIONS.*/
+#endif
 
 
-  assemelem(elems, NULL, nelem, constraintmain, NULL, gmtx, ddisp, ddisp, NULL, NULL);
-  assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx, ddisp, ddisp, NULL, NULL);
+  	setviewpoint((wdraw.childs+0)->hwnd,*af,&((wdraw.childs+1)->vparam));
+	setviewparam((wmenu.childs+2)->hwnd,(wdraw.childs+1)->vparam);
+
+	GetAsyncKeyState(VK_LBUTTON);                   /*CLEAR KEY LEFT.*/
+	GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
+	if(globaldrawflag==1)
+	{
+	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);                     /*DRAW GLOBAL AXIS.*/
+	}
+
+	errormessage("ARCLM001:ANALYSIS LINEAR.");
+	memory1=availablephysicalmemory("REMAIN:");    /*MEMORY AVAILABLE*/
+	laptime("ASSEMBLING GLOBAL MATRIX.",t0);
+
+	assemelem(elems, NULL, nelem, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
+	assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
 
 #if 0
 	  for(i=1;i<=nelem;i++)               /*ASSEMBLAGE GLOBAL MATRIX.*/
@@ -252,13 +274,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
 		elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
-		if((wdraw.childs+1)->hdcC!=NULL && globaldrawflag==1)     /*DRAW DEFORMED ELEMENT.*/
-		{
-		  drawglobalwire((wdraw.childs+1)->hdcC,
-						 (wdraw.childs+1)->vparam,
-						 *af,elem,255,255,255,
-								  255,255,255,0,ONSCREEN);
-		}
 
 		drccos=directioncosine(elem.node[0]->d[0],
 							   elem.node[0]->d[1],
@@ -296,13 +311,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		}
 		shell.sect=(shells+i-1)->sect;             /*READ SECTION DATA.*/
 
-		if((wdraw.childs+1)->hdcC!=NULL && globaldrawflag==1)     /*DRAW DEFORMED ELEMENT.*/
-		{
-		  drawglobalshell((wdraw.childs+1)->hdcC,
-						  (wdraw.childs+1)->vparam,
-						  *af,shell,255,255,255,
-									255,255,255,0,ONSCREEN);
-		}
+
 
 		drccos=shelldrccos(shell,NULL);
 
@@ -313,9 +322,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		estiff=transformationIII(estiff,tmatrix,6*shell.nnod);       /*[K]=[Tt][k][T]*/
 
 		assemgstiffnessIIwithDOFelimination(gmtx,estiff,&shell,constraintmain);             /*ASSEMBLAGE.*/
-
-		/*modifycmq(melem,&elem);
-		assemcmq(elem,tmatrix,confs,gvct);*/    /*ASSEMBLAGE CMQ AS LOADS.*/
 
 		for(ii=0;ii<3;ii++) free(*(drccos+ii));
 		free(drccos);
@@ -347,36 +353,21 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	  }
 	  */
 
-  for(ii = 0; ii < msize; ii++)
-  {
-	if(*(constraintmain+ii)!=ii)
-	{
-	  //mainoff = *(constraintmain+ii);
-	  (confs+ii)->iconf = (signed char)1;
-	  /*(confs+mainoff)->value += (confs+ii)->value;
-	  (confs+ii)->value = 0.0;*/
-	}
-  }
-
-
-
-
-
-
   sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
   laptime(string,t0);
 
   if(globaldrawflag==1)
   {
-	overlayhdc(*(wdraw.childs+1),SRCPAINT);          /*UPDATE DISPLAY.*/
+	clearwindow(*(wdraw.childs+1));
+	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+	overlayhdc(*(wdraw.childs + 1), SRCPAINT);
   }
 
-  /*errormessage("ASSEMBLAGE GLOBAL VECTOR.");*/
   assemconf001(confs,gvct,1.0,nnode);               /*GLOBAL VECTOR.*/
-  /*modifygivend(gmtx,gvct,confs,nnode);*/      /*0:LOAD 1:DISPLACEMENT.*/
+  modifygivend(gmtx,gvct,confs,nnode);      /*0:LOAD 1:DISPLACEMENT.*/
 
 
-#if 0 //ujioka
+#if 0
 
   if(globalmessageflag==1 &&
 	 MessageBox(NULL,"Decrease Band Width ?","ARCLM001",MB_OKCANCEL)
@@ -387,7 +378,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	noff=(long int *)malloc(nnode*sizeof(long int));
 	if(moff==NULL || noff==NULL) return 0;
 	for(i=0;i<nnode;i++)
-    {
+	{
       *(moff+i)=i;
 	  *(noff+i)=i;
 	}
@@ -549,7 +540,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   if(fout!=NULL)
   {
 	fprintf(fout,"** REACTION\n\n");
-    fprintf(fout,"  NO  DIRECTION              R    NC\n\n");
+	fprintf(fout,"  NO  DIRECTION              R    NC\n\n");
   }
   /*outputreaction001(gmtx,gvct,nodes,confs,dreact,fout,nnode);*/
   //outputreaction002(gmtx2,gvct2,nodes,confs2,dreact,fout,nnode,moff); /*TAKES TOO MUCH TIME.*/
@@ -568,7 +559,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   errormessage(string);
 
   if((wdraw.childs+1)->hdcC!=NULL &&
-     melem!=NULL && ddisp!=NULL)               /*DRAW LAST FRAME.*/
+	 melem!=NULL && ddisp!=NULL)               /*DRAW LAST FRAME.*/
   {
 	for(i=1;i<=nelem;i++)
 	{
@@ -604,25 +595,24 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	if(globaldrawflag==1) overlayhdc(*(wdraw.childs+1),SRCPAINT);     /*UPDATE DISPLAY.*/
   }
 
+
+
+
   if(gmtx2==gmtx)
   {
     gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
-    /*free(gvct);*/
+	/*free(gvct);*/
 	/*free(confs);*/
   }
   else
   {
 	gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
-    gfree(gmtx2,nnode);
+	gfree(gmtx2,nnode);
     /*free(gvct);*/
     /*free(gvct2);*/
     /*free(confs);*/
     /*free(confs2);*/
   }
-
-  af->nlaps=1;
-  /*af->eigenvec=(double **)malloc(1*sizeof(double *));*/
-  /**((af->eigenvec)+0)=gvct2;*/
 
   errormessage(" ");
   errormessage("COMPLETED.");
@@ -633,6 +623,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
   return 0;
 }/*arclm001*/
+
+
 
 /* 150515 fukushima for all */
 int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
@@ -768,7 +760,7 @@ int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
                    0,0,255);                      /*DRAW GLOBAL AXIS.*/
     }
 
-    errormessage("ARCLM001:ANALYSIS LINEAR.");
+	errormessage("ARCLM001:ANALYSIS LINEAR.");
     memory1=availablephysicalmemory("REMAIN:");    /*MEMORY AVAILABLE*/
 
     if(lxy==0) /* Assemble global matrix only at LONG period */
