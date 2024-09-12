@@ -781,8 +781,6 @@ int gnshnCR(struct arclmframe* af)
 		{
 			*(rightud_m + i) = 0.0;
 			*(leftud_m + i) = 0.0;
-			*(mvct + i) = 0.0;
-			*(cvct + i) = 0.0;
 		}
 	}
 
@@ -1310,6 +1308,12 @@ int gnshnCR(struct arclmframe* af)
 		}
 		else if(solver==1)
 		{
+
+			for (i = 0; i < msize; i++)
+			{
+				*(mvct + i) = 0.0;
+				*(cvct + i) = 0.0;
+			}
 			/*ELEMENTS ASSEMBLAGE.*/
 			for (i = 1; i <= nshell; i++)
 			{
@@ -1346,28 +1350,6 @@ int gnshnCR(struct arclmframe* af)
 				Ke = assemshellemtx(shell, drccosinit, DBe);   						/*[Ke]*/
 				Me = assemshellmmtx(shell, drccosinit);          					/*[Me]*/
 
-
-				if(nlap==1)/*DIAGONAL MASS MATRIX (VECTOR FORM)*/
-				{
-					masstotal = 0.0;
-					massdiag = 0.0;
-					for (ii = 0; ii < 18; ii++)
-					{
-						for (jj = 0; jj < 18; jj++)
-						{
-							masstotal += Me[ii][jj];
-							if (ii == jj && ii % 6 < 3)massdiag += Me[ii][jj];
-						}
-					}
-					for (ii = 0; ii < shell.nnod; ii++)
-					{
-						for (jj = 0; jj < 6; jj++)
-						{
-							*(mvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(*(Me + 6 * ii + jj) + 6 * ii + jj) * masstotal / massdiag;
-						}
-					}
-				}
-
 				/*DEFORMED CONFIGURATION OF LAST ITERATION.*/
 				for (ii = 0; ii < nnod; ii++)
 				{
@@ -1380,6 +1362,27 @@ int gnshnCR(struct arclmframe* af)
 				T = transmatrixIII(drccos, nnod);         					        /*[T]*/
 				Tt = matrixtranspose(T, 6 * nnod);                  				/*[Tt]*/
 
+				Me = transformationIII(Me, T, 6*nnod);/*[Tt][M][T]*/
+
+				masstotal = 0.0;
+				massdiag = 0.0;
+				for (ii = 0; ii < 18; ii++)
+				{
+					for (jj = 0; jj < 18; jj++)
+					{
+						masstotal += Me[ii][jj];
+						if (ii == jj && ii % 6 < 3)massdiag += Me[ii][jj];
+					}
+				}
+				for (ii = 0; ii < nnod; ii++)
+				{
+					for (jj = 0; jj < 6; jj++)
+					{
+						*(mvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(*(Me + 6 * ii + jj) + 6 * ii + jj) * masstotal / massdiag;
+					}
+				}
+
+
 
 				edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
 				einternal = matrixvector(Ke, edisp, 6 * nnod);      				/*{Fe}=[Ke]{Ue}*/
@@ -1390,16 +1393,8 @@ int gnshnCR(struct arclmframe* af)
 
 				midginternal = matrixvector(midTtPtHt, einternal, 6 * nnod);
 
-
 				epressure = assemshellpvct(shell, drccos);                		    /*{Pe}*/
 				midgpressure = matrixvector(Tt, epressure, 6 * nnod);
-
-
-
-
-
-
-
 
 
 				shellstress = matrixvector(DBe, edisp, 6 * nnod);
@@ -1650,13 +1645,13 @@ int gnshnCR(struct arclmframe* af)
 			KE = 0.0;
 			rightKE = 0.0;
 
-			funbalance_m = pullback(ddisp,funbalance,nnode);
+			//funbalance_m = pullback(ddisp,funbalance,nnode);
 			for (i = 0; i < msize; i++)
 			{
 
 				if (time == 0.0 || PEAKFLAG)
 				{
-					*(rightud_m + i) = *(funbalance_m + i) * ddt / (2.0 * *(mvct + i));
+					*(rightud_m + i) = *(funbalance + i) * ddt / (2.0 * *(mvct + i));
 					*(leftud_m  + i) = -*(rightud_m  + i);
 
 					*(ud_m  + i) = 0.0;
@@ -1665,7 +1660,7 @@ int gnshnCR(struct arclmframe* af)
 				else
 				{
 					*(leftud_m  + i) = *(rightud_m  + i);
-					*(rightud_m  + i) = (*(funbalance_m + i) * ddt / *(mvct + i)) + *(leftud_m  + i);
+					*(rightud_m  + i) = (*(funbalance + i) * ddt / *(mvct + i)) + *(leftud_m  + i);
 					//*(rightud_m  + i) = ( *(funbalance_m + i) + (*(mvct + i) / ddt - *(cvct + i) / 2.0) * *(leftud_m  + i) ) / ( *(mvct + i) / ddt + *(cvct + i) / 2.0 );
 
 					*(ud_m  + i) = (*(rightud_m  + i) + *(leftud_m  + i)) / 2.0;
@@ -1701,24 +1696,22 @@ int gnshnCR(struct arclmframe* af)
 					*(gvct + i) = *(rightud_m  + i) * ddt;
 				}
 			}
-			gvct_s = pushforward(ddisp,gvct,nnode);
+			//gvct_s = pushforward(ddisp,gvct,nnode);
 
-			gvctlen = vectorlength(gvct_s,msize);
+			//gvctlen = vectorlength(gvct,msize);
 
 			for (ii = 0; ii < msize; ii++)
 			{
 				if (*(constraintmain + ii) != ii)
 				{
-					*(gvct_s + ii) = *(gvct_s + *(constraintmain + ii));
-					*(ud_m + ii) = *(ud_m + *(constraintmain + ii));
-					*(udd_m + ii) = *(udd_m + *(constraintmain + ii));
+					*(gvct + ii) = *(gvct + *(constraintmain + ii));
 				}
 			}
-			updaterotation(ddisp, gvct_s, nnode);
+			updaterotation(ddisp, gvct, nnode);
 
 
-			free(funbalance_m);
-			free(gvct_s);
+			//free(funbalance_m);
+			//free(gvct_s);
 
 
 			nlap++;

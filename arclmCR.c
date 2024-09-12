@@ -79,7 +79,7 @@ int arclmCR(struct arclmframe* af)
 
 	/*GLOBAL MATRIX*/
 	struct gcomponent ginit = { 0,0,0.0,NULL };
-	struct gcomponent* gmtx, * g, * p, * gcomp1;
+	struct gcomponent* lastgmtx, * gmtx, * g, * p, * gcomp1;
 	double gg;
 	double sign, determinant;
 	long int nline;
@@ -417,6 +417,7 @@ int arclmCR(struct arclmframe* af)
 
 	/***GLOBAL MATRIX***/
 	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	lastgmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
 
 	/***GLOBAL VECTOR***/
 	gvct = (double *)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
@@ -511,10 +512,24 @@ int arclmCR(struct arclmframe* af)
 				g = g->down;
 				free(p);
 			}
-
 			ginit.m = (unsigned short int)i;
 			*(gmtx + (i - 1)) = ginit;
+		}
+		for (i = 1; i <= msize; i++)/*MATRIX & VECTOR INITIALIZATION.*/
+		{
+			g = (lastgmtx + (i - 1))->down;   /*NEXT OF DIAGONAL.*/
+			while (g != NULL) 	      /*CLEAR ROW.*/
+			{
+				p = g;
+				g = g->down;
+				free(p);
+			}
+			ginit.m = (unsigned short int)i;
+			*(lastgmtx + (i - 1)) = ginit;
+		}
 
+		for (i = 1; i <= msize; i++)/*MATRIX & VECTOR INITIALIZATION.*/
+		{
 			*(finternal + (i - 1)) = 0.0;			 /*GLOBAL VECTOR INITIALIZATION.*/
 			*(fexternal + (i - 1)) = 0.0;
 			*(fpressure + (i - 1)) = 0.0;
@@ -523,11 +538,18 @@ int arclmCR(struct arclmframe* af)
 		}
 		comps = msize; /*INITIAL COMPONENTS = DIAGONALS.*/
 
+		if(nlap!=1 && iteration==1)/*TWO-POINTS BUCKLING ANALYSIS FOR EVERY LAP*/
+		{
+			/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
+			assemelem(elems, NULL, nelem, constraintmain, NULL, lastgmtx, iform, lastddisp, NULL, NULL);
+			assemshell(shells, NULL, nshell, constraintmain, NULL, lastgmtx, iform, lastddisp, NULL, NULL);
+		}
+
 		/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
 		assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, finternal, fpressure);
 		assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp, finternal, fpressure);
 
-		if(/*iteration==*/1)
+		if(iteration==1)
 		{
 		  clearwindow(*(wdraw.childs+1));
 		  drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
@@ -2449,7 +2471,6 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 	double* edisp;
 	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 	//double* gexternal, * eexternal;                          /*EXTERNAL FORCE OF ELEMENT*/
-	double SEp, SEb, SE;                           /*STRAIN ENERGY OF ELEMENT*/
 	double** Me,** Ke,** Kt,** DBe,** drccos,** drccosinit;                           /*MATRIX*/
 	double** T,** Tt, **HPT,**TtPtHt;
 	int* loffset;
@@ -2570,9 +2591,8 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 	double* gexternal, * eexternal;                          /*EXTERNAL FORCE OF ELEMENT*/
 	double* shellstress;                        /*ƒÐx,ƒÐy,ƒÑxy,Mx,My,Mxy OF ELEMENT*/
-	double SEp, SEb, SE;                           /*STRAIN ENERGY OF ELEMENT*/
 	double** Me,** Ke,** Kt,** DBe,** drccos,** drccosinit;                           /*MATRIX*/
-	double** T,** Tt,** HP,**PtHt,**HPT,**TtPtHt;
+	double** T,** Tt,/*** HP,**PtHt,*/**HPT,**TtPtHt;
 	int* loffset;
 	double area;
 
@@ -2666,28 +2686,22 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 		/*OUTPUT STRAIN ENERGY & STRESS*/
 
-		SE = 0.0;
-		SEp = 0.0;
-		SEb = 0.0;
+		(mshell+i-1)->SE = 0.0;
+		(mshell+i-1)->SEp = 0.0;
+		(mshell+i-1)->SEb = 0.0;
 		for (ii = 0; ii < nnod; ii++)
 		{
 			for (jj = 0; jj < 2; jj++)
 			{
-				SEp += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+				(mshell+i-1)->SEp += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
 			}
 			for (jj = 2; jj < 5; jj++)
 			{
-				SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+				(mshell+i-1)->SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
 			}
-			SE += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
+			(mshell+i-1)->SE += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
 		}
-		SE += SEp + SEb;
-
-		(mshell+i-1)->SE = SE;
-		(mshell+i-1)->SEp = SEp;
-		(mshell+i-1)->SEb = SEb;
-
-
+		(mshell+i-1)->SE += (mshell+i-1)->SEp + (mshell+i-1)->SEb;
 
 		free(shellstress);
 

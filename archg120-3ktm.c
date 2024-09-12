@@ -22216,7 +22216,7 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   /*shell local coordinate {xi,yi(,zi=0)}*/
   det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
 
-#if 0
+#if 1
   /*WEIGHT OF EACH NODE*/
   a=(double *)malloc(7*sizeof(double));
   *(a+0)=27.0/60.0;
@@ -22321,7 +22321,7 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
   free(b);
   free(c);
 #endif
-#if 1
+#if 0
   for(i=0;i<3;i++)
   {
 	for(j=0;j<3;j++)
@@ -25080,7 +25080,7 @@ void outputdisp(double *gvct,FILE *fout,int nnode,
   {
 	for(j=0;j<6;j++) data[j]=*(gvct+6*i+j);
 	sprintf(string,
-			"%4d %10.6f %10.6f %10.6f %11.7f %11.7f %11.7f",
+			"%4d %10.6e %10.6e %10.6e %11.7e %11.7e %11.7e",
 			(nodes+i)->code,
 			data[0],data[1],data[2],data[3],data[4],data[5]);
 	if(fout!=NULL) fprintf(fout,"%s\n",string);

@@ -626,6 +626,10 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
 
 
+
+
+
+
 /* 150515 fukushima for all */
 int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
 {

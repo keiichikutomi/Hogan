@@ -5,7 +5,7 @@ int vbrat001(struct arclmframe* af)
   DWORDLONG memory0,memory1;
   FILE *fin,*fout;                               /*FILE 8 BYTES*/
   char dir[]=DIRECTORY;                        /*DATA DIRECTORY*/
-  char s[800],string[40000],fname[256];;
+  char s[800],string[400],fname[256];
   clock_t t0/*,t1,t2*/;
 
   int i,j,ii,jj;
@@ -27,7 +27,6 @@ int vbrat001(struct arclmframe* af)
 
   struct gcomponent ginit={0,0,0.0,NULL};
   struct gcomponent *kmtx,*mmtx;                    /*GLOBAL MATRIX*/
-  double gdata;
 
 	/*FOR READING ANALYSISDATA*/
 	FILE *fdata;
@@ -112,7 +111,7 @@ int vbrat001(struct arclmframe* af)
 							else
 							{
 								strcpy(filename, *(data + pstr));
-                            }
+							}
 						}
 						if (!strcmp(*(data + pstr), "NEIG"))
 						{
@@ -176,7 +175,7 @@ int vbrat001(struct arclmframe* af)
 	af->elems = elems;
 	af->shells = shells;
 	af->confs = confs;
-    af->iform = iform;
+	af->iform = iform;
 	af->ddisp = ddisp;
 	af->melem = melem;
 	af->mshell = mshell;
@@ -205,6 +204,7 @@ int vbrat001(struct arclmframe* af)
   /***GLOBAL MATRIX***/
   kmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
   mmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
+  if(kmtx==NULL || mmtx==NULL) return 0;
   for(i=0;i<msize;i++)
   {
     (kmtx+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
@@ -220,10 +220,8 @@ int vbrat001(struct arclmframe* af)
   }
   comps=msize;
 
-
  // initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
  // initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
-
 
   GetAsyncKeyState(VK_LBUTTON);                  /*CLEAR KEY LEFT.*/
   GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
@@ -238,7 +236,21 @@ int vbrat001(struct arclmframe* af)
   //laptime("GLOBAL MATRIX ASSEMBLED.",t0);
 
 
-  /*‚±‚±‚©‚ç*/
+  /*EIGEN ANALYSIS START.       	*/
+  /*([A]-eigen*[B])*{evct}=0    	*/
+  /*                            	*/
+  /*VIBRATION ANALYSIS				*/
+  /*(-omega^2*[M]+[K])*{evct}=0		*/
+  /*A:[M]							*/
+  /*B:[K]							*/
+  /*eigen=1/(omega^2)  				*/
+  /*omega=1/(eigen^0.5)             */
+  /*T=2*PI/omega=2*PI*eigen^0.5     */
+  /*f=1/(2*PI*eigen^0.5)		    */
+  /*0<eigen                     	*/
+  /*			                   	*/
+
+
   double **evct, *eigen; /* EIGEN VECTORS,EIGEN VALUES */
   double T;
   double eps=1.0E-10;
@@ -263,20 +275,23 @@ int vbrat001(struct arclmframe* af)
   }
   laptime("EIGEN COMPLETED.",t0);
 
+
   /*OUTPUT*/
   if(fout!=NULL)
   {
 	  for(i=0;i<neig;i++)
 	  {
 		//outputmode(*(evct+i),fout,nnode,ninit);
+		//ninit FOR NODE ID
+		//NODE:%5ld {dU}= %12.5E %12.5E %12.5E %12.5E %12.5E %12.5E\n
 
 		if (solver==0)
 		{
-			fprintf(fout,"DEIGABGENERAL EIGEN VALUE = %.8f ", *(eigen + i));
+			fprintf(fout,"DEIGABGENERAL EIGEN VALUE %ld = %.8f ", (i+1), *(eigen + i));
 		}
-		else // bisecsylvester
+		else
 		{
-			fprintf(fout,"BISECSYLVESTER EIGEN VALUE = %.8f ", *(eigen + i)); // bisecsylvester
+			fprintf(fout,"BISECSYLVESTER EIGEN VALUE %ld = %.8f ", (i+1), *(eigen + i));
 		}
 
 		if (*(eigen + i) > 0.0)
@@ -289,7 +304,6 @@ int vbrat001(struct arclmframe* af)
 		{
 			fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
 		}
-
 
 		for (ii = 0; ii < msize; ii++)
 		{
@@ -319,17 +333,12 @@ int vbrat001(struct arclmframe* af)
   af->eigenval=eigen;
   af->eigenvec=evct;
 
-  /*‚±‚±‚Ü‚Å*/
+  /*EIGEN ANALYSIS END.*/
 
-  updatemode(af,*(evct+0)); /*FORMATION UPDATE.*/
-
-
-
+  //updatemode(af,*(evct+0)); /*FORMATION UPDATE.*/
 
   gfree(kmtx,nnode); /*FREE GLOBAL MATRIX.*/
   gfree(mmtx,nnode); /*FREE GLOBAL MATRIX.*/
-  free(eigen);
-  freematrix(evct,neig);
 
   errormessage(" ");
   errormessage("COMPLETED.");
