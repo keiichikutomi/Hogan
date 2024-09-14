@@ -220,9 +220,6 @@ int vbrat001(struct arclmframe* af)
   }
   comps=msize;
 
- // initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
- // initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
-
   GetAsyncKeyState(VK_LBUTTON);                  /*CLEAR KEY LEFT.*/
   GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
 
@@ -317,7 +314,7 @@ int vbrat001(struct arclmframe* af)
 		for (ii = 0; ii < nnode; ii++)
 		{
 			fprintf(fout,
-			"%4ld %11.7f %11.7f %11.7f %11.7f %11.7f %11.7f\n",
+			"%4ld %e %e %e %e %e %e\n",
 			(nodes + ii)->code, *(*(evct + i) + 6*ii + 0),
 			*(*(evct + i) + 6*ii + 1),
 			*(*(evct + i) + 6*ii + 2),

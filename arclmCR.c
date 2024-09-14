@@ -42,6 +42,9 @@ void LDLmode(struct gcomponent* gmtx, struct oconf* confs, int* m, int nmode, do
 double shellvolume(struct oshell shell, double** drccos, double area);
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);
 
+void dbgvct(double* vct, int size, int linesize, const char* str);
+void dbgmtx(double** mtx, int rows, int cols, const char* str);
+
 /*
 PINPOINTMODE
 0:DO NOT DETECT BUCKLING
@@ -53,6 +56,7 @@ PINPOINTMODE
 int arclmCR(struct arclmframe* af)
 {
 	DWORDLONG memory0,memory1;
+
 	char dir[]=DIRECTORY;
 	char string[400];
 	char fname[256];
@@ -166,6 +170,8 @@ int arclmCR(struct arclmframe* af)
 	char** data;
 	char filename[256];
 	char* dot;
+
+	memory0 = availablephysicalmemoryEx("INITIAL:");   /*MEMORY AVAILABLE*/
 
 
 #if 0
@@ -330,7 +336,6 @@ int arclmCR(struct arclmframe* af)
 	if (outputmode == 0)errormessage("OUTPUT CONVERGED RESULT\n");
 	if (outputmode == 1)errormessage("OUTPUT ALL RESULT\n");
 
-	memory0 = availablephysicalmemoryEx("INITIAL:");   /*MEMORY AVAILABLE*/
 
 	snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
 	fdsp = fopen(fname, "w");
@@ -462,6 +467,7 @@ int arclmCR(struct arclmframe* af)
 	for (i = 0; i < msize; i++)
 	{
 		(gmtx + i)->down = NULL;
+        (lastgmtx + i)->down = NULL;
 		*(gvct + i) = 0.0;
 	}
 
@@ -528,17 +534,17 @@ int arclmCR(struct arclmframe* af)
 			*(lastgmtx + (i - 1)) = ginit;
 		}
 
-		for (i = 1; i <= msize; i++)/*MATRIX & VECTOR INITIALIZATION.*/
+		for (i = 0; i < msize; i++)/*MATRIX & VECTOR INITIALIZATION.*/
 		{
-			*(finternal + (i - 1)) = 0.0;			 /*GLOBAL VECTOR INITIALIZATION.*/
-			*(fexternal + (i - 1)) = 0.0;
-			*(fpressure + (i - 1)) = 0.0;
-			*(funbalance + (i - 1)) = 0.0;
-			*(freaction+ (i - 1)) = 0.0;
+			*(finternal + i) = 0.0;			 /*GLOBAL VECTOR INITIALIZATION.*/
+			*(fexternal + i) = 0.0;
+			*(fpressure + i) = 0.0;
+			*(funbalance + i) = 0.0;
+			*(freaction + i) = 0.0;
 		}
 		comps = msize; /*INITIAL COMPONENTS = DIAGONALS.*/
 
-		if(nlap!=1 && iteration==1)/*TWO-POINTS BUCKLING ANALYSIS FOR EVERY LAP*/
+		if(0/*nlap!=1 && iteration==1*/)/*TWO-POINTS BUCKLING ANALYSIS FOR EVERY LAP*/
 		{
 			/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
 			assemelem(elems, NULL, nelem, constraintmain, NULL, lastgmtx, iform, lastddisp, NULL, NULL);
@@ -581,6 +587,7 @@ int arclmCR(struct arclmframe* af)
 				{
 					*(freaction + i) = *(funbalance + i);
 					*(funbalance + i) = 0.0;
+					*(dup + i) = 0.0;
 				}
 				residual += *(funbalance + i) * *(funbalance + i);
 				*(due + i) = *(funbalance + i);
@@ -598,6 +605,7 @@ int arclmCR(struct arclmframe* af)
 				{
 					*(freaction + i) = *(funbalance + i);
 					*(funbalance + i) = 0.0;
+					*(dup + i) = 0.0;
 				}
 				residual += *(funbalance + i) * *(funbalance + i);
 				*(due + i) = *(funbalance + i);
@@ -628,6 +636,8 @@ int arclmCR(struct arclmframe* af)
 			}
 		}
 
+
+		/*CHECK BEFORE FORWARDBACKWARD : dup & due == 0.0 IF ICONF == 1*/
 
 
 
@@ -681,6 +691,7 @@ int arclmCR(struct arclmframe* af)
 				fclose(fbcl);
 
 				gfree(gmtx,nnode);
+                gfree(lastgmtx,nnode);
 				free(weight);
 				free(gvct);
 				free(funbalance);
@@ -811,17 +822,14 @@ int arclmCR(struct arclmframe* af)
 					{
 						for (ii = 0; ii < msize; ii++)
 						{
-							if ((confs + ii)->iconf != 1 && *(weight + ii) != 0.0)
+							if ((confs + ii)->iconf != 1 && *(weight + ii) != 0.0 && *(dup + ii)!=0.0)
 							{
-                                if(*(dup + ii)!=0.0)
-								{
-									*(weight + ii) = 1.0 / abs(*(dup + ii));
-								}
-								else
-								{
-									*(weight + ii) = 0.0;
-								}
+								*(weight + ii) = 1.0 / abs(*(dup + ii));
 							}
+							else
+							{
+								*(weight + ii) = 0.0;
+                            }
 						}
 					}
 
@@ -836,6 +844,7 @@ int arclmCR(struct arclmframe* af)
 						{
 							predictorsign += *(weight + ii) * *(weight + ii) * *(lapddisp + ii) * *(dup + ii);
 						}
+
 						if(predictorsign != 0.0)
 						{
 							predictorsign /= abs(predictorsign);
@@ -853,12 +862,10 @@ int arclmCR(struct arclmframe* af)
 						arcsum += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);/*SCALED DISPLACEMENT.*/
 					}
 					lambda = predictorsign * scaledarclength / sqrt(arcsum);/*INCREMANTAL LOAD FACTOR.*/
+
 					for (ii = 0; ii < msize; ii++)
 					{
-						if ((confs + ii)->iconf != 1)
-						{
-							*(gvct + ii) = lambda * *(dup + ii);/*INCREMANTAL DISPLACEMENT.*/
-						}
+						*(gvct + ii) = lambda * *(dup + ii);/*INCREMANTAL DISPLACEMENT.*/
 					}
 					fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, scaledarclength, sqrt(arcsum));
 
@@ -882,10 +889,7 @@ int arclmCR(struct arclmframe* af)
 					lambda = 0.0;
 					for (ii = 0; ii < msize; ii++)
 					{
-						if ((confs + ii)->iconf != 1)
-						{
-							*(gvct + ii) = *(due + ii);/*gvct:{ƒÂU_e+ƒÂƒ©U_p}*/
-						}
+						*(gvct + ii) = *(due + ii);/*gvct:{ƒÂU_e+ƒÂƒ©U_p}*/
 					}
 					fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, 0.0, 0.0);
 				}
@@ -900,52 +904,39 @@ int arclmCR(struct arclmframe* af)
 					dupdup = *(weight + msize) * *(weight + msize);
 					for (ii = 0; ii < msize; ii++)
 					{
-						if ((confs + ii)->iconf != 1)
-						{
-							dupdue += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(due + ii);
-							dupdup += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);
-							//dupdue += *(dup + ii) * *(due + ii);
-							//dupdup += *(dup + ii) * *(dup + ii);
-						}
+						dupdue += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(due + ii);
+						dupdup += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);
+						//dupdue += *(dup + ii) * *(due + ii);
+						//dupdup += *(dup + ii) * *(dup + ii);
 					}
 					lambda = -dupdue / dupdup;
-					fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, dupdue, dupdup);
 					for (ii = 0; ii < msize; ii++)
 					{
-						if ((confs + ii)->iconf != 1)
-						{
-							*(gvct + ii) = lambda * *(dup + ii) + *(due + ii);
-						}
+						*(gvct + ii) = lambda * *(dup + ii) + *(due + ii);
 					}
+					fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, dupdue, dupdup);
 					#endif
+
 					#if 0
 					/*HYPERSPHERE CONSTRAINT WITH RADIAL RETURN*/
+					/*USING PREDICTOR DATA*/
 					dupdue = 0.0;
 					dupdup = *(weight + msize) * *(weight + msize) * lambda;
 					for (ii = 0; ii < msize; ii++)
 					{
-						if ((confs + ii)->iconf != 1)
-						{
-							dupdue += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(due + ii);
-							dupdup += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(dup + ii);
-						}
+						dupdue += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(due + ii);
+						dupdup += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(dup + ii);
 					}
 					lambda += - dupdue / dupdup;
 					fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= %e {TOP}= %e {BOTTOM}= %e\n", nlap, iteration, lambda, dupdue, dupdup);
 					for (ii = 0; ii < msize; ii++)
 					{
-						if ((confs + ii)->iconf != 1)
-						{
-							*(gvct + ii) += -(dupdue / dupdup) * *(dup + ii) + *(due + ii);
-						}
+						*(gvct + ii) += -(dupdue / dupdup) * *(dup + ii) + *(due + ii);
 					}
 					arcsum = *(weight + msize) * *(weight + msize) * lambda * lambda;
 					for (ii = 0; ii < msize; ii++)
 					{
-						if ((confs + ii)->iconf != 1)
-						{
-							arcsum += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(gvct + ii);
-						}
+						arcsum += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(gvct + ii);
 					}
 					lambda *= scaledarclength / sqrt(arcsum);
 					loadfactor = lastloadfactor;
@@ -957,14 +948,9 @@ int arclmCR(struct arclmframe* af)
 					#endif
 				}
 
-
-
 				for (ii = 0; ii < msize; ii++)
 				{
-					if (*(constraintmain + ii) != ii)
-					{
-						*(gvct + ii) = *(gvct + *(constraintmain + ii));
-					}
+					*(gvct + ii) = *(gvct + *(constraintmain + ii));
 				}
 
 				/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
@@ -989,6 +975,21 @@ int arclmCR(struct arclmframe* af)
 						*(ddisp + i) += lambda**(givendisp+i);
 					}
 				}
+
+				if(0)/*BUCKLING ANALYSIS.*/
+				{
+					for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
+					{
+						*(epsgvct + ii) = gradeps * *(*(ldlevct + 0) + ii);
+						*(epsddisp + ii) = *(ddisp + ii);
+					}
+					for (ii = 0; ii < msize; ii++)
+					{
+							*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
+					}
+					updaterotation(epsddisp, epsgvct, nnode);
+                }
+
 
 				if ((residual < tolerance || iteration > maxiteration) && iteration != 1)
 				{
@@ -1044,6 +1045,7 @@ int arclmCR(struct arclmframe* af)
 				fclose(fbcl);
 
 				gfree(gmtx,nnode);
+                gfree(lastgmtx,nnode);
 				free(weight);
 				free(gvct);
 				free(funbalance);
@@ -1123,10 +1125,7 @@ int arclmCR(struct arclmframe* af)
 				}
 				for (ii = 0; ii < msize; ii++)
 				{
-					if (*(constraintmain + ii) != ii)
-					{
-						*(epsgvct + ii) = *(gvct + *(constraintmain + ii));
-					}
+						*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
 				}
 				updaterotation(epsddisp, epsgvct, nnode);
 
@@ -1285,10 +1284,7 @@ int arclmCR(struct arclmframe* af)
 				/*FORMATION UPDATE FOR PREDICTOR/CORRECTOR*/
 				for (ii = 0; ii < msize; ii++)
 				{
-					if (*(constraintmain + ii) != ii)
-					{
 						*(gvct + ii) = *(gvct + *(constraintmain + ii));
-					}
 				}
 				updaterotation(ddisp, gvct, nnode);
 				iteration++;
@@ -1335,6 +1331,7 @@ int arclmCR(struct arclmframe* af)
 				fclose(fbcl);
 
 				gfree(gmtx,nnode);
+                gfree(lastgmtx,nnode);
 				free(weight);
 				free(gvct);
 				free(funbalance);
@@ -1400,11 +1397,7 @@ int arclmCR(struct arclmframe* af)
 			errormessage(string);
 			for (ii = 0; ii < msize; ii++)
 			{
-				if (*(constraintmain + ii) != ii)
-				{
-					//mainoff = *(constraintmain + ii);
-					*(evct + ii) = *(evct + *(constraintmain + ii));
-				}
+				*(evct + ii) = *(evct + *(constraintmain + ii));
 			}
 			for (ii = 0; ii < nnode; ii++)
 			{
@@ -1446,7 +1439,11 @@ int arclmCR(struct arclmframe* af)
 			{
 				*(dup + i) = *(*(evct + 0) + i);
 				*(fswitching + i) = gamma * *(*(evct + 0) + i) + *(funbalance + i);
-				if ((confs + i)->iconf == 1) *(fswitching + i) = 0.0;
+				if ((confs + i)->iconf == 1)
+				{
+					*(fswitching + i) = 0.0;
+					*(dup + i) = 0.0;
+				}
 				residual += *(fswitching + i) * *(fswitching + i);
 				*(due + i) = *(fswitching + i);
 			}
@@ -1512,11 +1509,7 @@ int arclmCR(struct arclmframe* af)
 			gamma += lambda;
 			for (ii = 0; ii < msize; ii++)
 			{
-				if (*(constraintmain + ii) != ii)
-				{
-					//mainoff = *(constraintmain + ii);
-					*(gvct + ii) = *(gvct + *(constraintmain + ii));
-				}
+				*(gvct + ii) = *(gvct + *(constraintmain + ii));
 			}
 			updaterotation(ddisp, gvct, nnode);
 			if ((residual < tolerance || iteration > maxiteration) && iteration != 1)
@@ -1538,11 +1531,7 @@ int arclmCR(struct arclmframe* af)
 			}
 			for (ii = 0; ii < msize; ii++)
 			{
-				if (*(constraintmain + ii) != ii)
-				{
-					//mainoff = *(constraintmain + ii);
-					*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
-				}
+				*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
 			}
 			updaterotation(epsddisp, epsgvct, nnode);
 
@@ -1557,17 +1546,6 @@ int arclmCR(struct arclmframe* af)
 					   NULL, gmtx,
 					   iform, epsddisp, epsfinternal, epsfexternal);
 
-
-			for (ii = 0; ii < msize; ii++)
-			{
-				if (*(constraintmain + ii) != ii)
-				{
-					*(epsfinternal + *(constraintmain + ii)) += *(epsfinternal + ii);
-					*(epsfinternal + ii) = 0.0;
-					*(epsfpressure + *(constraintmain + ii)) += *(epsfpressure + ii);
-					*(epsfpressure + ii) = 0.0;
-				}
-			}
 			for (ii = 0; ii < msize; ii++)
 			{
 				*(epsfunbalance + ii) = loadfactor * *(epsfpressure + ii) - *(epsfinternal + ii);
@@ -1584,11 +1562,7 @@ int arclmCR(struct arclmframe* af)
 			}
 			for (ii = 0; ii < msize; ii++)/*FORMATION UPDATE FOR PREDICTOR/CORRECTOR*/
 			{
-				if (*(constraintmain + ii) != ii)
-				{
-					//mainoff = *(constraintmain + ii);
 					*(gvct + ii) = *(gvct + *(constraintmain + ii));
-				}
 			}
 			updaterotation(ddisp, gvct, nnode);
 			iteration++;
@@ -1598,16 +1572,8 @@ int arclmCR(struct arclmframe* af)
 				BCLFLAG = -2;
 				nmode = 0;
 			}*/
+
 		}
-
-
-
-
-
-
-
-
-
 
 
 		/*TERMINATION FLAG*/
@@ -1674,6 +1640,7 @@ int arclmCR(struct arclmframe* af)
 
 
 			gfree(gmtx,nnode);
+			gfree(lastgmtx,nnode);
 			free(weight);
 			free(gvct);
 			free(funbalance);
@@ -1712,30 +1679,30 @@ int arclmCR(struct arclmframe* af)
 #endif
 	}
 
-#if 0
-	////////// OUTPUT RESULT FOR SRCAN//////////
-	laptime("OUTPUT INTO FILE.",t0);
 
-	errormessage("STRESS.");
+
+
+
+	assemelem(elems, melem, nelem, constraintmain, NULL, NULL, iform, ddisp, NULL, NULL);
+	assemshell(shells, mshell, nshell, constraintmain, NULL, NULL, iform, ddisp, NULL, NULL);
+
+	////////// OUTPUT RESULT FOR SRCAN//////////
 	if(fout!=NULL)
 	{
+		laptime("OUTPUT INTO FILE.",t0);
+		errormessage("STRESS.");
 		fprintf(fout,"\n\n");
 		fprintf(fout,"** FORCES OF MEMBER\n\n");
 		fprintf(fout,"   NO   KT NODE            N           Q1           Q2");
 		fprintf(fout,"           MT           M1           M2\n\n");
+		fprintf(fout,"\n\n");
+        for (i = 0; i < msize; i++)
+		{
+		  *(gvct+i)=*(ddisp+i)-*(iform+i);
+		}
+		outputdisp001(gvct,fout,nnode,nodes);
+		fprintf(fout,"\n\n");
 	}
-
-	assemelem(elems, melem, nelem, constraintmain,NULL,NULL,iform, ddisp, NULL, NULL);
-
-	if(fout!=NULL) fprintf(fout,"\n\n");
-	for (i = 0; i < msize; i++)
-	{
-	  *(gvct+i)=*(ddisp+i)-*(iform+i);
-	}
-	outputdisp001(gvct,fout,nnode,nodes);
-	if(fout!=NULL) fprintf(fout,"\n\n");
-#endif
-
 
 	clearwindow(*(wdraw.childs+1));
 	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
@@ -1754,6 +1721,7 @@ int arclmCR(struct arclmframe* af)
 	fclose(fout);
 
 	gfree(gmtx,nnode);
+	gfree(lastgmtx,nnode);
 	free(weight);
 	free(gvct);
 	free(funbalance);
@@ -2333,13 +2301,17 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 	PtHt = matrixtranspose(HP, 6*nnod);
 	pstress = matrixvector(PtHt, estress, 6*nnod);     							/*projected estress {Fp}*/
 
-	if(HPT!=NULL && gstress!=NULL)
+	if(HPT!=NULL)
 	{
 		matrixmatrixII(HPT, HP, T, 6*nnod);                 						/*[H][P][T]*/
+		if(gstress!=NULL)
+		{
 		TtPtHt = matrixtranspose(HPT, 6*nnod);
 		matrixvectorII(gstress, TtPtHt, estress, 6*nnod);      						/*global estress {Fg}*/
 		freematrix(TtPtHt, 6*nnod);
+		}
 	}
+
 
 	nm = (double*)malloc(3 * sizeof(double));           						/*projected estress of each node {n}&{m}*/
 
@@ -2533,7 +2505,7 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 		Kt = assemtmtxCR(Ke, eform, edisp, einternal, ginternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
 		symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 
-		assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+		if(gmtx!=NULL)assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
 
 
@@ -2545,10 +2517,9 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 				{
 					*(finternal + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
 				}
-
+				(elems+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
 				if(melem!=NULL)
 				{
-					(elems+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
 					(melem+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
 				}
 			}
@@ -2659,7 +2630,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		}
 		Kt = assemtmtxCR(Ke, eform, edisp, einternal, ginternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
 		symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
-		assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+		if(gmtx!=NULL)assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
 		Me = transformationIII(Me, T, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
 		if(mmtx!=NULL)assemgstiffnessIIwithDOFelimination(mmtx, Me, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
@@ -2674,9 +2645,9 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 			{
 				if(finternal!=NULL) *(finternal + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
 				if(fexternal!=NULL) *(fexternal + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(gexternal + 6 * ii + jj);
+				(shells+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
 				if(mshell!=NULL)
 				{
-					(shells+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
 					(mshell+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
 					(mshell+i-1)->shellstress[ii][jj]=*(shellstress+6*ii+jj);
 				}
@@ -2686,7 +2657,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 		/*OUTPUT STRAIN ENERGY & STRESS*/
 
-		(mshell+i-1)->SE = 0.0;
+		(mshell+i-1)->SE  = 0.0;
 		(mshell+i-1)->SEp = 0.0;
 		(mshell+i-1)->SEb = 0.0;
 		for (ii = 0; ii < nnod; ii++)
@@ -3130,3 +3101,52 @@ double equilibriumcurvature(double* weight, double* lapddisp, double laploadfact
 	curvature = acos(cos) / sqrt(lastlen);
 	return curvature;
 }
+
+
+
+void dbgvct(double* vct, int size, int linesize, const char* str)
+{
+	FILE *fout = fopen("hogan.dbg", "a");
+	if (fout == NULL)return;
+
+	if (str != NULL)
+	{
+		fprintf(fout, "%s\n", str);
+	}
+	if (linesize == NULL)
+	{
+		linesize = 1;
+	}
+	for (int i = 0; i < size; i++)
+	{
+		fprintf(fout, "%e ", *(vct+i));
+		if ((i + 1) % linesize == 0)fprintf(fout, "\n");
+	}
+	fclose(fout);
+}
+
+void dbgmtx(double** mtx, int rows, int cols, const char* str)
+{
+	FILE *fout = fopen("hogan.dbg", "a");
+	if (fout == NULL)return;
+
+	if (str != NULL)
+	{
+		fprintf(fout, "%s\n", str);
+	}
+	if (cols== NULL)
+	{
+		cols = rows;
+	}
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			fprintf(fout, "%e ", *(*(mtx+i)+j));
+		}
+		fprintf(fout, "\n");
+	}
+	fclose(fout);
+}
+
+

@@ -183,8 +183,6 @@ int bclng001(struct arclmframe *af)
   struct gcomponent ginit={0,0,0.0,NULL};
   struct gcomponent *kmtx,*gmtx;                    /*GLOBAL MATRIX*/
 
-
-
 	/*FOR READING ANALYSISDATA*/
 	FILE *fdata;
 	int nstr, pstr, readflag;
@@ -364,7 +362,7 @@ int bclng001(struct arclmframe *af)
   for(i=0;i<msize;i++)
   {
 	(kmtx+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
-    (gmtx+i)->down=NULL;
+	(gmtx+i)->down=NULL;
   }
 
   for(i=1;i<=msize;i++)             /*GLOBAL MATRIX INITIALIZATION.*/
@@ -383,10 +381,8 @@ int bclng001(struct arclmframe *af)
   availablephysicalmemoryEx("REMAIN:");            /*MEMORY AVAILABLE*/
   //laptime("ASSEMBLING GLOBAL MATRIX.",t0);
 
-  /*ELEMENT STIFFNESS ASSEMBLAGE.*/
-  if(method==1)
-  {
-	struct owire elem;
+
+  	struct owire elem;
 	struct oshell shell;
 	int nnod;
 	double* gforminit, * eforminit;                      /*DEFORMED COORDINATION OF ELEMENT*/
@@ -395,10 +391,14 @@ int bclng001(struct arclmframe *af)
 	double* einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 
 	double** Ke,** Kg,** drccos,** drccosinit;                           /*MATRIX*/
-	double** T;
+	double** T,** HPT;
 	int* loffset;
 	double area;
 
+
+  /*ELEMENT STIFFNESS ASSEMBLAGE.*/
+  if(method==0)
+  {
 	for (i = 1; i <= nelem; i++)
 	{
 		inputelem(elems,melem,i-1,&elem);
@@ -429,7 +429,7 @@ int bclng001(struct arclmframe *af)
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
 
 		Ke = assememtx(elem);
-		Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
+		//Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
 
 		/*DEFORMED CONFIDURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -445,22 +445,38 @@ int bclng001(struct arclmframe *af)
 		edisp = extractdeformation(eforminit, eform, nnod);                		/*{Ue}*/
 		//einternal = matrixvector(Ke, edisp, 6 * nnod);          				/*{Fe}=[Ke]{Ue}.*/
 		einternal=(double *)malloc(6*nnod*sizeof(double));
-		for(ii=0;ii<nnod;ii++)                                					/*STRESSES.*/
+		for(ii=0;ii<nnod;ii++)
 		{
 		  for(jj=0;jj<6;jj++) *(einternal+6*ii+jj)=elem.stress[ii][jj];
 		}
 
-		//Kt = assemtmtxCR(Ke, eform, edisp, einternal, ginternal, T, , nnod);	/*TANGENTIAL MATRIX[Kt].*/
+		HPT = (double**)malloc(6 * nnod * sizeof(double*));
+		for (ii = 0; ii <6 * nnod; ii++)
+		{
+			*(HPT + ii) = (double*)malloc(6 * nnod * sizeof(double));
+		}
+		Kg = assemgmtxCR(eform, edisp, einternal, NULL, T, HPT, nnod);		/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
 		symmetricmtx(Kg, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+		Ke = transformationIII(Ke, HPT, 6*nnod);							/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
 
-		assemgstiffnesswithDOFelimination(gmtx, Kg, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+		for(ii=0;ii<6*nnod;ii++)
+		{
+		  for(jj=0;jj<6*nnod;jj++)
+		  {
+			*(*(Kg+ii)+jj)=-*(*(Kg+ii)+jj);
+
+		  }
+		}
+
 		assemgstiffnesswithDOFelimination(kmtx, Ke, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+		assemgstiffnesswithDOFelimination(gmtx, Kg, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
 		freematrix(drccosinit, 3);
 		freematrix(drccos, 3);
 		freematrix(T, 6 * nnod);
 		freematrix(Ke, 6 * nnod);
 		freematrix(Kg, 6 * nnod);
+		freematrix(HPT, 6 * nnod);
 
 		free(einternal);
 
@@ -508,24 +524,40 @@ int bclng001(struct arclmframe *af)
 
 		T = transmatrixIII(drccos, nnod);         							/*[T].*/
 
-
 		edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
 		//einternal = matrixvector(Ke, edisp, 6 * nnod);      				/*{Fe}=[Ke]{Ue}.*/
 		einternal=(double *)malloc(6*nnod*sizeof(double));
-		for(ii=0;ii<nnod;ii++)                                /*STRESSES.*/
+		for(ii=0;ii<nnod;ii++)
 		{
 		  for(jj=0;jj<6;jj++) *(einternal+6*ii+jj)=shell.stress[ii][jj];
 		}
 
-		//Kt = assemtmtxCR(Ke, eform, edisp, einternal, ginternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
+		HPT = (double**)malloc(6 * nnod * sizeof(double*));
+		for (ii = 0; ii <6 * nnod; ii++)
+		{
+			*(HPT + ii) = (double*)malloc(6 * nnod * sizeof(double));
+		}
+		Kg = assemgmtxCR(eform, edisp, einternal, NULL, T, HPT, nnod);		/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
 		symmetricmtx(Kg, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
-		assemgstiffnessIIwithDOFelimination(gmtx, Kg, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+		Ke = transformationIII(Ke, HPT, 6*nnod);							/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
+
+		for(ii=0;ii<6*nnod;ii++)
+		{
+		  for(jj=0;jj<6*nnod;jj++)
+		  {
+			*(*(Kg+ii)+jj)=-*(*(Kg+ii)+jj);
+		  }
+		}
+
+		assemgstiffnessIIwithDOFelimination(kmtx, Ke, &shell, constraintmain); 	/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+		assemgstiffnessIIwithDOFelimination(gmtx, Kg, &shell, constraintmain); 	/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
 		freematrix(drccos, 3);
 		freematrix(drccosinit, 3);
 		freematrix(T, 6 * nnod);
 		freematrix(Ke, 6 * nnod);
 		freematrix(Kg, 6 * nnod);
+		freematrix(HPT, 6 * nnod);
 
 		free(einternal);
 
@@ -537,7 +569,7 @@ int bclng001(struct arclmframe *af)
 		free(loffset);
 	}
   }
-  else
+  if(0)
   {
 	  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
 	  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
@@ -547,8 +579,7 @@ int bclng001(struct arclmframe *af)
   }
 
 #if 0
-  double **drccos,**tmatrix,**estiff,*estress;
-  estress=(double *)malloc(12*sizeof(double));
+
   for(i=1;i<=nelem;i++)                 /*ASSEMBLAGE GLOBAL MATRIX.*/
   {
 	/*elem=*(elems+i-1);*/                     /*READ ELEMENT DATA.*/
@@ -570,44 +601,39 @@ int bclng001(struct arclmframe *af)
 						   elem.node[1]->d[1],
                            elem.node[1]->d[2],
 						   elem.cangle);                 /*[DRCCOS]*/
+	T=transmatrix(drccos);           /*TRANSFORMATION MATRIX.*/
 
-    tmatrix=transmatrix(drccos);           /*TRANSFORMATION MATRIX.*/
-	estiff=assememtx(elem);            /*ELASTIC MATRIX OF ELEMENT.*/
-    estiff=modifyhinge(elem,estiff);               /*MODIFY MATRIX.*/
-	estiff=transformation(estiff,tmatrix);         /*[K]=[Tt][k][T]*/
-
-
-	assemgstiffness(kmtx,estiff,&elem);       /*ASSEMBLAGE ELASTIC.*/
-
-	for(ii=0;ii<=11;ii++) free(*(estiff+ii));
-    free(estiff);
-
+	einternal=(double *)malloc(12*sizeof(double));
 	for(ii=0;ii<=1;ii++)                                /*STRESSES.*/
 	{
-      for(jj=0;jj<6;jj++) *(estress+6*ii+jj)=elem.stress[ii][jj];
-    }
-
-
-
-	estiff=assemgmtx(elem,estress);
-	estiff=modifyhinge(elem,estiff);               /*MODIFY MATRIX.*/
-	estiff=transformation(estiff,tmatrix);         /*[K]=[Tt][k][T]*/
-	for(ii=0;ii<12;ii++)
-	{
-	  for(jj=0;jj<12;jj++) *(*(estiff+ii)+jj)=-*(*(estiff+ii)+jj);
+	  for(jj=0;jj<6;jj++) *(einternal+6*ii+jj)=elem.stress[ii][jj];
 	}
 
-	assemgstiffness(gmtx,estiff,&elem);     /*ASSEMBLAGE GEOMETRIC.*/
 
-	for(ii=0;ii<=11;ii++) free(*(estiff+ii));
-	free(estiff);
+	Ke=assememtx(elem);            /*ELASTIC MATRIX OF ELEMENT.*/
+	Ke=modifyhinge(elem,Ke);               /*MODIFY MATRIX.*/
+	Ke=transformation(Ke,T);         /*[K]=[Tt][k][T]*/
 
-	for(ii=0;ii<=2;ii++) free(*(drccos+ii));
-	free(drccos);
-	for(ii=0;ii<=11;ii++) free(*(tmatrix+ii));
-    free(tmatrix);
+	assemgstiffness(kmtx,Ke,&elem);       /*ASSEMBLAGE ELASTIC.*/
+
+
+	Kg=assemgmtx(elem,einternal);
+	Kg=modifyhinge(elem,Kg);               /*MODIFY MATRIX.*/
+	Kg=transformation(Kg,T);         /*[K]=[Tt][k][T]*/
+	for(ii=0;ii<12;ii++)
+	{
+	  for(jj=0;jj<12;jj++) *(*(Kg+ii)+jj)=-*(*(Kg+ii)+jj);
+	}
+
+	assemgstiffness(gmtx,Kg,&elem);     /*ASSEMBLAGE GEOMETRIC.*/
+
+	freematrix(Ke, 12);
+	freematrix(Kg, 12);
+	free(einternal);
+	freematrix(drccos, 3);
+	freematrix(T, 12);
   }
-  free(estress);
+
 #endif
 
 
@@ -620,7 +646,7 @@ int bclng001(struct arclmframe *af)
   /*([A]-eigen*[B])*{evct}=0    	*/
   /*                            	*/
   /*ONE-POINT BUCKLING ANALYSIS		*/
-  /*([Ke]-lambda*[Kg])*{evct}=0		*/
+  /*([-Kg]-1/lambda*[Ke])*{evct}=0		*/
   /*A:[-Kg]							*/
   /*B:[Ke]							*/
   /*eigen=1/lambda     				*/
@@ -628,7 +654,7 @@ int bclng001(struct arclmframe *af)
   /*0<eigen                     	*/
   /*			                   	*/
   /*TWO-POINTS BUCKLING ANALYSIS	*/
-  /*([Kt]-lambda*[dKt])*{evct}=0	*/
+  /*([Kt]-lambda*[-dKt])*{evct}=0	*/
   /*A:-([Kt]+[dKt])					*/
   /*B:[Kt]							*/
   /*eigen=(1-lambda)/lambda     	*/
@@ -637,7 +663,7 @@ int bclng001(struct arclmframe *af)
 
   double **evct, *eigen;
   double eps=1.0E-16;
-  double biseceps=BISECEPS;
+  double biseceps=1.0E-10/*BISECEPS*/;
 
   evct=(double **)malloc(neig*sizeof(double *));   /*GLOBAL VECTORS*/
   eigen=(double *)malloc(neig*sizeof(double));       /*EIGEN VALUES*/
@@ -721,7 +747,7 @@ int bclng001(struct arclmframe *af)
 		for (ii = 0; ii < nnode; ii++)
 		{
 			fprintf(fout,
-			"%4ld %11.7f %11.7f %11.7f %11.7f %11.7f %11.7f\n",
+			"%4ld %e %e %e %e %e %e\n",
 			(nodes + ii)->code, *(*(evct + i) + 6*ii + 0),
 			*(*(evct + i) + 6*ii + 1),
 			*(*(evct + i) + 6*ii + 2),
@@ -8695,16 +8721,16 @@ bisecstart:
               gfree(gmtx,nnode);
               goto bisecend;
             }
-            sprintf(err,"LAMBDA<%.14f",1.0/lambda);
-            errormessage(err);
-            LL=lambda;
+			sprintf(err,"LAMBDA<%.14f",1.0/lambda);
+			errormessage(err);
+			LL=lambda;
             lambda=0.5*(LL+LR);
-            gfree(gmtx,nnode);
+			gfree(gmtx,nnode);
 			goto bisecstart;
           }
         }
       }
-      sprintf(err,"LAMBDA>%.14f",1.0/lambda);
+	  sprintf(err,"LAMBDA>%.14f",1.0/lambda);
       errormessage(err);
 
       /* CALCULATE CANDIDATE FOR EIGENVECTOR */
@@ -8725,7 +8751,7 @@ bisecstart:
       }
       sum=sqrt(sum);
       for(j=0;j<N;j++)
-      {
+	  {
         if((confs+j)->iconf==0)
         {
           if(sum>0.0)
@@ -8761,14 +8787,14 @@ bisecstart:
                        lastvec[6*ii+1],
                        lastvec[6*ii+2],
                        lastvec[6*ii+3],
-                       lastvec[6*ii+4],
+					   lastvec[6*ii+4],
                        lastvec[6*ii+5]);
-        }
-        fclose(ftmp);
-      }
+		}
+		fclose(ftmp);
+	  }
 
       lastlambda=lambda;
-      LR=lambda;
+	  LR=lambda;
       lambda=0.5*(LL+LR);
       gfree(gmtx,nnode);
 	}
@@ -8816,7 +8842,7 @@ void bisecsylvester(struct gcomponent *A,
 
   double LL,LR,LM;
   LL=0.0;
-  LR=BISECRIGHT;
+  LR=10000.0/*BISECRIGHT*/;
 
   lastevct=(double *)malloc(N*sizeof(double));
   evct=(double *)malloc(N*sizeof(double));
@@ -8835,9 +8861,6 @@ void bisecsylvester(struct gcomponent *A,
 	{
 		//MESSAGE FOR UPDATE UI
 		//AVOID FREEZE ON LONG RUNNING TASK
-
-
-
 	  bisecstart:
 
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -8845,22 +8868,23 @@ void bisecsylvester(struct gcomponent *A,
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		/* CALCULATE (A-��B)x=b */
+		/* CALCULATE (A-λB)x=b */
 	  gmtx=gcomponentadd2(A,B,-1.0*LM,N);
+
 	  croutlu(gmtx,confs,N,&determinant,&sign,gcomp1);
 
 	  if(LR-LL<EPS)break;
 
 	  neg=0;
-      for(j=0;j<N;j++)
+	  for(j=0;j<N;j++)
 	  {
 		/* CHECK IF QUADRATIC FORM xAx<0.0 */
 		if((confs+j)->iconf==0 && (gmtx+j)->value>0.0)
-        {
+		{
 		  neg++;
 		  if(neg>i)
-          {
-			sprintf(err,"LAMBDA<%.14f",1.0/LM);
+		  {
+			sprintf(err,"LAMBDA<%.14f SIGN=%e NEG=%d",LM, sign, neg);
 			errormessage(err);
 			LL=LM;
 			LM=0.5*(LL+LR);
@@ -8869,7 +8893,7 @@ void bisecsylvester(struct gcomponent *A,
 		  }
 		}
 	  }
-	  sprintf(err,"LAMBDA>%.14f",1.0/LM);
+	  sprintf(err,"LAMBDA>%.14f SIGN=%e NEG=%d",LM, sign, neg);
 	  errormessage(err);
 	  lambda=LM;
 	  LR=LM;
@@ -8878,7 +8902,7 @@ void bisecsylvester(struct gcomponent *A,
 	}
 
 
-      for (ii = 0; ii < N; ii++)
+	  for (ii = 0; ii < N; ii++)
 	  {
 		*(lastevct + ii)=0.0;
 		*(evct + ii)=0.0;
@@ -8889,12 +8913,12 @@ void bisecsylvester(struct gcomponent *A,
 	{
 	  if((confs+j)->iconf==0)*(evct+j)=((double)rand()+1.0)/((double)RAND_MAX+2.0);
     }
-    vectornormalize(evct, N);
+	vectornormalize(evct, N);
 	len = 1.0;
     inverseiter = 0;
 
 	while (len > 1.0e-8 && inverseiter < 20)/*INVERSE METHOD*/
-    {
+	{
 	  for (ii = 0; ii < N; ii++)
 	  {
 		*(lastevct + ii) = *(evct + ii);
@@ -8928,6 +8952,7 @@ void bisecsylvester(struct gcomponent *A,
 	LL=0.0;
   }
   free(lastevct);
+  free(evct);
   return;
 }/*bisecsylvester*/
 #endif
@@ -8938,9 +8963,9 @@ void bisecsylvester(struct gcomponent *A,
 
 
 struct gcomponent *gcomponentadd2(struct gcomponent *mtx1,
-                                  struct gcomponent *mtx2,
+								  struct gcomponent *mtx2,
                                   double factor,
-                                  int msize)
+								  int msize)
 {
   long int i,j;
   struct gcomponent *gcomp,*gdown1,*gdown2,*pdown1;
@@ -8950,42 +8975,42 @@ struct gcomponent *gcomponentadd2(struct gcomponent *mtx1,
 
   if(factor==0.0)
   {
-    return rtn;
+	return rtn;
   }
 
   for(j=1;j<=msize;j++)
   {
-    gdown1=(rtn+(j-1));
-    gdown2=(mtx2+(j-1));
-    gdown1->value+=factor*gdown2->value;
-    while(gdown2->down!=NULL) /*DOWNWARD.*/
-    {
-      gdown2=gdown2->down;
+	gdown1=(rtn+(j-1));
+	gdown2=(mtx2+(j-1));
+	gdown1->value+=factor*gdown2->value;
+	while(gdown2->down!=NULL) /*DOWNWARD.*/
+	{
+	  gdown2=gdown2->down;
 
-      i=gdown2->m;
-      while((gdown1->m)<i && (gdown1->down)!=NULL)
-      {
-        pdown1=gdown1;
-        gdown1=gdown1->down;
-      }
+	  i=gdown2->m;
+	  while((gdown1->m)<i && (gdown1->down)!=NULL)/*(gdown1->m) >= (gdown2->m) or (gdown1->down) == NULL*/
+	  {
+		pdown1=gdown1;
+		gdown1=gdown1->down;
+	  }
 
-      if(gdown1->m ==i)
+	  if(gdown1->m ==i)/*(gdown1->m) == (gdown2->m)*/
+	  {
+		gdown1->value+=factor*gdown2->value;/*UPDATE NEW GCOMPONENT.*/
+	  }
+	  else if(gdown1->m < i)/*(gdown1->down) == NULL*/
       {
-        gdown1->value+=factor*gdown2->value;
-      }
-      else if(gdown1->m < i)
-      {
-        gcomp=gdefine(i,j,factor*(gdown2->value),
-                      NULL,NULL);
-        gdown1->down=gcomp;
+		gcomp=gdefine(i,j,factor*(gdown2->value),
+					  NULL,NULL);/*ADD NEW GCOMPONENT.*/
+		gdown1->down=gcomp;
         pdown1=gdown1;
         gdown1=gcomp;
-      }
-      else if(gdown1->m > i)
-      {
-        gcomp=gdefine(i,j,factor*(gdown2->value),
-                      gdown1,NULL);
-        pdown1->down=gcomp;
+	  }
+	  else if(gdown1->m > i)/*(gdown1->m) > (gdown2->m)*/
+	  {
+		gcomp=gdefine(i,j,factor*(gdown2->value),
+					  gdown1,NULL);/*INSERT NEW GCOMPONENT.*/
+		pdown1->down=gcomp;
         gdown1=gcomp;
       }
     }

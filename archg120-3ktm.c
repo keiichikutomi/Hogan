@@ -21969,7 +21969,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 
 
 	/*Zienkiewiczらの非適合三角形要素T-9N*/
-#if 1
+#if 0
 	for(i=0;i<3;i++)
 	{
 	  j=(i+1)%3;
@@ -22060,7 +22060,7 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 
 
 	/*Stricklin/Dhattらの離散Kirchhoff仮定三角形(DKT:Discrete Kirchhoff Triangular)要素T-9D*/
-#if 0
+#if 1
 	for(i=0;i<3;i++)
 	{
 	  j=(i+1)%3;
@@ -33679,13 +33679,13 @@ int gcomponentadd(struct gcomponent *mtx1, // 150219 fukushima for gcomponentadd
 
   for(j=1;j<=msize;j++)
   {
-    gdown1=(mtx1+(j-1));
-    gdown2=(mtx2+(j-1));
+	gdown1=(mtx1+(j-1));
+	gdown2=(mtx2+(j-1));
     while(gdown2!=NULL) /*DOWNWARD.*/
     {
       i=gdown2->m;
       data=gdown2->value;
-      while((gdown1->m)<i && (gdown1->down)!=NULL)
+	  while((gdown1->m)<i && (gdown1->down)!=NULL)
       {
         pdown1=gdown1;
         gdown1=gdown1->down;
