@@ -45,6 +45,19 @@ double equilibriumcurvature(double* weight, double* lapddisp, double laploadfact
 void dbgvct(double* vct, int size, int linesize, const char* str);
 void dbgmtx(double** mtx, int rows, int cols, const char* str);
 
+extern struct gcomponent *copygcompmatrix(struct gcomponent *gmtx,long int msize);
+extern struct gcomponent *gcomponentadd3(struct gcomponent *mtx1,double factor1,
+										 struct gcomponent *mtx2,double factor2,
+										 int msize);
+extern void bisecgeneral(struct gcomponent *A,double factorA,
+						 struct gcomponent *B,double factorB,
+						 struct oconf *confs,
+						 long int N,long int NE,
+						 double EPS,
+						 double *E,double **V,
+						 double BL, double BR);
+extern double inversemethod(struct gcomponent *gmtx, struct oconf *confs, double *evct, int msize);
+
 /*
 PINPOINTMODE
 0:DO NOT DETECT BUCKLING
@@ -83,7 +96,7 @@ int arclmCR(struct arclmframe* af)
 
 	/*GLOBAL MATRIX*/
 	struct gcomponent ginit = { 0,0,0.0,NULL };
-	struct gcomponent* lastgmtx, * gmtx, * g, * p, * gcomp1;
+	struct gcomponent *epsgmtx, *gmtx, *gmtx2, *dgmtx, * g, * p, * gcomp1;
 	double gg;
 	double sign, determinant;
 	long int nline;
@@ -138,16 +151,15 @@ int arclmCR(struct arclmframe* af)
 	double nextloadfactor;
 	double biseceps = 1e-5;
 	/*FOR INVERSE ITERATION*/
-	double eigen;
-	double* lastevct, * evct;
+	double biseceigen;
+	double* bisecevct;
 	double evctdot;/*FOR BIFURCATION DETECTION*/
-	double len, evctlastevct, evctevct;
-	int inverseiter;/*INVERSE METHOD ITERATION*/
+
 	/*FOR EXTENDED SYSTEM (LDL MODE & PATH SWITCHING)*/
-	int nmode = 0;
+	int ldlneig = 0;
+	double** ldlevct;   /*NORMALIZED EIGEN MODE*/
 	double* norm, * dm;	/*NORM & PIVOT OF LDL-MODE*/
 	int* m;            	/*LINE OF LDL-MODE*/
-	double** ldlevct;   /*NORMALIZED EIGEN MODE*/
 	double* epsddisp, * epsgvct;
 	double* re, * rp;
 	double gradeps = 1e-8;
@@ -155,6 +167,8 @@ int arclmCR(struct arclmframe* af)
 	double evctfunbalance, epsevctfunbalance;
 	double * epsfunbalance, * epsfinternal, * epsfexternal, * epsfpressure;
 
+	int neig = 0;
+	double **evct, *eigen;
 
 	/*ANALYSIS TERMINATION*/
 	int ENDFLAG = 0;
@@ -422,7 +436,7 @@ int arclmCR(struct arclmframe* af)
 
 	/***GLOBAL MATRIX***/
 	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-	lastgmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	epsgmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
 
 	/***GLOBAL VECTOR***/
 	gvct = (double *)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
@@ -447,11 +461,11 @@ int arclmCR(struct arclmframe* af)
 	nextddisp = (double*)malloc(msize * sizeof(double));
 	givendisp = (double*)malloc(msize * sizeof(double));
 
-	evct = (double*)malloc(msize * sizeof(double));
-	lastevct = (double*)malloc(msize * sizeof(double));
+	bisecevct = (double*)malloc(msize * sizeof(double));
 
 	epsddisp = (double*)malloc(6 * nnode * sizeof(double));
 	epsgvct = (double*)malloc(6 * nnode * sizeof(double));
+
 	epsfunbalance = (double*)malloc(6 * nnode * sizeof(double));
 	epsfinternal = (double*)malloc(6 * nnode * sizeof(double));
 	epsfexternal = (double*)malloc(6 * nnode * sizeof(double));
@@ -459,15 +473,21 @@ int arclmCR(struct arclmframe* af)
 	re = (double*)malloc(msize * sizeof(double));
 	rp = (double*)malloc(msize * sizeof(double));
 
-
-
-
-
+	evct=(double **)malloc(neig*sizeof(double *));   /*GLOBAL VECTORS*/
+	eigen=(double *)malloc(neig*sizeof(double));       /*EIGEN VALUES*/
+	for(i=0;i<neig;i++)
+	{
+	  *(evct+i)=(double *)malloc(msize*sizeof(double));
+	  for(ii=0;ii<msize;ii++)
+	  {
+		*(*(evct+i)+ii)=0.0;
+	  }
+	}
 
 	for (i = 0; i < msize; i++)
 	{
 		(gmtx + i)->down = NULL;
-        (lastgmtx + i)->down = NULL;
+        (epsgmtx + i)->down = NULL;
 		*(gvct + i) = 0.0;
 	}
 
@@ -523,7 +543,7 @@ int arclmCR(struct arclmframe* af)
 		}
 		for (i = 1; i <= msize; i++)/*MATRIX & VECTOR INITIALIZATION.*/
 		{
-			g = (lastgmtx + (i - 1))->down;   /*NEXT OF DIAGONAL.*/
+			g = (epsgmtx + (i - 1))->down;   /*NEXT OF DIAGONAL.*/
 			while (g != NULL) 	      /*CLEAR ROW.*/
 			{
 				p = g;
@@ -531,7 +551,7 @@ int arclmCR(struct arclmframe* af)
 				free(p);
 			}
 			ginit.m = (unsigned short int)i;
-			*(lastgmtx + (i - 1)) = ginit;
+			*(epsgmtx + (i - 1)) = ginit;
 		}
 
 		for (i = 0; i < msize; i++)/*MATRIX & VECTOR INITIALIZATION.*/
@@ -543,13 +563,6 @@ int arclmCR(struct arclmframe* af)
 			*(freaction + i) = 0.0;
 		}
 		comps = msize; /*INITIAL COMPONENTS = DIAGONALS.*/
-
-		if(0/*nlap!=1 && iteration==1*/)/*TWO-POINTS BUCKLING ANALYSIS FOR EVERY LAP*/
-		{
-			/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
-			assemelem(elems, NULL, nelem, constraintmain, NULL, lastgmtx, iform, lastddisp, NULL, NULL);
-			assemshell(shells, NULL, nshell, constraintmain, NULL, lastgmtx, iform, lastddisp, NULL, NULL);
-		}
 
 		/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
 		assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, finternal, fpressure);
@@ -643,13 +656,15 @@ int arclmCR(struct arclmframe* af)
 
 		if (BCLFLAG < 1)/*REGULAR*/
 		{
+			if(iteration==1 && 0)gmtx2=copygcompmatrix(gmtx,msize);
+
 			nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);
-			//nmode = 0;
+			//ldlneig = 0;
 			//for (ii = 0; ii < msize; ii++)
 			//{
 			//	if ((confs + ii)->iconf == 0 && *(lastpivot + ii) * ((gmtx + ii)->value) < 0)
 			//	{
-			//		nmode++;
+			//		ldlneig++;
 			//	}
 			//	if ((confs + ii)->iconf == 0 && ((gmtx + ii)->value) < 0 && iteration==1)
 			//	{
@@ -691,7 +706,7 @@ int arclmCR(struct arclmframe* af)
 				fclose(fbcl);
 
 				gfree(gmtx,nnode);
-                gfree(lastgmtx,nnode);
+				gfree(epsgmtx,nnode);
 				free(weight);
 				free(gvct);
 				free(funbalance);
@@ -709,8 +724,7 @@ int arclmCR(struct arclmframe* af)
 				free(lastpivot);
 				free(lapddisp);
 				free(nextddisp);
-				free(evct);
-				free(lastevct);
+				free(bisecevct);
 				free(epsddisp);
 				free(epsgvct);
 				free(epsfunbalance);
@@ -744,23 +758,23 @@ int arclmCR(struct arclmframe* af)
 						*(ddisp + ii) = 0.5 * (*(nextddisp + ii) + *(lastddisp + ii));
 					}
 				}
-				else if(pinpointmode == 2)/*EXTENDED SYSTEM*/
+				if(pinpointmode == 2)/*EXTENDED SYSTEM*/
 				{
-					nmode = 0;
+					ldlneig = 0;
 					for (ii = 0; ii < msize; ii++)
 					{
 						if ((confs + ii)->iconf == 0 && *(lastpivot + ii) * ((gmtx + ii)->value) < 0)
 						{
-							nmode++;
+							ldlneig++;
 						}
 					}
 
-					norm = (double *)malloc(nmode * sizeof(double));/*NORM OF LDL MODE*/
-					dm = (double *)malloc(nmode * sizeof(double));/*DIAGONAL PIVOT VALUE*/
-					m = (int*)malloc(nmode * sizeof(int));/*BUCKLING DETECTED LINE*/
+					norm = (double *)malloc(ldlneig * sizeof(double));/*NORM OF LDL MODE*/
+					dm = (double *)malloc(ldlneig * sizeof(double));/*DIAGONAL PIVOT VALUE*/
+					m = (int*)malloc(ldlneig * sizeof(int));/*BUCKLING DETECTED LINE*/
 
-					ldlevct =  (double **)malloc(nmode * sizeof(double *));
-					for (ii = 0; ii < nmode; ii++)
+					ldlevct =  (double **)malloc(ldlneig * sizeof(double *));
+					for (ii = 0; ii < ldlneig; ii++)
 					{
 					   *(ldlevct + ii) = (double *)malloc(msize * sizeof(double));
 					}
@@ -775,7 +789,7 @@ int arclmCR(struct arclmframe* af)
 							sprintf(string, "BUCKLING DITECTED LAP: %4d ITER: %2d LINE: %5ld ", nlap, iteration, ii);
 							fprintf(fbcl, "%s\n", string);
 							fprintf(feig, "%s", string);
-							if (jj == nmode)
+							if (jj == ldlneig)
 							{
 								break;
 							}
@@ -862,10 +876,9 @@ int arclmCR(struct arclmframe* af)
 						arcsum += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);/*SCALED DISPLACEMENT.*/
 					}
 					lambda = predictorsign * scaledarclength / sqrt(arcsum);/*INCREMANTAL LOAD FACTOR.*/
-
 					for (ii = 0; ii < msize; ii++)
 					{
-						*(gvct + ii) = lambda * *(dup + ii);/*INCREMANTAL DISPLACEMENT.*/
+						*(gvct + ii) = lambda * (*(dup + ii)+*(givendisp + ii));/*INCREMANTAL DISPLACEMENT.*/
 					}
 					fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, scaledarclength, sqrt(arcsum));
 
@@ -954,7 +967,7 @@ int arclmCR(struct arclmframe* af)
 				}
 
 				/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-				if(iteration==1)
+				if(iteration == 1)
 				{
 					laploadfactor=0.0;
 					for(i=0;i<msize;i++)
@@ -965,30 +978,67 @@ int arclmCR(struct arclmframe* af)
 				laploadfactor += lambda;
 				updaterotation(lapddisp, gvct, nnode);
 
-                loadfactor += lambda;
+				loadfactor += lambda;
 				updaterotation(ddisp, gvct, nnode);
 
-				if(iteration==1)
-				{
-					for (i = 0; i < msize; i++)/*IMPOSED DISP.*/
-					{
-						*(ddisp + i) += lambda**(givendisp+i);
-					}
-				}
 
-				if(0)/*BUCKLING ANALYSIS.*/
+				if(iteration == 1 && 0)/*TWO-POINTS BUCKLING ANALYSIS.*/
 				{
 					for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
 					{
-						*(epsgvct + ii) = gradeps * *(*(ldlevct + 0) + ii);
+						*(epsgvct + ii) = eps * (*(dup + ii)+*(givendisp + ii));
 						*(epsddisp + ii) = *(ddisp + ii);
 					}
 					for (ii = 0; ii < msize; ii++)
 					{
-							*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
+						*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
 					}
 					updaterotation(epsddisp, epsgvct, nnode);
-                }
+
+					/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
+					assemelem(elems, NULL, nelem, constraintmain, NULL, epsgmtx, iform, epsddisp, NULL, NULL);
+					assemshell(shells, NULL, nshell, constraintmain, NULL, epsgmtx, iform, epsddisp, NULL, NULL);
+
+					dgmtx=gcomponentadd3(epsgmtx,1.0,gmtx2,-1.0,msize);
+
+					bisecgeneral(dgmtx,-1.0,gmtx2,-1.0,confs,msize,neig,1.0E-10,eigen,evct,0,1.0E+3);
+
+					/*OUTPUT*/
+					if(fout!=NULL)
+					{
+						for(i=0;i<neig;i++)
+						{
+							fprintf(fout,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e ", af->nlaps, (i+1), *(eigen + i), 0.0);
+
+							if (*(eigen + i) > 0.0)
+							{
+								*(eigen+i) = 1.0/(*(eigen + i));
+								fprintf(fout, "LAMBDA = %e\n",*(eigen+i));
+							}
+							else
+							{
+								fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
+							}
+
+							for (ii = 0; ii < msize; ii++)
+							{
+								*(*(evct + i) + ii) = *(*(evct + i) + *(constraintmain + ii));
+							}
+							for (ii = 0; ii < nnode; ii++)
+							{
+								fprintf(fout,
+								"%4ld %e %e %e %e %e %e\n",
+								(nodes + ii)->code, *(*(evct + i) + 6*ii + 0),
+								*(*(evct + i) + 6*ii + 1),
+								*(*(evct + i) + 6*ii + 2),
+								*(*(evct + i) + 6*ii + 3),
+								*(*(evct + i) + 6*ii + 4),
+								*(*(evct + i) + 6*ii + 5));
+							}
+						}
+					}
+					fclose(fout);
+				}
 
 
 				if ((residual < tolerance || iteration > maxiteration) && iteration != 1)
@@ -1002,18 +1052,17 @@ int arclmCR(struct arclmframe* af)
 					iteration = 0;
 				}
 				iteration++;
-
 			}
 		}
 		else if (BCLFLAG == 1)/*BUCKLING DETECTED.PIN-POINTING EXCUTION.*/
 		{
 			nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
-
 			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
 				nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, LM, volume);
 			fprintf(ffig, "%s", string);
 			fprintf(fbcl, "%s", string);
 			errormessage(string);
+
 			/*LDL DECOMPOSITION FAILED*/
 			if (sign < 0.0)
 			{
@@ -1045,7 +1094,7 @@ int arclmCR(struct arclmframe* af)
 				fclose(fbcl);
 
 				gfree(gmtx,nnode);
-                gfree(lastgmtx,nnode);
+                gfree(epsgmtx,nnode);
 				free(weight);
 				free(gvct);
 				free(funbalance);
@@ -1063,8 +1112,7 @@ int arclmCR(struct arclmframe* af)
 				free(lastpivot);
 				free(lapddisp);
 				free(nextddisp);
-				free(evct);
-				free(lastevct);
+				free(bisecevct);
 				free(epsddisp);
 				free(epsgvct);
 				free(epsfunbalance);
@@ -1077,6 +1125,7 @@ int arclmCR(struct arclmframe* af)
 				return 1;
 			}
 
+
 			if (pinpointmode == 1)/*PIN-POINTING BASED ON SYLVESTER'S LAW OF INERTIA (BISECTION METHOD).*/
 			{
 				/*BISECTION PIN-POINTING*/
@@ -1088,26 +1137,76 @@ int arclmCR(struct arclmframe* af)
 				{
 					LR = LM;
 				}
-				if (LR - LL < biseceps)/*CONVERGED*/
-				{
-					BCLFLAG = 2;
-				}
 				LM = 0.5 * (LL + LR);
 				loadfactor = (1 - LM) * lastloadfactor + LM * nextloadfactor;
 				for (ii = 0; ii < msize; ii++)
 				{
 					*(ddisp + ii) = (1 - LM) * *(lastddisp + ii) + LM * *(nextddisp + ii);
 				}
-				iteration++;
+
+				if (LR - LL < biseceps)/*CONVERGED*/
+				{
+					/*INITIAL EIGEN VECTOR*/
+					for (ii = 0; ii < msize; ii++)
+					{
+						*(bisecevct + ii) = *(due + ii);
+					}
+					/*INVERS METHOD FOR EIGEN VECTOR*/
+					biseceigen=inversemethod(gmtx,confs,bisecevct,msize);
+
+					/*BIFURCATION JUDGE*/
+					vectornormalize(fexternal, msize);
+					evctdot = dotproduct(bisecevct, fexternal, msize);
+
+					fprintf(feig,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e LAMBDA = %e DOT = %e\n", nlap, 1, LM, biseceigen, loadfactor-lastloadfactor, evctdot);
+					for (ii = 0; ii < msize; ii++)
+					{
+						*(bisecevct + ii) = *(bisecevct + *(constraintmain + ii));
+					}
+					for (ii = 0; ii < nnode; ii++)
+					{
+						fprintf(feig,
+						"%4ld %e %e %e %e %e %e\n",
+						(nodes + ii)->code,
+						*(bisecevct + 6*ii + 0),
+						*(bisecevct + 6*ii + 1),
+						*(bisecevct + 6*ii + 2),
+						*(bisecevct + 6*ii + 3),
+						*(bisecevct + 6*ii + 4),
+						*(bisecevct + 6*ii + 5));
+					}
+
+					if (1)//(abs(evctdot) > 1.0e-3)/*LIMIT POINT*/
+					{
+						BCLFLAG = -1;
+						loadfactor = nextloadfactor;
+						for (ii = 0; ii < msize; ii++)
+						{
+							*(ddisp + ii) = *(nextddisp + ii);
+						}
+					}
+					else/*PATH=SWITCHING FOR BIFURCATION*/
+					{
+						BCLFLAG = 2;
+						loadfactor = lastloadfactor;
+						for (ii = 0; ii < msize; ii++)
+						{
+							*(ddisp + ii) = *(lastddisp + ii);
+						}
+					}
+					nlap++;
+					iteration = 0;
+				}
 			}
 			if (pinpointmode == 2)/*PIN-POINTING BASED ON EXTENDED SYSTEM.*/
 			{
 #if 0
 				nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
 				nline = forwardbackward(gmtx, due, confs, msize, gcomp1);
+
 				/*FOR DIRECTIONAL DERIVATIVE OF TANGENTIAL STIFFNESS MATRIX*/
-				LDLmode(gmtx, confs, m, nmode, ldlevct, norm, dm, msize);
-				for (i = 0; i < nmode; i++)
+				LDLmode(gmtx, confs, m, ldlneig, ldlevct, norm, dm, msize);
+				for (i = 0; i < ldlneig; i++)
 				{
 					fprintf(fbcl, "CRITICAL EIGEN VECTOR : LINE = %5ld NORM = %12.9f dm = %12.9f\n", *(m + i), *(norm + i), *(dm + i));
 					for (ii = 0; ii < nnode; ii++)
@@ -1120,14 +1219,18 @@ int arclmCR(struct arclmframe* af)
 
 				for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
 				{
-					*(epsgvct + ii) = gradeps * *(*(ldlevct + 0) + ii);
+					*(epsgvct + ii) = eps * *(*(ldlevct + 0) + ii);
 					*(epsddisp + ii) = *(ddisp + ii);
 				}
 				for (ii = 0; ii < msize; ii++)
 				{
-						*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
+					*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
 				}
 				updaterotation(epsddisp, epsgvct, nnode);
+
+
+
+
 
 				for (ii = 0; ii < msize; ii++)
 				{
@@ -1224,23 +1327,8 @@ int arclmCR(struct arclmframe* af)
 					}
 				}
 
-				//fprintf(fbcl, "\"rp:\"\n");
-				//for (i = 0; i < nnode; i++)
-				//{
-				//	fprintf(fbcl, "NODE:%5ld %12.15f %12.15f %12.15f %12.15f %12.15f %12.15f\n", (nodes + i)->code,
-				//		*(rp + (6 * i + 0)), *(rp + (6 * i + 1)), *(rp + (6 * i + 2)),
-				//		*(rp + (6 * i + 3)), *(rp + (6 * i + 4)), *(rp + (6 * i + 5)));
-				//}
-				//fprintf(fbcl, "\"re:\"\n");
-				//for (i = 0; i < nnode; i++)
-				//{
-				//	fprintf(fbcl, "NODE:%5ld %12.15f %12.15f %12.15f %12.15f %12.15f %12.15f\n", (nodes + i)->code,
-				//		*(re + (6 * i + 0)), *(re + (6 * i + 1)), *(re + (6 * i + 2)),
-				//		*(re + (6 * i + 3)), *(re + (6 * i + 4)), *(re + (6 * i + 5)));
-				//}
-
 				/*dupdue=*(dm+0)/(*(norm+0)**(norm+0)); */
-				fprintf(fbcl, "PIN-POINTED EIGENVALUE=%12.9f\n", dupdue);
+				fprintf(fbcl, "EIGENVALUE=%12.9f\n", dupdue);
 
 				/*dupdue*=eps;*/
 				dupdue = 0;
@@ -1256,7 +1344,7 @@ int arclmCR(struct arclmframe* af)
 				}
 
 				fprintf(fonl, "dupdue=%12.15f dupdup=%12.15f\n", dupdue, dupdup);
-				dupdue += gradeps * *(dm + 0) / (*(norm + 0) * *(norm + 0));
+				dupdue += eps * *(dm + 0) / (*(norm + 0) * *(norm + 0));
 
 				lambda = -dupdue / dupdup;
 				fprintf(fonl, "LAMBDA=%12.9f\n", lambda);
@@ -1265,18 +1353,17 @@ int arclmCR(struct arclmframe* af)
 				loadfactor += lambda;
 				for (ii = 0; ii < msize; ii++)
 				{
-					if ((confs + ii)->iconf != 1)
-					{
-						*(gvct + ii) = *(dup + ii) * lambda + *(due + ii);/*gvct:{ƒÂU_e+ƒÂƒ©U_p}*/
-					}
+					*(gvct + ii) = *(dup + ii) * lambda + *(due + ii);/*gvct:{ƒÂU_e+ƒÂƒ©U_p}*/
 				}
+
+
 				/*PINPOINTING END*/
 				if (iteration != 1 && fabs(*(dm + 0)) < tolerance)
 				{
 					nlap++;
 					iteration = 0;
-					nmode = 0;
-					freematrix(ldlevct, nmode);
+					ldlneig = 0;
+					freematrix(ldlevct, ldlneig);
 					free(norm);
 					free(dm);
 					free(m);
@@ -1284,156 +1371,19 @@ int arclmCR(struct arclmframe* af)
 				/*FORMATION UPDATE FOR PREDICTOR/CORRECTOR*/
 				for (ii = 0; ii < msize; ii++)
 				{
-						*(gvct + ii) = *(gvct + *(constraintmain + ii));
+					*(gvct + ii) = *(gvct + *(constraintmain + ii));
 				}
 				updaterotation(ddisp, gvct, nnode);
-				iteration++;
 #endif
 			}
-		}
-		else if (BCLFLAG == 2)/*CALCULATE EIGEN VECTOR*/
-		{
-			sprintf(string, "BUCKLING DITECTED LAP: %4d ITER: %2d  ", nlap, iteration);
-			fprintf(feig, "%s", string);
-			nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
-			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
-				nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, LM, volume);
-			fprintf(ffig, "%s", string);
-			fprintf(fbcl, "%s", string);
-			errormessage(string);
-			/*LDL DECOMPOSITION FAILED*/
-			if (sign < 0.0)
-			{
-				for (ii = 1; ii <= msize; ii++)
-				{
-					gg = 0.0;
-					gread(gmtx, ii, ii, &gg);
-
-					if (gg < 0.0)
-					{
-						sprintf(string, "INSTABLE TERMINATION AT NODE %ld.",
-							(nodes + int((ii - 1) / 6))->code);
-						errormessage(" ");
-						errormessage(string);
-						fprintf(fonl, "%s\n", string);
-					}
-				}
-
-				fclose(fonl);
-				fclose(fdsp);
-				fclose(fexf);
-				fclose(finf);
-				fclose(fubf);
-				fclose(frct);
-				fclose(fstr);
-				fclose(fene);
-				fclose(ffig);
-				fclose(fbcl);
-
-				gfree(gmtx,nnode);
-                gfree(lastgmtx,nnode);
-				free(weight);
-				free(gvct);
-				free(funbalance);
-				free(freaction);
-				free(fexternal);
-				free(finternal);
-				free(fpressure);
-				free(fbaseload);
-				free(fgivendisp);
-				free(fswitching);
-				free(due);
-				free(dup);
-				free(lastddisp);
-				free(lastgvct);
-				free(lastpivot);
-				free(lapddisp);
-				free(nextddisp);
-				free(evct);
-				free(lastevct);
-				free(epsddisp);
-				free(epsgvct);
-				free(epsfunbalance);
-				free(epsfinternal);
-				free(epsfexternal);
-				free(epsfpressure);
-				free(re);
-				free(rp);
-
-				return 1;
-			}
-			/*CALCULATE EIGEN VECTOR*/
-			for (ii = 0; ii < msize; ii++)
-			{
-				*(evct + ii) = *(due + ii);
-			}
-			vectornormalize(evct, msize);
-			vectornormalize(fexternal, msize);
-			len = 1.0;
-			inverseiter = 0;
-			while (len > 1.0e-6 && inverseiter < 20)/*INVERSE METHOD*/
-			{
-				for (ii = 0; ii < msize; ii++)
-				{
-					*(lastevct + ii) = *(evct + ii);
-				}
-				nline = forwardbackward(gmtx, evct, confs, msize, gcomp1);
-
-				evctlastevct = dotproduct(evct, lastevct, msize);
-				evctevct = dotproduct(evct, evct, msize);
-				eigen = evctlastevct / evctevct;
-				vectornormalize(evct, msize);
-				for (ii = 0; ii < msize; ii++)
-				{
-					*(lastevct + ii) = abs(*(lastevct + ii)) - abs(*(evct + ii));
-				}
-				len = vectorlength(lastevct, msize);
-				evctdot = dotproduct(evct, fexternal, msize);/*BIFURCATION JUDGE*/
-				sprintf(string, "INVERSE ITERATION : LOADFACTOR= %e EIGENVALUE= %e DOT= %e LEN= %e BIFURCATION= %d\n", loadfactor, eigen, evctdot, len, abs(evctdot) < 1.0e-3);
-				fprintf(fbcl, "%s", string);
-				inverseiter++;
-			}
-			fprintf(feig, string);
-			errormessage(string);
-			for (ii = 0; ii < msize; ii++)
-			{
-				*(evct + ii) = *(evct + *(constraintmain + ii));
-			}
-			for (ii = 0; ii < nnode; ii++)
-			{
-				fprintf(feig, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
-					*(evct + (6 * ii + 0)), *(evct + (6 * ii + 1)), *(evct + (6 * ii + 2)),
-					*(evct + (6 * ii + 3)), *(evct + (6 * ii + 4)), *(evct + (6 * ii + 5)));
-			}
-
-
-			if (1)//(abs(evctdot) > 1.0e-3)/*LIMIT POINT*/
-			{
-				BCLFLAG = -1;
-				loadfactor = nextloadfactor;
-				for (ii = 0; ii < msize; ii++)
-				{
-					*(ddisp + ii) = *(nextddisp + ii);
-				}
-				//nmode = 0;
-			}
-			else/*BIFURCATION*/
-			{
-				BCLFLAG = 3;
-				loadfactor = lastloadfactor;
-				for (ii = 0; ii < msize; ii++)
-				{
-					*(ddisp + ii) = *(lastddisp + ii);
-				}
-				eps = 0.0;
-				gamma = 0.0;
-			}
-
 			iteration++;
 		}
-		else if (BCLFLAG == 3)
+		else if (BCLFLAG == 2)
 		{
 #if 0
+			eps = 0.0;
+			gamma = 0.0;
+
 			residual = 0.0;
 			for (i = 0; i < msize; i++)
 			{
@@ -1520,14 +1470,14 @@ int arclmCR(struct arclmframe* af)
 			iteration++;
 #endif
 			/*LINE SEARCH*/
-			evctfunbalance = dotproduct(evct, funbalance, msize);
+			evctfunbalance = dotproduct(bisecevct, funbalance, msize);
 			fprintf(fbcl, " %5.8e %5.8e \n", eps, evctfunbalance);
 
 
 			for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
 			{
 				*(epsddisp + ii) = *(ddisp + ii);
-				*(epsgvct + ii) = gradeps * *(evct + ii);
+				*(epsgvct + ii) = gradeps * *(bisecevct + ii);
 			}
 			for (ii = 0; ii < msize; ii++)
 			{
@@ -1552,13 +1502,13 @@ int arclmCR(struct arclmframe* af)
 				if ((confs + ii)->iconf == 1) *(epsfunbalance + ii) = 0.0;
 			}
 			fprintf(fbcl, " %5.8e %5.8e \n", eps + gradeps, epsevctfunbalance);
-			epsevctfunbalance = (dotproduct(evct, epsfunbalance, msize) - evctfunbalance) / gradeps;/*GRADIENT*/
+			epsevctfunbalance = (dotproduct(bisecevct, epsfunbalance, msize) - evctfunbalance) / gradeps;/*GRADIENT*/
 			eps -= evctfunbalance / epsevctfunbalance;
 
 			for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
 			{
 				*(ddisp + ii) = *(lastddisp + ii);
-				*(gvct + ii) = eps * *(evct + ii);
+				*(gvct + ii) = eps * *(bisecevct + ii);
 			}
 			for (ii = 0; ii < msize; ii++)/*FORMATION UPDATE FOR PREDICTOR/CORRECTOR*/
 			{
@@ -1570,7 +1520,7 @@ int arclmCR(struct arclmframe* af)
 			/*if (abs(evctfunbalance) < 1e-8)
 			{
 				BCLFLAG = -2;
-				nmode = 0;
+				ldlneig = 0;
 			}*/
 
 		}
@@ -1640,7 +1590,7 @@ int arclmCR(struct arclmframe* af)
 
 
 			gfree(gmtx,nnode);
-			gfree(lastgmtx,nnode);
+			gfree(epsgmtx,nnode);
 			free(weight);
 			free(gvct);
 			free(funbalance);
@@ -1658,8 +1608,7 @@ int arclmCR(struct arclmframe* af)
 			free(lastpivot);
 			free(lapddisp);
 			free(nextddisp);
-			free(evct);
-			free(lastevct);
+			free(bisecevct);
 			free(epsddisp);
 			free(epsgvct);
 			free(epsfunbalance);
@@ -1721,7 +1670,7 @@ int arclmCR(struct arclmframe* af)
 	fclose(fout);
 
 	gfree(gmtx,nnode);
-	gfree(lastgmtx,nnode);
+	gfree(epsgmtx,nnode);
 	free(weight);
 	free(gvct);
 	free(funbalance);
@@ -1739,8 +1688,7 @@ int arclmCR(struct arclmframe* af)
 	free(lastpivot);
 	free(lapddisp);
 	free(nextddisp);
-	free(evct);
-	free(lastevct);
+	free(bisecevct);
 	free(epsddisp);
 	free(epsgvct);
 	free(epsfunbalance);

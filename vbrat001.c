@@ -237,7 +237,7 @@ int vbrat001(struct arclmframe* af)
   /*([A]-eigen*[B])*{evct}=0    	*/
   /*                            	*/
   /*VIBRATION ANALYSIS				*/
-  /*(-omega^2*[M]+[K])*{evct}=0		*/
+  /*([M]-1/(omega^2)*[K])*{evct}=0		*/
   /*A:[M]							*/
   /*B:[K]							*/
   /*eigen=1/(omega^2)  				*/
@@ -262,14 +262,8 @@ int vbrat001(struct arclmframe* af)
 	for(j=0;j<msize;j++) *(*(evct+i)+j)=0.0;
   }
 
-  if(solver==0)
-  {
-	deigabgeneral(mmtx,kmtx,confs,msize,neig,neig,eps,eigen,evct);
-  }
-  else
-  {
-	bisecsylvester(mmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,evct);
-  }
+  bisecgeneral(mmtx,1.0,kmtx,-1.0,confs,msize,neig,biseceps,eigen,evct,0.0,1.0);
+
   laptime("EIGEN COMPLETED.",t0);
 
 
@@ -282,20 +276,12 @@ int vbrat001(struct arclmframe* af)
 		//ninit FOR NODE ID
 		//NODE:%5ld {dU}= %12.5E %12.5E %12.5E %12.5E %12.5E %12.5E\n
 
-		if (solver==0)
-		{
-			fprintf(fout,"DEIGABGENERAL EIGEN VALUE %ld = %.8f ", (i+1), *(eigen + i));
-		}
-		else
-		{
-			fprintf(fout,"BISECSYLVESTER EIGEN VALUE %ld = %.8f ", (i+1), *(eigen + i));
-		}
+		fprintf(fout,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e ", af->nlaps, (i+1), *(eigen + i), 0.0);
 
 		if (*(eigen + i) > 0.0)
 		{
 			T = 2.0 * PI * sqrt(*(eigen + i));
-			sprintf(string, "PERIOD = %.8f [sec] FREQUENCY = %.8f [Hz]",T,1/T);
-			fprintf(fout, "%s\n", string);
+			fprintf(fout, "PERIOD = %.8f FREQUENCY = %.8f\n",T,1/T);
 		}
 		else
 		{
@@ -304,10 +290,7 @@ int vbrat001(struct arclmframe* af)
 
 		for (ii = 0; ii < msize; ii++)
 		{
-			if (*(constraintmain + ii) != ii)
-			{
-				*(*(evct + i) + ii) = *(*(evct + i) + *(constraintmain + ii));
-			}
+			*(*(evct + i) + ii) = *(*(evct + i) + *(constraintmain + ii));
 		}
 
 		//if (fout != NULL)fprintf(fout, "EIGEN VECTOR %ld\n",(i + 1));
@@ -345,18 +328,4 @@ int vbrat001(struct arclmframe* af)
   errormessage(string);
 
   return 1;
-}/*bclng001*/
-
-
-#if 0
-int eigenperiod(struct arclmframe *af, int msize,
-				struct gcomponent* mmtx, struct gcomponent* gmtx, int neig, int solver, FILE* fout)
-{
-	mtx1 = copygcompmatrix(gmtx, msize);
-	mtx2 = copygcompmatrix(mmtx, msize);
-}
-#endif
-
-
-
-
+}/*vbrat001*/

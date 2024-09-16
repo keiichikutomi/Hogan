@@ -131,7 +131,7 @@ void deigabgeneral(struct gcomponent *A,
 void deigrsstandard(struct gcomponent *A,
                     struct oconf *confs,
                     long int N,long int NE,long int NV,
-                    double EPS,
+					double EPS,
                     double *E,double **V);
 
 void bclngoutputtomemory(FILE *ftext,struct arclmframe *af);
@@ -139,14 +139,25 @@ double bclngoutputtomemoryII(FILE *ftext,struct arclmframe *af);        //ujok
 
 void bisecsylvester(struct gcomponent *A,
 					struct gcomponent *B,
-                    struct oconf *confs,
-                    long int N,long int NE,long int NV,
-                    double EPS,
+					struct oconf *confs,
+					long int N,long int NE,long int NV,
+					double EPS,
 					double *E,double **V);
+void bisecgeneral(struct gcomponent *A,double factorA,
+				  struct gcomponent *B,double factorB,
+				  struct oconf *confs,
+				  long int N,long int NE,
+				  double EPS,
+				  double *E,double **V,
+				  double BL, double BR);
+double inversemethod(struct gcomponent *gmtx, struct oconf *confs, double *evct, int msize);
 struct gcomponent *gcomponentadd2(struct gcomponent *mtx1,
-                                  struct gcomponent *mtx2,
+								  struct gcomponent *mtx2,
                                   double factor,
-                                  int msize);
+								  int msize);
+struct gcomponent *gcomponentadd3(struct gcomponent *mtx1,double factor1,
+								  struct gcomponent *mtx2,double factor2,
+								  int msize);
 void definencr(struct arclmframe *af,double *ncr);
 
 /*EXTERNAL PARAMETERS*/
@@ -273,11 +284,6 @@ int bclng001(struct arclmframe *af)
 							pstr++;
 							neig = (int)strtol(*(data + pstr), NULL, 10);
 						}
-						if (!strcmp(*(data + pstr), "SOLVER"))
-						{
-							pstr++;
-							solver = (int)strtol(*(data + pstr), NULL, 10);
-						}
 						if (!strcmp(*(data + pstr), "METHOD"))
 						{
 							pstr++;
@@ -378,7 +384,7 @@ int bclng001(struct arclmframe *af)
   GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
 
   errormessage("BCLNG001:BUCKLING LINEAR.");
-  availablephysicalmemoryEx("REMAIN:");            /*MEMORY AVAILABLE*/
+  //availablephysicalmemoryEx("REMAIN:");            /*MEMORY AVAILABLE*/
   //laptime("ASSEMBLING GLOBAL MATRIX.",t0);
 
 
@@ -541,14 +547,6 @@ int bclng001(struct arclmframe *af)
 		symmetricmtx(Kg, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		Ke = transformationIII(Ke, HPT, 6*nnod);							/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
 
-		for(ii=0;ii<6*nnod;ii++)
-		{
-		  for(jj=0;jj<6*nnod;jj++)
-		  {
-			*(*(Kg+ii)+jj)=-*(*(Kg+ii)+jj);
-		  }
-		}
-
 		assemgstiffnessIIwithDOFelimination(kmtx, Ke, &shell, constraintmain); 	/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 		assemgstiffnessIIwithDOFelimination(gmtx, Kg, &shell, constraintmain); 	/*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
@@ -571,8 +569,8 @@ int bclng001(struct arclmframe *af)
   }
   if(0)
   {
-	  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
-	  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
+	  assemelem(elems, melem, nelem, constraintmain, NULL, kmtx, iform, ddisp, NULL, NULL);
+	  assemshell(shells, mshell, nshell, constraintmain, NULL, kmtx, iform, ddisp, NULL, NULL);
 
 	  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
 	  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
@@ -599,7 +597,7 @@ int bclng001(struct arclmframe *af)
                            elem.node[0]->d[2],
                            elem.node[1]->d[0],
 						   elem.node[1]->d[1],
-                           elem.node[1]->d[2],
+						   elem.node[1]->d[2],
 						   elem.cangle);                 /*[DRCCOS]*/
 	T=transmatrix(drccos);           /*TRANSFORMATION MATRIX.*/
 
@@ -646,7 +644,7 @@ int bclng001(struct arclmframe *af)
   /*([A]-eigen*[B])*{evct}=0    	*/
   /*                            	*/
   /*ONE-POINT BUCKLING ANALYSIS		*/
-  /*([-Kg]-1/lambda*[Ke])*{evct}=0		*/
+  /*([-Kg]-1/lambda*[Ke])*{evct}=0	*/
   /*A:[-Kg]							*/
   /*B:[Ke]							*/
   /*eigen=1/lambda     				*/
@@ -663,7 +661,7 @@ int bclng001(struct arclmframe *af)
 
   double **evct, *eigen;
   double eps=1.0E-16;
-  double biseceps=1.0E-10/*BISECEPS*/;
+  double biseceps=1.0E-10;/*BISECEPS*/
 
   evct=(double **)malloc(neig*sizeof(double *));   /*GLOBAL VECTORS*/
   eigen=(double *)malloc(neig*sizeof(double));       /*EIGEN VALUES*/
@@ -680,14 +678,8 @@ int bclng001(struct arclmframe *af)
   else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)
 		bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,evct);
   */
-  if(solver==0)
-  {
-	deigabgeneral(gmtx,kmtx,confs,msize,neig,neig,eps,eigen,evct);
-  }
-  else
-  {
-	bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,evct);
-  }
+
+  bisecgeneral(gmtx,-1.0,kmtx,-1.0,confs,msize,neig,biseceps,eigen,evct,0.0,1.0);
   laptime("EIGEN COMPLETED.",t0);
 
 
@@ -698,52 +690,22 @@ int bclng001(struct arclmframe *af)
 	  {
 		//outputmode(*(evct+i),fout,nnode,ninit);
 
-		if (solver==0)
+		fprintf(fout,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e ", af->nlaps, (i+1), *(eigen + i), 0.0);
+
+		if (*(eigen + i) > 0.0)
 		{
-			fprintf(fout,"DEIGABGENERAL EIGEN VALUE %ld = %.8f ", (i+1), *(eigen + i));
+			*(eigen+i) = 1.0/(*(eigen + i));
+			fprintf(fout, "LAMBDA = %e\n",*(eigen+i));
 		}
 		else
 		{
-			fprintf(fout,"BISECSYLVESTER EIGEN VALUE %ld = %.8f ", (i+1), *(eigen + i));
+			fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
 		}
-
-		if(method==1)/*TWO-POINTS*/
-		{
-			if (*(eigen + i) > -1.0)
-			{
-				*(eigen+i) = 1.0/(1.0+*(eigen + i));
-				sprintf(string, "LAMBDA = %.8f",*(eigen+i));
-				fprintf(fout, "%s\n", string);
-			}
-			else
-			{
-				fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
-			}
-		}
-		else/*ONE-POINT*/
-		{
-			if (*(eigen + i) > 0.0)
-			{
-				*(eigen+i) = 1.0/(*(eigen + i));
-				sprintf(string, "LAMBDA = %.8f",*(eigen+i));
-				fprintf(fout, "%s\n", string);
-			}
-			else
-			{
-				fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
-			}
-		}
-
 
 		for (ii = 0; ii < msize; ii++)
 		{
-			if (*(constraintmain + ii) != ii)
-			{
-				*(*(evct + i) + ii) = *(*(evct + i) + *(constraintmain + ii));
-			}
+			*(*(evct + i) + ii) = *(*(evct + i) + *(constraintmain + ii));
 		}
-
-		//if (fout != NULL)fprintf(fout, "EIGEN VECTOR %ld\n",(i + 1));
 		for (ii = 0; ii < nnode; ii++)
 		{
 			fprintf(fout,
@@ -8022,7 +7984,7 @@ struct gcomponent *gdefine(unsigned int m,
 }/*gdefine*/
 
 struct gcomponent *copygcompmatrix(struct gcomponent *gmtx,
-                                   long int msize)
+								   long int msize)
 /*CREATE COPY OF GCOMP MATRIX.*/
 {
   long int k;
@@ -8031,7 +7993,7 @@ struct gcomponent *copygcompmatrix(struct gcomponent *gmtx,
 
   gcpy=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
   if (gcpy==NULL) {
-      errormessage("copygconpmatrix memory error");
+	  errormessage("copygconpmatrix memory error");
       return NULL;
   }
   for(k=0;k<msize;k++)
@@ -8092,7 +8054,7 @@ struct gcomponent *copygcompmatrix2(struct gcomponent *gmtx,
     (gcpy+k)->n=(gmtx+k)->n;
     (gcpy+k)->value=factor*((gmtx+k)->value);
 
-    go=(gmtx+k);
+	go=(gmtx+k);
     gc=(gcpy+k);
     while(go->down!=NULL) /*COPY COMPS IN COLUMN.*/
     {
@@ -8661,12 +8623,12 @@ void eigenmodeoutputtomemory(FILE *ftext,struct arclmframe *af,double *dfact)
   return;
 }/*eigenmodeoutputtomemory*/
 
-#if 0
+
 void bisecsylvester(struct gcomponent *A,
                     struct gcomponent *B,
                     struct oconf *confs,
                     long int N,long int NE,long int NV,
-                    double EPS,
+					double EPS,
 					double *E,double **V)
 {
   char err[256],str[256];
@@ -8766,15 +8728,15 @@ bisecstart:
         }
 	  }
 	  FILE *ftmp=fopen("mode.tmp","w");
-      if(ftmp!=NULL)
+	  if(ftmp!=NULL)
       {
 		char string[256];
         int ii;
         fprintf(ftmp,"DEIGABGENERAL EIGEN VALUE %ld=%.5f\n",(i+1),1.0/lastlambda);
-        if(lastlambda>0.0)
+		if(lastlambda>0.0)
         {
-		  double Ti=2.0*PI*sqrt(lastlambda); // bisecsylvester
-          sprintf(string,"PERIOD T%ld=%.5f [sec]",(i+1),Ti);
+		  double Ti=2.0*PI*sqrt(lastlambda);
+		  sprintf(string,"PERIOD T%ld=%.5f [sec]",(i+1),Ti);
           fprintf(ftmp,"%s\n",string);
         }
 
@@ -8815,38 +8777,66 @@ bisecend:
   free(lastvec);
   return;
 }/*bisecsylvester*/
-#endif
 
-#if 1
-void bisecsylvester(struct gcomponent *A,
-				struct gcomponent *B,
-				struct oconf *confs,
-				long int N,long int NE,long int NV,
-				double EPS,
-				double *E,double **V)
+
+
+void bisecgeneral(struct gcomponent *A,double factorA,
+				  struct gcomponent *B,double factorB,
+				  struct oconf *confs,
+				  long int N,long int NE,
+				  double EPS,
+				  double *E,double **V,
+				  double BL, double BR)
 {
   char err[256],str[256];
   int i,j,k,ii;
-  double lambda,lastlambda,sum;
+  double lambda;
   double determinant,sign;
   struct gcomponent *gmtx,*gcomp1;
-  double *lastevct,*evct;
+  double *evct;
+  double eigen;
   int neg;
-  double len;
-  int inverseiter=20;
-  double evctlastevct,evctevct;
-  MSG msg;
-
-
   int nnode=N/6;
+  MSG msg;
+  double LL=0.0;
+  double LR=BISECRIGHT;
+  double LM;
 
-  double LL,LR,LM;
-  LL=0.0;
-  LR=10000.0/*BISECRIGHT*/;
+  if(BL!=NULL)LL=BL;
+  if(BR!=NULL)LR=BR;
 
-  lastevct=(double *)malloc(N*sizeof(double));
+  /*EIGEN VALUE BOUND CHECKING.*/
+  while(1)
+  {
+	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	{
+	  TranslateMessage(&msg);
+	  DispatchMessage(&msg);
+	}
+	neg=0;
+	//gmtx=gcomponentadd2(A,B,-1.0*LR,N);
+	gmtx=gcomponentadd3(A,factorA,B,factorB*LR,N);
+	croutlu(gmtx,confs,N,&determinant,&sign,gcomp1);
+	for(j=0;j<N;j++)
+	{
+	  if((confs+j)->iconf==0 && (gmtx+j)->value>0.0)
+	  {
+		neg++;
+		LR*=2.0;
+		gfree(gmtx,nnode);
+		break;
+	  }
+	}
+	if(neg==0)
+	{
+	  gfree(gmtx,nnode);
+	  break;
+	}
+  }
+  sprintf(err,"LL=%f LR=%f\n",LL,LR);
+  errormessage(err);
+
   evct=(double *)malloc(N*sizeof(double));
-  if(lastevct==NULL || evct==NULL) return;
 
   for(i=0;i<NE;i++)
   {
@@ -8855,21 +8845,22 @@ void bisecsylvester(struct gcomponent *A,
 	neg=0;
 
 	LM=0.5*(LL+LR);
-	lambda=LR;
-	  /* BISECTION METHOD */
-    while(1)
+	lambda=LR;/*SAFETY SIDE*/
+
+	/* BISECTION METHOD */
+	while(1)
 	{
-		//MESSAGE FOR UPDATE UI
-		//AVOID FREEZE ON LONG RUNNING TASK
+	  //MESSAGE FOR UPDATE UI
+	  //AVOID FREEZE ON LONG RUNNING TASK
 	  bisecstart:
 
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-		/* CALCULATE (A-λB)x=b */
-	  gmtx=gcomponentadd2(A,B,-1.0*LM,N);
+	  while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	  {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	  }
+	  //gmtx=gcomponentadd2(A,B,-1.0*LM,N);
+	  gmtx=gcomponentadd3(A,factorA,B,factorB*LM,N);
 
 	  croutlu(gmtx,confs,N,&determinant,&sign,gcomp1);
 
@@ -8884,7 +8875,7 @@ void bisecsylvester(struct gcomponent *A,
 		  neg++;
 		  if(neg>i)
 		  {
-			sprintf(err,"LAMBDA<%.14f SIGN=%e NEG=%d",LM, sign, neg);
+			sprintf(err,"LAMBDA<%.14f SIGN=%f NEG=%d",LM, sign, neg);
 			errormessage(err);
 			LL=LM;
 			LM=0.5*(LL+LR);
@@ -8893,7 +8884,7 @@ void bisecsylvester(struct gcomponent *A,
 		  }
 		}
 	  }
-	  sprintf(err,"LAMBDA>%.14f SIGN=%e NEG=%d",LM, sign, neg);
+	  sprintf(err,"LAMBDA>%.14f SIGN=%f NEG=%d",LM, sign, neg);
 	  errormessage(err);
 	  lambda=LM;
 	  LR=LM;
@@ -8901,70 +8892,86 @@ void bisecsylvester(struct gcomponent *A,
 	  gfree(gmtx,nnode);
 	}
 
-
-	  for (ii = 0; ii < N; ii++)
-	  {
-		*(lastevct + ii)=0.0;
-		*(evct + ii)=0.0;
-	  }
-
-	/* CALCULATE CANDIDATE FOR EIGENVECTOR */
-    for(j=0;j<N;j++)
+	/* INITIAL EIGEN VECTOR */
+	for(j=0;j<N;j++)
 	{
-	  if((confs+j)->iconf==0)*(evct+j)=((double)rand()+1.0)/((double)RAND_MAX+2.0);
-    }
-	vectornormalize(evct, N);
-	len = 1.0;
-    inverseiter = 0;
-
-	while (len > 1.0e-8 && inverseiter < 20)/*INVERSE METHOD*/
-	{
-	  for (ii = 0; ii < N; ii++)
+	  if((confs+j)->iconf==0)
 	  {
-		*(lastevct + ii) = *(evct + ii);
+		*(evct+j)=((double)rand()+1.0)/((double)RAND_MAX+2.0);
 	  }
-	  forwardbackward(gmtx, evct, confs, N, gcomp1);
-
-      /*RAYLEIGH*/
-	  //evctlastevct = dotproduct(evct, lastevct, N);
-	  //evctevct = dotproduct(evct, evct, N);
-	  //eigen = evctlastevct / evctevct;
-
-      vectornormalize(evct, N);
-
-      /*CHECK CONVERGENCE*/
-	  for (ii = 0; ii < N; ii++)
+	  else
 	  {
-        *(lastevct + ii) = abs(*(lastevct + ii)) - abs(*(evct + ii));
+		*(evct+j)=0.0;
 	  }
-	  len = vectorlength(lastevct, N);
-	  inverseiter++;
 	}
 
-    /* SET EIGENVALUE & EIGENVECTOR */
+	/*INVERS METHOD FOR EIGEN VECTOR*/
+	eigen = inversemethod(gmtx,confs,evct,N);
+
+	/* SET EIGENVALUE & EIGENVECTOR */
 	E[i]=LM/*lambda*/;
 	for(j=0;j<N;j++)
-    {
+	{
 	  V[i][j]=evct[j];
-    }
-
-	  /* SHIFT FOR NEXT EIGENVALUE */
+	}
+	/* SHIFT FOR NEXT EIGENVALUE */
 	LL=0.0;
+	if(BL!=NULL)LL=BL;
   }
-  free(lastevct);
   free(evct);
   return;
-}/*bisecsylvester*/
-#endif
+}/*bisecgeneral*/
 
+double inversemethod(struct gcomponent *gmtx, struct oconf *confs, double *evct, int msize)
+{
+	char string[500];
+	int i,nline;
+	int iteration = 0;
+	double len = 1.0;
 
+	double* lastevct;
+	double eigen,evctevct,evctlastevct;
+	struct gcomponent *gcomp1;
 
+	lastevct=(double *)malloc(msize*sizeof(double));
 
+	vectornormalize(evct, msize);
+
+	while (len > 1.0e-8 && iteration < 20)/*INVERSE METHOD*/
+	{
+		for (i = 0; i < msize; i++)
+		{
+			*(lastevct + i) = *(evct + i);
+		}
+		nline = forwardbackward(gmtx, evct, confs, msize, gcomp1);
+
+		/*QUADRATIC FORM*/
+		/*[K]{x}=λ{x} <=> λ={x}^t[K]{x}/{x}^t{x}*/
+		evctlastevct = dotproduct(evct, lastevct, msize);/*{x}^t[K]{x} evct:{x] lastevct:[K]{x}*/
+		evctevct = dotproduct(evct, evct, msize);
+		eigen = evctlastevct / evctevct;
+
+		vectornormalize(evct, msize);
+
+		for (i = 0; i < msize; i++)
+		{
+			*(lastevct + i) = abs(*(lastevct + i)) - abs(*(evct + i));
+		}
+		len = vectorlength(lastevct, msize);/*FOR CHECKING CONVERGENCE.*/
+
+		//sprintf(string, "INVERSE ITERATION : EIGENVALUE= %e LEN= %e\n", eigen, len);
+		//errormessage(string);
+		iteration++;
+	}
+	free(lastevct);
+
+	return eigen;
+}
 
 
 struct gcomponent *gcomponentadd2(struct gcomponent *mtx1,
 								  struct gcomponent *mtx2,
-                                  double factor,
+								  double factor,
 								  int msize)
 {
   long int i,j;
@@ -9003,20 +9010,78 @@ struct gcomponent *gcomponentadd2(struct gcomponent *mtx1,
 		gcomp=gdefine(i,j,factor*(gdown2->value),
 					  NULL,NULL);/*ADD NEW GCOMPONENT.*/
 		gdown1->down=gcomp;
-        pdown1=gdown1;
-        gdown1=gcomp;
+		pdown1=gdown1;
+		gdown1=gcomp;
 	  }
 	  else if(gdown1->m > i)/*(gdown1->m) > (gdown2->m)*/
 	  {
 		gcomp=gdefine(i,j,factor*(gdown2->value),
 					  gdown1,NULL);/*INSERT NEW GCOMPONENT.*/
 		pdown1->down=gcomp;
-        gdown1=gcomp;
-      }
-    }
+		gdown1=gcomp;
+	  }
+	}
   }
   return rtn;
-}/*gcomponentadd*/
+}/*gcomponentadd2*/
+
+
+
+struct gcomponent *gcomponentadd3(struct gcomponent *mtx1,double factor1,
+								  struct gcomponent *mtx2,double factor2,
+								  int msize)
+{
+  long int i,j;
+  struct gcomponent *gcomp,*gdown1,*gdown2,*pdown1;
+  struct gcomponent *rtn;
+
+  rtn=copygcompmatrix2(mtx1,msize,factor1);
+
+  if(factor2==0.0)
+  {
+	return rtn;
+  }
+
+  for(j=1;j<=msize;j++)
+  {
+	gdown1=(rtn+(j-1));
+	gdown2=(mtx2+(j-1));
+	gdown1->value+=factor2*gdown2->value;
+	while(gdown2->down!=NULL) /*DOWNWARD.*/
+	{
+	  gdown2=gdown2->down;
+
+	  i=gdown2->m;
+	  while((gdown1->m)<i && (gdown1->down)!=NULL)/*(gdown1->m) >= (gdown2->m) or (gdown1->down) == NULL*/
+	  {
+		pdown1=gdown1;
+		gdown1=gdown1->down;
+	  }
+
+	  if(gdown1->m ==i)/*(gdown1->m) == (gdown2->m)*/
+	  {
+		gdown1->value+=factor2*(gdown2->value);/*UPDATE NEW GCOMPONENT.*/
+	  }
+	  else if(gdown1->m < i)/*(gdown1->down) == NULL*/
+	  {
+		gcomp=gdefine(i,j,factor2*(gdown2->value),
+					  NULL,NULL);/*ADD NEW GCOMPONENT.*/
+		gdown1->down=gcomp;
+        pdown1=gdown1;
+		gdown1=gcomp;
+	  }
+	  else if(gdown1->m > i)/*(gdown1->m) > (gdown2->m)*/
+	  {
+		gcomp=gdefine(i,j,factor2*(gdown2->value),
+					  gdown1,NULL);/*INSERT NEW GCOMPONENT.*/
+		pdown1->down=gcomp;
+		gdown1=gcomp;
+	  }
+	}
+  }
+  return rtn;
+}/*gcomponentadd3*/
+
 
 void definencr(struct arclmframe *af,double *ncr)       /*UJIOKA*/
 {
@@ -9343,9 +9408,9 @@ int bclng011(struct arclmframe *af,struct arclmframe *af0)
   for(i=0;i<neig;i++)
   {
     *(eigen+i)=1.0/(*(eigen+i));
-    sprintf(string,"EIGEN VALUE %ld=%.5E",(i+1),*(eigen+i));
+	sprintf(string,"EIGEN VALUE %ld=%.5E",(i+1),*(eigen+i));
     fprintf(fout,"%s\n",string);
-    errormessage(string);
+	errormessage(string);
 
     outputmode(*(gvct+i),fout,nnode,ninit);
   }
@@ -9909,7 +9974,7 @@ if(feig!=NULL) fprintf(feig,"LAP %3d / %3d\n",nlap,laps);
     sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
     laptime(string,t0);
 
-    bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,eigenvct);/*EIGEN VALUE PROBLEM*/
+	bisecsylvester(gmtx,kmtx,confs,msize,neig,neig,biseceps,eigen,eigenvct);/*EIGEN VALUE PROBLEM*/
 /***UJIOKA:BUCKLING ANALYSIS***/
 
 	if(fout!=NULL) fprintf(fout,"\"REACTION\"\n");

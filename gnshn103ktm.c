@@ -760,8 +760,7 @@ int gnshn101(struct arclmframe *af)
 				}
 				else { // bisecsylvester
 					MessageBox(NULL, "BISECSYLVESTER BEGIN.", "Gnshn", MB_OK);
-					bisecsylvester(mtx2, mtx1, confs, msize, neig, neig, eps,
-						eigen, evct);
+					bisecsylvester(mtx2, mtx1, confs, msize, neig, neig, eps, eigen, evct);
 					laptime("EIGEN COMPLETED.", t0);
 					MessageBox(NULL, "BISECSYLVESTER END.", "Gnshn", MB_OK);
 				}
