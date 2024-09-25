@@ -2505,19 +2505,19 @@ void errormessage(char *str)
 	}
 
 
-   #if 0
+
     if((y+ph)<(ty+size.cy-2)) /*SCROLL IF OVERFLOW FROM PARENT.*/
 	{
 	  MoveWindow((wmesg.childs+1)->hwnd,
 				 (-x),(ph-(ty+size.cy-2)),cw,ch,TRUE);
 	}
-   #endif
 
-	if (ty + size.cy > ch)/* Scroll the existing content up */
+	/*
+	if (ty + size.cy > ch)
 	{
 		ScrollWindow((wmesg.childs + 1)->hwnd, 0, -(size.cy), NULL, NULL);
 		ty -= size.cy;
-	}
+	}*/
 
 	SendMessage(wmesg.hwnd,WM_PAINT,0,0);
 

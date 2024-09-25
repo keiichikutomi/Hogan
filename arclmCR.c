@@ -39,7 +39,10 @@ double* extractdeformation(double* eforminit, double* eform, int nnod);
 
 //void initialformCR(struct onode* nodes, double* ddisp, int nnode);
 void LDLmode(struct gcomponent* gmtx, struct oconf* confs, int* m, int nmode, double** mode, double* norm, double* dm, long int msize);
+
 double shellvolume(struct oshell shell, double** drccos, double area);
+void assemshellvolume(struct oshell* shells, int nshell, double* volume);
+
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);
 
 void dbgvct(double* vct, int size, int linesize, const char* str);
@@ -52,7 +55,7 @@ extern struct gcomponent *gcomponentadd3(struct gcomponent *mtx1,double factor1,
 extern void bisecgeneral(struct gcomponent *A,double factorA,
 						 struct gcomponent *B,double factorB,
 						 struct oconf *confs,
-						 long int N,long int NE,
+						 long int N,long int NE,double defsign,
 						 double EPS,
 						 double *E,double **V,
 						 double BL, double BR);
@@ -96,7 +99,7 @@ int arclmCR(struct arclmframe* af)
 
 	/*GLOBAL MATRIX*/
 	struct gcomponent ginit = { 0,0,0.0,NULL };
-	struct gcomponent *epsgmtx, *gmtx, *gmtx2, *dgmtx, * g, * p, * gcomp1;
+	struct gcomponent *epsgmtx, *gmtx, *gmtxcpy, *dgmtx, * g, * p, * gcomp1;
 	double gg;
 	double sign, determinant;
 	long int nline;
@@ -149,7 +152,7 @@ int arclmCR(struct arclmframe* af)
 	double LL,LR,LM;
 	double* nextddisp;
 	double nextloadfactor;
-	double biseceps = 1e-5;
+	double biseceps = 1.0e-5;
 	/*FOR INVERSE ITERATION*/
 	double biseceigen;
 	double* bisecevct;
@@ -162,12 +165,13 @@ int arclmCR(struct arclmframe* af)
 	int* m;            	/*LINE OF LDL-MODE*/
 	double* epsddisp, * epsgvct;
 	double* re, * rp;
-	double gradeps = 1e-8;
-	double gamma, eps;
+	double gradeps = 1.0e-8;
+	double gamma;
 	double evctfunbalance, epsevctfunbalance;
 	double * epsfunbalance, * epsfinternal, * epsfexternal, * epsfpressure;
 
 	int neig = 0;
+	double eps=1.0e-3;
 	double **evct, *eigen;
 
 	/*ANALYSIS TERMINATION*/
@@ -333,6 +337,11 @@ int arclmCR(struct arclmframe* af)
 						{
 							pstr++;
 							loadfactor = (double)strtod(*(data + pstr), NULL);
+						}
+                        if (!strcmp(*(data + pstr), "NEIG"))
+						{
+							pstr++;
+							neig = (int)strtol(*(data + pstr), NULL, 10);
 						}
 						else
 						{
@@ -564,6 +573,10 @@ int arclmCR(struct arclmframe* af)
 		}
 		comps = msize; /*INITIAL COMPONENTS = DIAGONALS.*/
 
+		assemshellvolume(shells, nshell, &volume);
+
+
+
 		/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
 		assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, finternal, fpressure);
 		assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp, finternal, fpressure);
@@ -656,7 +669,7 @@ int arclmCR(struct arclmframe* af)
 
 		if (BCLFLAG < 1)/*REGULAR*/
 		{
-			if(iteration==1 && 0)gmtx2=copygcompmatrix(gmtx,msize);
+			if(iteration==1 && neig!=0)gmtxcpy=copygcompmatrix(gmtx,msize);
 
 			nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);
 			//ldlneig = 0;
@@ -961,6 +974,68 @@ int arclmCR(struct arclmframe* af)
 					#endif
 				}
 
+				if(iteration == 1  && neig!=0)/*TWO-POINTS BUCKLING ANALYSIS.*/
+				{
+					eps=1e-8;
+					for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
+					{
+						*(epsgvct + ii) = eps * (*(dup + ii)+*(givendisp + ii));
+						*(epsddisp + ii) = *(ddisp + ii);
+					}
+					for (ii = 0; ii < msize; ii++)
+					{
+						*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
+					}
+					updateform(epsddisp, epsgvct, nnode);
+
+					/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
+					assemelem(elems, NULL, nelem, constraintmain, NULL, epsgmtx, iform, epsddisp, NULL, NULL);
+					assemshell(shells, NULL, nshell, constraintmain, NULL, epsgmtx, iform, epsddisp, NULL, NULL);
+
+					dgmtx=gcomponentadd3(epsgmtx,1.0/eps,gmtxcpy,-1.0/eps,msize);
+
+					bisecgeneral(dgmtx,-1.0,gmtxcpy,-1.0,confs,msize,neig,sign,1.0E-10,eigen,evct,0.0,1.0E+3);
+
+					/*OUTPUT*/
+					if(feig!=NULL)
+					{
+						for(i=0;i<neig;i++)
+						{
+							fprintf(feig,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e ", af->nlaps, (i+1), *(eigen + i), 0.0);
+
+							if (*(eigen + i) > 0.0)
+							{
+								*(eigen+i) = 1.0/(*(eigen + i));
+								fprintf(feig, "LAMBDA = %e BUCKLINGLOAD = %e\n",*(eigen+i),loadfactor+*(eigen+i));
+							}
+							else
+							{
+								fprintf(feig, "ERROR:EIGEN VALUE NEGATIVE.\n");
+							}
+
+							for (ii = 0; ii < msize; ii++)
+							{
+								*(*(evct + i) + ii) = *(*(evct + i) + *(constraintmain + ii));
+							}
+							for (ii = 0; ii < nnode; ii++)
+							{
+								fprintf(feig,
+								"%4ld %e %e %e %e %e %e\n",
+								(nodes + ii)->code, *(*(evct + i) + 6*ii + 0),
+								*(*(evct + i) + 6*ii + 1),
+								*(*(evct + i) + 6*ii + 2),
+								*(*(evct + i) + 6*ii + 3),
+								*(*(evct + i) + 6*ii + 4),
+								*(*(evct + i) + 6*ii + 5));
+							}
+						}
+					}
+					gfree(gmtxcpy,nnode);
+					//gfree(epsgmtx,nnode);
+					gfree(dgmtx,nnode);
+				}
+
+
 				for (ii = 0; ii < msize; ii++)
 				{
 					*(gvct + ii) = *(gvct + *(constraintmain + ii));
@@ -980,65 +1055,6 @@ int arclmCR(struct arclmframe* af)
 
 				loadfactor += lambda;
 				updaterotation(ddisp, gvct, nnode);
-
-
-				if(iteration == 1 && 0)/*TWO-POINTS BUCKLING ANALYSIS.*/
-				{
-					for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
-					{
-						*(epsgvct + ii) = eps * (*(dup + ii)+*(givendisp + ii));
-						*(epsddisp + ii) = *(ddisp + ii);
-					}
-					for (ii = 0; ii < msize; ii++)
-					{
-						*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
-					}
-					updaterotation(epsddisp, epsgvct, nnode);
-
-					/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
-					assemelem(elems, NULL, nelem, constraintmain, NULL, epsgmtx, iform, epsddisp, NULL, NULL);
-					assemshell(shells, NULL, nshell, constraintmain, NULL, epsgmtx, iform, epsddisp, NULL, NULL);
-
-					dgmtx=gcomponentadd3(epsgmtx,1.0,gmtx2,-1.0,msize);
-
-					bisecgeneral(dgmtx,-1.0,gmtx2,-1.0,confs,msize,neig,1.0E-10,eigen,evct,0,1.0E+3);
-
-					/*OUTPUT*/
-					if(fout!=NULL)
-					{
-						for(i=0;i<neig;i++)
-						{
-							fprintf(fout,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e ", af->nlaps, (i+1), *(eigen + i), 0.0);
-
-							if (*(eigen + i) > 0.0)
-							{
-								*(eigen+i) = 1.0/(*(eigen + i));
-								fprintf(fout, "LAMBDA = %e\n",*(eigen+i));
-							}
-							else
-							{
-								fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
-							}
-
-							for (ii = 0; ii < msize; ii++)
-							{
-								*(*(evct + i) + ii) = *(*(evct + i) + *(constraintmain + ii));
-							}
-							for (ii = 0; ii < nnode; ii++)
-							{
-								fprintf(fout,
-								"%4ld %e %e %e %e %e %e\n",
-								(nodes + ii)->code, *(*(evct + i) + 6*ii + 0),
-								*(*(evct + i) + 6*ii + 1),
-								*(*(evct + i) + 6*ii + 2),
-								*(*(evct + i) + 6*ii + 3),
-								*(*(evct + i) + 6*ii + 4),
-								*(*(evct + i) + 6*ii + 5));
-							}
-						}
-					}
-					fclose(fout);
-				}
 
 
 				if ((residual < tolerance || iteration > maxiteration) && iteration != 1)
@@ -1587,6 +1603,7 @@ int arclmCR(struct arclmframe* af)
 			fclose(fene);
 			fclose(ffig);
 			fclose(fbcl);
+			fclose(feig);
 
 
 			gfree(gmtx,nnode);
@@ -1668,6 +1685,7 @@ int arclmCR(struct arclmframe* af)
 	fclose(ffig);
 	fclose(fbcl);
 	fclose(fout);
+	fclose(feig);
 
 	gfree(gmtx,nnode);
 	gfree(epsgmtx,nnode);
@@ -2604,23 +2622,25 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 
 		/*OUTPUT STRAIN ENERGY & STRESS*/
-
-		(mshell+i-1)->SE  = 0.0;
-		(mshell+i-1)->SEp = 0.0;
-		(mshell+i-1)->SEb = 0.0;
-		for (ii = 0; ii < nnod; ii++)
+		if(mshell!=NULL)
 		{
-			for (jj = 0; jj < 2; jj++)
+			(mshell+i-1)->SE  = 0.0;
+			(mshell+i-1)->SEp = 0.0;
+			(mshell+i-1)->SEb = 0.0;
+			for (ii = 0; ii < nnod; ii++)
 			{
-				(mshell+i-1)->SEp += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+				for (jj = 0; jj < 2; jj++)
+				{
+					(mshell+i-1)->SEp += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+				}
+				for (jj = 2; jj < 5; jj++)
+				{
+					(mshell+i-1)->SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
+				}
+				(mshell+i-1)->SE += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
 			}
-			for (jj = 2; jj < 5; jj++)
-			{
-				(mshell+i-1)->SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
-			}
-			(mshell+i-1)->SE += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
+			(mshell+i-1)->SE += (mshell+i-1)->SEp + (mshell+i-1)->SEb;
 		}
-		(mshell+i-1)->SE += (mshell+i-1)->SEp + (mshell+i-1)->SEb;
 
 		free(shellstress);
 
@@ -3028,6 +3048,70 @@ double shellvolume(struct oshell shell, double** drccos, double area)
 		+ *(*(drccos + 2) + 2) * node.d[GZ]) * area / 3.0;
 	return volume;
 }/*shellvolume*/
+
+void assemshellvolume(struct oshell* shells, int nshell, double* volume)
+{
+	struct oshell shell;
+	int i,j,ii,jj;
+	int nnod;
+	double* gforminit, * eforminit;                      /*DEFORMED COORDINATION OF ELEMENT*/
+	double* gform, * eform;                      /*INITIAL COORDINATION OF ELEMENT*/
+	double** drccos,** drccosinit;                           /*MATRIX*/
+	double area;
+
+	for (i = 1; i <= nshell; i++)
+	{
+		inputshell(shells, mshell, i - 1, &shell);
+		nnod = shell.nnod;
+
+		j=0;
+
+		/*INITIAL CONFIGURATION*/
+		/*
+		for (ii = 0; ii < nnod; ii++)
+		{
+			inputnode(iform, shell.node[ii]);
+		}
+		drccosinit = shelldrccos(shell, &area);
+		gforminit = extractshelldisplacement(shell, iform);
+		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
+		*/
+
+		/*DEFORMED CONFIGFURATION*/
+		for (ii = 0; ii < nnod; ii++)
+		{
+			inputnode(ddisp, shell.node[ii]);
+		}
+		drccos = shelldrccos(shell, &area);
+		//gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
+		//eform = extractlocalcoord(gform,drccos,nnod); 			       	    /*{Xe+Ue}*/
+
+		*(volume + j) += shellvolume(shell, drccos, area);                   		/*VOLUME*/
+
+		freematrix(drccos, 3);
+		/*
+		freematrix(drccosinit, 3);
+
+		free(eforminit);
+		free(gforminit);
+		free(eform);
+		free(gform);
+		*/
+
+	}
+	return;
+}
+
+void pressureupdate(double* volume, double* mol, double* loadfactor)
+{
+	 int i;
+
+	 for(i = 1; i <= nvolume; i++)
+	 {
+		*(loadfactor + i) = *(mol + i)*8.3*(20+273)/(*(volume + i));
+	 }
+	 return;
+}
 
 
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize)

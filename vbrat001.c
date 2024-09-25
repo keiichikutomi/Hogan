@@ -262,7 +262,7 @@ int vbrat001(struct arclmframe* af)
 	for(j=0;j<msize;j++) *(*(evct+i)+j)=0.0;
   }
 
-  bisecgeneral(mmtx,1.0,kmtx,-1.0,confs,msize,neig,biseceps,eigen,evct,0.0,1.0);
+  bisecgeneral(mmtx,1.0,kmtx,-1.0,confs,msize,neig,0,biseceps,eigen,evct,0.0,1.0);
 
   laptime("EIGEN COMPLETED.",t0);
 

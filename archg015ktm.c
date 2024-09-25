@@ -92,8 +92,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
   double *ddisp,*iform,*dreact;
 
-  /*FILE *felem,*fdisp,*freact;*/
-
   /*MODEL SIZE*/
   int nnode,nelem,nshell,nsect,nreact,nconstraint;
   long int msize;
@@ -146,7 +144,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	errormessage(string);
 
 	fout=fgetstofopen("\0","w",idoutput);               /*OUTPUT FILE*/
-	fonl=fopen("hognon.onl","w");
 
 	memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
 	t0=clock();                                        /*CLOCK BEGIN.*/
