@@ -238,7 +238,7 @@ struct oelem{long int code,loff;
 			 int nnod,nban;
 			 double cangle;
 			 double initial[2][6],current[2][6]; /*STRESSES.*/
-             struct onode **nods;
+			 struct onode **nods;
 			 signed char *bonds; /*6 BONDS OF EACH NODES.*/
              struct obans *bans;
              struct osect *sect;
@@ -426,10 +426,10 @@ struct memoryshell{
 
 struct arclmframe{long int code,loff;
 				  char *appelation;
-				  int nnode,nelem,nshell,nsect,nreact,nlaps,nconstraint;
+				  int nnode,nelem,nshell,nsect,nreact,nlaps,neig,nconstraint;/*ADD neig 240926*/
+				  double loadfactor;/*ADD loadfactor 240926*/
 				  double *eigenval,**eigenvec;
-				  double *iform;
-				  double *ddisp;
+				  double *iform, *ddisp;
 				  struct memoryelem *melem;
 				  struct memoryshell *mshell;
 				  double *dreact;
@@ -441,12 +441,15 @@ struct arclmframe{long int code,loff;
 				  struct oconf *confs;
 				  double *constraintval,**constraintvec;
 				  long int *constraintmain;
-				  double *nmass;             /*NODE MASS FOR GNSHN.*/
-				  int nosect; /****SRCANMAX****/
+
+				  double *nmass;/*NODE MASS FOR GNSHN.*/
+				  int nosect; 		/****SRCANMAX****/
 				  long int *iosect; /****SRCANMAX****/
-				  int *eosect; /****SRCANMAX****/
-				  double *dosect; /****SRCANMAX****/
-				 };                                  /*ARCLM FRAME.*/
+				  int *eosect;		/****SRCANMAX****/
+				  double *dosect; 	/****SRCANMAX****/
+				 };/*ARCLM FRAME.*/
+
+
 
 struct print{
 			 char pflag; /*0:NOT PRINTING 1:UNDER PRINTING*/
@@ -17468,119 +17471,141 @@ int vwrite(FILE *fvct,long int i,double *data)
 int arclm101(struct arclmframe *af,int idinput)
 /*STATIC INCREMENTAL ANALYSIS.*/
 {
-  DWORD memory0,memory1,memory2;
-
-  FILE *fin,*fout,*ffig,*ferr,*fsrf;                       /*FILE 8 BYTES*/
-  double *ddisp,*dreact;
-  struct memoryelem *melem;
-  /*FILE *felem,*fdisp,*freact;*/
+  DWORDLONG memory0,memory1,memory2;
   char dir[]=DIRECTORY;                            /*DATA DIRECTORY*/
-  char s[80],string[400]/*,fname[256]*/;
-  int i,ii,jj;
-  int nnode,nelem,nsect,nlap,laps,nreact;
-  long int loffset,msize;
-  long int time;
-  struct gcomponent ginit={0,0,0.0,NULL};
-  struct gcomponent *gmtx,*g,*p;                    /*GLOBAL MATRIX*/
-  double *gvct;                                     /*GLOBAL VECTOR*/
-  double *gvctcmq;         /*****CMQ ZOBUN*****/    /*GLOBAL VECTOR*/
-  double **drccos,**tmatrix,**estiff,*estress;
-  double determinant,sign,safety,dsafety;
-  double func[2];
+  char s[80],string[400],fname[256];
   clock_t t0,t1,t2;
 
+  FILE *fin,*fout,*ffig,*ferr,*fsrf;                       /*FILE 8 BYTES*/
+  /*FILE *felem,*fdisp,*freact;*/
+
+  int i,ii,jj;
+
+  int nnode,nelem,nshell,nsect,nconstraint,nreact;
+  long int loffset,msize;
+
+  /*ARCLMFRAME*/
   struct osect *sects;
-  struct onode *nodes,*ninit;
-  struct owire elem;
+  struct onode *nodes;
+  struct onode *ninit;
   struct owire *elems;
   struct oconf *confs;
+  struct memoryelem *melem;
 
+  /*GLOBAL MATRIX*/
+  struct gcomponent ginit={0,0,0.0,NULL};
+  struct gcomponent *gmtx,*g,*p;
+  double determinant,sign;
+
+  /*GLOBAL VECTOR*/
+  double *ddisp,*dreact;
+  double *gvct;
+  double *gvctcmq;         /*****CMQ ZOBUN*****/
+
+  /*ELEMENT*/
+  struct owire elem;
+  double **drccos,**tmatrix,**estiff,*estress;
+
+  /*FOR INCREMENTAL*/
+  long int time;
+  int nlap,laps;
+  double safety,dsafety;
+
+  double func[2];
   double initarea;
-
   double *ncr; /*BCLNG CONDENSATION RESULT*/      //ujioka
+
+
+
+
 
   memory0=availablephysicalmemory("INITIAL:");   /*MEMORY AVAILABLE*/
 
-  fin=fgetstofopen(dir,"r",idinput);              /*OPEN INPUT FILE*/
-  if(fin==NULL)
-  {
-    errormessage("ACCESS IMPOSSIBLE.");
-    return 0;
-  }
+  /*OPEN INPUT FILE*/
+#if 1
+	fin=fgetstofopen(dir,"r",idinput);              /*OPEN INPUT FILE*/
+	//fin = fgetstofopenII(dir, "r", (wdraw.childs+1)->inpfile);
+	if(fin==NULL)
+	{
+	  errormessage("ACCESS IMPOSSIBLE.");
+	  return 0;
+	}
+	inputinitII(fin, &nnode, &nelem, &nshell, &nsect, &nconstraint); /*INPUT INITIAL.*/
+#endif
+#if 0
+	nnode=af->nnode;
+	nelem=af->nelem;
+	nshell=af->nshell;
+	nsect=af->nsect;
+	nconstraint=af->nconstraint;
+#endif
+	msize=6*nnode;                           /*SIZE OF GLOBAL MATRIX.*/
+
+  //sprintf(string,"NODES=%d ELEMS=%d SECTS=%d",nnode,nelem,nsect);
+  //errormessage(string);
+  //if(fout!=NULL) fprintf(fout,"%s\n",string);
+
+
+  /*READ ANALYSIS DATA*/
+  getincrement((wmenu.childs+2)->hwnd,&laps,&dsafety);
+
+  /*OPEN OUTPUT FILE*/
   fout=fgetstofopen("\0","w",ID_OUTPUTFILE);          /*OUTPUT FILE*/
   ffig=fopen("hogan.fig","w");                    /*HYSTERISIS FILE*/
   ferr=fopen("hogan.txt","w");                 /*ERROR MESSAGE FILE*/
   fsrf=fopen("surface.txt","w");                 /*ERROR MESSAGE FILE*/
 
-  /*fgets(string,256,fin);*/                    /*INPUT APPELATION.*/
-  /*errormessage(string);*/
-
   t0=clock();                                        /*CLOCK BEGIN.*/
-
-  getincrement((wmenu.childs+2)->hwnd,&laps,&dsafety);
-
-  inputinit(fin,&nnode,&nelem,&nsect);             /*INPUT INITIAL.*/
-  sprintf(string,"NODES=%d ELEMS=%d SECTS=%d",nnode,nelem,nsect);
-  errormessage(string);
-  if(fout!=NULL) fprintf(fout,"%s\n",string);
-
-  msize=6*nnode;                           /*SIZE OF GLOBAL MATRIX.*/
-
-  gmtx=(struct gcomponent *)          /*DIAGONALS OF GLOBAL MATRIX.*/
-		malloc(msize*sizeof(struct gcomponent));
-  gvct=(double *)malloc(msize*sizeof(double));      /*GLOBAL VECTOR*/
-
-  /*****CMQ ZOBUN*****/
-  gvctcmq=(double *)malloc(msize*sizeof(double));   /*GLOBAL VECTOR*/
-
-  if(gmtx==NULL || gvct==NULL) return 0;
-  for(i=0;i<=msize-1;i++)
-  {
-    (gmtx+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
-    *(gvct+i)=0.0;                  /*GLOBAL VECTOR INITIALIZATION.*/
-    *(gvctcmq+i)=0.0;               /*GLOBAL VECTOR INITIALIZATION.*/
-  }
 
   if(idinput==ID_INPUTFILE)
   {
-    free(af->sects);
-    free(af->nodes);
-    free(af->ninit);
-    free(af->elems);
-    free(af->confs);
-    free(af->ddisp);
-    free(af->melem);
+  #if 1
+	/*MEMORY NOT ALLOCATED*/
+	free(af->sects);
+	free(af->nodes);
+	free(af->ninit);
+	free(af->elems);
+	free(af->shells);
+	free(af->confs);
+	free(af->iform);
+	free(af->ddisp);
+	free(af->melem);
+	free(af->mshell);
+	free(af->constraintmain);
 
-    sects=(struct osect *)malloc(nsect*sizeof(struct osect));
-    if(sects==NULL) return 0;
-    nodes=(struct onode *)malloc(nnode*sizeof(struct onode));
-    if(nodes==NULL) return 0;
-    ninit=(struct onode *)malloc(nnode*sizeof(struct onode));
-    if(ninit==NULL) return 0;
-    elems=(struct owire *)malloc(nelem*sizeof(struct owire));
-    if(elems==NULL) return 0;
-    confs=(struct oconf *)malloc(msize*sizeof(struct oconf));
-    if(confs==NULL) return 0;
-    ddisp=(double *)malloc(6*nnode*sizeof(double));
-    if(ddisp==NULL) return 0;
-    melem=(struct memoryelem *)
-          malloc(nelem*sizeof(struct memoryelem));
-    if(melem==NULL) return 0;
+	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
+	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
+	ninit = (struct onode*)malloc(nnode * sizeof(struct onode));
+	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
+	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
+	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
+	iform = (double*)malloc(msize * sizeof(double));
+	ddisp = (double*)malloc(msize * sizeof(double));
+	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
+	constraintmain = (long int*)malloc(msize * sizeof(long int));
 
-    af->sects=sects;
-    af->nodes=nodes;
-    af->ninit=ninit;
-    af->elems=elems;
-    af->confs=confs;
-    af->ddisp=ddisp;                   /*DISPLACEMENT:6 DIRECTIONS.*/
-    af->melem=melem;
+	af->sects = sects;
+	af->nodes = nodes;
+	af->ninit = ninit;
+	af->elems = elems;
+	af->shells = shells;
+	af->confs = confs;
+	af->iform = iform;
+	af->ddisp = ddisp;
+	af->melem = melem;
+	af->mshell = mshell;
+	af->constraintmain = constraintmain;
 
-    inputtexttomemory(fin,af);      /*READY TO READ LONG REACTIONS.*/
-    nnode=af->nnode;
+	inputtexttomemory(fin, af);
+	fclose(fin);
+  #endif
+	/*
+	nnode=af->nnode;
     nelem=af->nelem;
     nsect=af->nsect;
-    nreact=af->nreact;
-
+	nreact=af->nreact;
+	*/
     initialform(nodes,ddisp,nnode);         /*ASSEMBLAGE FORMATION.*/
     initialelem(elems,melem,nelem);          /*ASSEMBLAGE ELEMENTS.*/
 
@@ -17590,35 +17615,62 @@ int arclm101(struct arclmframe *af,int idinput)
   }
   else
   {
-    ddisp=af->ddisp;
-    melem=af->melem;
-    dreact=af->dreact;
 
-    sects=af->sects;
-    nodes=af->nodes;
-    ninit=af->ninit;
-    elems=af->elems;
-    confs=af->confs;
+  #if 1
+	/*MEMORY ALREADY ALLOCATED*/
+	sects = af->sects;
+	nodes = af->nodes;
+	ninit = af->ninit;
+	elems = af->elems;
+	shells = af->shells;
+	confs = af->confs;
+	iform = af->iform;
+	ddisp = af->ddisp;
+	melem = af->melem;
+	mshell = af->mshell;
+	constraintmain = af->constraintmain;
 
-    nnode=af->nnode;
-    nelem=af->nelem;
+	dreact=af->dreact;
+  #endif
+	/*
+	nnode=af->nnode;
+	nelem=af->nelem;
     nsect=af->nsect;
     nreact=af->nreact;
-
-    inputloadtomemory(fin,af); /*INPUT LOAD.*/
+	*/
+	inputloadtomemory(fin,af); /*INPUT LOAD.*/
 
     if(nreact!=af->nreact)
-    {
-      MessageBox(NULL,"Input Error.","Arclm101",MB_OK);
+	{
+	  MessageBox(NULL,"Input Error.","Arclm101",MB_OK);
 	  return 0;
     }
   }
 
+  /***GLOBAL MATRIX***/
+  gmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent)); /*DIAGONALS OF GLOBAL MATRIX.*/
+  /***GLOBAL VECTOR***/
+  gvct=(double *)malloc(msize*sizeof(double));
+  gvctcmq=(double *)malloc(msize*sizeof(double));/*CMQ ZOBUN*/
+
+  for(i=0;i<=msize-1;i++)
+  {
+	(gmtx+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
+	*(gvct+i)=0.0;                  /*GLOBAL VECTOR INITIALIZATION.*/
+	*(gvctcmq+i)=0.0;               /*GLOBAL VECTOR INITIALIZATION.*/
+  }
+
+
   GetAsyncKeyState(VK_LBUTTON);                   /*CLEAR KEY LEFT.*/
   GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
+  if(globaldrawflag==1)
+  {
+	drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);  /*DRAW GLOBAL AXIS.*/
+  }
 
-  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,
-                 0,0,255);                      /*DRAW GLOBAL AXIS.*/
+
+
+
 
   if(wsurf.hwnd!=NULL)
   {
@@ -17634,21 +17686,21 @@ int arclm101(struct arclmframe *af,int idinput)
   {
     elem=*(elems+i-1);                       /*READ ELEMENT DATA.*/
 
-    inputnode(ddisp,elem.node[0]);                         /*HEAD*/
+	inputnode(ddisp,elem.node[0]);                         /*HEAD*/
     inputnode(ddisp,elem.node[1]);                         /*TAIL*/
 
-    drccos=directioncosine(elem.node[0]->d[0],
+	drccos=directioncosine(elem.node[0]->d[0],
                            elem.node[0]->d[1],
                            elem.node[0]->d[2],
                            elem.node[1]->d[0],
-                           elem.node[1]->d[1],
+						   elem.node[1]->d[1],
                            elem.node[1]->d[2],
                            elem.cangle);               /*[DRCCOS]*/
 
-    tmatrix=transmatrix(drccos);         /*TRANSFORMATION MATRIX.*/
+	tmatrix=transmatrix(drccos);         /*TRANSFORMATION MATRIX.*/
 
 	modifycmq(melem,&elem);
-  	assemcmq101(elem,tmatrix,confs,gvctcmq,dsafety);    /*ASSEMBLAGE CMQ AS LOADS.*/
+	assemcmq101(elem,tmatrix,confs,gvctcmq,dsafety);    /*ASSEMBLAGE CMQ AS LOADS.*/
 
     for(ii=0;ii<=2;ii++) free(*(drccos+ii));
     free(drccos);
@@ -17657,41 +17709,34 @@ int arclm101(struct arclmframe *af,int idinput)
   }
   /*****CMQ ZOBUN*****/
 
-  if(0) definencr(&arc,&*ncr);          //ujioka
+  //definencr(&arc,&*ncr);          //ujioka
 
   for(nlap=1;nlap<=laps;nlap++)
   {
-    /*sprintf(fname,"arclm%d.lap",nlap);*/
-	/*fout=fopen(fname,"w");*/                          /*LAP FILE*/
-
-	/*af->nlaps=nlap;*/
-	af->nlaps=1;
+	af->nlaps=1/*nlap*/;
 
     sprintf(string,"LAP:%d/%d",nlap,laps);
-    errormessage(string);
-    if(fout!=NULL) fprintf(fout,"%s\n",string);
+	errormessage(string);
+	if(fout!=NULL) fprintf(fout,"%s\n",string);
     if(ffig!=NULL) fprintf(ffig,"%s",string);
 
-    setincrement((wmenu.childs+2)->hwnd,
-				 laps,nlap,dsafety,(nlap*dsafety));
+	setincrement((wmenu.childs+2)->hwnd,laps,nlap,dsafety,(nlap*dsafety));
 
 	memory1=availablephysicalmemory("REMAIN:");  /*MEMORY AVAILABLE*/
 
     for(i=1;i<=msize;i++)           /*GLOBAL MATRIX INITIALIZATION.*/
-    {
-      g=(gmtx+(i-1))->down; /*NEXT OF DIAGONAL.*/
+	{
+	  g=(gmtx+(i-1))->down; /*NEXT OF DIAGONAL.*/
       while(g!=NULL) /*CLEAR ROW.*/
       {
-        p=g;
+		p=g;
         g=g->down;
         free(p);
-      }
+	  }
+	  ginit.m=(unsigned short int)i;
+	  *(gmtx+(i-1))=ginit;
+	}
 
-      ginit.m=(unsigned short int)i;
-      /*ginit.n=(unsigned short int)i;*/
-
-      *(gmtx+(i-1))=ginit;
-    }
     comps=msize; /*INITIAL COMPONENTS=DIAGONALS.*/
 
     laptime("ASSEMBLING GLOBAL MATRIX.",t0);
@@ -17699,32 +17744,24 @@ int arclm101(struct arclmframe *af,int idinput)
     for(i=1;i<=nelem;i++)               /*ASSEMBLAGE GLOBAL MATRIX.*/
     {
       inputelem(elems,melem,i-1,&elem);        /*READ ELEMENT DATA.*/
-      for(ii=0;ii<=1;ii++)
+	  for(ii=0;ii<=1;ii++)
       {
         for(jj=0;jj<=5;jj++)
         {
           (elems+i-1)->iconf[ii][jj]=elem.iconf[ii][jj];
-        }
+		}
       }
       inputnode(ddisp,elem.node[0]);                         /*HEAD*/
       inputnode(ddisp,elem.node[1]);                         /*TAIL*/
 
 	  elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
-      if((wdraw.childs+1)->hdcC!=NULL)     /*DRAW DEFORMED ELEMENT.*/
-      {
-		drawglobalwire((wdraw.childs+1)->hdcC,
-                       (wdraw.childs+1)->vparam,
-                       *af,elem,255,255,255,
-                                255,255,255,0,ONSCREEN);
-      }
-
       drccos=directioncosine(elem.node[0]->d[0],
                              elem.node[0]->d[1],
                              elem.node[0]->d[2],
                              elem.node[1]->d[0],
                              elem.node[1]->d[1],
-                             elem.node[1]->d[2],
+							 elem.node[1]->d[2],
                              elem.cangle);               /*[DRCCOS]*/
 
       tmatrix=transmatrix(drccos);         /*TRANSFORMATION MATRIX.*/
@@ -17736,29 +17773,29 @@ int arclm101(struct arclmframe *af,int idinput)
 	  assemgstiffness(gmtx,estiff,&elem);             /*ASSEMBLAGE.*/
 
       for(ii=0;ii<=2;ii++) free(*(drccos+ii));
-      free(drccos);
+	  free(drccos);
       for(ii=0;ii<=11;ii++) free(*(tmatrix+ii));
       free(tmatrix);
-      for(ii=0;ii<=11;ii++) free(*(estiff+ii));
+	  for(ii=0;ii<=11;ii++) free(*(estiff+ii));
       free(estiff);
 
-    }
-    sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
+	}
+
+	sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
     laptime(string,t0);
 
-    overlayhdc(*(wdraw.childs+1),SRCPAINT);       /*UPDATE DISPLAY.*/
+	clearwindow(*(wdraw.childs+1));
+	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
 
 	/*****CMQ ZOBUN*****/
     for(i=0;i<=msize-1;i++)
-    {
+	{
       *(gvct+i)=*(gvctcmq+i);                      /*GLOBAL VECTOR.*/
-    }
-
-
+	}
 	assemconf(confs,gvct,dsafety,nnode);           /*GLOBAL VECTOR.*/
-//  assemconf201(confs,gvct,dsafety,nnode);        /*GLOBAL VECTOR.*/
 
-    modifygivend(gmtx,gvct,confs,nnode);   /*0:LOAD 1:DISPLACEMENT.*/
+	modifygivend(gmtx,gvct,confs,nnode);   /*0:LOAD 1:DISPLACEMENT.*/
 
     laptime("CROUT LU DECOMPOSITION.",t0);
     croutludecomposition(gmtx,
@@ -17766,18 +17803,17 @@ int arclm101(struct arclmframe *af,int idinput)
                          6*nnode,
                          &determinant,&sign);        /*[K]{dU}={dF}*/
 
-	sprintf(string,"LOG{DETERMINANT}=%.5E SIGN=%.1f COMPS=%ld",
-            determinant,sign,comps);
-    errormessage(string);
-    if(fout!=NULL) fprintf(fout,"%s\n",string);
+	//sprintf(string,"LOG{DETERMINANT}=%.5E SIGN=%.1f COMPS=%ld",determinant,sign,comps);
+	//errormessage(string);
+	//if(fout!=NULL) fprintf(fout,"%s\n",string);
 
-    safety=nlap*dsafety;
-    sprintf(string,"SAFETY FACTOR=%.5f",safety);
-    errormessage(string);
-    if(fout!=NULL) fprintf(fout,"%s\n",string);
-    if(ffig!=NULL) fprintf(ffig," SAFETY= %.5f",safety);
+	//safety=nlap*dsafety;
+	//sprintf(string,"SAFETY FACTOR=%.5f",safety);
+	//errormessage(string);
+	//if(fout!=NULL) fprintf(fout,"%s\n",string);
+	//if(ffig!=NULL) fprintf(ffig," SAFETY= %.5f",safety);
 
-    if(sign<=0.0)
+	if(sign<=0.0)
     {
       errormessage(" ");
       errormessage("INSTABLE TERMINATION.");
@@ -17799,16 +17835,16 @@ int arclm101(struct arclmframe *af,int idinput)
       return 1;
     }
 
-    laptime("OUTPUT INTO FILE.",t0);
+	//laptime("OUTPUT INTO FILE.",t0);
 
-	if(ferr!=NULL) fprintf(ferr,"LAP %3d / %3d",nlap,laps);
+	//if(ferr!=NULL) fprintf(ferr,"LAP %3d / %3d",nlap,laps);
 
-	if(fout!=NULL) fprintf(fout,"\"DISPLACEMENT\"\n");
-	outputdisp(gvct,fout,nnode,nodes);  /*INCREMENTAL DISPLACEMENT.*/
+	//if(fout!=NULL) fprintf(fout,"\"DISPLACEMENT\"\n");
+	//outputdisp(gvct,fout,nnode,nodes);  /*INCREMENTAL DISPLACEMENT.*/
 
-    if(fout!=NULL) fprintf(fout,"\"STRESS\"\n");
+	//if(fout!=NULL) fprintf(fout,"\"STRESS\"\n");
 	for(i=1;i<=nelem;i++)                   /*STRESS OUTPUT,UPDATE.*/
-    {
+	{
 	  inputelem(elems,melem,i-1,&elem);
 
       inputnode(ddisp,elem.node[0]);
@@ -17816,28 +17852,26 @@ int arclm101(struct arclmframe *af,int idinput)
 
       elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
-
 	  estress=elemstress(&elem,gvct,melem,fout,func);
 
-      outputstress(elem,estress,fout,func);
+	  outputstress(elem,estress,fout,func);
       free(estress);
 
-    }
-    if(wsurf.hwnd!=NULL)
-    {
-
-      drawyieldsurface((wsurf.childs+1)->hdcC,
+	}
+	if(wsurf.hwnd!=NULL)
+	{
+	  drawyieldsurface((wsurf.childs+1)->hdcC,
                        (wsurf.childs+1)->vparam,
-                       SURFACEX,SURFACEY,SURFACEZ,
-                       af->fsurface);
-      overlayhdc(*(wsurf.childs+1),SRCPAINT);     /*UPDATE DISPLAY.*/
+					   SURFACEX,SURFACEY,SURFACEZ,
+					   af->fsurface);
+	  overlayhdc(*(wsurf.childs+1),SRCPAINT);     /*UPDATE DISPLAY.*/
 	}
 
 	if(fout!=NULL) fprintf(fout,"\"REACTION\"\n");
 	outputreaction(gmtx,gvct,nodes,confs,dreact,fout,nnode);
 
 	updateform(ddisp,gvct,nnode);               /*FORMATION UPDATE.*/
-	if(fout!=NULL) fprintf(fout,"\"CURRENT FORM\"\n");
+	//if(fout!=NULL) fprintf(fout,"\"CURRENT FORM\"\n");
 
 	for(ii=0;ii<nnode;ii++)
 	{
@@ -17851,7 +17885,7 @@ int arclm101(struct arclmframe *af,int idinput)
 	  if(fout!=NULL) fprintf(fout,"%s\n",string);
 	}
 
-	if(ferr!=NULL) fprintf(ferr,"\n");
+	//if(ferr!=NULL) fprintf(ferr,"\n");
 
 	t1=laptime("\0",t0);
 
@@ -17859,31 +17893,38 @@ int arclm101(struct arclmframe *af,int idinput)
 	sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory1-memory2));
 	errormessage(string);
 
+
+	//MESSAGE FOR UPDATE UI
+	//AVOID FREEZE ON LONG RUNNING TASK
+	MSG msg;
+	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+
 	errormessage("L:CONTINUE R:ABORT");            /*L=LEFT R=RIGHT*/
 	while(!GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 	{
 	  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
 	  {
-		fclose(fin);
+		if(fout!=NULL) fprintf(fout,"ABORTED.\n");
+		errormessage(" ");
+		errormessage("ABORTED.");
 
+		fclose(fin);
+		fclose(fout);
+		fclose(ffig);
 
 		gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
 		free(gvct);
 
-
-        errormessage(" ");
-        errormessage("ABORTED.");
-        if(fout!=NULL) fprintf(fout,"ABORTED.\n");
-
-        fclose(fout);
-        fclose(ffig);
-
         laptime("\0",t0);
         return 1;
-      }
-      t2=clock();
-      time=(t2-t1)/CLK_TCK;
-      if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
+	  }
+	  t2=clock();
+	  time=(t2-t1)/CLK_TCK;
+	  if(time>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
 	}
   }                                        /*REPEAT UNTIL INSTABLE.*/
 
@@ -17893,8 +17934,8 @@ int arclm101(struct arclmframe *af,int idinput)
     for(i=1;i<=nelem;i++)
     {
 	  inputelem(elems,melem,i-1,&elem);
-      for(ii=0;ii<=1;ii++) /*COPY HINGE DATA.*/
-      {
+	  for(ii=0;ii<=1;ii++) /*COPY HINGE DATA.*/
+	  {
         for(jj=0;jj<=5;jj++)
         {
           (elems+i-1)->iconf[ii][jj]=elem.iconf[ii][jj];
@@ -17902,9 +17943,9 @@ int arclm101(struct arclmframe *af,int idinput)
       }
 
       inputnode(ddisp,elem.node[0]);
-      inputnode(ddisp,elem.node[1]);
+	  inputnode(ddisp,elem.node[1]);
 
-      drawglobalwire((wdraw.childs+1)->hdcC,
+	  drawglobalwire((wdraw.childs+1)->hdcC,
                      (wdraw.childs+1)->vparam,
                      *af,elem,255,255,255,
                               255,255,255,0,ONSCREEN);
@@ -17913,25 +17954,17 @@ int arclm101(struct arclmframe *af,int idinput)
   }
 
   fclose(fin);
-
-  gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
-
-
-  af->eigenvec=(double **)malloc(1*sizeof(double *));
-  *((af->eigenvec)+0)=gvct;
+  fclose(fout);
+  fclose(ffig);
+  fclose(ferr);
+  gfree(gmtx,nnode);
 
   errormessage(" ");
   errormessage("COMPLETED.");
-  if(fout!=NULL) fprintf(fout,"COMPLETED.\n");
-
-  if(fout!=NULL) fclose(fout);
-  if(ffig!=NULL) fclose(ffig);
-  if(ferr!=NULL) fclose(ferr);
 
   memory2=availablephysicalmemory("REMAIN:");
   sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory2));
   errormessage(string);
-  errormessage(" ");
 
   return 0;
 }/*arclm101*/
@@ -18494,7 +18527,7 @@ else              safety-=dsafety;
       }
       else                     //tension
       {
-      estress=elemstressbc(&elem,gvct,melem,fout,fsrf,func,0);
+	  estress=elemstressbc(&elem,gvct,melem,fout,fsrf,func,0);
       /*
         便宜上Ncr=0とし、この場合降伏曲面は修正しない。
         (updatestressbc,coefficientsbcでの条件分岐による)
@@ -21693,7 +21726,7 @@ double **transmatrixIII(double **drccos,int nnod)
   return t;
 }/*transmatrixIII*/
 
-double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
+double **assemshellemtx(struct oshell shell,double **drccos,double ***B)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
   int i,j,k;
@@ -21751,8 +21784,8 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
 	}
   }
 
-  addkpemtx(Ke,shell,E,poi,t,det,Lx,Ly,DBe);
-  addkbemtx(Ke,shell,E,poi,t,det,Lx,Ly,b,c,DBe);
+  addkpemtx(Ke,shell,E,poi,t,det,Lx,Ly,B);
+  addkbemtx(Ke,shell,E,poi,t,det,Lx,Ly,b,c,B);
   addktemtx(Ke,E,t,det);
 
   for(i=0;i<3;i++)free(*(exy+i));
@@ -21765,7 +21798,7 @@ double **assemshellemtx(struct oshell shell,double **drccos,double **DBe)
   return Ke;
 }/*assememtx*/
 
-void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double **DBe)
+void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double ***B)
 {
   int i,j;
   double **Dp,**Bp,**Bpt,**DpBp,**Kp;
@@ -21803,7 +21836,7 @@ void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
   *(*(Bp+2)+4)=*(Ly+2);
   *(*(Bp+2)+5)=*(Lx+2);
 
-  *(*(Dp+0)+0)=E/(1-poi*poi);
+  *(*(Dp+0)+0)=E*t/(1-poi*poi);
   *(*(Dp+0)+1)=poi**(*(Dp+0)+0);
   *(*(Dp+0)+2)=0.0;
   *(*(Dp+1)+0)=*(*(Dp+0)+1);
@@ -21811,7 +21844,7 @@ void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
   *(*(Dp+1)+2)=0.0;
   *(*(Dp+2)+0)=0.0;
   *(*(Dp+2)+1)=0.0;
-  *(*(Dp+2)+2)=0.5*E/(1+poi);
+  *(*(Dp+2)+2)=0.5*E*t/(1+poi);
   Bpt=matrixtransposeIII(Bp,3,6);
   DpBp=matrixmatrixIII(Dp,Bp,3,3,6);
   Kp=matrixmatrixIII(Bpt,DpBp,6,3,6);
@@ -21819,24 +21852,39 @@ void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
   {
 	for(j=0;j<3;j++)
 	{
-	  *(*(Ke+6*i+0)+6*j+0)=det*t**(*(Kp+2*i+0)+2*j+0)*prate;
-	  *(*(Ke+6*i+0)+6*j+1)=det*t**(*(Kp+2*i+0)+2*j+1)*prate;
-	  *(*(Ke+6*i+1)+6*j+0)=det*t**(*(Kp+2*i+1)+2*j+0)*prate;
-	  *(*(Ke+6*i+1)+6*j+1)=det*t**(*(Kp+2*i+1)+2*j+1)*prate;
+	  *(*(Ke+6*i+0)+6*j+0)=det**(*(Kp+2*i+0)+2*j+0)*prate;
+	  *(*(Ke+6*i+0)+6*j+1)=det**(*(Kp+2*i+0)+2*j+1)*prate;
+	  *(*(Ke+6*i+1)+6*j+0)=det**(*(Kp+2*i+1)+2*j+0)*prate;
+	  *(*(Ke+6*i+1)+6*j+1)=det**(*(Kp+2*i+1)+2*j+1)*prate;
 	}
   }
-  if(DBe!=NULL)
+  /*if(0)
   {
 	for(i=0;i<3;i++)
 	{
 	  for(j=0;j<3;j++)
 	  {
-		*(*(DBe+6*i+0)+6*j+0)=*(*(DpBp+0)+2*j+0)*prate;
-		*(*(DBe+6*i+0)+6*j+1)=*(*(DpBp+0)+2*j+1)*prate;
-		*(*(DBe+6*i+1)+6*j+0)=*(*(DpBp+1)+2*j+0)*prate;
-		*(*(DBe+6*i+1)+6*j+1)=*(*(DpBp+1)+2*j+1)*prate;
-		*(*(DBe+6*i+2)+6*j+0)=*(*(DpBp+2)+2*j+0)*prate;
-		*(*(DBe+6*i+2)+6*j+1)=*(*(DpBp+2)+2*j+1)*prate;
+		*(*(DBe+6*i+0)+6*j+0)=*(*(DpBp+0)+2*j+0)/t*prate;
+		*(*(DBe+6*i+0)+6*j+1)=*(*(DpBp+0)+2*j+1)/t*prate;
+		*(*(DBe+6*i+1)+6*j+0)=*(*(DpBp+1)+2*j+0)/t*prate;
+		*(*(DBe+6*i+1)+6*j+1)=*(*(DpBp+1)+2*j+1)/t*prate;
+		*(*(DBe+6*i+2)+6*j+0)=*(*(DpBp+2)+2*j+0)/t*prate;
+		*(*(DBe+6*i+2)+6*j+1)=*(*(DpBp+2)+2*j+1)/t*prate;
+	  }
+	}
+  }*/
+  if(B!=NULL)
+  {
+	for(i=0;i<7;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(*(B+i)+0)+6*j+0)=*(*(Bp+0)+2*j+0);
+		*(*(*(B+i)+0)+6*j+1)=*(*(Bp+0)+2*j+1);
+		*(*(*(B+i)+1)+6*j+0)=*(*(Bp+1)+2*j+0);
+		*(*(*(B+i)+1)+6*j+1)=*(*(Bp+1)+2*j+1);
+		*(*(*(B+i)+2)+6*j+0)=*(*(Bp+2)+2*j+0);
+		*(*(*(B+i)+2)+6*j+1)=*(*(Bp+2)+2*j+1);
 	  }
 	}
   }
@@ -21848,7 +21896,7 @@ void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
   return;
 }
 
-void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double *b,double *c,double **DBe)
+void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double *b,double *c,double ***B)
 {
   int i,j,k,ii;
   double *a;
@@ -22123,23 +22171,35 @@ void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,doub
 		*(*(Ke+6*i+4)+6*j+4) += *(*(Kb+3*i+2)+3*j+2)**(a+ii)*det*brate;
 	  }
 	}
-	if(DBe!=NULL && ii==0)
+	/*if(0)
 	{
-	  for(i=0;i<3;i++)
-	  {
-		for(j=0;j<3;j++)
+		for(i=0;i<3;i++)
 		{
-		  *(*(DBe+6*i+3)+6*j+2)=*(*(DbBb+0)+3*j+0)*6/pow(t,2)*brate;
-		  *(*(DBe+6*i+3)+6*j+3)=*(*(DbBb+0)+3*j+1)*6/pow(t,2)*brate;
-		  *(*(DBe+6*i+3)+6*j+4)=*(*(DbBb+0)+3*j+2)*6/pow(t,2)*brate;
-		  *(*(DBe+6*i+4)+6*j+2)=*(*(DbBb+1)+3*j+0)*6/pow(t,2)*brate;
-		  *(*(DBe+6*i+4)+6*j+3)=*(*(DbBb+1)+3*j+1)*6/pow(t,2)*brate;
-		  *(*(DBe+6*i+4)+6*j+4)=*(*(DbBb+1)+3*j+2)*6/pow(t,2)*brate;
-		  *(*(DBe+6*i+5)+6*j+2)=*(*(DbBb+2)+3*j+0)*6/pow(t,2)*brate;
-		  *(*(DBe+6*i+5)+6*j+3)=*(*(DbBb+2)+3*j+1)*6/pow(t,2)*brate;
-		  *(*(DBe+6*i+5)+6*j+4)=*(*(DbBb+2)+3*j+2)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+3)+6*i+2)=*(*(DbBb+0)+3*i+0)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+3)+6*i+3)=*(*(DbBb+0)+3*i+1)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+3)+6*i+4)=*(*(DbBb+0)+3*i+2)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+4)+6*i+2)=*(*(DbBb+1)+3*i+0)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+4)+6*i+3)=*(*(DbBb+1)+3*i+1)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+4)+6*i+4)=*(*(DbBb+1)+3*i+2)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+5)+6*i+2)=*(*(DbBb+2)+3*i+0)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+5)+6*i+3)=*(*(DbBb+2)+3*i+1)*6/pow(t,2)*brate;
+		  *(*(DBe+6*ii+5)+6*i+4)=*(*(DbBb+2)+3*i+2)*6/pow(t,2)*brate;
 		}
-	  }
+	}*/
+	if(B!=NULL)
+	{
+		for(i=0;i<3;i++)
+		{
+		  *(*(*(B+ii)+3)+6*i+2)=*(*(Bb+0)+3*i+0);
+		  *(*(*(B+ii)+3)+6*i+3)=*(*(Bb+0)+3*i+1);
+		  *(*(*(B+ii)+3)+6*i+4)=*(*(Bb+0)+3*i+2);
+		  *(*(*(B+ii)+4)+6*i+2)=*(*(Bb+1)+3*i+0);
+		  *(*(*(B+ii)+4)+6*i+3)=*(*(Bb+1)+3*i+1);
+		  *(*(*(B+ii)+4)+6*i+4)=*(*(Bb+1)+3*i+2);
+		  *(*(*(B+ii)+5)+6*i+2)=*(*(Bb+2)+3*i+0);
+		  *(*(*(B+ii)+5)+6*i+3)=*(*(Bb+2)+3*i+1);
+		  *(*(*(B+ii)+5)+6*i+4)=*(*(Bb+2)+3*i+2);
+		}
 	}
 	freematrix(Bb,3);
 	freematrix(Bbt,9);
@@ -22705,6 +22765,7 @@ double **assempmtx(struct owire elem,double **estiff)
 	for(j=0;j<12;j++) p[i][j]=0.0;                       /*INITIAL.*/
   }
 
+
   if(a[0][0]!=0.0 && a[1][1]==0.0)         /*IF I:PLASTIC J:ELASTIC*/
   {
 	for(i=0;i<12;i++)
@@ -22721,6 +22782,8 @@ double **assempmtx(struct owire elem,double **estiff)
 	  }
 	}
   }
+
+
   if(a[0][0]==0.0 && a[1][1]!=0.0)         /*IF I:ELASTIC J:PLASTIC*/
   {
 	for(i=0;i<12;i++)
@@ -22737,6 +22800,8 @@ double **assempmtx(struct owire elem,double **estiff)
 	  }
 	}
   }
+
+
   if((a[0][0]!=0.0)&&(a[1][1]!=0.0))       /*IF I:PLASTIC J:PLASTIC*/
   {
     for(i=0;i<12;i++)
@@ -22785,8 +22850,8 @@ double **assempmtx(struct owire elem,double **estiff)
     if(iconf[i]!=1 && iconf[i]!=-2 && iconf[i]!=-3)
     {
 	  for(j=0;j<12;j++)
-      {
-        if(iconf[j]!=1 && iconf[j]!=-2 && iconf[j]!=-3)
+	  {
+		if(iconf[j]!=1 && iconf[j]!=-2 && iconf[j]!=-3)
         {
 		  *(*(estiff+i)+j)+=p[i][j];                /*[k]=[ke]+[kp]*/
         }
@@ -22842,75 +22907,166 @@ double **assempmtxbc(struct owire elem,double **estiff,double ncr)
         for(j=0;j<12;j++)
 		{
           if(iconf[j]!=1 && iconf[j]!=-2 && iconf[j]!=-3)
-          {
+		  {
 			p[i][j]=-1.0/a[1][1]*q[i][1]*q[j][1];
           }
-        }
+		}
 	  }
-    }
+	}
   }
   if((a[0][0]!=0.0)&&(a[1][1]!=0.0))       /*IF I:PLASTIC J:PLASTIC*/
   {
-    for(i=0;i<12;i++)
+	for(i=0;i<12;i++)
 	{
-      if(iconf[i]!=1 && iconf[i]!=-2 && iconf[i]!=-3)
-      {
+	  if(iconf[i]!=1 && iconf[i]!=-2 && iconf[i]!=-3)
+	  {
 		for(j=0;j<12;j++)
-        {
-          if(iconf[j]!=1 && iconf[j]!=-2 && iconf[j]!=-3)
+		{
+		  if(iconf[j]!=1 && iconf[j]!=-2 && iconf[j]!=-3)
 		  {
             if((a[0][0]*a[1][1]-a[0][1]*a[1][0])==0.0)
-            {
+			{
 
 if(globalfile!=NULL)
 {
   fprintf(globalfile,"Assem : Matrix Singular.ELEM=%d SECT=%d i=%d j=%d\n",
-          elem.code,elem.sect->code,i,j);
+		  elem.code,elem.sect->code,i,j);
   fprintf(globalfile,"%10.5f x %10.5f - %10.5f x %10.5f = 0.0\n",
 		  a[0][0],a[1][1],a[0][1],a[1][0]);
 }
 
 			  errormessage("ASSEMPMTX:UNDER CONSIDERATION.");
               sprintf(str,"Matrix Singular.ELEM=%d SECT=%d i=%d j=%d",
-                      elem.code,elem.sect->code,i,j);
+					  elem.code,elem.sect->code,i,j);
 /*
 MessageBox(NULL,str,"Assempmtx",MB_OK);
 */
 			  /*DELETE THIS ELEMENT*/
-              *(*(estiff+i)+j)=0.0;
-              p[i][j]=0.0;
+			  *(*(estiff+i)+j)=0.0;
+			  p[i][j]=0.0;
 			}
             else
-            {
+			{
 			  det=-1.0/(a[0][0]*a[1][1]-a[0][1]*a[1][0]);
-              p[i][j]=det*(a[1][1]*q[i][0]*q[j][0]
-                          -a[0][1]*q[i][0]*q[j][1]
+			  p[i][j]=det*(a[1][1]*q[i][0]*q[j][0]
+						  -a[0][1]*q[i][0]*q[j][1]
 						  -a[1][0]*q[i][1]*q[j][0]
-                          +a[0][0]*q[i][1]*q[j][1]);
-            }
+						  +a[0][0]*q[i][1]*q[j][1]);
+			}
 		  }
-        }
-      }
+		}
+	  }
 	}
   }
 
   for(i=0;i<12;i++)                                     /*ADDITION.*/
   {
-    if(iconf[i]!=1 && iconf[i]!=-2 && iconf[i]!=-3)
+	if(iconf[i]!=1 && iconf[i]!=-2 && iconf[i]!=-3)
 	{
-      for(j=0;j<12;j++)
-      {
+	  for(j=0;j<12;j++)
+	  {
 		if(iconf[j]!=1 && iconf[j]!=-2 && iconf[j]!=-3)
-        {
-          *(*(estiff+i)+j)+=p[i][j];                /*[k]=[ke]+[kp]*/
+		{
+		  *(*(estiff+i)+j)+=p[i][j];                /*[k]=[ke]+[kp]*/
 		}
-      }
-    }
+	  }
+	}
   }
 
   return estiff;
 }/*assempmtxbc*/
 
+void coefficients(struct owire elem,double **estiff,
+				  double f[],double dfdp[][6],
+				  double q[][2],double a[][2])
+/*ASSEMBLAGE PLASTIC COEFFICIENTS.*/
+{
+  signed char iconf[12];
+  int i,j,ii,jj;
+  double fc[6],fu[6];
+  double unit,value;
+
+  for(i=0;i<2;i++)                    /*ICONF[2][6] INTO ICONF[12].*/
+  {
+	for(j=0;j<6;j++) iconf[6*i+j]=elem.iconf[i][j];
+  }
+
+  for(i=0;i<6;i++)                 /*CENTER,WIDTH OF YIELD SURFACE.*/
+  {
+	fc[i]=0.5*(elem.sect->fmax[i]+elem.sect->fmin[i]);     /*CENTER*/
+	fu[i]=0.5*(elem.sect->fmax[i]-elem.sect->fmin[i]);      /*WIDTH*/
+  }
+
+
+  for(i=0;i<2;i++)    /*ASSEMBLAGE YIELD FUNCTION:f,VECTOR:{df/dp}.*/
+  {
+  /*f=POW(|Qx/Qxu|,EXP)+POW(|Qy/Qyu|,EXP)+POW(|Nz/Nzu|,EXP)*/
+  /* +POW(|Mx/Mxu|,EXP)+POW(|My/Myu|,EXP)+POW(|Mz/Mzu|,EXP)*/
+
+	f[i]=0.0;
+	for(j=0;j<6;j++)
+	{
+	  if(elem.iconf[i][j]!=1)        /*-1:PLASTIC 0:ELASTIC 1:HINGE*/
+	  {
+		if(j==0 || j==3) /*N,Mz*/
+		{
+		  value=fabs(elem.stress[i][j]-pow(-1.0,i)*fc[j])/fu[j];
+		  f[i]+=pow(value,EXPONENT);
+		}
+		else /*Qx,Qy,Mx,My*/
+		{
+		  value=fabs(elem.stress[i][j]-fc[j])/fu[j];
+		  f[i]+=pow(value,EXPONENT);
+		}
+
+		if(j==0 || j==3) unit=elem.stress[i][j]-pow(-1.0,i)*fc[j];
+		else             unit=elem.stress[i][j]-fc[j];
+
+		if(unit!=0.0) unit/=fabs(unit);                     /*SIGN.*/
+		else          unit=0.0;                  /*ON ILLEGAL LINE.*/
+		dfdp[i][j]=unit/fu[j]*pow(value,(EXPONENT-1.0));
+	  }
+	}
+  }
+
+  for(i=0;i<12;i++)                         /*ASSEMBLAGE VECTOR:{q}*/
+  {
+	if(iconf[i]!=1)
+	{
+	  for(j=0;j<2;j++)
+	  {
+		q[i][j]=0.0;
+
+		for(jj=0;jj<6;jj++)
+		{
+		  if(iconf[6*j+jj]!=1) /*if(iconf[6*j+jj]==-1)*/
+		  {
+			q[i][j]+=*(*(estiff+i)+6*j+jj)*dfdp[j][jj];
+		  }
+		}
+	  }
+	}
+  }
+  for(i=0;i<2;i++)                     /*INNER PRODUCT a={df/dp}{q}*/
+  {
+	for(j=0;j<2;j++)
+	{
+	  a[i][j]=0.0;
+
+	  for(ii=0;ii<6;ii++)
+	  {
+		if((elem.iconf[i][ii]==-1)&&(elem.iconf[j][ii]==-1))
+		{
+		  a[i][j]+=dfdp[i][ii]*q[6*i+ii][j];
+		}
+	  }
+	}
+  }
+  return;
+}/*coefficients*/
+
+
+#if 0
 void coefficients(struct owire elem,double **estiff,
 				  double f[],double dfdp[][6],
 				  double q[][2],double a[][2])
@@ -22946,37 +23102,37 @@ fprintf(globalfile,"        STRESS       RATE       dfdp\n");
 
   for(i=0;i<2;i++)    /*ASSEMBLAGE YIELD FUNCTION:f,VECTOR:{df/dp}.*/
   {       /*f=POW(|Qx/Qxu|,EXP)+POW(|Qy/Qyu|,EXP)+POW(|Nz/Nzu|,EXP)*/
-          /* +POW(|Mx/Mxu|,EXP)+POW(|My/Myu|,EXP)+POW(|Mz/Mzu|,EXP)*/
-    f[i]=0.0;
-    for(j=0;j<6;j++)
-    {
+		  /* +POW(|Mx/Mxu|,EXP)+POW(|My/Myu|,EXP)+POW(|Mz/Mzu|,EXP)*/
+	f[i]=0.0;
+	for(j=0;j<6;j++)
+	{
 	  if(elem.iconf[i][j]!=1)        /*-1:PLASTIC 0:ELASTIC 1:HINGE*/
-      {
-        if(j==0 || j==3) /*N,Mz*/
-        {
-          value=fabs(elem.stress[i][j]-pow(-1.0,i)*fc[j])/fu[j];
+	  {
+		if(j==0 || j==3) /*N,Mz*/
+		{
+		  value=fabs(elem.stress[i][j]-pow(-1.0,i)*fc[j])/fu[j];
 		  f[i]+=pow(value,EXPONENT);
-        }
+		}
 		else /*Qx,Qy,Mx,My*/
         {
-          value=fabs(elem.stress[i][j]-fc[j])/fu[j];
-          f[i]+=pow(value,EXPONENT);
-        }
-        if(j==0 || j==3) unit=elem.stress[i][j]-pow(-1.0,i)*fc[j];
-        else             unit=elem.stress[i][j]-fc[j];
+		  value=fabs(elem.stress[i][j]-fc[j])/fu[j];
+		  f[i]+=pow(value,EXPONENT);
+		}
+		if(j==0 || j==3) unit=elem.stress[i][j]-pow(-1.0,i)*fc[j];
+		else             unit=elem.stress[i][j]-fc[j];
 
 		if(unit!=0.0) unit/=fabs(unit);                     /*SIGN.*/
-        else          unit=0.0;                  /*ON ILLEGAL LINE.*/
-        dfdp[i][j]=unit/fu[j]*pow(value,(EXPONENT-1.0));
+		else          unit=0.0;                  /*ON ILLEGAL LINE.*/
+		dfdp[i][j]=unit/fu[j]*pow(value,(EXPONENT-1.0));
 
 /*
 if(globalfile!=NULL)
 fprintf(globalfile,"%d %d %10.5f %10.5f %10.5f\n",
-        i,j,elem.stress[i][j],value,dfdp[i][j]);
+		i,j,elem.stress[i][j],value,dfdp[i][j]);
 */
 
       }
-    }
+	}
   }
 
   for(i=0;i<12;i++)                         /*ASSEMBLAGE VECTOR:{q}*/
@@ -22992,10 +23148,10 @@ if(globalfile!=NULL)
 fprintf(globalfile,"q%d%d =\n",i,j);
 */
 
-        for(jj=0;jj<6;jj++)
-        {
-          if(iconf[6*j+jj]!=1) /*if(iconf[6*j+jj]==-1)*/
-          {
+		for(jj=0;jj<6;jj++)
+		{
+		  if(iconf[6*j+jj]!=1) /*if(iconf[6*j+jj]==-1)*/
+		  {
 			q[i][j]+=*(*(estiff+i)+6*j+jj)*dfdp[j][jj];
 
 /*
@@ -23004,7 +23160,7 @@ fprintf(globalfile,"    + %10.5f x %10.5f\n",
         *(*(estiff+i)+6*j+jj),dfdp[j][jj]);
 */
 
-          }
+		  }
         }
 
 /*
@@ -23012,14 +23168,14 @@ if(globalfile!=NULL)
 fprintf(globalfile,"    = %10.5f\n",q[i][j]);
 */
 
-      }
-    }
+	  }
+	}
   }
   for(i=0;i<2;i++)                     /*INNER PRODUCT a={df/dp}{q}*/
   {
-    for(j=0;j<2;j++)
-    {
-      a[i][j]=0.0;
+	for(j=0;j<2;j++)
+	{
+	  a[i][j]=0.0;
 
 /*
 if(globalfile!=NULL)
@@ -23027,19 +23183,19 @@ fprintf(globalfile,"a%d%d =\n",i,j);
 */
 
 	  for(ii=0;ii<6;ii++)
-      {
+	  {
         if((elem.iconf[i][ii]==-1)&&(elem.iconf[j][ii]==-1))
-        {
-          a[i][j]+=dfdp[i][ii]*q[6*i+ii][j];
+		{
+		  a[i][j]+=dfdp[i][ii]*q[6*i+ii][j];
 
 /*
 if(globalfile!=NULL)
 fprintf(globalfile,"    + %10.5f x %10.5f\n",
-        dfdp[i][ii],q[6*i+ii][j]);
+		dfdp[i][ii],q[6*i+ii][j]);
 */
 
-        }
-      }
+		}
+	  }
 
 /*
 if(globalfile!=NULL)
@@ -23050,6 +23206,7 @@ fprintf(globalfile,"    = %10.5f\n",a[i][j]);
   }
   return;
 }/*coefficients*/
+#endif
 
 void coefficientsbc(struct owire elem,double **estiff,
                   double f[],double dfdp[][6],
@@ -23860,7 +24017,7 @@ double *elemstress(struct owire *elem,double *gvct,
 						 elem->node[1]->d[1],
 						 elem->node[1]->d[2],
 						 elem->cangle);                  /*[DRCCOS]*/
-  tmatrix=transmatrix(/* *elem,*/drccos);                     /*[T]*/
+  tmatrix=transmatrix(drccos);                     /*[T]*/
   estiff=assememtx(*elem);                                   /*[ke]*/
   estiff=modifyhinge(*elem,estiff);
 
@@ -23888,55 +24045,6 @@ double *elemstress(struct owire *elem,double *gvct,
   return estress;
 }/*elemstress*/
 
-double *shellstress(struct oshell *shell,double *gvct,
-					struct memoryshell *mshell/*,FILE *fout,
-					double func[]*/)
-/*ELEMENT STRESS INCREMENTAL.*/
-{
-  int i,j,nnod;
-  double **drccos,**tmatrix,**estiff,*gdisp,*edisp,*estress;
-  double **DB;
-
-  nnod=shell->nnod;
-
-  DB=(double **)malloc(18*sizeof(double *));
-  for(i=0;i<18;i++)
-  {
-	*(DB+i)=(double *)malloc(18*sizeof(double));
-	for(j=0;j<18;j++)
-	{
-	  *(*(DB+i)+j)=0.0;                                          /*INITIAL.*/
-	}
-  }
-  drccos=shelldrccos(*shell,NULL);               /*[DRCCOS]*/
-  tmatrix=transmatrixIII(drccos,nnod);      /*[T]*/
-  estiff=assemshellemtx(*shell,drccos,DB);     /*[ke]*/
-
-  /*
-  for(i=0;i<6*nnod;i++)
-  {
-	for(j=0;j<6*nnod;j++) *(*(ee+i)+j)=*(*(estiff+i)+j);
-  }
-  */
-
-  /*estiff=assemshellpmtx(*shell,estiff);*/                   /*[k]=[ke]+[kp]*/
-
-  gdisp=extractshelldisplacement(*shell,gvct);           /*{dU}*/
-  edisp=matrixvector(tmatrix,gdisp,6*nnod);              /*{du}=[T]{dU}*/
-  /*estress=matrixvector(estiff,edisp,6*nnod);*/             /*{df}=[k]{du}*/
-  estress=matrixvector(DB,edisp,6*nnod);
-
-  updateshellstress(mshell,estress,shell);                               /*{f}+{df}*/
-
-  free(gdisp);
-  free(edisp);
-  freematrix(drccos,3);
-  freematrix(tmatrix,6*nnod);
-  freematrix(estiff,6*nnod);
-  freematrix(DB,6*nnod);
-
-  return estress;
-}/*shellstress*/
 
 double *elemstressbc(struct owire *elem,double *gvct,
                    struct memoryelem *melem,FILE *fout,FILE *fsrf,
@@ -24139,8 +24247,8 @@ double *elemstressnl(struct owire *elem,double *gvct,
 }/*elemstressnl*/
 
 void updatestress(struct memoryelem *melem,FILE *fout,
-                  double *edisp,double *dstress,double **estiff,
-                  struct owire *elem,double func[],FILE *ftxt)
+				  double *edisp,double *dstress,double **estiff,
+				  struct owire *elem,double func[],FILE *ftxt)
 /*ELEMENT STRESS UPDATE.*/
 {
   char s[80],string[256];
@@ -24164,9 +24272,9 @@ void updatestress(struct memoryelem *melem,FILE *fout,
   for(i=0;i<2;i++)
   {
     for(j=0;j<6;j++)
-    {
+	{
       elem->stress[i][j]+=*(dstress+6*i+j);
-      (melem+(elem->loff))->stress[i][j]=elem->stress[i][j];
+	  (melem+(elem->loff))->stress[i][j]=elem->stress[i][j];
     }
   }
 
@@ -24174,8 +24282,9 @@ void updatestress(struct memoryelem *melem,FILE *fout,
 
   for(i=0;i<2;i++)                    /*ICONF[2][6] INTO ICONF[12].*/
   {
-    for(j=0;j<6;j++) iconf[6*i+j]=elem->iconf[i][j];
+	for(j=0;j<6;j++) iconf[6*i+j]=elem->iconf[i][j];
   }
+
   for(i=0;i<6;i++)                 /*CENTER,WIDTH OF YIELD SURFACE.*/
   {
     fc[i]=0.5*(elem->sect->fmax[i]+elem->sect->fmin[i]);
@@ -24214,7 +24323,7 @@ void updatestress(struct memoryelem *melem,FILE *fout,
     for(j=0;j<6;j++)
     {
       dup[1][j]=lamda[1]*dfdpe[1][j];
-    }
+	}
   }
   else if(ae[0][0]!=0.0 && ae[1][1]!=0.0)  /*IF I:PLASTIC J:PLASTIC*/
   {
@@ -24227,12 +24336,9 @@ void updatestress(struct memoryelem *melem,FILE *fout,
         {
           det=0.0;                           /*UNDER CONSIDERATION.*/
           errormessage("UPDATESTRESS:UNDER CONSIDERATION.");
-          sprintf(string,"Update : Matrix Singular.SECT=%d",elem->sect->code);
-/*
-MessageBox(NULL,string,"Updatestress",MB_OK);
-*/
+		  sprintf(string,"Update : Matrix Singular.SECT=%d",elem->sect->code);
         }
-        else det=1.0/detinverse;
+		else det=1.0/detinverse;
 
         lamda[0]+=det*( ae[1][1]*qe[i][0]*(*(edisp+i))
                        -ae[0][1]*qe[i][1]*(*(edisp+i)));
@@ -24253,38 +24359,34 @@ MessageBox(NULL,string,"Updatestress",MB_OK);
     if(elem->sect->Ixx==0.0 &&
        elem->sect->Iyy==0.0 &&
        elem->sect->Jzz==0.0)                            /*FOR BRACE*/
-    {
+	{
       dL=*(edisp+6)-*(edisp+0); /*EXTENSION OF LENGTH*/
 
       if(dL< 0.0 && elem->iconf[0][0]==-2 && ae[0][0]==0.0)
       {
         lamda[0]=-1.0;                         /*LONGING DISLOADED.*/
-if(fout!=NULL) fprintf(fout,"ELEM%d HEAD dL=%.5E LONGING DISLOADED.\n",
-elem->code,dL);
+		if(fout!=NULL) fprintf(fout,"ELEM%d HEAD dL=%.5E LONGING DISLOADED.\n",elem->code,dL);
       }
-      if(dL< 0.0 && elem->iconf[1][0]==-2 && ae[1][1]==0.0)
+	  if(dL< 0.0 && elem->iconf[1][0]==-2 && ae[1][1]==0.0)
       {
-        lamda[1]=-1.0;                         /*LONGING DISLOADED.*/
-if(fout!=NULL) fprintf(fout,"ELEM%d TAIL dL=%.5E LONGING DISLOADED.\n",
-elem->code,dL);
-      }
-      if(dL>=0.0 && elem->iconf[0][0]==-3 && ae[0][0]==0.0)
+		lamda[1]=-1.0;                         /*LONGING DISLOADED.*/
+		if(fout!=NULL) fprintf(fout,"ELEM%d TAIL dL=%.5E LONGING DISLOADED.\n",elem->code,dL);
+	  }
+	  if(dL>=0.0 && elem->iconf[0][0]==-3 && ae[0][0]==0.0)
       {
         if(ae[0][0]==0.0) lamda[0]=-1.0;      /*SHORTING DISLOADED.*/
-if(fout!=NULL) fprintf(fout,"ELEM%d HEAD dL=%.5E SHORTING DISLOADED.\n",
-elem->code,dL);
+		if(fout!=NULL) fprintf(fout,"ELEM%d HEAD dL=%.5E SHORTING DISLOADED.\n",elem->code,dL);
       }
       if(dL>=0.0 && elem->iconf[1][0]==-3 && ae[1][1]==0.0)
       {
         if(ae[1][1]==0.0) lamda[1]=-1.0;      /*SHORTING DISLOADED.*/
-if(fout!=NULL) fprintf(fout,"ELEM%d TAIL dL=%.5E SHORTING DISLOADED.\n",
-elem->code,dL);
+		if(fout!=NULL) fprintf(fout,"ELEM%d TAIL dL=%.5E SHORTING DISLOADED.\n",elem->code,dL);
       }
-    }
-    else if(ae[0][0]==0.0 && fe[0]>=f[0])
+	}
+	else if(ae[0][0]==0.0 && fe[0]>=f[0])
     {
       lamda[0]=-1.0;                                 /*I:DISLOADED.*/
-    }
+	}
     else if(ae[1][1]==0.0 && fe[1]>=f[1])
     {
       lamda[1]=-1.0;                                 /*J:DISLOADED.*/
@@ -24297,37 +24399,8 @@ elem->code,dL);
     for(j=0;j<6;j++)
     {
       due[i][j]=*(edisp+6*i+j)-dup[i][j];        /*{due}={du}-{dup}*/
-    }
+	}
   }
-  /*CHECK STRESS {dp}=[ke]{due}.*/
-  /*for(i=0;i<2;i++)
-  {
-    for(j=0;j<6;j++)
-    {
-      dp[i][j]=0.0;
-      for(ii=0;ii<2;ii++)
-      {
-        for(jj=0;jj<6;jj++)
-        {
-          dp[i][j]+=(*(*(estiff+6*i+j)+6*ii+jj))*due[ii][jj];
-        }
-      }
-    }
-  }*/
-
-  /*fprintf(fout,"ELEM %d [Ke]{dup}\n",elem->code);
-  for(i=0;i<12;i++)
-  {
-    data=0.0;
-    for(ii=0;ii<2;ii++)
-    {
-      for(jj=0;jj<6;jj++)
-      {
-        data+=(*(*(estiff+i)+6*ii+jj))*dup[ii][jj];
-      }
-    }
-    fprintf(fout,"%8.5f\n",data);
-  }*/
 
   /*STRAIN ENERGY.*/
   for(j=0;j<6;j++)
@@ -24335,7 +24408,7 @@ elem->code,dL);
     for(i=0;i<2;i++)
     {
       elem->Ee[0]+=0.25*(2*elem->stress[i][j]-(*(dstress+6*i+j)))
-                       *due[i][j];
+					   *due[i][j];
       elem->Ee[1]+=0.25*(2*elem->stress[i][j]-(*(dstress+6*i+j)))
                        *due[i][j];
     }
@@ -24343,43 +24416,13 @@ elem->code,dL);
     elem->Ep[1]+=(elem->stress[1][j])*dup[1][j];
   }
 
-  /*if(fout!=NULL)
-  {
-    fprintf(fout,"ELEM %3d",elem->code);
-    fprintf(fout,"       du=         due+     dup");
-    fprintf(fout,"         dp= [K]{due}");
-    fprintf(fout,"          pm          pn");
-    fprintf(fout,"           dEei           dEej");
-    fprintf(fout,"       dEpi       dEpj\n");
-    for(i=0;i<2;i++)
-    {
-      for(j=0;j<6;j++)
-      {
-        fprintf(fout,"         %8.5f=%12.5E+%8.5f  %9.5f=%9.5f",
-                *(edisp+6*i+j),due[i][j],dup[i][j],
-                *(dstress+6*i+j),dp[i][j]);
-        fprintf(fout," %11.7f %11.7f",
-                (elem->stress[i][j]-(*(dstress+6*i+j))),
-                elem->stress[i][j]);
-        fprintf(fout," %14.7E %14.7E %10.7f %10.7f\n",
-                0.25*(2*elem->stress[i][j]-(*(dstress+6*i+j)))
-                       *due[i][j],
-                0.25*(2*elem->stress[i][j]-(*(dstress+6*i+j)))
-                       *due[i][j],
-                (elem->stress[0][j])*dup[0][j],
-                (elem->stress[1][j])*dup[1][j]);
-      }
-    }
-	fprintf(fout,"Eei=%10.7E Eej=%10.7E Epi=%10.7E Epj=%10.7E\n",
-            elem->Ee[0],elem->Ee[1],elem->Ep[0],elem->Ep[1]);
-  }*/
 
   /*YIELD JUDGEMENT.*/
   for(i=0;i<2;i++)
   {
     func[i]=f[i];
 
-    if(f[i]>=pow(RADIUS,EXPONENT))                       /*YIELDED.*/
+	if(f[i]>=pow(RADIUS,EXPONENT))                       /*YIELDED.*/
     {
       sprintf(string,"YIELDED:ELEM%d NODE%ld SECT%d",
               elem->code,nn[i],elem->sect->code);
@@ -24406,44 +24449,35 @@ elem->code,dL);
              elem->sect->Jzz==0.0) /*FOR BRACE*/
           {
             /*elem->sect->area=0.0;*/    /*WRONG.ALL ELEM WITH THIS*/
-                                         /*SECT WILL BE SET 0.     */
+										 /*SECT WILL BE SET 0.     */
 
             dL=*(edisp+6)-*(edisp+0); /*EXTENSION OF LENGTH*/
 
             if(ii==0)
             {
-              if(dL>=0.0 && ((i==0 && rate<0.0) ||
-                             (i==1 && rate>0.0)))
+			  if(dL>=0.0 && ((i==0 && rate<0.0) || (i==1 && rate>0.0)))
               {
                 elem->iconf[i][0]=-2;
-if(fout!=NULL) fprintf(fout,"ELEM%d dL=%.5E LONGING.\n",
-elem->code,dL);
+				if(fout!=NULL) fprintf(fout,"ELEM%d dL=%.5E LONGING.\n",elem->code,dL);
               }
-              else if(dL< 0.0 && ((i==0 && rate>0.0) ||
-                                  (i==1 && rate<0.0)))
+			  else if(dL< 0.0 && ((i==0 && rate>0.0) || (i==1 && rate<0.0)))
               {
-                elem->iconf[i][0]=-3;
-if(fout!=NULL) fprintf(fout,"ELEM%d dL=%.5E SHORTING.\n",
-elem->code,dL);
-              }
-              /*elem->iconf[i][0]=1;*/       /*-2:LONGING -3:SHORTING*/
+				elem->iconf[i][0]=-3;
+				if(fout!=NULL) fprintf(fout,"ELEM%d dL=%.5E SHORTING.\n",elem->code,dL);
+			  }
             }
-          }
+		  }
           else
           {
             elem->iconf[i][ii]=-1;   /*-1:PLASTIC 0:ELASTIC 1:HINGE*/
           }
-        }
-      }
-      sprintf(s,"}=%8.5f",function); /*VALUE OF FUNCTION.*/
-      strcat(string,s);
-      /*errormessage(string);*/
-      if(fout!=NULL) fprintf(fout,"%s\n",string);
+		}
+	  }
+	  sprintf(s,"}=%8.5f",function); /*VALUE OF FUNCTION.*/
+	  strcat(string,s);
+	  if(fout!=NULL) fprintf(fout,"%s\n",string);
     }
   }
-
-/*if(fout!=NULL) fprintf(fout,"ELEM%d Lamda1=%.3E Lamda2=%.3E\n",
-elem->code,lamda[0],lamda[1]);*/
 
   /*DISLOAD JUDGEMENT.*/
   for(i=0;i<2;i++)
@@ -24452,8 +24486,7 @@ elem->code,lamda[0],lamda[1]);*/
     {
       sprintf(string,"DISLOAD:ELEM%d NODE%ld SECT%d",
               elem->code,nn[i],elem->sect->code);
-      /*errormessage(string);*/
-      /*if(fout!=NULL) fprintf(fout,"%s\n",string);*/
+
       for(ii=0;ii<6;ii++)
       {
         if(elem->iconf[i][ii]==-1)
@@ -24481,25 +24514,7 @@ if(fout!=NULL) fprintf(fout,"ELEM%d DISLOADED.\n",elem->code);
     (melem+(elem->loff))->bond[1][i]=elem->iconf[1][i];
   }
 
-  /*if(ftxt!=NULL)
-  {
-    for(i=0;i<2;i++)
-    {
-      ys[1][0]=(elem->stress[i][0]-pow(-1.0,i)*fc[0])/fu[0];
-      ys[1][1]=(elem->stress[i][1]-fc[1])/fu[1];
-      ys[1][2]=(elem->stress[i][2]-fc[2])/fu[2];
-      ys[1][3]=(elem->stress[i][3]-pow(-1.0,i)*fc[3])/fu[3];
-      ys[1][4]=(elem->stress[i][4]-fc[4])/fu[4];
-      ys[1][5]=(elem->stress[i][5]-fc[5])/fu[5];
 
-      fprintf(ftxt," ELEM%d-%d %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f",
-              elem->code,i+1,
-              ys[1][0],ys[1][1],ys[1][2],ys[1][3],ys[1][4],ys[1][5]);
-    }
-    fprintf(ftxt,"\n");
-  }*/
-
-/*if(elem->code==1054){*/
   if(wsurf.hwnd!=NULL)
   {
     fseek(arc.fsurface,0L,SEEK_END);
@@ -24540,19 +24555,6 @@ if(fout!=NULL) fprintf(fout,"ELEM%d DISLOADED.\n",elem->code);
       fwrite(&line,sizeof(struct line),1,arc.fsurface);
     }
   }
-
-/*sprintf(string,"ELEM%d\np=%.3f %.3f %.3f %.3f %.3f %.3f\nf=%.3f %.3f %.3f %.3f %.3f %.3f",
-        elem->code,
-        elem->stress[0][0],
-        elem->stress[0][1],
-        elem->stress[0][2],
-        elem->stress[0][3],
-        elem->stress[0][4],
-        elem->stress[0][5],
-        ys[0][0],ys[0][1],ys[0][2],ys[0][3],ys[0][4],ys[0][5]);
-MessageBox(NULL,string,"TEST",MB_OK);*/
-/*}*//*TEST*/
-
   return;
 }/*updatestress*/
 

@@ -1125,11 +1125,6 @@ int gnshnCR(struct arclmframe* af)
 				lapgform = extractshelldisplacement(shell, lapddisp);                     /*{Xg+Ug}*/
 				lapH = blockjacobimtx(lapgform, NULL, NULL, nnod);
 
-
-
-
-
-
 				/*(24):MID-POINT TRANSFORMATION MATRIX.*/
 				midHPT = midpointmtx(HPT, lastHPT, alphaf, 6 * nnod);
 				midTtPtHt = matrixtranspose(midHPT, 6 * nnod);
@@ -1145,25 +1140,6 @@ int gnshnCR(struct arclmframe* af)
 
 				midepressure = midpointvct(epressure, lastepressure, alphaf, 6*nnod);
 				midgpressure = matrixvector(midTt, midepressure, 6 * nnod);
-
-				if(0)
-				{
-					for (ii = 0; ii < 18; ii++)
-					{
-						for (jj = 0; jj < 18; jj++)
-						{
-						   fprintf(flog,"%5.5f ", *(*(midHPT+ii)+jj) );
-						}
-						 fprintf(flog,"\n");
-					}
-					fprintf(flog,"\n");
-					for (ii = 0; ii < 18; ii++)
-					{
-					  fprintf(flog,"%5.5f ", *(edisp+ii) );
-					}
-
-					fprintf(flog,"\n");
-				}
 
 
 				Keff=assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Ke, midTtPtHt, HPT,
