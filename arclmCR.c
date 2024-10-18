@@ -2619,6 +2619,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		{
 
 		  estrain = matrixmatrixIII(*(B+j),edisp,6,6*nnod,1); /*INCREMENTAL STRAIN d{É√x É√y É√xy É¡x É¡y É¡xy} FOR NODE-ii*/
+		  C = elasticCshell(shell);
 		  estress = matrixvector(C,estrain,6);/*ELASTIC PREDICTOR*/
 
 		  for(ii = 0; ii < 6; ii++)
@@ -2629,7 +2630,12 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 			//*(estress+ii) -= *(backstress+ii);
 		  }
 
-		  lambda = returnmapIlyushin(shell, estress);
+		  lambda = returnmapilyushin(shell, estress);
+
+		  f=ilyushin(estress_try,estress,lambda);
+
+
+
 
 		  /*STRESS RESULTANT OF INTEGRATION POINTS*/
 		  for (ii = 0; ii < 6; ii++)
@@ -2640,6 +2646,12 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 		  Bt=matrixtransposeIII(B,6,6*nnod);
 		  einternal=matrixmatrixIII(Bt,estress,6*nnod,6,1);
+
+		  C=consistentCilyushin
+
+
+
+
 		}
 		/*STRESS RESULTANT UPDATED.*/
 		/*INTERNAL FORCE UPDATED*/

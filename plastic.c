@@ -3,64 +3,42 @@
 
 
 
-
-
-
-
-
-C = (double**)malloc(6 * sizeof(double*));
-for (ii = 0; ii < 6; ii++)
+double** elasticCshell(struct oshell shell)
 {
-	*(C + ii) = (double*)malloc(6 * sizeof(double));
-	for (jj = 0; jj < 6; jj++)
+	int i,j;
+	double** C
+
+	C = (double**)malloc(6 * sizeof(double*));
+	for (i = 0; i < 6; i++)
 	{
-		*(*(C + ii) + jj) = 0.0;
+		*(C + i) = (double*)malloc(6 * sizeof(double));
+		for (j = 0; j < 6; j++)
+		{
+			*(*(C + i) + j) = 0.0;
+		}
 	}
+
+	*(*(C+0)+0)=E*t/(1-poi*poi);
+	*(*(C+0)+1)=poi**(*(C+0)+0));
+	*(*(C+1)+0)=*(*(C+0)+1);
+	*(*(C+1)+1)=*(*(C+0)+0);
+	*(*(C+2)+2)=0.5*E*t/(1+poi);
+
+	*(*(C+3)+3)=E*pow(t,3)/(12.0*(1-poi*poi));
+	*(*(C+3)+4)=poi**(*(C+0)+0));
+	*(*(C+4)+3)=*(*(C+3)+4);
+	*(*(C+4)+4)=*(*(C+3)+3);
+	*(*(C+5)+5)=0.5*E*pow(t,3)/(12.0*(1+poi));
+
+	return C;
 }
 
-*(*(C+0)+0)=E*t/(1-poi*poi);
-*(*(C+0)+1)=poi**(*(C+0)+0));
-*(*(C+0)+2)=0.0;
-*(*(C+1)+0)=*(*(C+0)+1);
-*(*(C+1)+1)=*(*(C+0)+0);
-*(*(C+1)+2)=0.0;
-*(*(C+2)+0)=0.0;
-*(*(C+2)+1)=0.0;
-*(*(C+2)+2)=0.5*E*t/(1+poi);
-
-*(*(C+3)+3)=E*pow(t,3)/(12.0*(1-poi*poi));
-*(*(C+3)+4)=poi**(*(C+0)+0));
-*(*(C+3)+5)=0.0;
-*(*(C+4)+3)=*(*(C+3)+4);
-*(*(C+4)+4)=*(*(C+3)+3);
-*(*(C+4)+5)=0.0;
-*(*(C+5)+3)=0.0;
-*(*(C+5)+4)=0.0;
-*(*(C+5)+5)=0.5*E*pow(t,3)/(12.0*(1+poi));
 
 
-		/*[H]^-1=[C]^-1+dλ*[P]*/
-		Cinv = (double**)malloc(6 * sizeof(double*));
-		for (ii = 0; ii < 6; ii++)
-		{
-			*(Cinv + ii) = (double*)malloc(6 * sizeof(double));
-			for (jj = 0; jj < 6; jj++)
-			{
-				*(*(Cinv + ii) + jj) = 0.0;
-			}
-		}
 
-		*(*(H+0)+0)=1.0/(E*t) 					+ 2.0*lambda1**(*(A1+0)+0);
-		*(*(H+0)+1)=-poi/(E*t) 					+ 2.0*lambda1**(*(A1+0)+1);
-		*(*(H+1)+0)=*(*(H+0)+1);
-		*(*(H+1)+1)=*(*(H+0)+0);
-		*(*(H+2)+2)=2.0*(1.0+poi)/(E*t) 		    + 2.0*lambda1**(*(A1+2)+2);
 
-		*(*(H+3)+3)=12.0/(E*pow(t,3))			    + 2.0*lambda1**(*(A1+3)+3);
-		*(*(H+3)+4)=-12.0*poi/(E*pow(t,3)) 		+ 2.0*lambda1**(*(A1+3)+4);
-		*(*(H+4)+3)=*(*(H+3)+4);
-		*(*(H+4)+4)=*(*(H+3)+3);
-		*(*(H+5)+5)=24.0*(1.0+poi)/(E*pow(t,3))   + 2.0*lambda1**(*(A1+5)+5);
+
+
 
 		/*[P]=2[A]*/
 		/*{dε_p}=dλ*{df/dσ}=dλ[P]{σ}*/
@@ -70,86 +48,133 @@ for (ii = 0; ii < 6; ii++)
 
 
 
-		A1 = (double**)malloc(6 * sizeof(double*));
-		for (ii = 0; ii < 6; ii++)
-		{
-			*(A1 + ii) = (double*)malloc(6 * sizeof(double));
-			for (jj = 0; jj < 6; jj++)
-			{
-				*(*(A + ii) + jj) = 0.0;
-			}
-		}
-
-		*(*(A1+0)+0)=1.0/fn2;
-		*(*(A1+0)+1)=-0.5/fn2;
-		*(*(A1+1)+0)=*(*(A1+0)+1);
-		*(*(A1+1)+1)=*(*(A1+0)+0);
-		*(*(A1+2)+2)=3.0/fn2;
-
-
-		*(*(A1+0)+3)=1.0/(2.0*sqrt(3.0)*fnfm);
-		*(*(A1+0)+4)=-0.5/(2.0*sqrt(3.0)*fnfm);
-		*(*(A1+1)+3)=*(*(A1+0)+4);
-		*(*(A1+1)+4)=*(*(A1+0)+3);
-		*(*(A1+2)+5)=3.0/(2.0*sqrt(3.0)*fnfm);
-
-		*(*(A1+3)+0)=*(*(A1+0)+3);
-		*(*(A1+3)+1)=*(*(A1+1)+3);
-		*(*(A1+4)+0)=*(*(A1+0)+4);
-		*(*(A1+4)+1)=*(*(A1+1)+4);
-		*(*(A1+5)+2)=3.0/(2.0*sqrt(3.0)*fnfm);
-
-
-		*(*(A1+3)+3)=1.0/fm2;
-		*(*(A1+3)+4)=-0.5/fm2;
-		*(*(A1+4)+3)=*(*(A1+3)+4);
-		*(*(A1+4)+4)=*(*(A1+3)+3);
-		*(*(A1+5)+5)=3.0/fm2;
-
-
-
-		A2 = (double**)malloc(6 * sizeof(double*));
-		for (ii = 0; ii < 6; ii++)
-		{
-			*(A2 + ii) = (double*)malloc(6 * sizeof(double));
-			for (jj = 0; jj < 6; jj++)
-			{
-				if((ii<3 && jj<3) || (ii>2 && jj>2)) *(*(A2 + ii) + jj) = *(*(A1 + ii) + jj);
-				else *(*(A2 + ii) + jj) = -*(*(A1 + ii) + jj);
-			}
-		}
 
 
 
 
-		  Hg=matrixvector(H,g);
-		  gHg=dotproduct(g,Hg,6);
 
 
 
-		  consistentC = (double**)malloc(6 * sizeof(double*));
-		  for (ii = 0; ii < 6; ii++)
-		  {
-			*(consistentC + ii) = (double*)malloc(6 * sizeof(double));
-			for (jj = 0; jj < 6; jj++)
-			{
-			  *(*(consistentC + ii) + jj) = *(*(H+ii)+jj) + *(Hg+ii)**(Hg+jj)/(beta+gHg);
-			}
-		  }
-
-
-
-double* ilyushin(struct oshell shell, double* estress_try, double* estress, double* lambda)
+double** Cmises（struct oshell shell, double lambda）
 {
+
+}
+
+
+
+double** concistentCilyushin（struct oshell shell, double** C, double* lambda）
+{
+  int i,j
+  double** consistentC, ** W;
+
+
+
+
+  W = (double**)malloc(6 * sizeof(double*));
+  for (i = 0; i < 6; ii++)
+  {
+	*(W + i) = (double*)malloc(6 * sizeof(double));
+  }
+
+
+  ilyushin(shell, estress_try, estress, lambda, W); /*これをreturmmapに持っていくか*/
+
+  H = matrixmatrix(W,C,6);
+
+	A1 = (double**)malloc(6 * sizeof(double*));
+	for (ii = 0; ii < 6; ii++)
+	{
+		*(A1 + ii) = (double*)malloc(6 * sizeof(double));
+		for (jj = 0; jj < 6; jj++)
+		{
+			*(*(A + ii) + jj) = 0.0;
+		}
+	}
+
+	*(*(A1+0)+0)=1.0/fn2;
+	*(*(A1+0)+1)=-0.5/fn2;
+	*(*(A1+1)+0)=*(*(A1+0)+1);
+	*(*(A1+1)+1)=*(*(A1+0)+0);
+	*(*(A1+2)+2)=3.0/fn2;
+
+	*(*(A1+0)+3)=1.0/(2.0*sqrt(3.0)*fnfm);
+	*(*(A1+0)+4)=-0.5/(2.0*sqrt(3.0)*fnfm);
+	*(*(A1+1)+3)=*(*(A1+0)+4);
+	*(*(A1+1)+4)=*(*(A1+0)+3);
+	*(*(A1+2)+5)=3.0/(2.0*sqrt(3.0)*fnfm);
+
+	*(*(A1+3)+0)=*(*(A1+0)+3);
+	*(*(A1+3)+1)=*(*(A1+1)+3);
+	*(*(A1+4)+0)=*(*(A1+0)+4);
+	*(*(A1+4)+1)=*(*(A1+1)+4);
+	*(*(A1+5)+2)=3.0/(2.0*sqrt(3.0)*fnfm);
+
+	*(*(A1+3)+3)=1.0/fm2;
+	*(*(A1+3)+4)=-0.5/fm2;
+	*(*(A1+4)+3)=*(*(A1+3)+4);
+	*(*(A1+4)+4)=*(*(A1+3)+3);
+	*(*(A1+5)+5)=3.0/fm2;
+
+
+
+	A2 = (double**)malloc(6 * sizeof(double*));
+	for (ii = 0; ii < 6; ii++)
+	{
+		*(A2 + ii) = (double*)malloc(6 * sizeof(double));
+		for (jj = 0; jj < 6; jj++)
+		{
+			if((ii<3 && jj<3) || (ii>2 && jj>2)) *(*(A2 + ii) + jj) = *(*(A1 + ii) + jj);
+			else *(*(A2 + ii) + jj) = -*(*(A1 + ii) + jj);
+		}
+	}
+
+  g=matrixvector(A,estress);
+
+  Hg=matrixvector(H,g);
+  gHg=dotproduct(g,Hg,6);
+
+  consistentC = (double**)malloc(6 * sizeof(double*));
+  for (i = 0; i < 6; ii++)
+  {
+	*(consistentC + i) = (double*)malloc(6 * sizeof(double));
+	for (j = 0; j < 6; j++)
+	{
+	  *(*(consistentC + i) + j) = *(*(H+i)+j) + *(Hg+i)**(Hg+j)/(beta+gHg);
+	}
+  }
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+double* ilyushin(struct oshell shell, double* estress_try, double* estress, double* lambda, double* W)
+{
+  int i,j;
   double* qstress,* ostress;
-  double f;
-  double E,t;
+  double* f;
+  double fn,fm;
+  double fn2,fm2,fnfm;
+  double E,t,A,I;
   double lambda1,lambda2;
 
-  double c1,c2,c3;
-  double O00,O11,O22,O33,O44,O55,O03,O14,O25,O30,O41,O52;
-  double Oinv00,Oinv11,Oinv22,Oinv33,Oinv44,Oinv55,Oinv03,Oinv14,Oinv25,Oinv30,Oinv41,Oinv52;
-  double det03,det14,det25;
+  double c[3],p[3],e[3],det[3];
+  double O[2][2][3], Oinv[2][2][3];
+
 
 
   qstress=(double*)malloc(6 * sizeof(double));
@@ -166,13 +191,75 @@ double* ilyushin(struct oshell shell, double* estress_try, double* estress, doub
 	lambda1=*(lambda+0);
 	lambda2=*(lambda+1);
   }
+
+
+  /*          | 1 -1  0 |  */
+  /*[Q] = 1/√2| 1  1  0 |  */
+  /*          | 0  0 √2 |  */
+
+  /*[Q]diag[a,b,c][Q]^T  */
+  /*    | a+b a-b   0 |  */
+  /*=1/2| a+b a-b   0 |  */
+  /*    |   0   0  2c |  */
+
+  /*{σtry-αtry}=([I]+2Δλ[C][A]){σ-α}=[W]^-1{σ-α} */
+  /*{σ-α}=[W]{σtry-αtry}                         */
+  /*[W]^-1=(diag[Q,Q])[O](diag[Q^T,Q^T])         */
+  /*[W]=(diag[Q,Q])[O]^-1(diag[Q^T,Q^T])         */
+
   E=shell.E;
   t=shell.area;
 
+  fn=fy*t;
+  fm=fy*pow(t,3)/4.0;
 
-  /*           | 1 -1  0 |  */
-  /* [Q] = 1/√2| 1  1  0 |  */
-  /*           | 0  0 √2 |  */
+  fn2=pow(fn,2);
+  fm2=pow(fm,2);
+  fnfm=fn*fm;
+
+  A=E*t;
+  I=E*pow(t,3)/12.0;
+
+  c[0]=1/(1-v);
+  c[1]=1/(1+v);
+  c[2]=1/(2.0*(1+v));
+
+  p[0]=0.5;
+  p[1]=1.5;
+  p[2]=3.0;
+
+  e[0] = (lambda1 + lambda2) / fn2;
+  e[1] = (lambda1 + lambda2) / fm2;
+  e[2] = (lambda1 - lambda2) /(2.0*sqrt(3.0)*fnfm);
+
+  /*[O]*/
+  for (i = 0; i < 3; i++)
+  {
+	O[0][0][i] = 2.0*A*c[i]*p[i] /*+ 4.0/3.0*Hkin*[p]*/; O[0][1][i] = O[0][0][i];
+	O[1][0][i] = 2.0*I*c[i]*p[i] /*+ 4.0/3.0*Hkin*[p]*/; O[1][1][i] = O[1][0][i];
+  }
+
+  for (i = 0; i < 3; i++)
+  {
+	O[0][0][i] = e[0]*O[0][0][i] + 1.0;
+	O[0][1][i] = e[2]*O[0][1][i];
+	O[1][0][i] = e[2]*O[1][0][i];
+	O[1][1][i] = e[1]*O[1][1][i] + 1.0;
+  }
+
+  /*Oinv:[O]^-1*/
+  for (i = 0; i < 3; i++)
+  {
+	det[i] = O[0][0][i]*O[1][1][i]-O[0][1][i]*O[1][0][i];
+
+	Oinv[0][0][i] =  O[1][1][i]/det[i];
+	Oinv[0][1][i] = -O[0][1][i]/det[i];
+	Oinv[1][0][i] = -O[1][0][i]/det[i];
+	Oinv[1][1][i] =  O[0][0][i]/det[i];
+  }
+
+
+
 
   /*(diag[Q^T,Q^T]){σtry-αtry}*/
   *(qstress+0)=( *(estress_try+0)+*(estress_try+1))/sqrt(2.0);
@@ -182,79 +269,13 @@ double* ilyushin(struct oshell shell, double* estress_try, double* estress, doub
   *(qstress+4)=(-*(estress_try+3)+*(estress_try+4))/sqrt(2.0);
   *(qstress+5)=  *(estress_try+5);
 
-  /*[W]=(diag[Q,Q])[O]^-1(diag[Q^T,Q^T])*/
 
-  /*[O]*/
-
-
-
-  /*{σtry-αtry}=([I]+2Δλ[C][A]){σ-α}              */
-  /*           =(diag[Q,Q])[O](diag[Q^T,Q^T]){σ-α}*/
-
-  /*([C]^-1+2Δλ[A])*/
-  fn=fy*t;
-  fm=fy*pow(t,3)/4.0;
-
-  fn2=pow(fn,2);
-  fm2=pow(fm,2);
-  fnfm=fn*fm;
-
-  c1 = (lambda1 + lambda2) / fn2;
-  c2 = (lambda1 + lambda2) / fm2;
-  c3 = (lambda1 - lambda2) /(2.0*sqrt(3.0)*fnfm);
-
-  O00 = E*t/(1-v)               /*+ 2.0/3.0*Hkin*/;
-  O11 = 3.0*E*t/(1+v)           /*+ 2.0*Hkin*/    ;
-  O22 = 3.0*E*t/(1+v)           /*+ 4.0*Hkin*/    ;
-  O33 = E*pow(t,3)/(12.0*(1-v)) /*+ 2.0/3.0*Hkin*/;
-  O44 = E*pow(t,3)/( 4.0*(1+v)) /*+ 2.0*Hkin*/    ;
-  O55 = E*pow(t,3)/( 4.0*(1+v)) /*+ 4.0*Hkin*/    ;
-  O03 = O00;
-  O14 = O11;
-  O25 = O22;
-  O30 = O33;
-  O41 = O44;
-  O52 = O55;
-
-  O00 = 1.0 + c1*O00;
-  O11 = 1.0 + c1*O11;
-  O22 = 1.0 + c1*O22;
-  O33 = 1.0 + c2*O33;
-  O44 = 1.0 + c2*O44;
-  O55 = 1.0 + c2*O55;
-  O03 *= c3;
-  O14 *= c3;
-  O25 *= c3;
-  O30 *= c3;
-  O41 *= c3;
-  O52 *= c3;
-
-
-  /*Oinv:[O]^-1*/
-  det03 = O00*O33-O03*O30;
-  det14 = O11*O44-O14*O41;
-  det25 = O22*O55-O25*O52;
-
-  Oinv00 =  O33 / det03;
-  Oinv11 =  O44 / det14;
-  Oinv22 =  O55 / det25;
-  Oinv33 =  O00 / det03;
-  Oinv44 =  O11 / det14;
-  Oinv55 =  O22 / det25;
-  Oinv03 = -O03 / det03;
-  Oinv14 = -O14 / det14;
-  Oinv25 = -O25 / det25;
-  Oinv30 = -O30 / det03;
-  Oinv41 = -O41 / det14;
-  Oinv52 = -O52 / det25;
-
-
-  *(ostress+0)= Oinv00**(qstress+0) + Oinv03**(qstress+3);
-  *(ostress+1)= Oinv11**(qstress+1) + Oinv14**(qstress+4);
-  *(ostress+2)= Oinv22**(qstress+2) + Oinv25**(qstress+5);
-  *(ostress+3)= Oinv30**(qstress+0) + Oinv33**(qstress+3);
-  *(ostress+4)= Oinv41**(qstress+1) + Oinv44**(qstress+4);
-  *(ostress+5)= Oinv52**(qstress+2) + Oinv55**(qstress+5);
+  *(ostress+0) = Oinv[0][0][0]**(qstress+0) + Oinv[0][1][0]**(qstress+3);
+  *(ostress+1) = Oinv[0][0][1]**(qstress+1) + Oinv[0][1][1]**(qstress+4);
+  *(ostress+2) = Oinv[0][0][2]**(qstress+2) + Oinv[0][1][2]**(qstress+5);
+  *(ostress+3) = Oinv[1][0][0]**(qstress+0) + Oinv[1][1][0]**(qstress+3);
+  *(ostress+4) = Oinv[1][0][1]**(qstress+1) + Oinv[1][1][0]**(qstress+4);
+  *(ostress+5) = Oinv[1][0][2]**(qstress+2) + Oinv[1][1][0]**(qstress+5);
 
   if(estress!=NULL)
   {
@@ -266,24 +287,41 @@ double* ilyushin(struct oshell shell, double* estress_try, double* estress, doub
 	*(estress+5)= *(ostress+5);
   }
 
+  if(W!=NULL)
+  {
+	  for (i = 0; i < 2; i++)
+	  {
+		  for (j = 0; j < 2; j++)
+		  {
+			  *(*(W+3*i+0)+3*j+0) = 0.5*(Oinv[i][j][0]+Oinv[i][j][1]);
+			  *(*(W+3*i+0)+3*j+1) = 0.5*(Oinv[i][j][0]-Oinv[i][j][1]);
+			  *(*(W+3*i+0)+3*j+2) = 0.0;
+			  *(*(W+3*i+1)+3*j+0) = *(*(W+3*i+0)+3*j+1);
+			  *(*(W+3*i+1)+3*j+1) = *(*(W+3*i+0)+3*j+0);
+			  *(*(W+3*i+1)+3*j+2) = 0.0;
+			  *(*(W+3*i+2)+3*j+0) = 0.0;
+			  *(*(W+3*i+2)+3*j+1) = 0.0;
+			  *(*(W+3*i+2)+3*j+2) = Oinv[i][j][2];
+		  }
+	  }
+  }
 
 
   /*f={σtry-αtry}^T[W]^T[A][W]{σtry-αtry}*/
-
-  *(f+0) = 0.5 * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 + *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
-		 + 1.5 * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 + *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
-		 + 3.0 * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 + *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm))
+  *(f+0) = p[0] * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 + *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
+		 + p[1] * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 + *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
+		 + p[2] * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 + *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm))
 		 - 1.0;
-  *(f+1) = 0.5 * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 - *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
-		 + 1.5 * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 - *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
-		 + 3.0 * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 - *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm))
+  *(f+1) = p[0] * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 - *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
+		 + p[1] * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 - *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
+		 + p[2] * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 - *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm))
 		 - 1.0;
 
   return f;
 }
 
 
-double* returnmapIlyushin(struct oshell shell, double* estress)
+double* returnmapilyushin(struct oshell shell, double* estress)
 {
    int i,j;
    double* lambda12,* lambda1,* lambda2,* lambdaeps;
@@ -321,7 +359,7 @@ double* returnmapIlyushin(struct oshell shell, double* estress)
 		while(<tolerance)/*BOTH YIELD SURFACES ARE ACTIVE.*/
 		{
 		  /*YIELD FUNCTION*/
-		  f=ilyushin(estress_try,NULL,lambda12);
+		  f=ilyushin(shell,estress_try,NULL,lambda12);
 		  /*SENSITIVITY*/
 		  for(i=0;i<2;i++)
 		  {
@@ -330,7 +368,7 @@ double* returnmapIlyushin(struct oshell shell, double* estress)
 			  if(i==j) *(lambdaeps+i)=*(lambda12+i)+eps;
 			  else     *(lambdaeps+i)=*(lambda12+i);
 			}
-			feps=ilyushin(estress_try,NULL,lambdaeps);
+			feps=ilyushin(shell,estress_try,NULL,lambdaeps);
 			for(j=0;j<2;j++)
 			{
 			  *(*(K+j)+i)=(*(feps+j)-*(f+j))/eps;
@@ -355,12 +393,12 @@ double* returnmapIlyushin(struct oshell shell, double* estress)
 		while(<tolerance)/*YIELD SURFACE 1 IS ACTIVE.*//*f1=0 && f2<0 && lambda1>0 && lambda2=0*/
 		{
 		  /*YIELD FUNCTION*/
-		  f=ilyushin(estress_try,NULL,lambda1);
+		  f=ilyushin(shell,estress_try,NULL,lambda1);
 		  /*SENSITIVITY*/
 		  *(lambdaeps+0)=*(lambda1+0)+eps;
 		  *(lambdaeps+1)=0.0;
 
-		  feps=ilyushin(estress_try,NULL,lambdaeps);
+		  feps=ilyushin(shell,estress_try,NULL,lambdaeps);
 		  *(feps+0)=(*(feps+0)-*(f+0))/eps;
 
 		  *(lambda1+0) += -*(f+0) / *(feps+0);
@@ -372,12 +410,12 @@ double* returnmapIlyushin(struct oshell shell, double* estress)
 		while(<tolerance)/*YIELD SURFACE 2 IS ACTIVE.*//*f1=0 && f2<0 && lambda1>0 && lambda2=0*/
 		{
 		  /*YIELD FUNCTION*/
-		  f=ilyushin(estress_try,NULL,lambda2);
+		  f=ilyushin(shell,estress_try,NULL,lambda2);
 		  /*SENSITIVITY*/
 		  *(lambdaeps+1)=*(lambda2+1)+eps;
 		  *(lambdaeps+0)=0.0;
 
-		  feps=ilyushin(estress_try,NULL,lambdaeps);
+		  feps=ilyushin(shell,estress_try,NULL,lambdaeps);
 		  *(feps+1)=(*(feps+1)-*(f+1))/eps;
 
 		  *(lambda2+1) += -*(f+1) / *(feps+1);
@@ -405,7 +443,7 @@ double* returnmapIlyushin(struct oshell shell, double* estress)
 
 		/*UPDATE STRESS*/
 
-		f=ilyushin(estress_try,estress,lambda);
+		//f=ilyushin(estress_try,estress,lambda);
 
 		free(estress_try);
 		free(lambdaeps);
