@@ -647,18 +647,18 @@ int arclmCR(struct arclmframe* af)
 			outputdisp(fexternal, fexf, nnode, nodes);                /*FORMATION OUTPUT.*/
 			outputdisp(funbalance, fubf, nnode, nodes);               /*FORMATION OUTPUT.*/
 			outputdisp(freaction, frct, nnode, nodes);                /*FORMATION OUTPUT.*/
-			/*STRESS & ENERGY OUTPUT*/
 
+			/*STRESS & ENERGY OUTPUT*/
 			for(i = 0; i < nshell; i++)
 			{
 				fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
 				fprintf(fstr, "%5ld %e %e %e %e %e %e\n", (shells+i)->code,
-				(mshell+i)->shellstress[0][0],
-				(mshell+i)->shellstress[0][1],
-				(mshell+i)->shellstress[0][2],
-				(mshell+i)->shellstress[0][3],
-				(mshell+i)->shellstress[0][4],
-				(mshell+i)->shellstress[0][5]);
+				(mshell+i)->stress[0][0],
+				(mshell+i)->stress[0][1],
+				(mshell+i)->stress[0][2],
+				(mshell+i)->stress[0][3],
+				(mshell+i)->stress[0][4],
+				(mshell+i)->stress[0][5]);
 			}
 		}
 
@@ -2527,7 +2527,6 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 	double* edisp;
 	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 	double* gexternal, * eexternal;                          /*EXTERNAL FORCE OF ELEMENT*/
-	double* shellstress;                        /*σx,σy,τxy,Mx,My,Mxy OF ELEMENT*/
 	double** Me,** Ke,** Kt,** DBe,** B,** drccos,** drccosinit;                           /*MATRIX*/
 	double** T,** Tt,/*** HP,**PtHt,*/**HPT,**TtPtHt;
 	int* loffset;
@@ -2558,18 +2557,6 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
-		/*DBe = (double**)malloc(6 * nnod * sizeof(double*));
-		for (ii = 0; ii < 6 * nnod; ii++)
-		{
-			*(DBe + ii) = (double*)malloc(6 * nnod * sizeof(double));
-			for (jj = 0; jj < 6 * nnod; jj++)
-			{
-				*(*(DBe + ii) + jj) = 0.0;
-			}
-		}
-		Ke = assemshellemtx(shell, drccosinit, DBe);*/                        /*[Ke].*/
-
-
 		B = (double***)malloc(7 * sizeof(double**));/*FOR 3-NODES ELEMENT*/
 		for (ii = 0; ii < 7; ii++)
 		{
@@ -2583,9 +2570,13 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 				}
 			}
 		}
-		Ke = assemshellemtx(shell, drccosinit, B);                        /*[Ke].*/
+		B = shellshape(shell, drccosinit);
 
-		Me = assemshellmmtx(shell, drccosinit);         					/*[Me]*/
+		Ke = assemshellemtx(shell, drccosinit, B);                        /*[Ke]*/
+
+		Me = assemshellmmtx(shell, drccosinit);         				  /*[Me]*/
+
+
 
 		/*DEFORMED CONFIGURATION OF LAST LAP.*/
 		for (ii = 0; ii < nnod; ii++)
@@ -2615,385 +2606,47 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 		edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
 
+
+
+
+
 		for(ii = 0; ii < 6*nnod; ii++)
 		{
 		  *(edisp+ii) -= *(lastedisp+ii);
 		}
 
-		C = (double**)malloc(6 * sizeof(double*));
-		for (ii = 0; ii < 6; ii++)
-		{
-			*(C + ii) = (double*)malloc(6 * sizeof(double));
-			for (jj = 0; jj < 6; jj++)
-			{
-				*(*(C + ii) + jj) = 0.0;
-			}
-		}
-
-		*(*(C+0)+0)=E*t/(1-poi*poi);
-		*(*(C+0)+1)=poi**(*(C+0)+0));
-		*(*(C+1)+0)=*(*(C+0)+1);
-		*(*(C+1)+1)=*(*(C+0)+0);
-		*(*(C+2)+2)=0.5*E*t/(1+poi);
-
-		*(*(C+3)+3)=E*pow(t,3)/(12.0*(1-poi*poi));
-		*(*(C+3)+4)=poi**(*(C+0)+0));
-		*(*(C+4)+3)=*(*(C+3)+4);
-		*(*(C+4)+4)=*(*(C+3)+3);
-		*(*(C+5)+5)=0.5*E*pow(t,3)/(12.0*(1+poi));
-
-		/*[P]=2[A]*/
-		/*{dε_p}=dλ*{df/dσ}=dλ[P]{σ}*/
-
-		fn=fy*t;
-		fm=fy*pow(t,3)/4.0;
-
-		fn2=pow(fn,2);
-		fm2=pow(fm,2);
-		fnfm=fn*fm;
-
-
-		A1 = (double**)malloc(6 * sizeof(double*));
-		for (ii = 0; ii < 6; ii++)
-		{
-			*(A1 + ii) = (double*)malloc(6 * sizeof(double));
-			for (jj = 0; jj < 6; jj++)
-			{
-				*(*(A + ii) + jj) = 0.0;
-			}
-		}
-
-		*(*(A1+0)+0)=1.0/fn2;
-		*(*(A1+0)+1)=-0.5/fn2;
-
-		*(*(A1+1)+0)=*(*(A1+0)+1);
-		*(*(A1+1)+1)=*(*(A1+0)+0);
-
-		*(*(A1+2)+2)=3.0/fn2;
-
-
-		*(*(A1+0)+3)=1.0/(2.0*sqrt(3.0)*fnfm);
-		*(*(A1+0)+4)=-0.5/(2.0*sqrt(3.0)*fnfm);
-
-		*(*(A1+1)+3)=*(*(A1+0)+4);
-		*(*(A1+1)+4)=*(*(A1+0)+3);
-
-		*(*(A1+2)+5)=3.0/(2.0*sqrt(3.0)*fnfm);
-
-		*(*(A1+3)+0)=*(*(A1+0)+3);
-		*(*(A1+3)+1)=*(*(A1+1)+3);
-
-		*(*(A1+4)+0)=*(*(A1+0)+4);
-		*(*(A1+4)+1)=*(*(A1+1)+4);
-
-		*(*(A1+5)+2)=3.0/(2.0*sqrt(3.0)*fnfm);
-
-
-		*(*(A1+3)+3)=1.0/fm2;
-		*(*(A1+3)+4)=-0.5/fm2;
-
-		*(*(A1+4)+3)=*(*(A1+3)+4);
-		*(*(A1+4)+4)=*(*(A1+3)+3);
-
-		*(*(A1+5)+5)=3.0/fm2;
-
-
-
-		A2 = (double**)malloc(6 * sizeof(double*));
-		for (ii = 0; ii < 6; ii++)
-		{
-			*(A2 + ii) = (double*)malloc(6 * sizeof(double));
-			for (jj = 0; jj < 6; jj++)
-			{
-				if((ii<3 && jj<3) || (ii>2 && jj>2)) *(*(A2 + ii) + jj) = *(*(A1 + ii) + jj);
-				else *(*(A2 + ii) + jj) = -*(*(A1 + ii) + jj);
-			}
-		}
-
-
-
 		for (j = 0; j < 7; j++)/*FOR EACH INTEGRATION POINT*/
 		{
 
-		  estrain = matrixmatrixIII(*(B+j),edisp,6,6*nnod,1); /*d{εx εy εxy γx γy γxy} FOR NODE-ii*/
-
-		  estress = matrixvector(C,estrain,6);
-
+		  estrain = matrixmatrixIII(*(B+j),edisp,6,6*nnod,1); /*INCREMENTAL STRAIN d{εx εy εxy γx γy γxy} FOR NODE-ii*/
+		  estress = matrixvector(C,estrain,6);/*ELASTIC PREDICTOR*/
 
 		  for(ii = 0; ii < 6; ii++)
 		  {
-			*(estress+ii) += (mshell+i-1)->stress[j][ii];/*TRIAL STRESS{σtry}*/ /*shell->stress[ii][jj]は節点内力　積分点の応力にはmshellを使用*/
+			*(estress+ii) += (mshell+i-1)->laststress[j][ii];/*TRIAL STRESS{σtry}*/
 
-			//*(backstress+ii) = (mshell+i-1)->backstress[j][ii];/*TRIAL BACK-STRESS{αtry}*/
-			//*(estress+ii) -= *(backstress+ii);/*{σtry-αtry}*/
+			//*(backstress+ii) = (mshell+i-1)->backstress[j][ii];
+			//*(estress+ii) -= *(backstress+ii);
 		  }
 
-		  /*解析開始前にINITIALYIELDSURFACE必要*/
-		  /*fc,fuは断面ごとの初期降伏曲面データ、解析開始後は各部材ごとに更新するため使用しない*/
+		  lambda = returnmapIlyushin(shell, estress);
 
-
-		  /*ILYUSHIN'S POSITIVE YIELD FUNCTION.*/
-		  //g1 = matrixvector(A1,estress,6);/*[A]{σ-α}*/
-		  //f1 = dotproduct(estress,g1,6);/*{σ-α}^T[A]{σ-α}*/
-
-		  /*ILYUSHIN'S NEGATIVE YIELD FUNCTION*/
-		  //g2 = matrixvector(A2,estress,6);
-		  //f2 = dotproduct(estress,g2,6);
-
-
-
-
-
-
-
-		  /*ILYUSHIN'S POSITIVE YIELD FUNCTION.{σ-α}^T[A]{σ-α}*/
-		  ilyushin(estress,0,0,&f1,&f2);
-
-		  /*JUDGEMENT BY YIELD CRITERION.*/
-		  if(f1>0 || f2>0)/*YIELD SURFACE ACTIVE.*/
-		  {
-			returnmappingshell(shell,estress,&lambda1,&lambda2);
-
-            /**/
-
-
-
-
-
-
-			Hkin = 0.0;
-
-			void returnmappingshell(struct oshell shell, double* estress, double* lambda1, double* lambda2)
-			{
-
-
-			  for(i = 0; i < 3; i++)
-			  {
-				lambda1 = 0.0;
-				lambda2 = 0.0;
-				while(<tolerance)/*RETURN-MAPPING PROCEDURE USING NEWTON-RAPTHON METHOD.*/
-				{
-				  /*YIELD FUNCTION*/
-				  ilyushin(estress,lambda1,lambda2,&f1,&f2);
-
-				  /*SENSITIVITY*/
-				  /*
-				  | df1/dlambda1 df1/dlambda2 | = | f11 f12 |
-				  | df2/dlambda1 df2/dlambda2 | = | f21 f22 |
-
-				  | dlambda1/dlambda1 dlambda1/dlambda2 | = |   1   0 |      | f22   0 |
-				  | df2/dlambda1      df2/dlambda2      | = | f21 f22 |      |-f21   1 |
-
-				  | df1/dlambda1      df1/dlambda2      | = | f11 f12 |      |  1 -f12 |
-				  | dlambda2/dlambda1 dlambda2/dlambda2 | = |   0   1 |      |  0  f11 |
-				  */
-
-				  ilyushin(estress,lambda1+eps,lambda2,&f11,&f21);
-				  ilyushin(estress,lambda1,lambda2+eps,&f12,&f22);
-
-				  f11=(f11-f1)/eps;
-				  f12=(f12-f1)/eps;
-				  f21=(f21-f2)/eps;
-				  f22=(f22-f2)/eps;
-
-
-				  if(i==0)
-				  {
-					/*f1=0 && f2=0 && lambda1>0 && lambda2>0*/
-					/*BOTH YIELD SURFACE IS ACTIVE.*/
-					det=f11*f22-f12*f21;
-					lambda1 += -( f22*f1-f12*f2)/det;
-					lambda2 += -(-f21*f1+f11*f2)/det;
-				  }
-				  if(i==1)
-				  {
-					/*f1<0 && f2=0 && lambda1=0 && lambda2>0*/
-					/*YIELD SURFACE 2 IS ACTIVE.*/
-					lambda1 += -( f22*lambda1   )/f22;
-					lambda2 += -(-f21*lambda1+f2)/f22;
-				  }
-				  if(i==2)
-				  {
-					/*f1=0 && f2<0 && lambda1>0 && lambda2=0*/
-					/*YIELD SURFACE 1 IS ACTIVE.*/
-					lambda1 += -( f1-f12*lambda2)/f11;
-					lambda2 += -(    f11*lambda2)/f11;
-				  }
-
-				}
-			  }
-
-
-
-
-
-
-
-
-				  void ilyushin(struct oshell shell,double* estress, double lambda1,double lambda2,double* f1,double* f2)
-				  {
-					  double* qstress,* ostress;
-					  double E,t;
-
-					  double c1,c2,c3;
-					  double O00,O11,O22,O33,O44,O55,O03,O14,O25,O30,O41,O52;
-					  double Oinv00,Oinv11,Oinv22,Oinv33,Oinv44,Oinv55,Oinv03,Oinv14,Oinv25,Oinv30,Oinv41,Oinv52;
-					  double det03,det14,det25;
-
-
-
-					  /*(diag[Q^T,Q^T]){σtry-αtry}*/
-					  qstress=(double*)malloc(6 * sizeof(double));
-					  *(qstress+0)=( *(estress+0)+*(estress+1))/sqrt(2.0);
-					  *(qstress+1)=(-*(estress+0)+*(estress+1))/sqrt(2.0);
-					  *(qstress+2)=  *(estress+2)                        ;
-					  *(qstress+3)=( *(estress+3)+*(estress+4))/sqrt(2.0);
-					  *(qstress+4)=(-*(estress+3)+*(estress+4))/sqrt(2.0);
-					  *(qstress+5)=  *(estress+5)                        ;
-
-					  /*[W]=(diag[Q,Q])[O]^-1(diag[Q^T,Q^T])*/
-
-					  /*[O]*/
-					  c1 = (lambda1 + lambda2) / fn2;
-					  c2 = (lambda1 + lambda2) / fm2;
-					  c3 = (lambda1 - lambda2) /(2.0*sqrt(3.0)*fnfm);
-
-					  O00 = E*t/(1-v) + 2.0/3.0*Hkin;
-					  O11 = 3.0*E*t/(1+v) + 2.0*Hkin;
-					  O22 = 3.0*E*t/(1+v) + 4.0*Hkin;
-					  O33 = E*pow(t,3)/(12.0*(1-v)) + 2.0/3.0*Hkin;
-					  O44 = E*pow(t,3)/( 4.0*(1+v)) + 2.0*Hkin
-					  O55 = E*pow(t,3)/( 4.0*(1+v)) + 4.0*Hkin
-					  O03 = O00;
-					  O14 = O11;
-					  O25 = O22;
-					  O30 = O33;
-					  O41 = O44;
-					  O52 = O55;
-
-					  O00 = 1.0 + c1*O00;
-					  O11 = 1.0 + c1*O11;
-					  O22 = 1.0 + c1*O22;
-					  O33 = 1.0 + c2*O33;
-					  O44 = 1.0 + c2*O44;
-					  O55 = 1.0 + c2*O55;
-					  O03 *= c3;
-					  O14 *= c3;
-					  O25 *= c3;
-					  O30 *= c3;
-					  O41 *= c3;
-					  O52 *= c3;
-
-
-					  /*Oinv:[O]^-1*/
-					  det03 = O00*O33-O03*O30;
-					  det14 = O11*O44-O14*O41;
-					  det25 = O22*O55-O25*O52;
-
-					  Oinv00 =  O33 / det03;
-					  Oinv11 =  O44 / det14;
-					  Oinv22 =  O55 / det25;
-					  Oinv33 =  O00 / det03;
-					  Oinv44 =  O11 / det14;
-					  Oinv55 =  O22 / det25;
-					  Oinv03 = -O03 / det03;
-					  Oinv14 = -O14 / det14;
-					  Oinv25 = -O25 / det25;
-					  Oinv30 = -O30 / det03;
-					  Oinv41 = -O41 / det14;
-					  Oinv52 = -O52 / det25;
-
-					  ostress=(double*)malloc(6 * sizeof(double));
-					  *(ostress+0)= Oinv00**(qstress+0) + Oinv03**(qstress+3);
-					  *(ostress+1)= Oinv11**(qstress+1) + Oinv14**(qstress+4);
-					  *(ostress+2)= Oinv22**(qstress+2) + Oinv25**(qstress+5);
-					  *(ostress+3)= Oinv30**(qstress+0) + Oinv33**(qstress+3);
-					  *(ostress+4)= Oinv41**(qstress+1) + Oinv44**(qstress+4);
-					  *(ostress+5)= Oinv52**(qstress+2) + Oinv55**(qstress+5);
-
-					  /*f={σtry-αtry}^T[W]^T[A][W]{σtry-αtry}*/
-					  /*f={σtry-αtry}^(diag[Q,Q])^T[Oinv]^T               [Oinv](diag[Q^T,Q^T]){σtry-αtry}*/
-
-					  *f1 = 0.5 * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 + *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
-						  + 1.5 * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 + *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
-						  + 3.0 * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 + *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm));
-					  *f2 = 0.5 * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 - *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
-						  + 1.5 * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 - *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
-						  + 3.0 * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 - *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm));
-					  return;
-				  }
-
-
-
-
-			}
-
-
-
-
-
-		  }
-		  /*STRESS RESULTANT UPDATED.*/
-
-
-		  /*[H]^-1=[C]^-1+dλ*[P]*/
-		  H = (double**)malloc(6 * sizeof(double*));
+		  /*STRESS RESULTANT OF INTEGRATION POINTS*/
 		  for (ii = 0; ii < 6; ii++)
 		  {
-			*(H + ii) = (double*)malloc(6 * sizeof(double));
+			(mshell+i-1)->stress[j][ii] = *(estress+ii);
 		  }
+		  free(lambda);
 
-		  *(*(H+0)+0)=1.0/(E*t) 					+ 2.0*lambda1**(*(A1+0)+0);
-		  *(*(H+0)+1)=-poi/(E*t) 					+ 2.0*lambda1**(*(A1+0)+1);
-		  *(*(H+1)+0)=*(*(H+0)+1);
-		  *(*(H+1)+1)=*(*(H+0)+0);
-		  *(*(H+2)+2)=2.0*(1.0+poi)/(E*t) 		    + 2.0*lambda1**(*(A1+2)+2);
-
-		  *(*(H+3)+3)=12.0/(E*pow(t,3))			    + 2.0*lambda1**(*(A1+3)+3);
-		  *(*(H+3)+4)=-12.0*poi/(E*pow(t,3)) 		+ 2.0*lambda1**(*(A1+3)+4);
-		  *(*(H+4)+3)=*(*(H+3)+4);
-		  *(*(H+4)+4)=*(*(H+3)+3);
-		  *(*(H+5)+5)=24.0*(1.0+poi)/(E*pow(t,3))   + 2.0*lambda1**(*(A1+5)+5);
-
-		  for(i=0;i<6;i++)                 /*CENTER,WIDTH OF YIELD SURFACE.*/
-		  {
-			fc[i]=0.5*(elem.sect->fmax[i]+elem.sect->fmin[i]);     /*CENTER*/
-			fu[i]=0.5*(elem.sect->fmax[i]-elem.sect->fmin[i]);      /*WIDTH*/
-		  }
-
-
-
-
-
-		  Hg=matrixvector(H,g);
-		  gHg=dotproduct(g,Hg,6);
-
-
-
-		  consistentC = (double**)malloc(6 * sizeof(double*));
-		  for (ii = 0; ii < 6; ii++)
-		  {
-			*(consistentC + ii) = (double*)malloc(6 * sizeof(double));
-			for (jj = 0; jj < 6; jj++)
-			{
-			  *(*(consistentC + ii) + jj) = *(*(H+ii)+jj) + *(Hg+ii)**(Hg+jj)/(beta+gHg);
-			}
-		  }
-
-
-
-
-
-
-
-
+		  Bt=matrixtransposeIII(B,6,6*nnod);
+		  einternal=matrixmatrixIII(Bt,estress,6*nnod,6,1);
 		}
+		/*STRESS RESULTANT UPDATED.*/
+		/*INTERNAL FORCE UPDATED*/
 
 
 
-
-
-		einternal = matrixvector(Kp, edisp, 6 * nnod);      				/*{Fe}=[Ke]{Ue}.*/
+		//einternal = matrixvector(Ke, edisp, 6 * nnod);      				/*{Fe}=[Ke]{Ue}.*/
 		eexternal= assemshellpvct(shell, drccos);                			/*{Pe}.*/
 		//volume += shellvolume(shell, drccos, area);                   		/*VOLUME*/
 
@@ -3014,7 +2667,6 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 
 
-		//shellstress = matrixvector(DBe, edisp, 6 * nnod);
 
 		for (ii = 0; ii < nnod; ii++)
 		{
@@ -3023,11 +2675,6 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 				if(finternal!=NULL) *(finternal + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
 				if(fexternal!=NULL) *(fexternal + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(gexternal + 6 * ii + jj);
 				(shells+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
-				if(mshell!=NULL)
-				{
-					(mshell+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
-					(mshell+i-1)->shellstress[ii][jj]=*(shellstress+6*ii+jj);
-				}
 			}
 		}
 
@@ -3053,16 +2700,6 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 			(mshell+i-1)->SE += (mshell+i-1)->SEp + (mshell+i-1)->SEb;
 		}
 
-		//free(shellstress);
-
-
-
-		/////UNDER CONSTRUCTION FOR PLASTICITY
-		shellstrain = matrixvector(B, edisp, 6 * nnod);/*SHELL STRAIN OF EACH INTEGRATION POINTS(7nodes*6DOFs)*/
-
-
-
-
 		freematrix(drccos, 3);
 		freematrix(drccosinit, 3);
 		freematrix(T, 6 * nnod);
@@ -3070,7 +2707,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		freematrix(HPT, 6 * nnod);
 		freematrix(Ke, 6 * nnod);
 		freematrix(Kt, 6 * nnod);
-		//freematrix(DBe, 6 * nnod);
+
 		freematrix(B, 6 * (2*nnod+1));
 		freematrix(Me, 6 * nnod);
 

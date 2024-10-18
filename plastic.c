@@ -1,381 +1,424 @@
-
-
-
-  updatestress(melem,fout,edisp,estress,ee,elem,
-			   func,NULL);                               /*{f}+{df}*/
-
-  ee:elastic
-  estress : estiff(include pmtx)*edisp
+/*FUNCTIONS FOR PLASTICITY*/
 
 
 
 
 
 
-void coefficients(struct owire elem,double **estiff,
-				  double f[],double dfdp[][6],
-				  double q[][2],double a[][2])
-/*ASSEMBLAGE PLASTIC COEFFICIENTS.*/
+
+
+
+C = (double**)malloc(6 * sizeof(double*));
+for (ii = 0; ii < 6; ii++)
 {
-  signed char iconf[12];
-  int i,j,ii,jj;
-  double fc[6],fu[6];
-  double unit,value;
-
-  for(i=0;i<2;i++)                    /*ICONF[2][6] INTO ICONF[12].*/
-  {
-	for(j=0;j<6;j++) iconf[6*i+j]=elem.iconf[i][j];
-  }
-
-
-  for(i=0;i<12;i++)                         /*ASSEMBLAGE VECTOR:{q}*/
-  {
-	if(iconf[i]!=1)
+	*(C + ii) = (double*)malloc(6 * sizeof(double));
+	for (jj = 0; jj < 6; jj++)
 	{
-	  for(j=0;j<2;j++)
-	  {
-		q[i][j]=0.0;
+		*(*(C + ii) + jj) = 0.0;
+	}
+}
 
-		for(jj=0;jj<6;jj++)
+*(*(C+0)+0)=E*t/(1-poi*poi);
+*(*(C+0)+1)=poi**(*(C+0)+0));
+*(*(C+0)+2)=0.0;
+*(*(C+1)+0)=*(*(C+0)+1);
+*(*(C+1)+1)=*(*(C+0)+0);
+*(*(C+1)+2)=0.0;
+*(*(C+2)+0)=0.0;
+*(*(C+2)+1)=0.0;
+*(*(C+2)+2)=0.5*E*t/(1+poi);
+
+*(*(C+3)+3)=E*pow(t,3)/(12.0*(1-poi*poi));
+*(*(C+3)+4)=poi**(*(C+0)+0));
+*(*(C+3)+5)=0.0;
+*(*(C+4)+3)=*(*(C+3)+4);
+*(*(C+4)+4)=*(*(C+3)+3);
+*(*(C+4)+5)=0.0;
+*(*(C+5)+3)=0.0;
+*(*(C+5)+4)=0.0;
+*(*(C+5)+5)=0.5*E*pow(t,3)/(12.0*(1+poi));
+
+
+		/*[H]^-1=[C]^-1+dƒÉ*[P]*/
+		Cinv = (double**)malloc(6 * sizeof(double*));
+		for (ii = 0; ii < 6; ii++)
 		{
-		  if(iconf[6*j+jj]!=1) /*if(iconf[6*j+jj]==-1)*/
+			*(Cinv + ii) = (double*)malloc(6 * sizeof(double));
+			for (jj = 0; jj < 6; jj++)
+			{
+				*(*(Cinv + ii) + jj) = 0.0;
+			}
+		}
+
+		*(*(H+0)+0)=1.0/(E*t) 					+ 2.0*lambda1**(*(A1+0)+0);
+		*(*(H+0)+1)=-poi/(E*t) 					+ 2.0*lambda1**(*(A1+0)+1);
+		*(*(H+1)+0)=*(*(H+0)+1);
+		*(*(H+1)+1)=*(*(H+0)+0);
+		*(*(H+2)+2)=2.0*(1.0+poi)/(E*t) 		    + 2.0*lambda1**(*(A1+2)+2);
+
+		*(*(H+3)+3)=12.0/(E*pow(t,3))			    + 2.0*lambda1**(*(A1+3)+3);
+		*(*(H+3)+4)=-12.0*poi/(E*pow(t,3)) 		+ 2.0*lambda1**(*(A1+3)+4);
+		*(*(H+4)+3)=*(*(H+3)+4);
+		*(*(H+4)+4)=*(*(H+3)+3);
+		*(*(H+5)+5)=24.0*(1.0+poi)/(E*pow(t,3))   + 2.0*lambda1**(*(A1+5)+5);
+
+		/*[P]=2[A]*/
+		/*{dƒÃ_p}=dƒÉ*{df/dƒÐ}=dƒÉ[P]{ƒÐ}*/
+
+
+
+
+
+
+		A1 = (double**)malloc(6 * sizeof(double*));
+		for (ii = 0; ii < 6; ii++)
+		{
+			*(A1 + ii) = (double*)malloc(6 * sizeof(double));
+			for (jj = 0; jj < 6; jj++)
+			{
+				*(*(A + ii) + jj) = 0.0;
+			}
+		}
+
+		*(*(A1+0)+0)=1.0/fn2;
+		*(*(A1+0)+1)=-0.5/fn2;
+		*(*(A1+1)+0)=*(*(A1+0)+1);
+		*(*(A1+1)+1)=*(*(A1+0)+0);
+		*(*(A1+2)+2)=3.0/fn2;
+
+
+		*(*(A1+0)+3)=1.0/(2.0*sqrt(3.0)*fnfm);
+		*(*(A1+0)+4)=-0.5/(2.0*sqrt(3.0)*fnfm);
+		*(*(A1+1)+3)=*(*(A1+0)+4);
+		*(*(A1+1)+4)=*(*(A1+0)+3);
+		*(*(A1+2)+5)=3.0/(2.0*sqrt(3.0)*fnfm);
+
+		*(*(A1+3)+0)=*(*(A1+0)+3);
+		*(*(A1+3)+1)=*(*(A1+1)+3);
+		*(*(A1+4)+0)=*(*(A1+0)+4);
+		*(*(A1+4)+1)=*(*(A1+1)+4);
+		*(*(A1+5)+2)=3.0/(2.0*sqrt(3.0)*fnfm);
+
+
+		*(*(A1+3)+3)=1.0/fm2;
+		*(*(A1+3)+4)=-0.5/fm2;
+		*(*(A1+4)+3)=*(*(A1+3)+4);
+		*(*(A1+4)+4)=*(*(A1+3)+3);
+		*(*(A1+5)+5)=3.0/fm2;
+
+
+
+		A2 = (double**)malloc(6 * sizeof(double*));
+		for (ii = 0; ii < 6; ii++)
+		{
+			*(A2 + ii) = (double*)malloc(6 * sizeof(double));
+			for (jj = 0; jj < 6; jj++)
+			{
+				if((ii<3 && jj<3) || (ii>2 && jj>2)) *(*(A2 + ii) + jj) = *(*(A1 + ii) + jj);
+				else *(*(A2 + ii) + jj) = -*(*(A1 + ii) + jj);
+			}
+		}
+
+
+
+
+		  Hg=matrixvector(H,g);
+		  gHg=dotproduct(g,Hg,6);
+
+
+
+		  consistentC = (double**)malloc(6 * sizeof(double*));
+		  for (ii = 0; ii < 6; ii++)
 		  {
-			q[i][j]+=*(*(estiff+i)+6*j+jj)*dfdp[j][jj];
-		  }
-		}
-	  }
-	}
-  }
-  for(i=0;i<2;i++)                     /*INNER PRODUCT a={df/dp}{q}*/
-  {
-	for(j=0;j<2;j++)
-	{
-	  a[i][j]=0.0;
-
-	  for(ii=0;ii<6;ii++)
-	  {
-		if((elem.iconf[i][ii]==-1)&&(elem.iconf[j][ii]==-1))
-		{
-		  a[i][j]+=dfdp[i][ii]*q[6*i+ii][j];
-		}
-	  }
-	}
-  }
-  return;
-}/*coefficients*/
-
-
-void updateshellstress(struct memoryshell *mshell,FILE *fout,
-					   double *edisp,double *dstress,double **estiff,
-					   struct oshell *shell,double func[],FILE *ftxt)
-/*ELEMENT STRESS UPDATE.*/
-{
-  char s[80],string[256];
-  char iconf[12];
-  long int i,ii,j/*,jj*/,nn[2];
-  double dL,lamda[2]={0.0,0.0};
-  double fc[6],fu[6],f[2],dfdp[2][6],q[12][2],a[2][2],rate;
-  double fe[2],dfdpe[2][6],qe[12][2],ae[2][2];     /*1 STEP BEFORE.*/
-  double det,detinverse,function;
-  double ys[2][6];
-  double due[2][6],dup[2][6]/*,dp[2][6]*/;
-  struct line line;
-
-  nn[0]=elem->node[0]->code;
-  nn[1]=elem->node[1]->code;
-
-  /*FUNCTION 1 STEP BEFORE.*/
-
-  /*LAST LAP*/
-  coefficients(*elem,estiff,fe,dfdpe,qe,ae);
-
-  /*UPDATE STRESS.*/
-  for(i=0;i<2;i++)
-  {
-	for(j=0;j<6;j++)
-	{
-	  elem->stress[i][j]+=*(dstress+6*i+j);
-	  (melem+(elem->loff))->stress[i][j]=elem->stress[i][j];
-	}
-  }
-
-  coefficients(*elem,estiff,f,dfdp,q,a);        /*UPDATED FUNCTION.*/
-
-  for(i=0;i<2;i++)                    /*ICONF[2][6] INTO ICONF[12].*/
-  {
-	for(j=0;j<6;j++) iconf[6*i+j]=elem->iconf[i][j];
-  }
-
-  for(i=0;i<6;i++)                 /*CENTER,WIDTH OF YIELD SURFACE.*/
-  {
-    fc[i]=0.5*(elem->sect->fmax[i]+elem->sect->fmin[i]);
-    fu[i]=0.5*(elem->sect->fmax[i]-elem->sect->fmin[i]);
-  }
-
-  for(i=0;i<2;i++)                                       /*INITIAL.*/
-  {
-	for(j=0;j<6;j++) dup[i][j]=0.0;
-  }
-
-  /*LAMDA OF PLASTIC END.*/
-  if(ae[0][0]!=0.0 && ae[1][1]==0.0)       /*IF I:PLASTIC J:ELASTIC*/
-  {
-    for(i=0;i<12;i++)
-    {
-      if(iconf[i]!=1 && iconf[i]!=-2 && iconf[i]!=-3)
-	  {
-        lamda[0]+=1.0/ae[0][0]*qe[i][0]*(*(edisp+i));
-      }
-    }
-    for(j=0;j<6;j++)
-    {
-      dup[0][j]=lamda[0]*dfdpe[0][j];
-    }
-  }
-  else if(ae[0][0]==0.0 && ae[1][1]!=0.0)  /*IF I:ELASTIC J:PLASTIC*/
-  {
-    for(i=0;i<12;i++)
-    {
-      if(iconf[i]!=1 && iconf[i]!=-2 && iconf[i]!=-3)
-      {
-        lamda[1]+=1.0/ae[1][1]*qe[i][1]*(*(edisp+i));
-      }
-    }
-	for(j=0;j<6;j++)
-    {
-      dup[1][j]=lamda[1]*dfdpe[1][j];
-	}
-  }
-  else if(ae[0][0]!=0.0 && ae[1][1]!=0.0)  /*IF I:PLASTIC J:PLASTIC*/
-  {
-	for(i=0;i<12;i++)
-	{
-	  if(iconf[i]!=1 && iconf[i]!=-2 && iconf[i]!=-3)
-	  {
-		detinverse=ae[0][0]*ae[1][1]-ae[0][1]*ae[1][0];
-		if(detinverse==0.0)
-		{
-		  det=0.0;                           /*UNDER CONSIDERATION.*/
-		  errormessage("UPDATESTRESS:UNDER CONSIDERATION.");
-		  sprintf(string,"Update : Matrix Singular.SECT=%d",elem->sect->code);
-		}
-		else det=1.0/detinverse;
-
-		lamda[0]+=det*( ae[1][1]*qe[i][0]*(*(edisp+i))
-					   -ae[0][1]*qe[i][1]*(*(edisp+i)));
-		lamda[1]+=det*(-ae[1][0]*qe[i][0]*(*(edisp+i))
-                       +ae[0][0]*qe[i][1]*(*(edisp+i)));
-      }
-    }
-    for(j=0;j<6;j++)
-    {
-      dup[0][j]=lamda[0]*dfdpe[0][j];
-	  dup[1][j]=lamda[1]*dfdpe[1][j];
-    }
-  }
-
-  /*ELASTIC END.*/
-  if(ae[0][0]==0.0 || ae[1][1]==0.0)    /*IF I:ELASTIC OR J:ELASTIC*/
-  {
-    if(elem->sect->Ixx==0.0 &&
-       elem->sect->Iyy==0.0 &&
-       elem->sect->Jzz==0.0)                            /*FOR BRACE*/
-	{
-      dL=*(edisp+6)-*(edisp+0); /*EXTENSION OF LENGTH*/
-
-      if(dL< 0.0 && elem->iconf[0][0]==-2 && ae[0][0]==0.0)
-      {
-        lamda[0]=-1.0;                         /*LONGING DISLOADED.*/
-		if(fout!=NULL) fprintf(fout,"ELEM%d HEAD dL=%.5E LONGING DISLOADED.\n",elem->code,dL);
-      }
-	  if(dL< 0.0 && elem->iconf[1][0]==-2 && ae[1][1]==0.0)
-      {
-		lamda[1]=-1.0;                         /*LONGING DISLOADED.*/
-		if(fout!=NULL) fprintf(fout,"ELEM%d TAIL dL=%.5E LONGING DISLOADED.\n",elem->code,dL);
-	  }
-	  if(dL>=0.0 && elem->iconf[0][0]==-3 && ae[0][0]==0.0)
-      {
-        if(ae[0][0]==0.0) lamda[0]=-1.0;      /*SHORTING DISLOADED.*/
-		if(fout!=NULL) fprintf(fout,"ELEM%d HEAD dL=%.5E SHORTING DISLOADED.\n",elem->code,dL);
-      }
-      if(dL>=0.0 && elem->iconf[1][0]==-3 && ae[1][1]==0.0)
-      {
-		if(ae[1][1]==0.0) lamda[1]=-1.0;      /*SHORTING DISLOADED.*/
-		if(fout!=NULL) fprintf(fout,"ELEM%d TAIL dL=%.5E SHORTING DISLOADED.\n",elem->code,dL);
-      }
-	}
-	else if(ae[0][0]==0.0 && fe[0]>=f[0])
-    {
-      lamda[0]=-1.0;                                 /*I:DISLOADED.*/
-	}
-	else if(ae[1][1]==0.0 && fe[1]>=f[1])
-	{
-	  lamda[1]=-1.0;                                 /*J:DISLOADED.*/
-    }
-  }
-
-  /*dUe,dUp DECISION.*/
-  for(i=0;i<2;i++)
-  {
-	for(j=0;j<6;j++)
-	{
-	  due[i][j]=*(edisp+6*i+j)-dup[i][j];        /*{due}={du}-{dup}*/
-	}
-  }
-
-  /*STRAIN ENERGY.*/
-  for(j=0;j<6;j++)
-  {
-	for(i=0;i<2;i++)
-	{
-	  elem->Ee[0]+=0.25*(2*elem->stress[i][j]-(*(dstress+6*i+j)))
-					   *due[i][j];
-	  elem->Ee[1]+=0.25*(2*elem->stress[i][j]-(*(dstress+6*i+j)))
-					   *due[i][j];
-	}
-	elem->Ep[0]+=(elem->stress[0][j])*dup[0][j];
-	elem->Ep[1]+=(elem->stress[1][j])*dup[1][j];
-  }
-
-
-  /*YIELD JUDGEMENT.*/
-  for(i=0;i<2;i++)
-  {
-	func[i]=f[i];
-
-	if(f[i]>=pow(RADIUS,EXPONENT))                       /*YIELDED.*/
-	{
-      sprintf(string,"YIELDED:ELEM%d NODE%ld SECT%d",
-              elem->code,nn[i],elem->sect->code);
-	  /*errormessage(string);*/
-	  strcat(string," FUNCTION:{");
-      function=0.0;
-      for(ii=0;ii<6;ii++)
-      {
-        if(ii==0 || ii==3) /*N,Mz*/
-        {
-		  rate=(elem->stress[i][ii]-pow(-1.0,i*1.0)*fc[ii])/fu[ii];
-		}
-        else /*Qx,Qy,Mx,My*/
-        {
-          rate=(elem->stress[i][ii]-fc[ii])/fu[ii];
-        }
-        function+=pow(fabs(rate),EXPONENT);    /*VALUE OF FUNCTION.*/
-        sprintf(s," %8.5f",rate);
-        strcat(string,s);
-        if(elem->iconf[i][ii]==0)
-		{
-          if(elem->sect->Ixx==0.0 &&
-             elem->sect->Iyy==0.0 &&
-             elem->sect->Jzz==0.0) /*FOR BRACE*/
-          {
-            /*elem->sect->area=0.0;*/    /*WRONG.ALL ELEM WITH THIS*/
-										 /*SECT WILL BE SET 0.     */
-
-            dL=*(edisp+6)-*(edisp+0); /*EXTENSION OF LENGTH*/
-
-			if(ii==0)
-            {
-			  if(dL>=0.0 && ((i==0 && rate<0.0) || (i==1 && rate>0.0)))
-              {
-                elem->iconf[i][0]=-2;
-				if(fout!=NULL) fprintf(fout,"ELEM%d dL=%.5E LONGING.\n",elem->code,dL);
-              }
-			  else if(dL< 0.0 && ((i==0 && rate>0.0) || (i==1 && rate<0.0)))
-              {
-				elem->iconf[i][0]=-3;
-				if(fout!=NULL) fprintf(fout,"ELEM%d dL=%.5E SHORTING.\n",elem->code,dL);
-			  }
+			*(consistentC + ii) = (double*)malloc(6 * sizeof(double));
+			for (jj = 0; jj < 6; jj++)
+			{
+			  *(*(consistentC + ii) + jj) = *(*(H+ii)+jj) + *(Hg+ii)**(Hg+jj)/(beta+gHg);
 			}
 		  }
-          else
+
+
+
+double* ilyushin(struct oshell shell, double* estress_try, double* estress, double* lambda)
+{
+  double* qstress,* ostress;
+  double f;
+  double E,t;
+  double lambda1,lambda2;
+
+  double c1,c2,c3;
+  double O00,O11,O22,O33,O44,O55,O03,O14,O25,O30,O41,O52;
+  double Oinv00,Oinv11,Oinv22,Oinv33,Oinv44,Oinv55,Oinv03,Oinv14,Oinv25,Oinv30,Oinv41,Oinv52;
+  double det03,det14,det25;
+
+
+  qstress=(double*)malloc(6 * sizeof(double));
+  ostress=(double*)malloc(6 * sizeof(double));
+  f=(double*)malloc(2 * sizeof(double));
+
+  if(lambda==NULL)
+  {
+	lambda1=0.0;
+	lambda2=0.0;
+  }
+  else
+  {
+	lambda1=*(lambda+0);
+	lambda2=*(lambda+1);
+  }
+  E=shell.E;
+  t=shell.area;
+
+
+  /*           | 1 -1  0 |  */
+  /* [Q] = 1/ã2| 1  1  0 |  */
+  /*           | 0  0 ã2 |  */
+
+  /*(diag[Q^T,Q^T]){ƒÐtry-ƒ¿try}*/
+  *(qstress+0)=( *(estress_try+0)+*(estress_try+1))/sqrt(2.0);
+  *(qstress+1)=(-*(estress_try+0)+*(estress_try+1))/sqrt(2.0);
+  *(qstress+2)=  *(estress_try+2);
+  *(qstress+3)=( *(estress_try+3)+*(estress_try+4))/sqrt(2.0);
+  *(qstress+4)=(-*(estress_try+3)+*(estress_try+4))/sqrt(2.0);
+  *(qstress+5)=  *(estress_try+5);
+
+  /*[W]=(diag[Q,Q])[O]^-1(diag[Q^T,Q^T])*/
+
+  /*[O]*/
+
+
+
+  /*{ƒÐtry-ƒ¿try}=([I]+2ƒ¢ƒÉ[C][A]){ƒÐ-ƒ¿}              */
+  /*           =(diag[Q,Q])[O](diag[Q^T,Q^T]){ƒÐ-ƒ¿}*/
+
+  /*([C]^-1+2ƒ¢ƒÉ[A])*/
+  fn=fy*t;
+  fm=fy*pow(t,3)/4.0;
+
+  fn2=pow(fn,2);
+  fm2=pow(fm,2);
+  fnfm=fn*fm;
+
+  c1 = (lambda1 + lambda2) / fn2;
+  c2 = (lambda1 + lambda2) / fm2;
+  c3 = (lambda1 - lambda2) /(2.0*sqrt(3.0)*fnfm);
+
+  O00 = E*t/(1-v)               /*+ 2.0/3.0*Hkin*/;
+  O11 = 3.0*E*t/(1+v)           /*+ 2.0*Hkin*/    ;
+  O22 = 3.0*E*t/(1+v)           /*+ 4.0*Hkin*/    ;
+  O33 = E*pow(t,3)/(12.0*(1-v)) /*+ 2.0/3.0*Hkin*/;
+  O44 = E*pow(t,3)/( 4.0*(1+v)) /*+ 2.0*Hkin*/    ;
+  O55 = E*pow(t,3)/( 4.0*(1+v)) /*+ 4.0*Hkin*/    ;
+  O03 = O00;
+  O14 = O11;
+  O25 = O22;
+  O30 = O33;
+  O41 = O44;
+  O52 = O55;
+
+  O00 = 1.0 + c1*O00;
+  O11 = 1.0 + c1*O11;
+  O22 = 1.0 + c1*O22;
+  O33 = 1.0 + c2*O33;
+  O44 = 1.0 + c2*O44;
+  O55 = 1.0 + c2*O55;
+  O03 *= c3;
+  O14 *= c3;
+  O25 *= c3;
+  O30 *= c3;
+  O41 *= c3;
+  O52 *= c3;
+
+
+  /*Oinv:[O]^-1*/
+  det03 = O00*O33-O03*O30;
+  det14 = O11*O44-O14*O41;
+  det25 = O22*O55-O25*O52;
+
+  Oinv00 =  O33 / det03;
+  Oinv11 =  O44 / det14;
+  Oinv22 =  O55 / det25;
+  Oinv33 =  O00 / det03;
+  Oinv44 =  O11 / det14;
+  Oinv55 =  O22 / det25;
+  Oinv03 = -O03 / det03;
+  Oinv14 = -O14 / det14;
+  Oinv25 = -O25 / det25;
+  Oinv30 = -O30 / det03;
+  Oinv41 = -O41 / det14;
+  Oinv52 = -O52 / det25;
+
+
+  *(ostress+0)= Oinv00**(qstress+0) + Oinv03**(qstress+3);
+  *(ostress+1)= Oinv11**(qstress+1) + Oinv14**(qstress+4);
+  *(ostress+2)= Oinv22**(qstress+2) + Oinv25**(qstress+5);
+  *(ostress+3)= Oinv30**(qstress+0) + Oinv33**(qstress+3);
+  *(ostress+4)= Oinv41**(qstress+1) + Oinv44**(qstress+4);
+  *(ostress+5)= Oinv52**(qstress+2) + Oinv55**(qstress+5);
+
+  if(estress!=NULL)
+  {
+	*(estress+0)=(*(ostress+0)-*(ostress+1))/sqrt(2.0);
+	*(estress+1)=(*(ostress+0)+*(ostress+1))/sqrt(2.0);
+	*(estress+2)= *(ostress+2);
+	*(estress+3)=(*(ostress+3)-*(ostress+4))/sqrt(2.0);
+	*(estress+4)=(*(ostress+3)+*(ostress+4))/sqrt(2.0);
+	*(estress+5)= *(ostress+5);
+  }
+
+
+
+  /*f={ƒÐtry-ƒ¿try}^T[W]^T[A][W]{ƒÐtry-ƒ¿try}*/
+
+  *(f+0) = 0.5 * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 + *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
+		 + 1.5 * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 + *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
+		 + 3.0 * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 + *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm))
+		 - 1.0;
+  *(f+1) = 0.5 * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 - *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
+		 + 1.5 * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 - *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
+		 + 3.0 * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 - *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm))
+		 - 1.0;
+
+  return f;
+}
+
+
+double* returnmapIlyushin(struct oshell shell, double* estress)
+{
+   int i,j;
+   double* lambda12,* lambda1,* lambda2,* lambdaeps;
+   double* lambda;
+   double* estress_try;
+
+   lambda = (double*)malloc(2 * sizeof(double));
+
+   /*YIELD JUDGEMENT.*/
+   f=ilyushin(shell, estress, NULL, NULL);/*ILYUSHIN'S YIELD FUNCTION.{ƒÐ-ƒ¿}^T[A]{ƒÐ-ƒ¿}*/
+
+   if( *(f+0)>0 || *(f+1)>0 )/*IF YIELD SURFACE ACTIVE.*/
+   {
+
+	   lambda12 = (double*)malloc(2 * sizeof
+	   (double));
+	   lambda1 = (double*)malloc(2 * sizeof(double));
+	   lambda2 = (double*)malloc(2 * sizeof(double));
+	   lambdaeps = (double*)malloc(2 * sizeof(double));
+
+	   estress_try = (double*)malloc(6 * sizeof(double));
+
+	   /*RETURN-MAPPING PROCEDURE USING NEWTON-RAPTHON METHOD FOR ILYUSHIN'S YIELD CONDITION.*/
+		for(i=0;i<2;i++)
+		{
+		  *(lambda12+i)=0.0;
+		  *(lambda1 +i)=0.0;
+		  *(lambda2 +i)=0.0;
+		}
+		for(i=0;i<6;i++)
+		{
+		  *(estress_try+i)=*(estress+i);
+		}
+
+		while(<tolerance)/*BOTH YIELD SURFACES ARE ACTIVE.*/
+		{
+		  /*YIELD FUNCTION*/
+		  f=ilyushin(estress_try,NULL,lambda12);
+		  /*SENSITIVITY*/
+		  for(i=0;i<2;i++)
 		  {
-			elem->iconf[i][ii]=-1;   /*-1:PLASTIC 0:ELASTIC 1:HINGE*/
+			for(j=0;j<2;j++)
+			{
+			  if(i==j) *(lambdaeps+i)=*(lambda12+i)+eps;
+			  else     *(lambdaeps+i)=*(lambda12+i);
+			}
+			feps=ilyushin(estress_try,NULL,lambdaeps);
+			for(j=0;j<2;j++)
+			{
+			  *(*(K+j)+i)=(*(feps+j)-*(f+j))/eps;
+			}
+			free(feps);
+		  }
+		  free(f);
+
+
+
+
+		  f11=(f11-f1)/eps;
+		  f12=(f12-f1)/eps;
+		  f21=(f21-f2)/eps;
+		  f22=(f22-f2)/eps;
+
+		  det=f11*f22-f12*f21;
+		  lambda1 += -( f22*f1-f12*f2)/det;
+		  lambda2 += -(-f21*f1+f11*f2)/det;
+		}
+
+		while(<tolerance)/*YIELD SURFACE 1 IS ACTIVE.*//*f1=0 && f2<0 && lambda1>0 && lambda2=0*/
+		{
+		  /*YIELD FUNCTION*/
+		  f=ilyushin(estress_try,NULL,lambda1);
+		  /*SENSITIVITY*/
+		  *(lambdaeps+0)=*(lambda1+0)+eps;
+		  *(lambdaeps+1)=0.0;
+
+		  feps=ilyushin(estress_try,NULL,lambdaeps);
+		  *(feps+0)=(*(feps+0)-*(f+0))/eps;
+
+		  *(lambda1+0) += -*(f+0) / *(feps+0);
+
+		  free(f);
+		  free(feps);
+		}
+
+		while(<tolerance)/*YIELD SURFACE 2 IS ACTIVE.*//*f1=0 && f2<0 && lambda1>0 && lambda2=0*/
+		{
+		  /*YIELD FUNCTION*/
+		  f=ilyushin(estress_try,NULL,lambda2);
+		  /*SENSITIVITY*/
+		  *(lambdaeps+1)=*(lambda2+1)+eps;
+		  *(lambdaeps+0)=0.0;
+
+		  feps=ilyushin(estress_try,NULL,lambdaeps);
+		  *(feps+1)=(*(feps+1)-*(f+1))/eps;
+
+		  *(lambda2+1) += -*(f+1) / *(feps+1);
+
+		  free(f);
+		  free(feps);
+		}
+
+		/*CHOOSE YIELD CONDITION & UPDATE LAMBDA*/
+		for(i=0;i<2;i++)
+		{
+		  if()
+		  {
+			*(lambda+i)=*(lambda12+i);
+		  }
+		  else if()
+		  {
+			*(lambda+i)=*(lambda1+i);
+		  }
+		  else
+		  {
+			*(lambda+i)=*(lambda2+i);
 		  }
 		}
-	  }
-	  sprintf(s,"}=%8.5f",function); /*VALUE OF FUNCTION.*/
-	  strcat(string,s);
-	  if(fout!=NULL) fprintf(fout,"%s\n",string);
-	}
-  }
 
-  /*DISLOAD JUDGEMENT.*/
-  for(i=0;i<2;i++)
-  {
-	if(lamda[i]<0.0)                                   /*DISLOADED.*/
-	{
-	  sprintf(string,"DISLOAD:ELEM%d NODE%ld SECT%d",
-			  elem->code,nn[i],elem->sect->code);
+		/*UPDATE STRESS*/
 
-	  for(ii=0;ii<6;ii++)
-	  {
-		if(elem->iconf[i][ii]==-1)
+		f=ilyushin(estress_try,estress,lambda);
+
+		free(estress_try);
+		free(lambdaeps);
+		free(lambda12);
+		free(lambda1);
+		free(lambda2);
+   }
+   else/*ELASTIC.*/
+   {
+		for(i=0;i<2;i++)
 		{
-          elem->iconf[i][ii]=0;      /*-1:PLASTIC 0:ELASTIC 1:HINGE*/
+			*(lambda+i)=0.0;
 		}
-	  }
-	  if((elem->iconf[i][0]== 1 ||
-		  elem->iconf[i][0]==-2 ||
-		  elem->iconf[i][0]==-3) &&
-		 elem->sect->Ixx==0.0 &&
-		 elem->sect->Iyy==0.0 &&
-		 elem->sect->Jzz==0.0) /*FOR BRACE*/
-	  {
-		elem->iconf[i][0]=0;         /*-1:PLASTIC 0:ELASTIC 1:HINGE*/
-
-if(fout!=NULL) fprintf(fout,"ELEM%d DISLOADED.\n",elem->code);
-	  }
-	}
-  }
-
-  for(i=0;i<6;i++)
-  {
-    (melem+(elem->loff))->bond[0][i]=elem->iconf[0][i];
-    (melem+(elem->loff))->bond[1][i]=elem->iconf[1][i];
-  }
-
-  /*
-  if(wsurf.hwnd!=NULL)
-  {
-	fseek(arc.fsurface,0L,SEEK_END);
-	for(i=0;i<2;i++)
-	{
-	  ys[0][0]=(elem->stress[i][0]-*(dstress+6*i+0)
-				-pow(-1.0,i*1.0)*fc[0])/fu[0];
-	  ys[0][1]=(elem->stress[i][1]-*(dstress+6*i+1)-fc[1])/fu[1];
-	  ys[0][2]=(elem->stress[i][2]-*(dstress+6*i+2)-fc[2])/fu[2];
-	  ys[0][3]=(elem->stress[i][3]-*(dstress+6*i+3)
-				-pow(-1.0,i*1.0)*fc[3])/fu[3];
-      ys[0][4]=(elem->stress[i][4]-*(dstress+6*i+4)-fc[4])/fu[4];
-      ys[0][5]=(elem->stress[i][5]-*(dstress+6*i+5)-fc[5])/fu[5];
-
-	  ys[1][0]=(elem->stress[i][0]-pow(-1.0,i*1.0)*fc[0])/fu[0];
-      ys[1][1]=(elem->stress[i][1]-fc[1])/fu[1];
-      ys[1][2]=(elem->stress[i][2]-fc[2])/fu[2];
-	  ys[1][3]=(elem->stress[i][3]-pow(-1.0,i*1.0)*fc[3])/fu[3];
-      ys[1][4]=(elem->stress[i][4]-fc[4])/fu[4];
-      ys[1][5]=(elem->stress[i][5]-fc[5])/fu[5];
-
-      line.code=elem->code;
-      line.ends[0].d[0]=ys[0][SURFACEX];
-      line.ends[0].d[1]=ys[0][SURFACEY];
-      line.ends[0].d[2]=ys[0][SURFACEZ];
-      line.ends[1].d[0]=ys[1][SURFACEX];
-      line.ends[1].d[1]=ys[1][SURFACEY];
-      line.ends[1].d[2]=ys[1][SURFACEZ];
-
-	  if(f[i]>=pow(RADIUS,EXPONENT))
-      {
-        line.r=255; line.g=100; line.b=255;
-      }
-      else
-      {
-        line.r=100; line.g=200; line.b=200;
-      }
-      fwrite(&line,sizeof(struct line),1,arc.fsurface);
-    }
-  }
-  */
-  return;
-}/*updatestress*/
+   }
+	return lambda;
+}

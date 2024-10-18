@@ -418,8 +418,8 @@ struct memoryelem{
 
 struct memoryshell{
 					long int code;
-					double stress[4][6];
-					double shellstress[4][6];
+					double stress[7][6];
+					double laststress[7][6];
 					double SE,SEp,SEb;
 					double KE,KEt,KEr;
 				  };                     /*SHELL ELEMENT MEMORY FOR ARCLM.*/
@@ -1054,9 +1054,6 @@ void elemstressII(double *estress,
                   double func[],FILE *ftxt);
 double *elemstressnl(struct owire *elem,double *gvct,
 				   struct memoryelem *melem);
-double *shellstress(struct oshell *shell,double *gvct,
-					struct memoryshell *mshell/*,FILE *fout,
-					double func[]*/);
 void updatestress(struct memoryelem *melem,FILE *fout,
                   double *edisp,double *dstress,double **estiff,
                   struct owire *elem,double func[],FILE *ftxt);
@@ -1067,8 +1064,6 @@ void outputdisp(double *gvct,FILE *fout,int nnode,
                 struct onode *nodes);
 void updatestressnl(struct memoryelem *melem,double *dstress,
 					 struct owire *elem);
-void updateshellstress(struct memoryshell *mshell,double *dstress,
-					   struct oshell *shell);
 /*** 09.08.28 araki for Tsurukawa *********************************************/
 void outputdisp02(double *gvct,double *displong,FILE *fout,int nnode,
                   struct onode *nodes);
@@ -25052,24 +25047,6 @@ void updatestressnl(struct memoryelem *melem,double *dstress,
   return;
 }/*updatestressnl*/
 
-void updateshellstress(struct memoryshell *mshell,double *dstress,
-					   struct oshell *shell)
-/*ELEMENT STRESS UPDATE FOR NON-LINEAR ANALYSIS.*/
-{
-  int i,j;
-
-  for(i=0;i<shell->nnod;i++)                                 /*UPDATE STRESS.*/
-  {
-	for(j=0;j<6;j++)
-	{
-	  shell->stress[i][j]+=*(dstress+6*i+j);
-	  (mshell+(shell->loff))->stress[i][j]=shell->stress[i][j];
-	}
-  }
-
-  return;
-}/*updateshellstress*/
-
 void outputdisp(double *gvct,FILE *fout,int nnode,
 				struct onode *nodes)
 /*OUTPUT NODE DISPLACEMENT.*/
@@ -25252,7 +25229,7 @@ void outputstress02(struct owire elem,
     if(n==2) sprintf(string,"           %4d",nn[n-1]);
     for(j=0;j<6;j++)
     {
-    if(*stresslong!=NULL)
+	if(*stresslong!=NULL)
       stress=elem.stress[n-1][j]-*(stresslong+12*i+j+6*(n-1));                   //araki?
     else
       stress=elem.stress[n-1][j];                   //araki?
