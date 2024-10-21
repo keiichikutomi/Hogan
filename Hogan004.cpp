@@ -24,6 +24,7 @@
 
 #include "canhead.h"                    /*DEFINITION OF COMMAND ID.*/
 #include "archg120-3ktm.c"       /*ANALYSIS NONLINEAR,MATH,VIEWING.*/
+#include "shell.c"
 #include "archg015ktm.c"                  /*ANALYSIS STATIC LINEAR.*/
 #include "arclmCR.c"                        /*CO-ROTATIONAL METHOD.*/
 #include "bclng021ujok.c"                       /*ELASTIC BUCKLING.*/
@@ -128,8 +129,8 @@ EXEMODE
 1:ARCLM001 AUTO
 2:BCLNG001 AUTO
 3:VBRAT001 AUTO
-4:ARCLMCR AUTO
-5:GNSHNCR AUTO
+4:ARCLMStatic AUTO
+5:ARCLMDynamic AUTO
 
 EXITMODE
 0:DO NOT EXIT

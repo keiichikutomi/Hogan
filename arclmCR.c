@@ -1,9 +1,4 @@
-int arclmCR(struct arclmframe* af);
-
-/*FOR VECTOR CALCURATION*/
-double dotproduct(double* vct1, double* vct2, int vsize);
-double vectorlength(double* vct, int vsize);
-void vectornormalize(double* vct, int vsize);
+int arclmStatic(struct arclmframe* af);
 
 /*FOR ROTATION CALCURATION*/
 double* rotationvct(double** rmtx);
@@ -69,7 +64,7 @@ PINPOINTMODE
 
 
 
-int arclmCR(struct arclmframe* af)
+int arclmStatic(struct arclmframe* af)
 {
 	DWORDLONG memory0,memory1;
 
@@ -1730,36 +1725,7 @@ int arclmCR(struct arclmframe* af)
 
 
 
-double dotproduct(double* vct1, double* vct2, int vsize)
-{
-	int i;
-	double dot;
-	dot = 0.0;
-	for (i = 0; i < vsize; i++) dot += (*(vct1 + i)) * (*(vct2 + i));
-	return dot;
-}/*dotproduct*/
 
-double vectorlength(double* vct, int vsize)
-{
-	int i;
-	double len;
-	len = 0.0;
-	for (i = 0; i < vsize; i++) len += (*(vct + i)) * (*(vct + i));
-	len = sqrt(len);
-    return len;
-}/*vectorlength*/
-
-void vectornormalize(double* vct, int vsize)
-{
-	int i;
-	double len;
-	len = vectorlength(vct,vsize);
-	if(len!=0.0)
-	{
-		for (i = 0; i < vsize; i++) *(vct + i)/=len;
-    }
-	return;
-}/*vectorlength*/
 
 
 
@@ -2527,7 +2493,13 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 	double* edisp;
 	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 	double* gexternal, * eexternal;                          /*EXTERNAL FORCE OF ELEMENT*/
-	double** Me,** Ke,** Kt,** DBe,** B,** drccos,** drccosinit;                           /*MATRIX*/
+
+	double* estress,* estrain;
+
+	double*** B;
+	double** Bt;
+	double** C;
+	double** Me,** Ke,** Kt,** drccos,** drccosinit;                           /*MATRIX*/
 	double** T,** Tt,/*** HP,**PtHt,*/**HPT,**TtPtHt;
 	int* loffset;
 	double area;
@@ -2557,40 +2529,25 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
-		B = (double***)malloc(7 * sizeof(double**));/*FOR 3-NODES ELEMENT*/
-		for (ii = 0; ii < 7; ii++)
-		{
-			*(B + ii) = (double**)malloc(6 * sizeof(double*));
-			for (jj = 0; jj < 6; jj++)
-			{
-				*(*(B + ii) + jj) = (double*)malloc(6*nnod * sizeof(double));
-				for (kk = 0; kk < 6*nnod; kk++)
-				{
-					*(*(*(B + ii) + jj) + kk) = 0.0;
-				}
-			}
-		}
-		B = shellshape(shell, drccosinit);
-
-		Ke = assemshellemtx(shell, drccosinit, B);                        /*[Ke]*/
-
+		C = elasticCshell(shell);
+		B = assemshellshapef(shell, drccosinit, area);
+		//Ke = assemshellemtx(shell, C, B, area);                         /*[Ke]*/
 		Me = assemshellmmtx(shell, drccosinit);         				  /*[Me]*/
 
-
-
-		/*DEFORMED CONFIGURATION OF LAST LAP.*/
+		/*  Memory Insufficient Case
 		for (ii = 0; ii < nnod; ii++)
 		{
 			inputnode(lastddisp, shell.node[ii]);
 		}
 		lastdrccos = shelldrccos(shell, &area);
-		lastgform = extractshelldisplacement(shell, lastddisp);             /*{Xg+Ug}*/
-		lasteform = extractlocalcoord(lastgform,lastdrccos,nnod);           /*{Xe+Ue}*/
+		lastgform = extractshelldisplacement(shell, lastddisp);
+		lasteform = extractlocalcoord(lastgform,lastdrccos,nnod);
 
-		lastT = transmatrixIII(lastdrccos, nnod);         					/*[T]*/
-		lastTt = matrixtranspose(lastT, 6 * nnod);                  		/*[Tt]*/
+		lastT = transmatrixIII(lastdrccos, nnod);
+		lastTt = matrixtranspose(lastT, 6 * nnod);
 
-		lastedisp = extractdeformation(eforminit, lasteform, nnod);         /*{Ue}*/
+		lastedisp = extractdeformation(eforminit, lasteform, nnod);
+		*/
 
 		/*DEFORMED CONFIGFURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -2607,48 +2564,39 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
 
 
-
-
-
-		for(ii = 0; ii < 6*nnod; ii++)
-		{
-		  *(edisp+ii) -= *(lastedisp+ii);
-		}
-
-		for (j = 0; j < 7; j++)/*FOR EACH INTEGRATION POINT*/
+		double* lambda
+		for(ii = 0; ii < 7; ii++)/*FOR EACH INTEGRATION POINT*/
 		{
 
-		  estrain = matrixmatrixIII(*(B+j),edisp,6,6*nnod,1); /*INCREMENTAL STRAIN d{É√x É√y É√xy É¡x É¡y É¡xy} FOR NODE-ii*/
-		  C = elasticCshell(shell);
+		  estrain = matrixvectorIII(*(B+ii),edisp,6,6*nnod); /*INCREMENTAL STRAIN d{É√x É√y É√xy É¡x É¡y É¡xy} FOR NODE-ii*/
+
+		  for(i = 0; ii < 6; ii++)
+		  {
+			*(estrain+ii) -= (mshell+i-1)->laststrain[ii][i];/*TRIAL STRESS{É–try}*/
+		  }
 		  estress = matrixvector(C,estrain,6);/*ELASTIC PREDICTOR*/
 
-		  for(ii = 0; ii < 6; ii++)
+
+		  for(i = 0; ii < 6; ii++)
 		  {
-			*(estress+ii) += (mshell+i-1)->laststress[j][ii];/*TRIAL STRESS{É–try}*/
+			*(estress+ii) += (mshell+i-1)->laststress[ii][i];/*TRIAL STRESS{É–try}*/
 
 			//*(backstress+ii) = (mshell+i-1)->backstress[j][ii];
 			//*(estress+ii) -= *(backstress+ii);
 		  }
 
-		  lambda = returnmapilyushin(shell, estress);
-
-		  f=ilyushin(estress_try,estress,lambda);
-
-
-
+		  lambda = returnmapilyushin(shell, C, estress);
 
 		  /*STRESS RESULTANT OF INTEGRATION POINTS*/
 		  for (ii = 0; ii < 6; ii++)
 		  {
 			(mshell+i-1)->stress[j][ii] = *(estress+ii);
 		  }
+
 		  free(lambda);
 
-		  Bt=matrixtransposeIII(B,6,6*nnod);
-		  einternal=matrixmatrixIII(Bt,estress,6*nnod,6,1);
-
-		  C=consistentCilyushin
-
+		  Bt=matrixtransposeIII(*(B+ii),6,6*nnod);
+		  einternal=matrixvectorIII(Bt,estress,6*nnod,6);
 
 
 
@@ -2719,8 +2667,8 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		freematrix(HPT, 6 * nnod);
 		freematrix(Ke, 6 * nnod);
 		freematrix(Kt, 6 * nnod);
-
-		freematrix(B, 6 * (2*nnod+1));
+		for(ii=0;ii<7;ii++)freematrix(*(B+ii), 6);
+		free(B);
 		freematrix(Me, 6 * nnod);
 
 		free(einternal);

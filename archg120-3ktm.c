@@ -420,6 +420,8 @@ struct memoryshell{
 					long int code;
 					double stress[7][6];
 					double laststress[7][6];
+					double strain[7][6];
+					double laststrain[7][6];
 					double SE,SEp,SEb;
 					double KE,KEt,KEr;
 				  };                     /*SHELL ELEMENT MEMORY FOR ARCLM.*/
@@ -507,10 +509,20 @@ double *mallocdoublevector(int vsize);
 double **mallocdoublematrix(int msize);
 double **mallocdoublematrixxyz(int msize,int msize2);
 void freematrix(double **mtx,int msize);
+
+/*FOR VECTOR CALCURATION*//*KUTOMI*/
+double dotproduct(double* vct1, double* vct2, int vsize);
+double vectorlength(double* vct, int vsize);
+void vectornormalize(double* vct, int vsize);
+
 double *matrixvector(double **mtx,double *vct,int msize);
-void matrixvectorII(double *v,
-                    double **mtx,double *vct,int msize);
-double *matrixvectorIII(double **mtx,double *vct,int msize); // 150220 fukushima for arclm201
+void matrixvectorII(double *v,double **mtx,double *vct,int msize);
+double *matrixvectorIII(double **mtx,double *vct,int m,int n);
+
+//double *matrixvectorIII(double **mtx,double *vct,int msize); // 150220 fukushima for arclm201
+
+
+
 double **matrixmatrix(double **mtxhead,double **mtxtail,int msize);
 void matrixmatrixII(double **mtx,double **mtxhead,double **mtxtail,int msize);
 double **matrixmatrixIII(double **mtxhead,double **mtxtail,int m,int n,int l);
@@ -989,12 +1001,12 @@ void assememtxII(struct owire elem,double **e);
 double **assemgmtx(struct owire elem,double *estress);
 double **assempmtx(struct owire elem,double **estiff);
 double **assempmtxbc(struct owire elem,double **estiff,double ncr);
-double **assemshellemtx(struct oshell shell,double **drccos,double **DB);
-void addkpemtx(double **e,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double **DB);
-void addkbemtx(double **e,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double *b,double *c,double **DB);
-void addktemtx(double **e,double E,double t,double det);
+
+
 double **assemshellmmtx(struct oshell shell,double **drccos);
 double *assemshellpvct(struct oshell shell,double **drccos);
+
+
 void coefficients(struct owire elem,double **estiff,
 				  double f[],double dfdp[][6],
 				  double q[][2],double a[][2]);
@@ -1349,6 +1361,39 @@ void freematrix(double **mtx,int msize)
   return;
 }/*freematrix*/
 
+
+double dotproduct(double* vct1, double* vct2, int vsize)
+{
+	int i;
+	double dot;
+	dot = 0.0;
+	for (i = 0; i < vsize; i++) dot += (*(vct1 + i)) * (*(vct2 + i));
+	return dot;
+}/*dotproduct*/
+
+double vectorlength(double* vct, int vsize)
+{
+	int i;
+	double len;
+	len = 0.0;
+	for (i = 0; i < vsize; i++) len += (*(vct + i)) * (*(vct + i));
+	len = sqrt(len);
+	return len;
+}/*vectorlength*/
+
+void vectornormalize(double* vct, int vsize)
+{
+	int i;
+	double len;
+	len = vectorlength(vct,vsize);
+	if(len!=0.0)
+	{
+		for (i = 0; i < vsize; i++) *(vct + i)/=len;
+    }
+	return;
+}/*vectorlength*/
+
+
 double *matrixvector(double **mtx,double *vct,int msize)
 /*MULTIPLY VECTOR BY MATRIX.*/
 {
@@ -1382,6 +1427,7 @@ void matrixvectorII(double *v,
   return;
 }/*matrixvectorII*/
 
+#if 0
 double *matrixvectorIII(double **mtx,double *vct,int msize) // 150220 fukushima for arclm201
 /*MULTIPLY VECTOR BY MATRIX WITH free(vct).*/
 {
@@ -1401,6 +1447,29 @@ double *matrixvectorIII(double **mtx,double *vct,int msize) // 150220 fukushima 
 
   return v;
 }/*matrixvectorIII*/
+#endif
+
+double *matrixvectorIII(double **mtx,double *vct,int m,int n)
+/*MULTIPLY MATRIX BY MATRIX.*/
+{
+  int i,j,jj;
+  double* v;
+
+  v=(double *)malloc(m*sizeof(double));
+  if(v==NULL) return NULL;
+  for(i=0;i<m;i++)
+  {
+	*(v+i)=0.0;
+	for(j=0;j<n;j++)
+	{
+	  *(v+i)+=*(*(mtx+i)+j)**(vct+j);
+	}
+  }
+
+  return v;
+}/*matrixmatrixIII*/
+
+
 
 double **matrixmatrix(double **mtxhead,double **mtxtail,int msize)
 /*MULTIPLY MATRIX BY MATRIX.*/
@@ -1440,7 +1509,7 @@ void matrixmatrixII(double **mtx,
     for(j=0;j<msize;j++)
     {
       *(mline+j)=0.0;
-      for(jj=0;jj<msize;jj++)
+	  for(jj=0;jj<msize;jj++)
       {*(mline+j)+=(*(*(mtxhead+i)+jj))*(*(*(mtxtail+jj)+j));}
     }
   }
@@ -1451,7 +1520,7 @@ void matrixmatrixII(double **mtx,
 double **matrixmatrixIII(double **mtxhead,double **mtxtail,int m,int n,int l)
 /*MULTIPLY MATRIX BY MATRIX.*/
 {
-  int i,j,jj;
+  int i,j,k;
   double **mtx,*mline;
 
   mtx=(double **)malloc(m*sizeof(double *));
@@ -1463,8 +1532,10 @@ double **matrixmatrixIII(double **mtxhead,double **mtxtail,int m,int n,int l)
 	for(j=0;j<l;j++)
 	{
 	  *(mline+j)=0.0;
-	  for(jj=0;jj<n;jj++)
-	  {*(mline+j)+=(*(*(mtxhead+i)+jj))*(*(*(mtxtail+jj)+j));}
+	  for(k=0;k<n;k++)
+	  {
+		*(mline+j)+=*(*(mtxhead+i)+k)**(*(mtxtail+k)+j);
+	  }
 	}
 	*(mtx+i)=mline;
   }
@@ -17463,6 +17534,7 @@ int vwrite(FILE *fvct,long int i,double *data)
   return n;
 }/*vwrite*/
 
+#if 0
 int arclm101(struct arclmframe *af,int idinput)
 /*STATIC INCREMENTAL ANALYSIS.*/
 {
@@ -17484,6 +17556,7 @@ int arclm101(struct arclmframe *af,int idinput)
   struct onode *nodes;
   struct onode *ninit;
   struct owire *elems;
+  struct oshell *shells;
   struct oconf *confs;
   struct memoryelem *melem;
 
@@ -17963,7 +18036,7 @@ int arclm101(struct arclmframe *af,int idinput)
 
   return 0;
 }/*arclm101*/
-
+#endif
 int arclm101_bc(struct arclmframe *af,int idinput)
 /*STATIC INCREMENTAL ANALYSIS.*/
 /*UJIOKA :BUCKLING CONDENSATION APPLICATION*/
@@ -19055,8 +19128,6 @@ for(ii=0;ii<12;ii++)
 	  }
 	}
 
-//	gcomponentadd(gmtx,gemtx,msize);
-////////////////////////////////////////////////////////////////////////////////
 
     #if 0
     for(ii=1;ii<=msize;ii++)
@@ -19148,22 +19219,7 @@ for(ii=0;ii<12;ii++)
       }
     }
 
-#if 0
-for(ii=1;ii<=msize;ii++)
-{
-//  fprintf(fonl,"[K](%2d)",ii);
-  for(jj=1;jj<=ii;jj++)
-  {
-    if(ii==jj)
-    {
-  fprintf(fonl,"[K](%2d)",ii);
-    gread(gmtx,ii,jj,&gg);
-    fprintf(fonl," %14.5f",gg);
-    }
-  }
-  fprintf(fonl,"\n");
-}
-#endif
+
 
     laptime("CROUT LU DECOMPOSITION.",t0);
     nline=croutludecomposition(gmtx,
@@ -19338,7 +19394,7 @@ for(ii=1;ii<=msize;ii++)
       tt=matrixtranspose(tmatrix,12);                       /*[Tt].*/
 
 //Modify by fukushima///////////////////////////////////////////////////////////
-	  estress2=matrixvectorIII(tt,estress2,12); /*TRUE FORCE OF ELEMENT {F}=[Tt]{f}.*/
+	  //estress2=matrixvectorIII(tt,estress2,12); /*TRUE FORCE OF ELEMENT {F}=[Tt]{f}.*/ /*COMMENT OUT BY KUTOMI*/
 	  //estress2=matrixvector(tt,estress2,12); /*TRUE FORCE OF ELEMENT {F}=[Tt]{f}.*/
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -19368,18 +19424,6 @@ for(ii=1;ii<=msize;ii++)
 	  free(estiff);
 	}
 
-	/*if(wsurf.hwnd!=NULL)
-	{
-      drawyieldsurface((wsurf.childs+1)->hdcC,
-                       (wsurf.childs+1)->vparam,
-                       SURFACEX,SURFACEY,SURFACEZ,
-                       af->fsurface);
-	  overlayhdc(*(wsurf.childs+1),SRCPAINT);*/   /*UPDATE DISPLAY.*/
-    /*}*/
-    /*while(!GetAsyncKeyState(VK_LBUTTON))
-    ;*/                                   /*LEFT CLICK TO CONTINUE.*/
-
-	/*updateform(ddisp,gvct,nnode);*/           /*FORMATION UPDATE.*/
 
 
     /***UJIOKA FOR LOAD INCREMENTAL***/
@@ -19475,9 +19519,6 @@ for(ii=1;ii<=msize;ii++)
       if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
       {
         fclose(fin);
-        /*fclose(felem);*/
-        /*fclose(fdisp);*/
-        /*fclose(freact);*/
 
         /*gfree(kmtx,nnode);*/  /*FREE ELASTIC MATRIX.*/
         gfree(gemtx,nnode); /*FREE GEOMETRIC MATRIX.*/
@@ -21720,513 +21761,6 @@ double **transmatrixIII(double **drccos,int nnod)
   }
   return t;
 }/*transmatrixIII*/
-
-double **assemshellemtx(struct oshell shell,double **drccos,double ***B)
-/*ASSEMBLAGE ELASTIC MATRIX.*/
-{
-  int i,j,k;
-  double **Ke,**exy;
-  double E,poi,t;
-  double *a,*b,*c;
-  double det;
-  double *Lx,*Ly;
-
-  a=(double *)malloc(3*sizeof(double));
-  b=(double *)malloc(3*sizeof(double));
-  c=(double *)malloc(3*sizeof(double));
-  Lx=(double *)malloc(3*sizeof(double));
-  Ly=(double *)malloc(3*sizeof(double));
-  exy=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
-  {
-	*(exy+i)=(double *)malloc(2*sizeof(double));
-	for(j=0;j<2;j++)/*IN-PLANE 2D VECTOR*/
-	{
-	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
-				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
-				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
-	  /*shell local coordinate {xi,yi(,zi=0)}*/
-	}
-  }
-
-  det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
-
-  for(i=0;i<3;i++)
-  {
-	  j=i+1;
-	  k=i+2;
-	  if(j>=3)j-=3;
-	  if(k>=3)k-=3;
-	  *(a+i)=*(*(exy+j)+0)**(*(exy+k)+1)-*(*(exy+k)+0)**(*(exy+j)+1);/*xjyk-xkyj*/
-	  *(b+i)=*(*(exy+j)+1)-*(*(exy+k)+1);/*yj-yk*/
-	  *(c+i)=*(*(exy+k)+0)-*(*(exy+j)+0);/*xk-xj*/
-	  *(Lx+i)=0.5**(b+i)/det;/*dLi/dx=bi/(2*det)*/
-	  *(Ly+i)=0.5**(c+i)/det;/*dLi/dy=ci/(2*det)*/
-	  /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
-  }
-
-  E=shell.sect->E;
-  poi=shell.sect->poi;
-  t=shell.sect->area;
-
-  Ke=(double **)malloc(18*sizeof(double *));
-  for(i=0;i<18;i++)
-  {
-	*(Ke+i)=(double *)malloc(18*sizeof(double));
-	for(j=0;j<18;j++)
-	{
-	  *(*(Ke+i)+j)=0.0;                                              /*INITIAL.*/
-	}
-  }
-
-  addkpemtx(Ke,shell,E,poi,t,det,Lx,Ly,B);
-  addkbemtx(Ke,shell,E,poi,t,det,Lx,Ly,b,c,B);
-  addktemtx(Ke,E,t,det);
-
-  for(i=0;i<3;i++)free(*(exy+i));
-  free(exy);
-  free(a);
-  free(b);
-  free(c);
-  free(Lx);
-  free(Ly);
-  return Ke;
-}/*assememtx*/
-
-void addkpemtx(double **Ke,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double ***B)
-{
-  int i,j;
-  double **Dp,**Bp,**Bpt,**DpBp,**Kp;
-  double prate = shell.prate;
-
-  Dp=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Dp+i)=(double *)malloc(3*sizeof(double));
-  }
-  Bp=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Bp+i)=(double *)malloc(6*sizeof(double));
-  }
-
-  *(*(Bp+0)+0)=*(Lx+0);
-  *(*(Bp+0)+1)=0.0;
-  *(*(Bp+0)+2)=*(Lx+1);
-  *(*(Bp+0)+3)=0.0;
-  *(*(Bp+0)+4)=*(Lx+2);
-  *(*(Bp+0)+5)=0.0;
-
-  *(*(Bp+1)+0)=0.0;
-  *(*(Bp+1)+1)=*(Ly+0);
-  *(*(Bp+1)+2)=0.0;
-  *(*(Bp+1)+3)=*(Ly+1);
-  *(*(Bp+1)+4)=0.0;
-  *(*(Bp+1)+5)=*(Ly+2);
-
-  *(*(Bp+2)+0)=*(Ly+0);
-  *(*(Bp+2)+1)=*(Lx+0);
-  *(*(Bp+2)+2)=*(Ly+1);
-  *(*(Bp+2)+3)=*(Lx+1);
-  *(*(Bp+2)+4)=*(Ly+2);
-  *(*(Bp+2)+5)=*(Lx+2);
-
-  *(*(Dp+0)+0)=E*t/(1-poi*poi);
-  *(*(Dp+0)+1)=poi**(*(Dp+0)+0);
-  *(*(Dp+0)+2)=0.0;
-  *(*(Dp+1)+0)=*(*(Dp+0)+1);
-  *(*(Dp+1)+1)=*(*(Dp+0)+0);
-  *(*(Dp+1)+2)=0.0;
-  *(*(Dp+2)+0)=0.0;
-  *(*(Dp+2)+1)=0.0;
-  *(*(Dp+2)+2)=0.5*E*t/(1+poi);
-  Bpt=matrixtransposeIII(Bp,3,6);
-  DpBp=matrixmatrixIII(Dp,Bp,3,3,6);
-  Kp=matrixmatrixIII(Bpt,DpBp,6,3,6);
-  for(i=0;i<3;i++)
-  {
-	for(j=0;j<3;j++)
-	{
-	  *(*(Ke+6*i+0)+6*j+0)=det**(*(Kp+2*i+0)+2*j+0)*prate;
-	  *(*(Ke+6*i+0)+6*j+1)=det**(*(Kp+2*i+0)+2*j+1)*prate;
-	  *(*(Ke+6*i+1)+6*j+0)=det**(*(Kp+2*i+1)+2*j+0)*prate;
-	  *(*(Ke+6*i+1)+6*j+1)=det**(*(Kp+2*i+1)+2*j+1)*prate;
-	}
-  }
-  /*if(0)
-  {
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(DBe+6*i+0)+6*j+0)=*(*(DpBp+0)+2*j+0)/t*prate;
-		*(*(DBe+6*i+0)+6*j+1)=*(*(DpBp+0)+2*j+1)/t*prate;
-		*(*(DBe+6*i+1)+6*j+0)=*(*(DpBp+1)+2*j+0)/t*prate;
-		*(*(DBe+6*i+1)+6*j+1)=*(*(DpBp+1)+2*j+1)/t*prate;
-		*(*(DBe+6*i+2)+6*j+0)=*(*(DpBp+2)+2*j+0)/t*prate;
-		*(*(DBe+6*i+2)+6*j+1)=*(*(DpBp+2)+2*j+1)/t*prate;
-	  }
-	}
-  }*/
-  if(B!=NULL)
-  {
-	for(i=0;i<7;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(*(B+i)+0)+6*j+0)=*(*(Bp+0)+2*j+0);
-		*(*(*(B+i)+0)+6*j+1)=*(*(Bp+0)+2*j+1);
-		*(*(*(B+i)+1)+6*j+0)=*(*(Bp+1)+2*j+0);
-		*(*(*(B+i)+1)+6*j+1)=*(*(Bp+1)+2*j+1);
-		*(*(*(B+i)+2)+6*j+0)=*(*(Bp+2)+2*j+0);
-		*(*(*(B+i)+2)+6*j+1)=*(*(Bp+2)+2*j+1);
-	  }
-	}
-  }
-  freematrix(Bp,3);
-  freematrix(Dp,3);
-  freematrix(Bpt,6);
-  freematrix(DpBp,3);
-  freematrix(Kp,6);
-  return;
-}
-
-void addkbemtx(double **Ke,struct oshell shell,double E,double poi,double t,double det,double *Lx,double *Ly,double *b,double *c,double ***B)
-{
-  int i,j,k,ii;
-  double *a;
-  double **Db,**Bb,**Bbt,**DbBb,**Kb,**L;
-  char string[1024];
-  double *aa,*bb,*cc,*dd,*ee;
-  double len;
-  double brate = shell.brate;
-
-  a=(double *)malloc(7*sizeof(double));
-  *(a+0)=27.0/60.0;
-  *(a+1)=8.0/60.0;
-  *(a+2)=8.0/60.0;
-  *(a+3)=8.0/60.0;
-  *(a+4)=3.0/60.0;
-  *(a+5)=3.0/60.0;
-  *(a+6)=3.0/60.0;
-  L=(double **)malloc(7*sizeof(double *));
-  for(i=0;i<7;i++)
-  {
-	*(L+i)=(double *)malloc(3*sizeof(double));
-  }
-  for(i=0;i<3;i++)
-  {
-	*(*(L+0)+i)=1.0/3.0;
-	for(j=0;j<3;j++)
-	{
-	  if(i==j)
-	  {
-		*(*(L+(4+j))+i)=1.0;
-	  }
-	  else
-	  {
-		*(*(L+(4+j))+i)=0.0;
-	  }
-
-	  if((i+1)%3==j)
-	  {
-		*(*(L+(1+j))+i)=0.0;
-	  }
-	  else
-	  {
-		*(*(L+(1+j))+i)=0.5;
-	  }
-	}
-  }
-  /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
-  /*3 node triangular element with 7 integrated (Gauss) point*/
-
-
-  /*
-  *(*(L+0)+0)=1.0/3.0;
-  *(*(L+0)+1)=1.0/3.0;
-  *(*(L+0)+2)=1.0/3.0;
-  *(*(L+1)+0)=1.0/2.0;
-  *(*(L+1)+1)=1.0/2.0;
-  *(*(L+1)+2)=0.0;
-  *(*(L+2)+0)=0.0;
-  *(*(L+2)+1)=1.0/2.0;
-  *(*(L+2)+2)=1.0/2.0;
-  *(*(L+3)+0)=1.0/2.0;
-  *(*(L+3)+1)=0.0;
-  *(*(L+3)+2)=1.0/2.0;
-  *(*(L+4)+0)=1.0;
-  *(*(L+4)+1)=0.0;
-  *(*(L+4)+2)=0.0;
-  *(*(L+5)+0)=0.0;
-  *(*(L+5)+1)=1.0;
-  *(*(L+5)+2)=0.0;
-  *(*(L+6)+0)=0.0;
-  *(*(L+6)+1)=0.0;
-  *(*(L+6)+2)=1.0;
-  */
-
-
-  Db=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Db+i)=(double *)malloc(3*sizeof(double));
-  }
-  *(*(Db+0)+0)=E*pow(t,3)/(12.0*(1-poi*poi));
-  *(*(Db+0)+1)=poi**(*(Db+0)+0);
-  *(*(Db+0)+2)=0.0;
-  *(*(Db+1)+0)=*(*(Db+0)+1);
-  *(*(Db+1)+1)=*(*(Db+0)+0);
-  *(*(Db+1)+2)=0.0;
-  *(*(Db+2)+0)=0.0;
-  *(*(Db+2)+1)=0.0;
-  *(*(Db+2)+2)=0.5*E*pow(t,3)/(12.0*(1+poi));
-
-#if 1
-  aa=(double *)malloc(3*sizeof(double));
-  bb=(double *)malloc(3*sizeof(double));
-  cc=(double *)malloc(3*sizeof(double));
-  dd=(double *)malloc(3*sizeof(double));
-  ee=(double *)malloc(3*sizeof(double));
-  for(i=0;i<3;i++)
-  {
-	len    = *(b+i)**(b+i) + *(c+i)**(c+i);
-	*(aa+i)= *(c+i)                                /len;
-	*(bb+i)=-0.75**(b+i)**(c+i)                    /len;
-	*(cc+i)=(0.25**(c+i)**(c+i)-0.5**(b+i)**(b+i)) /len;
-	*(dd+i)=-*(b+i)                                /len;
-	*(ee+i)=(0.25**(b+i)**(b+i)-0.5**(c+i)**(c+i)) /len;
-	/*sprintf(string,"%12.9f %12.9f %12.9f %12.9f %12.9f",*(aa+0),*(dd+0),*(bb+0),*(cc+0),len);
-	errormessage(string); */
-  }
-#endif
-
-
-  for(ii=0;ii<7;ii++)
-  {
-	Bb=(double **)malloc(3*sizeof(double *));
-	for(i=0;i<3;i++)
-	{
-	  *(Bb+i)=(double *)malloc(9*sizeof(double));
-	}
-
-
-	/*Zienkiewiczらの非適合三角形要素T-9N*/
-#if 0
-	for(i=0;i<3;i++)
-	{
-	  j=(i+1)%3;
-	  k=(i+2)%3;
-
-	  *(*(Bb+0)+3*i+0)=-(
-						1.0 * *(Lx+i)**(Lx+i) *   2.0*( *(*(L+ii)+j)+*(*(L+ii)+k) )
-					   -1.0 * *(Lx+j)**(Lx+j) *   2.0*( *(*(L+ii)+i)              )
-					   -1.0 * *(Lx+k)**(Lx+k) *   2.0*( *(*(L+ii)+i)              )
-					   +2.0 * *(Lx+i)**(Lx+j) *   2.0*( *(*(L+ii)+i)-*(*(L+ii)+j) )
-					   +0.0
-					   +2.0 * *(Lx+k)**(Lx+i) *   2.0*( *(*(L+ii)+i)-*(*(L+ii)+k) )
-					   );
-
-	  *(*(Bb+0)+3*i+1)=-(
-						1.0 * *(Lx+i)**(Lx+i) *   2.0*( *(b+j)**(*(L+ii)+k) - *(b+k)**(*(L+ii)+j) )
-					   +0.0
-					   +0.0
-					   +2.0 * *(Lx+i)**(Lx+j) * (-2.0**(b+k)**(*(L+ii)+i) + 0.5*(*(b+j)-*(b+k))**(*(L+ii)+k) )
-					   +2.0 * *(Lx+j)**(Lx+k) * ( 0.5*(*(b+j)-*(b+k))**(*(L+ii)+i) )
-					   +2.0 * *(Lx+k)**(Lx+i) * ( 2.0**(b+j)**(*(L+ii)+i) + 0.5*(*(b+j)-*(b+k))**(*(L+ii)+j) )
-					   );
-
-	  *(*(Bb+0)+3*i+2)=-(
-						1.0	* *(Lx+i)**(Lx+i) *   2.0*( *(c+j)**(*(L+ii)+k) - *(c+k)**(*(L+ii)+j) )
-					   +0.0
-					   +0.0
-					   +2.0 * *(Lx+i)**(Lx+j) * (-2.0**(c+k)**(*(L+ii)+i) + 0.5*(*(c+j)-*(c+k))**(*(L+ii)+k) )
-					   +2.0 * *(Lx+j)**(Lx+k) * ( 0.5*(*(c+j)-*(c+k))**(*(L+ii)+i) )
-					   +2.0 * *(Lx+k)**(Lx+i) * ( 2.0**(c+j)**(*(L+ii)+i) + 0.5*(*(c+j)-*(c+k))**(*(L+ii)+j) )
-					   );
-
-	  *(*(Bb+1)+3*i+0)=-(
-						1.0 * *(Ly+i)**(Ly+i) *   2.0*( *(*(L+ii)+j)+*(*(L+ii)+k) )
-					   -1.0 * *(Ly+j)**(Ly+j) *   2.0*( *(*(L+ii)+i)              )
-					   -1.0 * *(Ly+k)**(Ly+k) *   2.0*( *(*(L+ii)+i)              )
-					   +2.0 * *(Ly+i)**(Ly+j) *   2.0*( *(*(L+ii)+i)-*(*(L+ii)+j) )
-					   +0.0
-					   +2.0 * *(Ly+k)**(Ly+i) *   2.0*( *(*(L+ii)+i)-*(*(L+ii)+k) )
-					   );
-
-	  *(*(Bb+1)+3*i+1)=-(
-						1.0 * *(Ly+i)**(Ly+i) *   2.0*( *(b+j)**(*(L+ii)+k) - *(b+k)**(*(L+ii)+j) )
-					   +0.0
-					   +0.0
-					   +2.0 * *(Ly+i)**(Ly+j) * (-2.0**(b+k)**(*(L+ii)+i) + 0.5*(*(b+j)-*(b+k))**(*(L+ii)+k) )
-					   +2.0 * *(Ly+j)**(Ly+k) * ( 0.5*(*(b+j)-*(b+k))**(*(L+ii)+i) )
-					   +2.0 * *(Ly+k)**(Ly+i) * ( 2.0**(b+j)**(*(L+ii)+i) + 0.5*(*(b+j)-*(b+k))**(*(L+ii)+j) )
-					   );
-
-	  *(*(Bb+1)+3*i+2)=-(
-						1.0 * *(Ly+i)**(Ly+i) *   2.0*( *(c+j)**(*(L+ii)+k) -*(c+k)**(*(L+ii)+j) )
-					   +0.0
-					   +0.0
-					   +2.0 * *(Ly+i)**(Ly+j) * (-2.0**(c+k)**(*(L+ii)+i) + 0.5*(*(c+j)-*(c+k))**(*(L+ii)+k) )
-					   +2.0 * *(Ly+j)**(Ly+k) * ( 0.5*(*(c+j)-*(c+k))**(*(L+ii)+i) )
-					   +2.0 * *(Ly+k)**(Ly+i) * ( 2.0**(c+j)**(*(L+ii)+i) + 0.5*(*(c+j)-*(c+k))**(*(L+ii)+j) )
-					   );
-
-	  *(*(Bb+2)+3*i+0)=-2.0*(
-						   *(Lx+i)**(Ly+i)                     *  2.0*( *(*(L+ii)+j)+*(*(L+ii)+k) )
-					   -   *(Lx+j)**(Ly+j)                     *  2.0*( *(*(L+ii)+i)              )
-					   -   *(Lx+k)**(Ly+k)                     *  2.0*( *(*(L+ii)+i)              )
-					   + ( *(Lx+i)**(Ly+j) + *(Lx+j)**(Ly+i) ) *  2.0*( *(*(L+ii)+i)-*(*(L+ii)+j) )
-					   +   0.0
-					   + ( *(Lx+k)**(Ly+i) + *(Lx+i)**(Ly+k) ) *  2.0*( *(*(L+ii)+i)-*(*(L+ii)+k) )
-					   );
-
-	  *(*(Bb+2)+3*i+1)=-2.0*(
-						   *(Lx+i)**(Ly+i)                     *  2.0*( *(b+j)**(*(L+ii)+k) - *(b+k)**(*(L+ii)+j) )
-					   +   0.0
-					   +   0.0
-					   + ( *(Lx+i)**(Ly+j) + *(Lx+j)**(Ly+i) ) *(-2.0**(b+k)**(*(L+ii)+i) + 0.5*(*(b+j)-*(b+k))**(*(L+ii)+k) )
-					   + ( *(Lx+j)**(Ly+k) + *(Lx+k)**(Ly+j) ) *( 0.5*(*(b+j)-*(b+k))**(*(L+ii)+i) )
-					   + ( *(Lx+k)**(Ly+i) + *(Lx+i)**(Ly+k) ) *( 2.0**(b+j)**(*(L+ii)+i) + 0.5*(*(b+j)-*(b+k))**(*(L+ii)+j) )
-					   );
-
-	  *(*(Bb+2)+3*i+2)=-2.0*(
-						   *(Lx+i)**(Ly+i)                     *  2.0*( *(c+j)**(*(L+ii)+k) -*(c+k)**(*(L+ii)+j) )
-					   +   0.0
-					   +   0.0
-					   + ( *(Lx+i)**(Ly+j) + *(Lx+j)**(Ly+i) ) *(-2.0**(c+k)**(*(L+ii)+i) + 0.5*(*(c+j)-*(c+k))**(*(L+ii)+k) )
-					   + ( *(Lx+j)**(Ly+k) + *(Lx+k)**(Ly+j) ) *( 0.5*(*(c+j)-*(c+k))**(*(L+ii)+i) )
-					   + ( *(Lx+k)**(Ly+i) + *(Lx+i)**(Ly+k) ) *( 2.0**(c+j)**(*(L+ii)+i) + 0.5*(*(c+j)-*(c+k))**(*(L+ii)+j) )
-					   );
-	}
-#endif
-
-
-	/*Stricklin/Dhattらの離散Kirchhoff仮定三角形(DKT:Discrete Kirchhoff Triangular)要素T-9D*/
-#if 1
-	for(i=0;i<3;i++)
-	{
-	  j=(i+1)%3;
-	  k=(i+2)%3;
-
-	  *(*(Bb+0)+3*i+0)=  6.0 * *(aa+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) )
-					   - 6.0 * *(aa+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) );
-
-	  *(*(Bb+0)+3*i+1)=  4.0 * *(bb+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) )
-					   + 4.0 * *(bb+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+0)+3*i+2)=        *(Lx+i) * ( 4.0 * *(*(L+ii)+i) - 1.0 )
-					   - 4.0 * *(cc+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) )
-					   - 4.0 * *(cc+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+1)+3*i+0)=  6.0 * *(dd+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) )
-					   - 6.0 * *(dd+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) );
-
-	  *(*(Bb+1)+3*i+1)=        *(Ly+i) * ( 1.0 - 4.0 * *(*(L+ii)+i) )
-					   + 4.0 * *(ee+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   + 4.0 * *(ee+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+1)+3*i+2)=- 4.0 * *(bb+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   - 4.0 * *(bb+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+2)+3*i+0)=  6.0 * *(aa+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) )
-					   - 6.0 * *(aa+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   + 6.0 * *(dd+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) )
-					   - 6.0 * *(dd+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) );
-
-	  *(*(Bb+2)+3*i+1)=  4.0 * *(bb+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   + 4.0 * *(bb+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) )
-					   +       *(Lx+i) * ( 1.0 - 4.0 * *(*(L+ii)+i) )
-					   + 4.0 * *(ee+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) )
-					   + 4.0 * *(ee+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+2)+3*i+2)=        *(Ly+i) * ( 4.0 * *(*(L+ii)+i) - 1.0 )
-					   - 4.0 * *(cc+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   - 4.0 * *(cc+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) )
-					   - 4.0 * *(bb+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) )
-					   - 4.0 * *(bb+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
-	}
-#endif
-	Bbt=matrixtransposeIII(Bb,3,9);
-	DbBb=matrixmatrixIII(Db,Bb,3,3,9);
-	Kb=matrixmatrixIII(Bbt,DbBb,9,3,9);
-
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(Ke+6*i+2)+6*j+2) += *(*(Kb+3*i+0)+3*j+0)**(a+ii)*det*brate;
-		*(*(Ke+6*i+2)+6*j+3) += *(*(Kb+3*i+0)+3*j+1)**(a+ii)*det*brate;
-		*(*(Ke+6*i+2)+6*j+4) += *(*(Kb+3*i+0)+3*j+2)**(a+ii)*det*brate;
-		*(*(Ke+6*i+3)+6*j+2) += *(*(Kb+3*i+1)+3*j+0)**(a+ii)*det*brate;
-		*(*(Ke+6*i+3)+6*j+3) += *(*(Kb+3*i+1)+3*j+1)**(a+ii)*det*brate;
-		*(*(Ke+6*i+3)+6*j+4) += *(*(Kb+3*i+1)+3*j+2)**(a+ii)*det*brate;
-		*(*(Ke+6*i+4)+6*j+2) += *(*(Kb+3*i+2)+3*j+0)**(a+ii)*det*brate;
-		*(*(Ke+6*i+4)+6*j+3) += *(*(Kb+3*i+2)+3*j+1)**(a+ii)*det*brate;
-		*(*(Ke+6*i+4)+6*j+4) += *(*(Kb+3*i+2)+3*j+2)**(a+ii)*det*brate;
-	  }
-	}
-	/*if(0)
-	{
-		for(i=0;i<3;i++)
-		{
-		  *(*(DBe+6*ii+3)+6*i+2)=*(*(DbBb+0)+3*i+0)*6/pow(t,2)*brate;
-		  *(*(DBe+6*ii+3)+6*i+3)=*(*(DbBb+0)+3*i+1)*6/pow(t,2)*brate;
-		  *(*(DBe+6*ii+3)+6*i+4)=*(*(DbBb+0)+3*i+2)*6/pow(t,2)*brate;
-		  *(*(DBe+6*ii+4)+6*i+2)=*(*(DbBb+1)+3*i+0)*6/pow(t,2)*brate;
-		  *(*(DBe+6*ii+4)+6*i+3)=*(*(DbBb+1)+3*i+1)*6/pow(t,2)*brate;
-		  *(*(DBe+6*ii+4)+6*i+4)=*(*(DbBb+1)+3*i+2)*6/pow(t,2)*brate;
-		  *(*(DBe+6*ii+5)+6*i+2)=*(*(DbBb+2)+3*i+0)*6/pow(t,2)*brate;
-		  *(*(DBe+6*ii+5)+6*i+3)=*(*(DbBb+2)+3*i+1)*6/pow(t,2)*brate;
-		  *(*(DBe+6*ii+5)+6*i+4)=*(*(DbBb+2)+3*i+2)*6/pow(t,2)*brate;
-		}
-	}*/
-	if(B!=NULL)
-	{
-		for(i=0;i<3;i++)
-		{
-		  *(*(*(B+ii)+3)+6*i+2)=*(*(Bb+0)+3*i+0);
-		  *(*(*(B+ii)+3)+6*i+3)=*(*(Bb+0)+3*i+1);
-		  *(*(*(B+ii)+3)+6*i+4)=*(*(Bb+0)+3*i+2);
-		  *(*(*(B+ii)+4)+6*i+2)=*(*(Bb+1)+3*i+0);
-		  *(*(*(B+ii)+4)+6*i+3)=*(*(Bb+1)+3*i+1);
-		  *(*(*(B+ii)+4)+6*i+4)=*(*(Bb+1)+3*i+2);
-		  *(*(*(B+ii)+5)+6*i+2)=*(*(Bb+2)+3*i+0);
-		  *(*(*(B+ii)+5)+6*i+3)=*(*(Bb+2)+3*i+1);
-		  *(*(*(B+ii)+5)+6*i+4)=*(*(Bb+2)+3*i+2);
-		}
-	}
-	freematrix(Bb,3);
-	freematrix(Bbt,9);
-	freematrix(DbBb,3);
-	freematrix(Kb,9);
-  }
-  freematrix(L,7);
-  freematrix(Db,3);
-  free(a);
-#if 1
-  free(aa);
-  free(bb);
-  free(cc);
-  free(dd);
-  free(ee);
-#endif
-  return;
-}
-
-void addktemtx(double **Ke,double E,double t,double det)
-{   /*面内回転安定化用行列*/
-	*(*(Ke+5)+5)=0.03*E*t*det;
-	*(*(Ke+5)+11)=-0.015*E*t*det;
-	*(*(Ke+5)+17)=*(*(Ke+5)+11);
-	*(*(Ke+11)+5)=*(*(Ke+5)+11);
-	*(*(Ke+11)+11)=*(*(Ke+5)+5);
-	*(*(Ke+11)+17)=*(*(Ke+5)+11);
-	*(*(Ke+17)+5)=*(*(Ke+5)+11);
-	*(*(Ke+17)+11)=*(*(Ke+5)+11);
-	*(*(Ke+17)+17)=*(*(Ke+5)+5);
-	return;
-}
 
 
 

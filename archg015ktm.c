@@ -521,7 +521,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 
 	shell.sect=(shells+i-1)->sect;
 
-	estress=shellstress(&shell,gvct2,mshell);
+	//estress=shellstress(&shell,gvct2,mshell);
 
 	outputshellstress(shell,estress,fout);
 	free(estress);

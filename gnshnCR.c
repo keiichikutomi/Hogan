@@ -1386,7 +1386,8 @@ int gnshnCR(struct arclmframe* af)
 						*(fpressure + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(midgpressure + 6 * ii + jj);
 						(shells+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
 						(mshell+i-1)->stress[ii][jj]=*(einternal+6*ii+jj);
-						(mshell+i-1)->shellstress[ii][jj]=*(shellstress+6*ii+jj);
+
+						(mshell+i-1)->stress[ii][jj]=*(shellstress+6*ii+jj);
 					}
 				}
 
@@ -1521,12 +1522,12 @@ int gnshnCR(struct arclmframe* af)
 			{
 				fprintf(fene, "%5ld %e %e %e %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE, (mshell+i)->KEt, (mshell+i)->KEr, (mshell+i)->KE);
 				fprintf(fstr, "%5ld %e %e %e %e %e %e\n", (shells+i)->code,
-				(mshell+i)->shellstress[0][0],
-				(mshell+i)->shellstress[0][1],
-				(mshell+i)->shellstress[0][2],
-				(mshell+i)->shellstress[0][3],
-				(mshell+i)->shellstress[0][4],
-				(mshell+i)->shellstress[0][5]);
+				(mshell+i)->stress[0][0],
+				(mshell+i)->stress[0][1],
+				(mshell+i)->stress[0][2],
+				(mshell+i)->stress[0][3],
+				(mshell+i)->stress[0][4],
+				(mshell+i)->stress[0][5]);
 			}
 		}
 		if(solver==0)
