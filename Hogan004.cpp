@@ -21,22 +21,38 @@
 #include <string.h>
 #include <time.h>
 
+#if defined(_WIN64)
+	#define GCL_HCURSOR GCLP_HCURSOR
+	#define GCL_HBRBACKGROUND GCLP_HBRBACKGROUND
+    #define SetClassLong SetClassLongPtr
+    #define GetClassLong GetClassLongPtr
+#else
+#endif
+
+
+
+
 
 #include "canhead.h"                    /*DEFINITION OF COMMAND ID.*/
 #include "archg120-3ktm.c"       /*ANALYSIS NONLINEAR,MATH,VIEWING.*/
 #include "shell.c"
+#include "corotational.c"
+#include "arclmEigen.c"
+#include "assemble.c"
+
 #include "archg015ktm.c"                  /*ANALYSIS STATIC LINEAR.*/
-#include "arclmCR.c"                        /*CO-ROTATIONAL METHOD.*/
+#include "arclmStatic.c"              /*ANALYSIS STATIC NON-LINEAR.*/
+//#include "arclmStaticEx.c"            /*ANALYSIS STATIC NON-LINEAR.*/
+
 #include "bclng021ujok.c"                       /*ELASTIC BUCKLING.*/
 #include "qadhg001.c"               /*ANALYSIS BIQUADRATIC ELEMENT.*/
 #include "srcal007ujok.c"                     /*DRAW SECTIONS LIST.*/
 #include "gnshn103ktm.c"                        /*DYNAMIC ANALYSIS.*/
-#include "gnshnCR.c"
+#include "arclmDynamic.c"
 #include "vbrat001.c"
 #include "optimization.c"                 			 /*OPTIMIZATION*/
 #include "model001.c"                      /*INP-TO-DXF CONVERSION.*/
 #include "arclm002.c"                     /*FOR GREEN-HOUSE PROJECT*/
-#include "pezettino.c"                         /*ANALYSIS NONLINEAR*/
 
 
 #define MENUDIALOGS 4 /*MENU DIALOG BOXES.*/
@@ -79,7 +95,6 @@
 
 #define FILENAME      "ShellTest"
 #define FILENAME      "ShellDynaTest"
-//#define FILENAME      "240607LMBosfullwithframeb100"
 #define FILENAME  "240701LMBosfullp1b1"
 #define FILENAME  "QuadPoly2mmp02b5"
 #define FILENAME  "ShellDynaTest"
@@ -163,7 +178,7 @@ struct viewparam vpdefault={PERSPECTIVE,0,0,
 							 {0,0,{-100.0, -100.0, 6.0}}},
                             {10.0, 0.5,
                              500.0, 0.0, 0.01,
-                             0.5,
+							 0.5,
                              3},
                             {3000.0}};
 # endif
@@ -205,7 +220,7 @@ struct windowparams wsurf={4,0,0,NEUTRAL,"CanSurfWin",
 
 struct windowparams wsfrm={5,0,0,NEUTRAL,"CanSframeWin",
                            NULL,NULL,NULL,NULL,
-                           NEUTRAL,NEUTRAL,NEUTRAL,
+						   NEUTRAL,NEUTRAL,NEUTRAL,
                            NULL,0,0};
 struct windowparams wprop={6,0,0,NEUTRAL,"CanPlistWin",
                            NULL,NULL,NULL,NULL,
@@ -883,7 +898,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			{
 			  globalmessageflag=0;
 
-			  arclmCR(&arc);
+			  arclmStatic(&arc);
 
 			  /*SRCAN*/
 			  n=strcspn((wdraw.childs+1)->sctfile,".");
@@ -930,7 +945,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			{
 			  globalmessageflag=0;
 
-			  gnshnCR(&arc);
+			  arclmDynamic(&arc);
 
 			  clearwindow(*(wdraw.childs+1));
 			  drawarclmframe((wdraw.childs+1)->hdcC,
@@ -1045,7 +1060,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
             (wdraw.childs+1)->vparam=vpdefault;
             /*(wdraw.childs+1)->vparam.type=AXONOMETRIC;*/
 			/*(wdraw.childs+1)->vparam.type=PERSPECTIVE;*/
-            /*getviewparam((wmenu.childs+2)->hwnd,
+			/*getviewparam((wmenu.childs+2)->hwnd,
 						 &((wdraw.childs+1)->vparam));*/
 
 			(wdraw.childs+1)->vparam.vflag.pv.printrange =0;   //by mihara
@@ -1213,7 +1228,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 							 WS_CLIPSIBLINGS |
                              WS_CHILD |
                              WS_VISIBLE,
-                             0,0,500,2000,
+							 0,0,500,2000,
                              (wmesg.childs+0)->hwnd);
 
             (wmesg.childs+1)->tx=0;
@@ -1255,7 +1270,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 							 hInstGlobal,
 							 NULL,
 							 WindowProcedureSheet,
-                             NULL,
+							 NULL,
 							 190,190,190,
                              WS_CLIPCHILDREN |
                              WS_CLIPSIBLINGS |
@@ -1297,7 +1312,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 							 WS_VISIBLE,
                              0,0,500,500,
                              (wsurf.childs+0)->hwnd);
-            setfontformat((wsurf.childs+1)->hdcC,15,6,
+			setfontformat((wsurf.childs+1)->hdcC,15,6,
 						  "MS Mincho",100,255,255);
 
             getclientsize((wsurf.childs+1)->hwnd,&maxX,&maxY);
@@ -1339,7 +1354,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			wsurf.nchilds=0;
             wsurf.hwnd = NULL;
 
-            (wmenu.childs+2)->vparam.vflag.mv.surface=0;
+			(wmenu.childs+2)->vparam.vflag.mv.surface=0;
             SendMessage((wmenu.childs+2)->hwnd,WM_INITDIALOG,0,0);
           }
           break;
@@ -1423,7 +1438,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			(wmenu.childs+2)->vparam.vflag.mv.sectlist=0;
             SendMessage((wmenu.childs+2)->hwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
         case IDM_PROPERTYLIST:
           if(wprop.hwnd==NULL &&
              wsfrm.hwnd!=NULL) /*CREATION.*/
@@ -1507,7 +1522,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 		  {
             getclientsize(wsfrm.hwnd,&maxX,&maxY);
             if(wprop.hwnd!=NULL)
-            {
+			{
               getwindowsize(wprop.hwnd,&mw1,&mh1);
             }
             else
@@ -1591,7 +1606,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 		  if(wsdsp.hwnd==NULL &&
              wsfrm.hwnd!=NULL) /*CREATION.*/
           {
-            getclientsize(wsfrm.hwnd,&maxX,&maxY);
+			getclientsize(wsfrm.hwnd,&maxX,&maxY);
 
             if(wsect.hwnd!=NULL)
             {
@@ -1633,7 +1648,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 							 1,1,maxX-BARWIDTH-5,maxY-BARWIDTH-5,
                              wsdsp.hwnd);
 
-            windowdefinition(wsdsp.childs+1,
+			windowdefinition(wsdsp.childs+1,
                              hInstGlobal,
                              "CanSviewDsp",
                              WindowProcedureSview,
@@ -1675,7 +1690,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			{
               ReleaseDC((wsdsp.childs+i)->hwnd,
                         (wsdsp.childs+i)->hdcB);
-              ReleaseDC((wsdsp.childs+i)->hwnd,
+			  ReleaseDC((wsdsp.childs+i)->hwnd,
                         (wsdsp.childs+i)->hdcC);
             }
 			ReleaseDC(wsdsp.hwnd,wsdsp.hdcB);
@@ -1717,7 +1732,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 						 malloc(wmenu.nchilds*
                                 sizeof(struct windowparams));
 
-            windowdefinition(wmenu.childs+0,
+			windowdefinition(wmenu.childs+0,
                              hInstGlobal,
                              "CanMenuBak",
                              WindowProcedureBack,
@@ -1759,7 +1774,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			(wmenu.childs+2)->hwnd
             = CreateDialog(hInstGlobal,
                            "CANOPTIONS1",
-                           (wmenu.childs+1)->hwnd,
+						   (wmenu.childs+1)->hwnd,
                            (DLGPROC)DialogProcMenu1);
 
             (wmenu.childs+3)->hwnd
@@ -1843,7 +1858,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 
 		  if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
           {
-            getviewparam((wmenu.childs+2)->hwnd,
+			getviewparam((wmenu.childs+2)->hwnd,
                          &((wdraw.childs+1)->vparam));
             clearwindow(*(wdraw.childs+1));
             arclm001(&arcx,ID_INPUTFILEX,ID_OUTPUTFILEX);
@@ -1885,7 +1900,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			int idinputs[3],idoutputs[3];
             struct arclmframe *arcs[3];
             arcs[0]=&arc;arcs[1]=&arcx;arcs[2]=&arcy;
-            // arcs[0]=&arc;arcs[1]=&arc;arcs[2]=&arc;
+			// arcs[0]=&arc;arcs[1]=&arc;arcs[2]=&arc;
             idinputs[0]=ID_INPUTFILEZ;idinputs[1]=ID_INPUTFILEX;idinputs[2]=ID_INPUTFILEY;
             idoutputs[0]=ID_OUTPUTFILEZ;idoutputs[1]=ID_OUTPUTFILEX;idoutputs[2]=ID_OUTPUTFILEY;
 			arclm001_lxy(arcs,idinputs,idoutputs);
@@ -2053,7 +2068,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 		  break;
 
 		case IDM_SAVEORGAN:                         /*Save*/
-          if(wdraw.nchilds>=2 &&
+		  if(wdraw.nchilds>=2 &&
              (wdraw.childs+1)->hwnd!=NULL &&
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN &&
              (wdraw.childs+1)->org.nodes!=NULL)
@@ -2137,7 +2152,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN &&
              (wdraw.childs+1)->org.nodes!=NULL)
           {
-            (wdraw.childs+1)->vparam.vflag.nv.mcircle=1;
+			(wdraw.childs+1)->vparam.vflag.nv.mcircle=1;
             /*(wdraw.childs+1)->vparam.vflag.nv.mvalue=1;*/
             SendMessage((wmenu.childs+3)->hwnd,WM_INITDIALOG,0,0);
 
@@ -2221,7 +2236,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
             printarclmfigures2(fout,&((wdraw.childs+1)->vparam),1,0);  /*7.2-4*/
             fclose(fout);
 
-            (wdraw.childs+1)->vparam.vflag.mv.pagenum=0;
+			(wdraw.childs+1)->vparam.vflag.mv.pagenum=0;
             (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN;
             clearwindow(*(wdraw.childs+1));
 			draworganization((wdraw.childs+1)->hdcC,
@@ -2276,7 +2291,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
           }
           break;
 
-		/*test*/
+		/*
 		case IDM_TESTCALCULATION:
           if(wdraw.nchilds>=2 &&
 			 (wdraw.childs+1)->hwnd!=NULL &&
@@ -2290,7 +2305,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 		    }
           }
 		  break;
-		/*test*/
+		*/
 
 		/*BCLNG*/
 		case IDM_OPENBCLNGRESULT:
@@ -2347,7 +2362,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 */
 			arc.nlaps=1;
 
-            globalcondensationflag=1;
+			globalcondensationflag=1;
 
 			clearwindow(*(wdraw.childs+1));
 			drawarclmframe((wdraw.childs+1)->hdcC,
@@ -2431,7 +2446,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
                            MB_OKCANCEL)==IDOK)
               {
                 offset=0;
-                while(1)
+				while(1)
                 {
                   multiwire=selectmultiwireII(&arc,offset,&nmultiwire);   /*FROM TEXT MODE*/
                   if(!nmultiwire) break;
@@ -2473,7 +2488,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
             (wdraw.childs+1)->lstatus=ROTATE;
             (wdraw.childs+1)->vparam.vflag.ev.deformation=0;
             (wdraw.childs+1)->vparam.vflag.ev.srcanrate=1;
-            (wdraw.childs+1)->vparam.vflag.ev.srcancolor=1;
+			(wdraw.childs+1)->vparam.vflag.ev.srcancolor=1;
 		  }
 		  break;
 
@@ -2557,7 +2572,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 		case IDM_PRINTSETUP: /*PRINTER SETUP.*/
           if(gprn.pflag==0)
           {
-            GetDlgItemText((wmenu.childs+3)->hwnd,
+			GetDlgItemText((wmenu.childs+3)->hwnd,
                            IDP_JIHEIGHT,str,20);
             gprn.jiheight=(int)strtol(str,NULL,10);
             GetDlgItemText((wmenu.childs+3)->hwnd,
@@ -2575,19 +2590,19 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
             gprn.pd.nMinPage = (WORD)NULL;
             gprn.pd.nMaxPage = (WORD)NULL;
             gprn.pd.nCopies = (WORD)NULL;
-			gprn.pd.hInstance = (HANDLE)NULL;
-            gprn.pd.lCustData = 0L;
+			gprn.pd.hInstance = /*(HANDLE)*/(HINSTANCE)NULL;
+			gprn.pd.lCustData = 0L;
             gprn.pd.lpfnPrintHook = (LPPRINTHOOKPROC)NULL;
             gprn.pd.lpfnSetupHook = (LPSETUPHOOKPROC)NULL;
-            gprn.pd.lpPrintTemplateName = (LPSTR)NULL;
-            gprn.pd.lpSetupTemplateName = (LPSTR)NULL;
-            gprn.pd.hPrintTemplate = (HANDLE)NULL;
+			gprn.pd.lpPrintTemplateName = (LPSTR)NULL;
+			gprn.pd.lpSetupTemplateName = (LPSTR)NULL;
+			gprn.pd.hPrintTemplate = (HANDLE)NULL;
             gprn.pd.hSetupTemplate = (HANDLE)NULL;
 
             if(PrintDlg(&(gprn.pd)) != FALSE)
-            {
+			{
               if(!(GetDeviceCaps(gprn.pd.hDC, RASTERCAPS)
-                 & RC_BITBLT))
+				 & RC_BITBLT))
               {
                 MessageBox(NULL,"Bitmap Not Available","Print",
                            MB_OK);
@@ -2641,7 +2656,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
                arc.elems!=NULL)
             {
               drawarclmframe(gprn.pd.hDC,vprint,arc,0,ONPRINTER);
-            }
+			}
             if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN &&
                (wdraw.childs+1)->org.elems!=NULL)
             {
@@ -2683,7 +2698,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
           break;
         case IDM_PRINTEND: /*END PRINT DOCUMENT.*/
           if(gprn.pflag==1 && wdraw.hwnd!=NULL)
-          {
+		  {
             EndDoc(gprn.pd.hDC);
             DeleteDC(gprn.pd.hDC);
 
@@ -2935,7 +2950,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
     /* Copy the BITMAPINFOHEADER and RGBQUAD array into the file. */
     WriteFile(hf, (LPVOID) pbih,
                   sizeof(BITMAPINFOHEADER)
-                  + pbih->biClrUsed * sizeof (RGBQUAD),
+				  + pbih->biClrUsed * sizeof (RGBQUAD),
                   (LPDWORD) &dwTmp, (LPOVERLAPPED) NULL);
 
     /* Copy the array of color indices into the .BMP file. */
@@ -2977,7 +2992,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
                          (wdraw.childs+1)->inpfile);
           (wdraw.childs+1)->vparam.gfactor=3.93;
           (wdraw.childs+1)->vparam.focus.d[0]=63.4;
-          (wdraw.childs+1)->vparam.focus.d[1]=50.0;
+		  (wdraw.childs+1)->vparam.focus.d[1]=50.0;
           (wdraw.childs+1)->vparam.focus.d[2]=-10.0;
           (wdraw.childs+1)->vparam.theta=-180.0;
           (wdraw.childs+1)->vparam.phi=0.0;
@@ -3019,7 +3034,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
           wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
                                "Model         , Scale=1:600",
                                -250.0,5.0);
-          wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
+		  wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
                                "Node,Element Code",-250.0,13.0);
 
 
@@ -3103,7 +3118,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
           /*sprintf((wdraw.childs+1)->inpfile,"hako\\hako41.inl");
           sprintf((wdraw.childs+1)->otpfile,"hako\\hako41.otl");
 		  SetDlgItemText((wmenu.childs+2)->hwnd,ID_INPUTFILE,
-                         (wdraw.childs+1)->inpfile);
+						 (wdraw.childs+1)->inpfile);
           SetDlgItemText((wmenu.childs+2)->hwnd,ID_OUTPUTFILE,
                          (wdraw.childs+1)->otpfile);
           (wdraw.childs+1)->vparam.gfactor=3.93;
@@ -3145,7 +3160,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
 
           wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
                                "Level 1",210.0, -28.0);
-          wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
+		  wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
                                "Level 2",210.0, -46.0);
           wdraw.strset=addtext(wdraw.strset,&(wdraw.nstring),
                                "Level 3",210.0, -62.0);
@@ -3187,7 +3202,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
           /*END PRINTING.*/
           if(ip)
           {
-            wparam = MAKEWPARAM((WORD)IDM_PRINTEND,(WORD)0);
+			wparam = MAKEWPARAM((WORD)IDM_PRINTEND,(WORD)0);
             SendMessage(wmain.hwnd,WM_COMMAND,wparam,0);
           }
           break;
@@ -3229,7 +3244,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
             strcpy((wdraw.childs+1)->inpfiley,str);
             strcat((wdraw.childs+1)->inpfiley,".ihy");
 
-            strcpy((wdraw.childs+1)->otpfile,str);
+			strcpy((wdraw.childs+1)->otpfile,str);
             strcat((wdraw.childs+1)->otpfile,".otp");
             strcpy((wdraw.childs+1)->otpfilez,str);
             strcat((wdraw.childs+1)->otpfilez,".otl");
@@ -3355,7 +3370,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
 
         case IDM_DRAWSECTION: /*SECTION LIST.*/
           if(wdraw.nchilds>=2 &&
-             (wdraw.childs+1)->hwnd!=NULL &&
+			 (wdraw.childs+1)->hwnd!=NULL &&
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_SRCAN &&
              srcansects>0)
           {
@@ -3397,7 +3412,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
                             srcansects,srcanlist,
                             1000,500,
                             gprn.cWidthPels,
-                            gprn.cHeightPels,
+							gprn.cHeightPels,
                             vprint,ONPRINTER);
 
             /*END PRINTING.*/
@@ -3439,7 +3454,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN ||
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM ||
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_FRAME)
-          {
+		  {
             fout=fopen((wdraw.childs+1)->otpfile,"r");      /*.rat‚ðŠJ‚«‚Ü‚·B*/
             if(fout==NULL) break;
             readsrcanrate(fout,&arc);                   /*.rat‚ð“Ç‚Ýž‚Ý‚Ü‚·B*/
@@ -3481,7 +3496,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
       break;
 
 	case WM_LBUTTONDOWN:
-      hdc = GetDC(hwnd);
+	  hdc = GetDC(hwnd);
       x = LOWORD(lParam);
       y = HIWORD(lParam);
       sprintf(str,"POSITION:%d %d",x,y);
@@ -3523,7 +3538,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
 
   switch(message)
   {
-    case WM_PAINT:
+	case WM_PAINT:
     case WM_SIZE:
 	  DefWindowProc(hwnd,message,wParam,lParam);
 	  /*EnumChildWindows(hwnd,(DLGPROC)EnumChildProcSheet,0);*/ /*UPDATE CHILDS.*/
@@ -3533,7 +3548,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
 
       hdc=GetDC(hwnd);
 
-      hbrush = (HBRUSH)GetClassLong(hwnd,GCL_HBRBACKGROUND);
+	  hbrush = (HBRUSH)GetClassLong(hwnd,GCL_HBRBACKGROUND);
       SelectObject(hdc,hbrush);
       PatBlt(hdc,0,0,maxX,maxY,PATCOPY);
 
@@ -3565,7 +3580,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
 
       getclientsize(hwnd,&maxX,&maxY); /*PARENT SHEET.*/
       getclientsize((wp->childs+0)->hwnd,&pw,&ph); /*BACKGROUND.*/
-      getwindowsize((wp->childs+1)->hwnd,&cw,&ch); /*CHILD.*/
+	  getwindowsize((wp->childs+1)->hwnd,&cw,&ch); /*CHILD.*/
 
       if(/*ch>ph &&*/ PtInRect(&(wp->vbar),point))
       {
@@ -3733,7 +3748,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
 
         if(wp->sstatus==VSCROLLING)
         {
-          bmax=maxY-BARWIDTH-5;
+		  bmax=maxY-BARWIDTH-5;
 
           bt=wp->vbar.top+point.y-pbar.y;
           bb=wp->vbar.bottom+point.y-pbar.y;
@@ -3859,7 +3874,7 @@ LRESULT CALLBACK WindowProcedureBack(HWND hwnd,
       }
       break;
 
-    default:
+	default:
       return DefWindowProc(hwnd,message,wParam,lParam);
   }
   return 0;
@@ -4321,7 +4336,7 @@ MessageBox(NULL,str,"Divide Element",MB_OK);
 		else if(globalstatus==MOVENODENODETONODE ||
                 globalstatus==MOVEELEMENTNODETONODE ||
                 globalstatus==COPYNODENODETONODE ||
-                globalstatus==COPYELEMENTNODETONODE)
+				globalstatus==COPYELEMENTNODETONODE)
 		{
           node=selectorgannode((wdraw.childs+1)->vparam,
                                &((wdraw.childs+1)->org),point);
@@ -4759,7 +4774,7 @@ gelem.type=TYPENULL;
 /*MessageBox(NULL,"Pass 2","Add Elem",MB_OK);*/
 		  }
 
-          draworganization((wdraw.childs+1)->hdcC,
+		  draworganization((wdraw.childs+1)->hdcC,
 						   (wdraw.childs+1)->vparam,
 						   (wdraw.childs+1)->org,ONSCREEN);
 
@@ -4825,7 +4840,7 @@ gelem.type=TYPENULL;
           SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
           break;
         }
-        prestatus=SELECTELEMENT;
+		prestatus=SELECTELEMENT;
       }
 	  else if(globalstatus==SELECTSECTION)
       {
@@ -5413,7 +5428,7 @@ else if(find && pelem->sect->code==202)
 
             gincrement.dc[GX]=pnode->d[GX]-gnode->d[GX];
             gincrement.dc[GY]=pnode->d[GY]-gnode->d[GY];
-            gincrement.dc[GZ]=pnode->d[GZ]-gnode->d[GZ];
+			gincrement.dc[GZ]=pnode->d[GZ]-gnode->d[GZ];
 
             nnode=(wdraw.childs+1)->org.nnode;
 			nelem=(wdraw.childs+1)->org.nelem;
@@ -5455,7 +5470,7 @@ if(loff>=nnode || moff>=nnode)
 {
   sprintf(str,"Nodes=%d Elems=%d ELEM=%d NODE=%d,%d loff=%ld moff=%ld",
           nnode,nelem,
-          foundelem->code,
+		  foundelem->code,
           (*(foundelem->nods+0))->code,
           (*(foundelem->nods+1))->code,
           loff,moff);
@@ -5497,7 +5512,7 @@ if(loff>=nnode || moff>=nnode)
                 ((wdraw.childs+1)->org.nodes+i)->d[GX]-=1.000*gincrement.dc[GX]; /*1.000*/
                 ((wdraw.childs+1)->org.nodes+i)->d[GY]-=1.000*gincrement.dc[GY];
                 ((wdraw.childs+1)->org.nodes+i)->d[GZ]-=0.000*gincrement.dc[GZ];
-              }
+			  }
               if(*(nflag+i)>=3) /*UNDER CONSTRUCTION*/
               {
                 /*METHOD 1*/
@@ -6757,7 +6772,7 @@ if(loff>=nnode || moff>=nnode)
 		  globalstatus=prestatus;
           }
         }
-      }
+	  }
 
 	  /*CASE NOT CREATING.*/
 	  if(globalstatus==MOVE &&
@@ -6799,7 +6814,7 @@ if(loff>=nnode || moff>=nnode)
 
         if(labs(x)>=labs(y))
         {
-          (wdraw.childs+1)->vparam.theta=initv.theta
+		  (wdraw.childs+1)->vparam.theta=initv.theta
                                          +(double)x/10.0;
           sprintf(str,"%.1f",(wdraw.childs+1)->vparam.theta);
           SetDlgItemText((wmenu.childs+2)->hwnd,IDV_THETA,str);
@@ -6883,7 +6898,7 @@ if(loff>=nnode || moff>=nnode)
                             (wdraw.childs+1)->vparam,arc);
         }
         if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
-        {
+		{
           draworgannodes((wdraw.childs+1)->hdcC,
                          (wdraw.childs+1)->vparam,
                          (wdraw.childs+1)->org);
@@ -7345,7 +7360,7 @@ else
             if(fout==NULL) break;
             readsrcanrate(fout,&arc);
             fclose(fout);
-            int nred=0;
+			int nred=0;
             double maxsafety=0.0;
             int ii,jj;
             for(ii=0;ii<arc.nelem;ii++)
@@ -7807,7 +7822,7 @@ else
             hdc = (wdraw.childs+1)->hdcC;
             setfontformat(hdc,15,6,"MS Mincho",255,255,255);
             sprintf(str,"%ld",node->code);
-            TextOut(hdc,Nx+2,Ny,str,strlen(str));
+			TextOut(hdc,Nx+2,Ny,str,strlen(str));
             ReleaseDC((wdraw.childs+1)->hwnd,hdc);
             SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
@@ -7975,7 +7990,7 @@ else
             {
               if(MessageBox(NULL,"Move or Cancel","MoveElem",
                             MB_OKCANCEL)==IDCANCEL) break;
-            }
+			}
             if(LOWORD(wParam)==IDM_POPCOPYDIALOG)
             {
               if(MessageBox(NULL,"Copy or Cancel","CopyElem",
@@ -8017,7 +8032,7 @@ else
 
           if(globalstatus==MOVENODEBYDIALOG)
           {
-            pnode->d[0]+=dx;
+			pnode->d[0]+=dx;
             pnode->d[1]+=dy;
             pnode->d[2]+=dz;
           }
@@ -8059,7 +8074,7 @@ else
           globalstatus=NEUTRAL;
           break;
         case IDM_POPMOVENODETONODE:
-        case IDM_POPCOPYNODETONODE:
+		case IDM_POPCOPYNODETONODE:
           if(wdraw.nchilds>=2 &&
              wmenu.nchilds>=3 &&
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
@@ -8101,7 +8116,7 @@ else
             {
               if(MessageBox(NULL,"Copy or Cancel","CopyElem",
                             MB_OKCANCEL)==IDCANCEL) break;
-            }*/
+			}*/
 
             pelem=foundelem;
 
@@ -8143,7 +8158,7 @@ else
 
             /*DRAW SELECTED NODE.*/
             nodeontoscreen(*node,&Nx,&Ny,
-                           (wdraw.childs+1)->vparam); /*PROJECTION*/
+						   (wdraw.childs+1)->vparam); /*PROJECTION*/
             /*hdc = GetDC((wdraw.childs+1)->hwnd);*/
             hdc = (wdraw.childs+1)->hdcC;
             setfontformat(hdc,15,6,"MS Mincho",255,255,255);
@@ -8185,7 +8200,7 @@ else
                                          &selectedban);
             if(foundelem==NULL)
             {
-              MessageBox(hwnd,"Nothing.","Element",MB_OK);
+			  MessageBox(hwnd,"Nothing.","Element",MB_OK);
               break;
             }
             pelem=foundelem;
@@ -8227,7 +8242,7 @@ else
           globalstatus=NEUTRAL;
           break;
 
-        case IDM_POPCHANGESECT:                       /*change sect*/
+		case IDM_POPCHANGESECT:                       /*change sect*/
           if(wdraw.nchilds>=2 &&
              wmenu.nchilds>=3 &&
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
@@ -8269,7 +8284,7 @@ else
             getwindowsize(hpopdlg,&mw,&mh);
             ClientToScreen((wdraw.childs+1)->hwnd,&point);
             MoveWindow(hpopdlg,point.x,point.y,mw,mh,TRUE);
-            ShowWindow(hpopdlg,SW_SHOW);
+			ShowWindow(hpopdlg,SW_SHOW);
 
             globalstatus=CHANGESECTION;
           }
@@ -8311,7 +8326,7 @@ else
                 break;
               }
             }
-          }
+		  }
           else if(globalstatus==CHANGESECTION && code!=0)
           {
             for(i=0;i<((wdraw.childs+1)->org.nsect);i++)
@@ -8353,7 +8368,7 @@ else
 
             node=selectorgannode((wdraw.childs+1)->vparam,
                                  &((wdraw.childs+1)->org),point);
-            if(node==NULL)
+			if(node==NULL)
             {
               MessageBox(NULL,"Nothing.","MoveNode",MB_OK);
               break;
@@ -8395,7 +8410,7 @@ else
                            (wdraw.childs+1)->org,ONSCREEN);
 		  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
-          globalstatus=NEUTRAL;
+		  globalstatus=NEUTRAL;
           break;
 
         case IDM_POPCHANGEBOND:
@@ -8437,7 +8452,7 @@ else
                          GCL_HCURSOR,(LONG)hcursor);
 
             globalstatus = CHANGEBOND;
-          }
+		  }
           break;
         case IDM_POPBONDRETURN:
           /*REDRAW FRAME*/
@@ -8479,7 +8494,7 @@ else
 
         case IDM_POPSELECTMULTIELEM:
           globalstatus=SELECTMULTIELEM;
-          break;
+		  break;
         case IDM_POPCOPYMULTIELEMBYDIALOG:
         case IDM_POPMOVEMULTIELEMBYDIALOG:
           if(wdraw.nchilds>=2 &&
@@ -8521,7 +8536,7 @@ else
 
             deletemultielem(&((wdraw.childs+1)->org));
             nmultielem=0;
-            free(multielem);
+			free(multielem);
 
             globalstatus=NEUTRAL;
 
@@ -8563,7 +8578,7 @@ else
 
             gsect=(*(multiwire+0))->sect;
 
-            hpopdlg=CreateDialog(hInstGlobal,
+			hpopdlg=CreateDialog(hInstGlobal,
                                  "HOGDLGSECTREGIST",
                                  NULL,
                                  (DLGPROC)DialogProcSectRegist);
@@ -8605,7 +8620,7 @@ else
           break;
 
         case IDM_POPSELECTMULTINODE:
-          globalstatus=SELECTMULTINODE;
+		  globalstatus=SELECTMULTINODE;
           break;
 
         case IDM_POPCHANGECONFMULTINODE:
@@ -8647,7 +8662,7 @@ else
           globalstatus=NEUTRAL;
 
           /*REDRAW*/
-          clearwindow(*(wdraw.childs+1));
+		  clearwindow(*(wdraw.childs+1));
           draworganization((wdraw.childs+1)->hdcC,
                            (wdraw.childs+1)->vparam,
                            (wdraw.childs+1)->org,ONSCREEN);
@@ -8689,7 +8704,7 @@ LRESULT CALLBACK WindowProcedureSurf(HWND hwnd,
     case WM_PAINT:
       DefWindowProc(hwnd,message,wParam,lParam);
       overlayhdc(*(wsurf.childs+1),SRCPAINT);
-      break;
+	  break;
 
     case WM_LBUTTONDOWN:
       x = LOWORD(lParam);
@@ -8731,7 +8746,7 @@ LRESULT CALLBACK WindowProcedureSurf(HWND hwnd,
         }
         else
         {
-          (wsurf.childs+1)->vparam.phi=initv.phi
+		  (wsurf.childs+1)->vparam.phi=initv.phi
                                        -(double)y/10.0;
         }
         createviewdata(&((wsurf.childs+1)->vparam));
@@ -8815,7 +8830,7 @@ LRESULT CALLBACK WindowProcedureSframe(HWND hwnd,
           lparam = MAKELPARAM((WORD)0,(WORD)0);
           SendMessage(wmain.hwnd,
                       WM_COMMAND,wparam,lparam);
-          wparam = MAKEWPARAM((WORD)IDMS_OPEN,(WORD)0);
+		  wparam = MAKEWPARAM((WORD)IDMS_OPEN,(WORD)0);
           lparam = MAKELPARAM((WORD)0,(WORD)0);
           SendMessage((wsect.childs+1)->hwnd,
                       WM_COMMAND,wparam,lparam);
@@ -8857,7 +8872,7 @@ LRESULT CALLBACK WindowProcedureSframe(HWND hwnd,
         case IDMS_ALLOFF:
           wparam = MAKEWPARAM((WORD)IDMS_ALLOFF,(WORD)0);
           SendMessage((wsect.childs+1)->hwnd,WM_COMMAND,wparam,0);
-          break;
+		  break;
         case IDMS_REVERSE:
           wparam = MAKEWPARAM((WORD)IDMS_REVERSE,(WORD)0);
           SendMessage((wsect.childs+1)->hwnd,WM_COMMAND,wparam,0);
@@ -8899,7 +8914,7 @@ LRESULT CALLBACK WindowProcedureSframe(HWND hwnd,
           /*INITIALIZE POLYPOLYCURVE*/
           gpolypoly.npcurve=1;
           gpolypoly.pcurves
-          =(struct polycurve *)malloc(sizeof(struct polycurve));
+		  =(struct polycurve *)malloc(sizeof(struct polycurve));
 
           /*INITIALIZE POLYCURVE*/
           cpolycurve=gpolypoly.pcurves+0;
@@ -8983,7 +8998,7 @@ setcurveascircle((addpolycurve.curves+2),0,1,
 LRESULT CALLBACK WindowProcedureProp(HWND hwnd,
                                      UINT message,
                                      WPARAM wParam,
-                                     LPARAM lParam)
+									 LPARAM lParam)
 /*WINDOW FOR PROPERTY LIST.*/
 {
   HWND hdlg,hoya;
@@ -9025,7 +9040,7 @@ LRESULT CALLBACK WindowProcedureProp(HWND hwnd,
             else mh=ph;
           }
           else if(hfitfrom==(wsect.childs+1)->hwnd)
-          {
+		  {
             mw=sw;
 
             mh=maxY-sh;
@@ -9067,7 +9082,7 @@ LRESULT CALLBACK WindowProcedureProp(HWND hwnd,
           if(gnprop>0)
           {
             for(i=0;i<gnprop;i++)
-            {
+			{
               ReleaseDC((wprop.childs+i+2)->hwnd,
                         (wprop.childs+i+2)->hdcB);
               ReleaseDC((wprop.childs+i+2)->hwnd,
@@ -9109,7 +9124,7 @@ LRESULT CALLBACK WindowProcedureProp(HWND hwnd,
 
               wprop.childs=(struct windowparams *)
                            realloc(wprop.childs,
-                                   (wprop.nchilds+1)
+								   (wprop.nchilds+1)
                                    *sizeof(struct windowparams));
               (wprop.childs+(wprop.nchilds))->hwnd=hdlg;
 
@@ -9151,7 +9166,7 @@ LRESULT CALLBACK WindowProcedureProp(HWND hwnd,
           }
           break;
 
-        case IDMP_SIMPLE: /*SIMPLE TYPE.*/
+		case IDMP_SIMPLE: /*SIMPLE TYPE.*/
           wprop.gstatus=PROP_SIMPLE;
           wparam = MAKEWPARAM((WORD)IDMP_OPEN,(WORD)0);
           lparam = MAKELPARAM((WORD)PROPSIMPLE,(WORD)0);
@@ -9193,7 +9208,7 @@ LRESULT CALLBACK WindowProcedureProp(HWND hwnd,
 
           ShowWindow(hpopdlg,SW_SHOW);
 		  break;
-        case IDM_POPPROPERTYRETURN:
+		case IDM_POPPROPERTYRETURN:
           /*ADD PROPERTY*/
           addproperty(addingprop,&((wdraw.childs+1)->org));
 
@@ -9361,7 +9376,7 @@ LRESULT CALLBACK WindowProcedureSect(HWND hwnd,
             wmax=0;
             hmax=0;
             for(i=0;i<gnsect;i++)
-            {
+			{
               os   =currentsects+i;
               gsect=currentsects+i;
               sprintf(gstr,"%ld",gsect->code);
@@ -9403,7 +9418,7 @@ LRESULT CALLBACK WindowProcedureSect(HWND hwnd,
               {
                 if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
                 {
-                  /*EXTEND WINDOW.*/
+				  /*EXTEND WINDOW.*/
                   /*
                   GetTextExtentPoint32((wsect.childs+1)->hdcC,
                                        "Size",strlen("Size"),&tsize);
@@ -9445,7 +9460,7 @@ LRESULT CALLBACK WindowProcedureSect(HWND hwnd,
                                              &(wsect.nstring),
                                              str,50.0,(double)hmax);
                         hmax+=tsize.cy;
-                      }
+					  }
                     }
 
                     f=sectionfeatures(os);
@@ -9571,7 +9586,7 @@ LRESULT CALLBACK WindowProcedureSect(HWND hwnd,
           gsect->name=(char *)malloc(1*sizeof(char));
           strcpy(gsect->name,"\0");
           gsect->dflag=1;
-          gsect->nfig=0;
+		  gsect->nfig=0;
           gsect->area=0.0;
           gsect->dcolor.r=255;
           gsect->dcolor.g=255;
@@ -9613,7 +9628,7 @@ LRESULT CALLBACK WindowProcedureSect(HWND hwnd,
 
         case IDMS_ALLON: /*ALL SECTIONS ON.*/
           if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM ||
-             (wmenu.childs+2)->vparam.vflag.mv.ftype==F_FRAME)
+			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_FRAME)
           {
             if(arc.nsect>0)
             {
@@ -9655,7 +9670,7 @@ LRESULT CALLBACK WindowProcedureSect(HWND hwnd,
             }
             else break;
           }
-          else break;
+		  else break;
 
           if(wsect.gstatus==NEUTRAL || wsect.gstatus==SECT_SIMPLE)
           {
@@ -9697,7 +9712,7 @@ LRESULT CALLBACK WindowProcedureSect(HWND hwnd,
                         WM_COMMAND,wparam,lparam);
           }
           else if(wsect.gstatus==SECT_DETAIL)
-          {
+		  {
             wparam = MAKEWPARAM((WORD)IDMS_OPEN,(WORD)0);
             lparam = MAKELPARAM((WORD)SECTDETAIL,(WORD)0);
             SendMessage((wsect.childs+1)->hwnd,
@@ -9739,7 +9754,7 @@ LRESULT CALLBACK WindowProcedureSview(HWND hwnd,
 
   switch(message)
   {
-    case WM_PAINT:
+	case WM_PAINT:
       DefWindowProc(hwnd,message,wParam,lParam);
 
       clearwindow(*(wsdsp.childs+1));
@@ -9781,7 +9796,7 @@ LRESULT CALLBACK WindowProcedureSview(HWND hwnd,
           pl.nods[0]=setcoord(0.0,0.0,0.0);
 
           pl.nvec.dc[GX]=0.0;
-          pl.nvec.dc[GY]=0.0;
+		  pl.nvec.dc[GY]=0.0;
           pl.nvec.dc[GZ]=1.0;
 
           pl.a=0.0; pl.b=0.0; pl.c=1.0; pl.d=0.0; /*PLANE:Z=0*/
@@ -9823,7 +9838,7 @@ LRESULT CALLBACK WindowProcedureSview(HWND hwnd,
           if(icount==0)
           {
             cpolycurve->ncurve++;
-            ncurve=cpolycurve->ncurve;
+			ncurve=cpolycurve->ncurve;
 
             cpolycurve->curves=(struct curve *)
                               realloc(cpolycurve->curves,
@@ -9865,7 +9880,7 @@ LRESULT CALLBACK WindowProcedureSview(HWND hwnd,
           if(icount==0)
           {
             cpolycurve->ncurve++;
-            ncurve=cpolycurve->ncurve;
+			ncurve=cpolycurve->ncurve;
 
             cpolycurve->curves=(struct curve *)
                                realloc(cpolycurve->curves,
@@ -9907,7 +9922,7 @@ LRESULT CALLBACK WindowProcedureSview(HWND hwnd,
             (cpolycurve->curves+ncurve-1)->radius[0]
             =distancedotdot(*((cpolycurve->curves+ncurve-1)
                             ->center),
-                            *((cpolycurve->curves+ncurve-1)
+							*((cpolycurve->curves+ncurve-1)
                             ->dots[0]));
 
             (cpolycurve->curves+ncurve-1)->angle[0]
@@ -9949,7 +9964,7 @@ sprintf(str,"\0");
 sprintf(s,"r=%.3f c=(%.3f %.3f) d1=(%.3f %.3f) d2=(%.3f %.3f)\n",
         (gpolycurve.curves+ncurve-1)->radius[0],
         (gpolycurve.curves+ncurve-1)->center->d[GX],
-        (gpolycurve.curves+ncurve-1)->center->d[GY],
+		(gpolycurve.curves+ncurve-1)->center->d[GY],
         (gpolycurve.curves+ncurve-1)->dots[0]->d[GX],
         (gpolycurve.curves+ncurve-1)->dots[0]->d[GY],
         (gpolycurve.curves+ncurve-1)->dots[1]->d[GX],
@@ -9991,7 +10006,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
         dmx=(double)( x-(vp->Xo));
         dmy=(double)(-y+(vp->Yo));
         createnodeonplane(*vp,dmx,dmy,pl,&nadd);
-        if(nadd.code==0) break;
+		if(nadd.code==0) break;
 
         if(gpolypoly.npcurve==0)
         {
@@ -10033,7 +10048,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
         cpolycurve=gpolypoly.pcurves+gpolypoly.npcurve-1;
 
         hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-        SetClassLong((wsdsp.childs+1)->hwnd,
+		SetClassLong((wsdsp.childs+1)->hwnd,
                      GCL_HCURSOR,(LONG)hcursor);
         SetClassLong((wsect.childs+2+(gsect->loff))->hwnd,
                      GCL_HCURSOR,(LONG)hcursor);
@@ -10075,7 +10090,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
               strcpy((gpolypoly.pcurves+i)->prop.name,gprop->name);
               break;
             }
-          }
+		  }
         }
 
         hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
@@ -10159,7 +10174,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
 
         ncurve=cpolycurve->ncurve;
         if(globalstatus==C_SECTIONLINE)
-        {
+		{
           *((cpolycurve->curves+ncurve-1)->dots[1])=nadd;
         }
         else if(globalstatus==C_SECTIONCIRCLE)
@@ -10201,7 +10216,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
           (addpolycurve.curves+i)->dots[1]->d[GX]+=nadd.d[GX];
           (addpolycurve.curves+i)->dots[1]->d[GY]+=nadd.d[GY];
 
-          if((addpolycurve.curves+i)->type==CTYPE_CIRCLE)
+		  if((addpolycurve.curves+i)->type==CTYPE_CIRCLE)
           {
             (addpolycurve.curves+i)->center->d[GX]+=nadd.d[GX];
             (addpolycurve.curves+i)->center->d[GY]+=nadd.d[GY];
@@ -10243,7 +10258,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
            (initv.Xo<=initx && initv.Yo>=inity && x>-y))
         {
           fact=0.005;
-        }
+		}
         else fact=-0.005;
 
         initx=point.x;
@@ -10285,7 +10300,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
             ((gpolypoly.pcurves+ii)->curves+i)->dots[0]->d[GY]
             +=fact*(double)y;
             ((gpolypoly.pcurves+ii)->curves+i)->dots[1]->d[GX]
-            -=fact*(double)x;
+			-=fact*(double)x;
             ((gpolypoly.pcurves+ii)->curves+i)->dots[1]->d[GY]
             +=fact*(double)y;
 
@@ -10327,7 +10342,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
       else if(globalstatus==ROTATE || globalstatus==MOVE)
       {
         /*globalstatus=NEUTRAL;*/ /*ROTATION END*/
-        globalstatus=prestatus; /*ROTATION END*/
+		globalstatus=prestatus; /*ROTATION END*/
       }
       break;
 
@@ -10369,7 +10384,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
           if(wsect.hwnd!=NULL)
           {
             hfitfrom=(wsdsp.childs+1)->hwnd;
-            SendMessage((wsect.childs+1)->hwnd,WM_COMMAND,wparam,0);
+			SendMessage((wsect.childs+1)->hwnd,WM_COMMAND,wparam,0);
           }
           if(wprop.hwnd!=NULL)
           {
@@ -10411,7 +10426,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
               if(icount==2)
               {
                 (cpolycurve->curves+ncurve-1)->angle[0]-=2.0*PI;
-              }
+			  }
             }
           }
           break;
@@ -10453,7 +10468,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
 
         case IDM_POPSECTIONDIALOG:
           point.x=initx;
-          point.y=inity;
+		  point.y=inity;
 
           hpopdlg=CreateDialog(hInstGlobal,
                                "HOGDLGKATAKOU",
@@ -10495,7 +10510,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
           point.y=inity;
 
           pc=pickpolycurve(&gpolypoly,
-                           (wsdsp.childs+1)->vparam,initx,inity);
+						   (wsdsp.childs+1)->vparam,initx,inity);
           if(pc!=NULL) cpolycurve=pc;
           else
           {
@@ -10537,7 +10552,7 @@ MessageBox(NULL,str,"Circle",MB_OK);
                    gpolypoly.npcurve*sizeof(struct polycurve));
 
           cpolycurve=gpolypoly.pcurves+gpolypoly.npcurve-1;
-          cpolycurve->loff  =0;
+		  cpolycurve->loff  =0;
           cpolycurve->ncurve=0;
           cpolycurve->type  =0;
           cpolycurve->curves=NULL;
@@ -10621,7 +10636,7 @@ LRESULT CALLBACK WindowProcedureMenu(HWND hwnd,
     case WM_COMMAND:
       switch(LOWORD(wParam))
       {
-        case IDM_FITSHEET:
+		case IDM_FITSHEET:
           hoya=GetParent(GetParent(hwnd)); /*PARENT SHEET.*/
 
           getclientsize(wmain.hwnd,&maxX,&maxY);
@@ -10705,7 +10720,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
       SetDlgItemText(hdwnd,IDM_TXTPRINTRANGE,"PrintRange");    //by mihara
       SetDlgItemText(hdwnd,IDP_TXTA4TATE,"A4Tate");            //by mihara
       SetDlgItemText(hdwnd,IDP_TXTA4YOKO,"A4Yoko");            //by mihara
-      SetDlgItemText(hdwnd,IDP_TXTA3TATE,"A3Tate");            //by mihara
+	  SetDlgItemText(hdwnd,IDP_TXTA3TATE,"A3Tate");            //by mihara
       SetDlgItemText(hdwnd,IDP_TXTA3YOKO,"A3Yoko");            //by mihara
 
       if(wdraw.nchilds>=2 && (wdraw.childs+1)!=NULL)
@@ -10747,7 +10762,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
       DefWindowProc(hdwnd,message,wParam,lParam);
 
       hdc=(HDC)wParam;
-      hitem=(HWND)lParam;
+	  hitem=(HWND)lParam;
 
       id=GetDlgCtrlID(hitem);
       gv=(wmenu.childs+2)->vparam.vflag;
@@ -10789,7 +10804,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
          (((id==IDM_TXTPRINTRANGE) && (wdraw.childs+1)->vparam.vflag.pv.printrange!=1)||
           ((id==IDP_TXTA4TATE) && (wdraw.childs+1)->vparam.vflag.pv.a4tate!=1)||
           ((id==IDP_TXTA4YOKO) && (wdraw.childs+1)->vparam.vflag.pv.a4yoko!=1)||
-          ((id==IDP_TXTA3TATE) && (wdraw.childs+1)->vparam.vflag.pv.a3tate!=1)||
+		  ((id==IDP_TXTA3TATE) && (wdraw.childs+1)->vparam.vflag.pv.a3tate!=1)||
           ((id==IDP_TXTA3YOKO) && (wdraw.childs+1)->vparam.vflag.pv.a3yoko!=1)
          )
         )
@@ -10873,7 +10888,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
             (wmenu.childs+2)->vparam.vflag.mv.ftype=F_SRCAN;
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
         case IDF_FRAME:
           if((wmenu.childs+2)->vparam.vflag.mv.ftype!=F_FRAME)
           {
@@ -10915,7 +10930,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
           {
             GetDlgItemText(hdwnd,ID_INPUTFILEY,
                            (wdraw.childs+1)->inpfiley,80);
-          }
+		  }
           break;
         case ID_OUTPUTFILE:
           if(wdraw.nchilds>=2 && (wdraw.childs+1)!=NULL)
@@ -10957,7 +10972,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
           if(wdraw.nchilds>=2 &&
              (wdraw.childs+1)!=NULL &&
              (wdraw.childs+1)->vparam.type!=AXONOMETRIC)
-          {
+		  {
             (wdraw.childs+1)->vparam.type=AXONOMETRIC;
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
@@ -10999,7 +11014,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		  {
             getviewparam((wmenu.childs+2)->hwnd,
 						 &((wdraw.childs+1)->vparam));
-          }
+		  }
           break;
 
 		case IDD_DRAWINGS:
@@ -11041,7 +11056,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
              MB_OKCANCEL)==IDCANCEL) break;
 
           if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
-          {
+		  {
             getviewparam((wmenu.childs+2)->hwnd,
                          &((wdraw.childs+1)->vparam));
             clearwindow(*(wdraw.childs+1));
@@ -11116,16 +11131,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		   {
 				if (MessageBox(NULL, "Arclm201:Begin.", "ARCLM201",MB_OKCANCEL) == IDCANCEL)
 				{
-					if (MessageBox(NULL, "Arclm202:Begin.", "ARCLM202",MB_OKCANCEL) == IDCANCEL)
-					{
-					  break;
-					}
-					else
-					{
-						getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-						clearwindow(*(wdraw.childs + 1));
-						arclm202(&arc, ID_INPUTFILE);
-					}
+					break;
 				}
 				else
 				{
@@ -11138,7 +11144,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		   {
 			   getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
 			   clearwindow(*(wdraw.childs + 1));
-			   arclmCR(&arc);
+			   arclmStatic(&arc);
 		   }
 		   break;
 
@@ -11218,7 +11224,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
           /*STRESS OF LOAD*/
             arclm001(&arc,ID_INPUTFILE,ID_OUTPUTFILE);
 
-          /*STRESS OF LONG LOAD*/
+		  /*STRESS OF LONG LOAD*/
             fin=fgetstofopen(dir,"r",ID_INPUTFILEZ);    /*OPEN FILE.*/
             if(fin==NULL) break;
 
@@ -11315,7 +11321,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		  else
 		  {
 			  getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-			  gnshnCR(&arc);
+			  arclmDynamic(&arc);
 		  }
 		  break;
 
@@ -11333,7 +11339,11 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
 		  {
 			fin=fgetstofopen(dir,"r",ID_INPUTFILE);    /*OPEN FILE.*/
-			if(fin==NULL) break;
+			if(fin==NULL)
+			{
+			  errormessage("COULD NOT OPEN THE FILE.");
+			  break;
+			}
 
 			inputinitII(fin,&(arc.nnode),&(arc.nelem),&(arc.nshell),&(arc.nsect),&(arc.nconstraint));
 			arc.sects=(struct osect *)malloc(arc.nsect*sizeof(struct osect));
@@ -11343,13 +11353,13 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			arc.ninit=(struct onode *)malloc(arc.nnode*sizeof(struct onode));
 			if(arc.ninit==NULL) break;
 			arc.elems=(struct owire *)malloc(arc.nelem*sizeof(struct owire));
-			if(arc.elems==NULL) break;
+			if(arc.nelem != 0 && arc.elems==NULL) break;
 			arc.shells=(struct oshell *)malloc(arc.nshell*sizeof(struct oshell));
-			if(arc.shells==NULL) break;
+			if(arc.nshell != 0 && arc.shells==NULL) break;
 			arc.melem=(struct memoryelem *)malloc(arc.nelem*sizeof(struct memoryelem));
-			if(arc.melem==NULL) break;
+			if(arc.nelem != 0 && arc.melem==NULL) break;
 			arc.mshell=(struct memoryshell *)malloc(arc.nshell*sizeof(struct memoryshell));
-			if(arc.mshell==NULL) break;
+			if(arc.nshell != 0 && arc.mshell==NULL) break;
 			arc.confs=(struct oconf *)malloc(6*arc.nnode*sizeof(struct oconf));
 			if(arc.confs==NULL) break;
 
@@ -11585,10 +11595,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
             strcpy((wdraw.childs+1)->otpfilex,str);
             strcat((wdraw.childs+1)->otpfilex,".ohx");
             strcpy((wdraw.childs+1)->otpfiley,str);
-            strcat((wdraw.childs+1)->otpfiley,".ohy");
-
-//            strcpy((wdraw.childs+1)->sctfile,str);
-//            strcat((wdraw.childs+1)->sctfile,".lst");
+			strcat((wdraw.childs+1)->otpfiley,".ohy");
 
             saveasarclm((wdraw.childs+1)->inpfilez,&arc);
             sprintf((wdraw.childs+1)->inpfile,
@@ -11608,35 +11615,31 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
             SetDlgItemText(hdwnd,ID_OUTPUTFILEZ,
                            (wdraw.childs+1)->otpfilez);
             SetDlgItemText(hdwnd,ID_OUTPUTFILEX,
-                           (wdraw.childs+1)->otpfilex);
+						   (wdraw.childs+1)->otpfilex);
             SetDlgItemText(hdwnd,ID_OUTPUTFILEY,
-                           (wdraw.childs+1)->otpfiley);
+						   (wdraw.childs+1)->otpfiley);
 
-//            SetDlgItemText(hdwnd,ID_SECTIONFILE,
-//                           (wdraw.childs+1)->sctfile);
+			if(arcx.nnode!=0) saveasarclm((wdraw.childs+1)->inpfilex,&arcx);
+			if(arcy.nnode!=0) saveasarclm((wdraw.childs+1)->inpfiley,&arcy);
 
-            if(arcx.nnode!=0) saveasarclm((wdraw.childs+1)->inpfilex,
-                                          &arcx);
-            if(arcy.nnode!=0) saveasarclm((wdraw.childs+1)->inpfiley,
-                                          &arcy);
-            /*PROJECT NAME*/
-            char non[80];
-            GetDlgItemText((wmenu.childs+2)->hwnd,ID_SECTIONFILE,non,80);
-            if(!strncmp(non,"kirigami",8))    strcpy(prj,"kirigami");
+			/*
+			char non[80];
+			GetDlgItemText((wmenu.childs+2)->hwnd,ID_SECTIONFILE,non,80);
+			if(!strncmp(non,"kirigami",8)) strcpy(prj,"kirigami");
 
-            if(!strncmp(prj,"kirigami",8)&&
-               MessageBox(NULL,"Save As INL2 FILE","Extract",MB_OKCANCEL)==IDOK)
-            {
-               n=strcspn((wdraw.childs+1)->inpfile,".");
-               strncpy(str,(wdraw.childs+1)->inpfile,n);
-               str[n]='\0';
+			if(!strncmp(prj,"kirigami",8) && MessageBox(NULL,"Save As INL2 FILE","Extract",MB_OKCANCEL)==IDOK)
+			{
+			   n=strcspn((wdraw.childs+1)->inpfile,".");
+			   strncpy(str,(wdraw.childs+1)->inpfile,n);
+			   str[n]='\0';
 
-               strcpy((wdraw.childs+1)->inpfile,str);
-               strcat((wdraw.childs+1)->inpfile,".inl2");
-               SetDlgItemText(hdwnd,ID_INPUTFILE,
-                             (wdraw.childs+1)->inpfile);
+			   strcpy((wdraw.childs+1)->inpfile,str);
+			   strcat((wdraw.childs+1)->inpfile,".inl2");
+			   SetDlgItemText(hdwnd,ID_INPUTFILE,
+							 (wdraw.childs+1)->inpfile);
 			   saveasarclm2((wdraw.childs+1)->inpfile,&arc);
-            }
+			}
+			*/
           }
           break;
 
@@ -12670,16 +12673,16 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             pd.nMinPage = 0;
             pd.nMaxPage = 0;
             pd.nCopies = 1;*/
-            pd.hInstance = (HANDLE)NULL;
+			pd.hInstance = /*(HANDLE)*/(HINSTANCE)NULL;
             pd.lCustData = 0L;
             pd.lpfnPrintHook = (LPPRINTHOOKPROC)NULL;
             pd.lpfnSetupHook = (LPSETUPHOOKPROC)NULL;
             pd.lpPrintTemplateName = (LPSTR)NULL;
-            pd.lpSetupTemplateName = (LPSTR)NULL;
+			pd.lpSetupTemplateName = (LPSTR)NULL;
             pd.hPrintTemplate = (HANDLE)NULL;
             pd.hSetupTemplate = (HANDLE)NULL;
 
-            if(PrintDlg(&pd) != FALSE)
+			if(PrintDlg(&pd) != FALSE)
             {
               if(!(GetDeviceCaps(pd.hDC, RASTERCAPS)
                  & RC_BITBLT))

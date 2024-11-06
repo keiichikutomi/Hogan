@@ -1,0 +1,1096 @@
+﻿/*MENU ID FOR CANVS.SINCE:1996.2.17.JUNSATO.*/
+/*GLOBAL STATUS,GLOBAL MODE*/
+#define NEUTRAL       100
+
+#define MOVE                101
+#define ROTATE              102
+#define SELECTSECTION       103
+#define CONDENSATION        999
+#define SELECTNODE          104
+#define SELECTPERPENDICULAR 105
+#define SELECTINTERSECTION  106
+#define SELECTELEMENT       107
+#define DEFORMATION         108
+#define STRESSES            109
+
+#define VSCROLLING    110
+#define HSCROLLING    111
+
+#define ARCLM001      112
+#define ARCLM101      113
+#define SRCAL001      114
+#define HOGAN001      115
+#define ORGAN001      116
+
+#define SECTIONPAINT            117
+#define MOVEELEMENTBYMOUSE      118
+#define MOVEELEMENTBYMOUSEBEGIN 119
+#define MOVEELEMENTBYDIALOG     120
+#define MOVEELEMENTNODETONODE   121
+
+#define MOVENODEBYMOUSE      122
+#define MOVENODEBYMOUSEBEGIN 123
+#define MOVENODEBYDIALOG     124
+#define MOVENODENODETONODE   125
+#define PINCHNODEBYMOUSE         126
+#define PINCHNODEBYMOUSEBEGIN    127
+#define PINCHNODEWITHSAFETY      128
+#define PINCHNODEWITHSAFETYBEGIN 129
+#define PINCHNODEVENEZIA      130
+#define PINCHNODEVENEZIABEGIN 131
+#define PINCHNODEVENEZIALONG  132
+#define PINCHNODEVENEZIAXPOSI 133
+#define PINCHNODEVENEZIAXNEGA 134
+#define PINCHNODEVENEZIAYPOSI 135
+#define PINCHNODEVENEZIAYNEGA 136
+#define PINCHNODEVENEZIASRCAN 137
+#define PINCHNODESTACK        138
+#define PINCHNODESTACKBEGIN   139
+#define PINCHELEMTWIST        140
+#define PINCHELEMTWISTBEGIN   141
+#define PINCHNODEELASTIC      142
+#define PINCHNODEELASTICBEGIN 143
+#define MOVENODEWITHSAFETY       144
+#define MOVENODEWITHSAFETYBEGIN  145
+
+#define ADDELEMWITHSAFETY       146
+#define ADDELEMWITHSAFETYBEGIN  147
+#define ADDCOLUMNWITHSAFETY         148
+#define ADDCOLUMNWITHSAFETYBEGIN    149
+#define DELETECOLUMNWITHSAFETY      150
+#define DELETECOLUMNWITHSAFETYBEGIN 151
+
+#define COPYELEMENTBYMOUSE      152
+#define COPYELEMENTBYMOUSEBEGIN 153
+#define COPYELEMENTBYDIALOG     154
+#define COPYELEMENTNODETONODE   155
+
+#define COPYNODENODETONODE   156
+#define COPYCONF             157
+#define COPYBOND             158
+
+#define CHANGEELEMTYPE       159
+#define CHANGESECTION        160
+#define CHANGECONFBYDIALOG   161
+#define CHANGEBOND           162
+
+#define SELECTMULTIELEM       163
+#define SELECTMULTIELEMBEGIN  164
+#define COPYMULTIELEMBYDIALOG 165
+#define MOVEMULTIELEMBYDIALOG 166
+#define CHANGESECTMULTIELEM   167
+
+#define SELECTMULTINODE       1630
+#define SELECTMULTINODEBEGIN  1640
+#define CHANGECONFMULTINODE   1670
+
+#define SELECTMULTIWIRE       1631
+#define SELECTMULTIWIREBEGIN  1641
+
+#define DIVIDEELEMENT 168
+
+/*#define ARCLMRATE            170*/
+
+#define C_SECTIONLINE         171
+#define C_SECTIONCIRCLE       172
+#define C_SECTIONCIRCLECENTER 173
+#define C_ADDPOLYCURVE        174
+#define C_PICKPOLYCURVE       175
+#define C_SECTIONDROP         176
+#define C_PROPERTYDROP        177
+#define C_ADDPROPERTY         178
+#define C_ADDSECTION          179
+
+/*CREATE STATUS*/
+#define C_NEUTRAL     101
+#define C_PROPERTY    102
+#define C_SECTION     103
+#define C_NODE        104
+#define C_ELEMENT     105
+#define C_CONFINEMENT 106
+#define C_ADD         107
+#define C_CHANGE      108
+#define C_DELETE      109
+#define C_REFER       110
+
+/*FILE TYPE*/
+#define F_ARCLM       101
+#define F_FRAME       102
+#define F_SRCAN       103
+#define F_HOGAN       104
+#define F_ORGAN       105
+#define F_BQUAD       106
+
+/*DIRECTION*/
+#define DIRECTIONX    101
+#define DIRECTIONY    102
+#define DIRECTIONZ    103
+
+/*DRAW MODE*/
+#define ONSCREEN      101
+#define ONPRINTER     102
+#define ONPREVIEW     103
+#define ONSRCANMAX    104
+
+/*TEXT ALIGNMENT*/
+#define TEXT_LEFT     101
+#define TEXT_RIGHT    102
+#define TEXT_TOP      103
+#define TEXT_BOTTOM   104
+#define TEXT_CENTER   105
+
+/*PROPERTY,SECTION LIST DIALOG*/
+#define PROP_SIMPLE   101
+#define PROP_DETAIL   102
+
+#define SECT_SIMPLE   103
+#define SECT_DETAIL   104
+
+/*MAIN MENU*/
+#define IDM_FILENEW   101
+#define IDM_FILEOPEN  102
+#define IDM_FILECLOSE 103
+#define IDM_FILESAVE  104
+
+#define IDM_PRINTFRAME 105
+
+#define IDM_PRINTSETUP 106
+#define IDM_PRINTWAIT  107
+#define IDM_PRINTOUT   108
+#define IDM_PRINTEND   109
+#define IDM_PREVIEW    110
+#define IDM_PRINTRANGE 299              //by MIHARA for Print Range Line 2007.05.22
+#define IDM_TXTPRINTRANGE 300           //by MIHARA for Print Range Line 2007.05.22
+
+#define IDM_COPY          111
+#define IDM_PASTE         112
+#define IDM_CLEARMAIN     113
+#define IDM_CLEARDRAWINGS 114
+#define IDM_CLEARERROR    115
+#define IDM_CLEARDOCUMENT 116
+
+#define IDM_DRAWINGS  121
+#define IDM_ANALYSIS  122
+#define IDM_OPTIONS   123
+#define IDM_ERROR     124
+#define IDM_SURFACE   125
+#define IDM_DESTRUCT  126
+
+#define IDM_SRCANBEGIN    127
+#define IDM_CREATESURFACE 128
+#define IDM_REDELEMS    452
+
+#define IDM_OPENSECTION  129
+#define IDM_DRAWSECTION  130
+#define IDM_PRINTSECTION 131
+#define IDM_HOGOPEN      132
+#define IDM_HOGCLOSE     133
+#define IDM_HOGDIVIDE    134
+#define IDM_MACROS       135
+#define IDM_CALCULATIONMACROI  1350
+#define IDM_CALCULATIONMACROII  1351
+
+#define IDM_QUADOPEN    136
+#define IDM_QUADTEST    137
+
+#define IDM_CADREINPUT  138
+#define IDM_CADRERESULT 139
+
+#define IDM_FITPARENT   140
+#define IDM_FITSHEET    141
+
+#define IDM_POPTEXT       151
+#define IDM_POPCHOOSENODE 152
+#define IDM_POPCHOOSEELEM 153
+#define IDM_POPPERPENDICULAR 154
+#define IDM_POPINTERSECTION  155
+#define IDM_POPDECIDEELEM    156
+#define IDM_POPTEXTRETURN    157
+#define IDM_POPDELETE        158
+#define IDM_POPOPENSECTION   159
+#define IDM_POPREGISTSECTION 160
+#define IDM_POPREGISTRETURN  161
+#define IDM_POPSECTIONPAINT    162
+#define IDM_POPSECTIONPAINTEND 163
+
+#define IDM_POPETYPERETURN  164
+
+#define IDM_POPSECTIONLINE     171
+#define IDM_POPCIRCLECENTER    172
+#define IDM_POPCIRCLERADIUS    173
+#define IDM_POPCIRCLEDOT       174
+#define IDM_POPCIRCLETANGENT   175
+#define IDM_POPCIRCLEREVERSE   176
+#define IDM_POPSECTIONDIALOG   177
+#define IDM_POPSECTIONRETURN   178
+#define IDM_POPSECTIONMOVE     179
+#define IDM_POPSECTIONROTATE   180
+#define IDM_POPSECTIONPROPERTY 181
+#define IDM_POPPROPERTYRETURN  182
+#define IDM_POPPOLYADD         183
+#define IDM_POPPOLYPICK        184
+
+#define IDM_POPMOVEMOUSE       190
+#define IDM_POPMOVEDIALOG      191
+#define IDM_POPINCREMENTRETURN 192
+#define IDM_POPMOVENODETONODE  193
+#define IDM_POPMOVEELEMEND     194
+#define IDM_POPEND             195
+
+#define IDM_POPMOVENODEMOUSE      200
+#define IDM_POPMOVENODEDIALOG     201
+#define IDM_POPMOVENODENODETONODE 202
+#define IDM_POPPINCHNODEMOUSE     203
+#define IDM_POPPINCHNODEWITHSAFETY 204
+#define IDM_POPPINCHNODEVENEZIA    205
+#define IDM_POPPINCHNODESTACK      206
+#define IDM_POPPINCHELEMTWIST      207
+#define IDM_POPPINCHNODEELASTIC    208
+#define IDM_POPMOVENODEWITHSAFETY  209
+
+#define IDM_POPDIVIDEELEMENT    210
+#define IDM_POPDIVIDEALLELEMENT 2100
+#define IDM_POPDIVIDEELEMENTEND 211
+
+#define IDM_POPCOPYMOUSE       212
+#define IDM_POPCOPYDIALOG      213
+#define IDM_POPCOPYNODETONODE  214
+#define IDM_POPCOPYELEMEND     215
+
+#define IDM_POPCOPYNODEMOUSE       216
+#define IDM_POPCOPYNODEDIALOG      217
+#define IDM_POPCOPYNODENODETONODE  218
+#define IDM_POPCOPYCONF            219
+#define IDM_POPCOPYBOND            220
+
+#define IDM_POPDELETENODE  221
+#define IDM_POPDELETEELEM  222
+
+#define IDM_POPCHANGEETYPE 223
+#define IDM_POPCHANGESECT  224
+#define IDM_POPCHANGECONF  225
+#define IDM_POPCONFRETURN  226
+#define IDM_POPCHANGEBOND  227
+#define IDM_POPBONDRETURN  228
+#define IDM_POPCHANGEEND   229
+
+#define IDM_POPSELECTMULTIELEM       231
+#define IDM_POPCOPYMULTIELEMBYDIALOG 232
+#define IDM_POPMOVEMULTIELEMBYDIALOG 233
+#define IDM_POPDELETEMULTIELEM       234
+#define IDM_POPCHANGESECTMULTIELEM   235
+#define IDM_POPMULTIELEMEND          236
+
+#define IDM_POPSELECTMULTINODE       2310
+#define IDM_POPCHANGECONFMULTINODE   2350
+#define IDM_POPMULTINODEEND          2360
+
+#define IDM_POPADDELEMWITHSAFETY      237
+#define IDM_POPADDCOLUMNWITHSAFETY    238
+#define IDM_POPDELETECOLUMNWITHSAFETY 239
+
+#define IDM_SECTIONFRAME 241
+#define IDM_SECTIONLIST  242
+#define IDM_SECTIONVIEW  243
+#define IDM_WEIGHTLIST   244
+#define IDM_CMQDETAIL    245
+#define IDM_HORIZONTAL   246
+
+#define IDM_PROPERTYLIST 247
+
+#define IDMS_OPEN      251
+#define IDMS_SAVE      252
+#define IDMS_ALLON     253
+#define IDMS_ALLOFF    254
+#define IDMS_REVERSE   255
+#define IDMS_SIMPLE    256
+#define IDMS_DETAIL    257
+#define IDMS_ADD       258
+#define IDMS_ADDRETURN 259
+#define IDMS_VIEW      260
+#define IDMS_DRAW      261
+#define IDMS_CLEAR     262
+#define IDMS_FEATURE   263
+#define IDMS_MP        264
+
+#define IDMP_OPEN      271
+#define IDMP_SIMPLE    272
+#define IDMP_DETAIL    273
+#define IDMP_ADD       274
+#define IDMP_ADDRETURN 275
+
+#define IDM_ARCLMRATE    281
+#define IDM_ARCLMLONG    282
+#define IDM_ARCLMSHORTX  283
+#define IDM_ARCLMSHORTY  284
+#define IDM_ARCLMALL     285
+#define IDM_ARCLMZOBUNX  286
+#define IDM_ARCLMZOBUNY  287
+#define IDM_ARCLMTEST    288
+#define IDM_ARCLMFIGURES 289
+#define IDM_SRCANFIGURES 2890
+#define IDM_ARCLMLASTFIGURES 290
+#define IDM_CMQCHECK 3700
+#define IDM_OPENENERGYDISTRIBUTION 3701
+#define IDM_ayumisfavorite 3702
+#define IDM_BANDDECREASEDARCLM 291
+#define IDM_BANDDECREASEDORGAN 292
+#define IDM_SINGULATENODE   293
+
+#define IDM_SAVEORGAN       294
+#define IDM_SAVEORGANAS  2940
+#define IDM_DISTRIBUTEORGAN 295
+#define IDM_EXTRACTARCLM    296
+#define IDM_ORGANFIGURES 2941
+#define IDM_KESANSHO 2942
+#define IDM_OPENBCLNGRESULT 297
+#define IDM_OPENBCLNG003RESULT 2970
+#define IDM_BCLNGANALYSIS 326
+#define IDM_BCLNGANALYSISAUTO 360
+#define IDM_BCLNGCONDENSATION 327  //ujioka
+#define IDM_BCLNGOPTIMIZATION 328  //ujioka
+#define IDM_OPTIMIZATION    298
+#define IDM_CREATEBEZIERSURFACE 380
+#define IDM_CHANGESECTAUTO 370     //for ghouse
+#define IDM_TESTCALCULATION	325
+
+#define IDM_SAVEORGANASDXF  321
+#define IDM_SAVEARCLMASDXF  324
+
+#define IDM_HELP      299
+#define IDM_END       300
+
+/*DIALOGUE OPTION ANALYSIS*/
+#define ID_TXT001     301
+#define ID_TXT002     302
+#define ID_TXT003     303
+#define ID_TXT004     304
+#define ID_TXT005     305
+#define ID_TXT006     306
+#define ID_TXT007     307
+#define ID_TXT008     308
+#define ID_LAPS       322
+#define ID_SAFETY     310
+#define ID_PIVOT      311
+
+#define ID_INPUTFILE   312
+#define ID_INPUTFILEX  313
+#define ID_INPUTFILEY  314
+#define ID_INPUTFILEZ  315
+
+#define ID_OUTPUTFILE  316
+#define ID_OUTPUTFILEX 317
+#define ID_OUTPUTFILEY 318
+#define ID_OUTPUTFILEZ 319
+
+#define ID_SECTIONFILE 320
+
+/*DIALOGUE OPTION BUTTONS*/
+#define IDD_DRAWINGS    413
+#define IDD_TXTDRAWINGS 414
+#define IDD_ERROR       415
+#define IDD_TXTERROR    416
+#define IDD_SURFACE     417
+#define IDD_TXTSURFACE  418
+#define IDD_ARCLM001    419
+#define IDD_ARCLM101    420
+#define IDD_ARCLM201    4200
+#define IDD_BCLNG001    421
+#define IDD_BCLNG002    422
+#define IDD_BCLNG011    4210
+#define IDD_BCLNG101    4211
+#define IDD_VIEW        423
+#define IDD_SECTION     424
+#define IDD_NODE        425
+#define IDD_ELEMENT     426
+#define IDD_OPENRESULT  427
+#define IDD_DEFORMATION 428
+#define IDD_RESULTS     429
+#define IDD_ZOBUNRESULT     4290
+#define IDD_ROTATE      430
+#define IDD_MOVE        431
+#define IDD_PRINTDOC    432
+#define IDD_PRINTFRAME  433
+#define IDD_ABORT       434
+
+#define IDD_SECTIONLIST    435
+#define IDD_TXTSECTIONLIST 436
+#define IDD_WEIGHTLIST     437
+#define IDD_TXTWEIGHTLIST  438
+#define IDD_CMQDETAIL      439
+#define IDD_TXTCMQDETAIL   440
+#define IDD_HORIZONTAL     441
+#define IDD_TXTHORIZONTAL  442
+
+#define IDD_GNSHN101       451
+#define IDD_SELECTINPUTFILE 452
+
+/*DIALOGUE OPTION VIEW*/
+#define IDV_TXT001  501
+#define IDV_TXT002  502
+#define IDV_TXT003  503
+#define IDV_TXT004  504
+#define IDV_TXT005  505
+#define IDV_TXT006  506
+#define IDV_TXT007  507
+#define IDV_TXT008  508
+#define IDV_TXT009  509
+#define IDV_TXT010  510
+#define IDV_TXT011  511
+#define IDV_TXT012  512
+#define IDV_TXT013  513
+#define IDV_TXT014  514
+#define IDV_TXT015  515
+#define IDV_TXT016  516
+#define IDV_TXT017  517
+#define IDV_TXT018  518
+#define IDV_TXT019  519
+#define IDV_TXT020  520
+#define IDV_TXT021  521
+#define IDV_TXT022  522
+#define IDV_X       523
+#define IDV_Y       524
+#define IDV_Z       525
+#define IDV_PHI     526
+#define IDV_THETA   527
+#define IDV_R       528
+#define IDV_L       529
+#define IDV_ORIGINX 530
+#define IDV_ORIGINY 531
+
+#define IDV_UNIT      601
+#define IDV_UNITTM    602
+#define IDV_TXTUNITTM 603
+#define IDV_UNITNM    604
+#define IDV_TXTUNITNM 605
+
+#define IDV_VISIBLE     611
+#define IDV_GLOBALAXIS  612
+#define IDV_NODECODE    613
+#define IDV_GX          6130
+#define IDV_GY          6131
+#define IDV_GZ          6132
+#define IDV_LOADS       614
+#define IDV_CONFINEMENT 615
+#define IDV_MASSCIRCLE  616
+#define IDV_MASSVALUE   617
+#define IDV_ENERGYCIRCLE 618
+#define IDV_PLASTICENERGY 619
+#define IDV_ENERGYVALUE  6190
+#define IDV_ELEMENTCODE 620
+#define IDV_ELEMENTAXIS 621
+#define IDV_HINGE       622
+#define IDV_SECTIONCODE 623
+#define IDV_SECTIONSHAPE 624              //honda
+#define IDV_CMQLINE     625
+#define IDV_DEFORMATION 626
+#define IDV_DX          627
+#define IDV_DY          628
+#define IDV_DZ          629
+
+
+#define IDV_NZ          701
+#define IDV_QX          702
+#define IDV_QY          703
+#define IDV_MZ          704
+#define IDV_MX          705
+#define IDV_MY          706
+#define IDV_NZ_G        707
+#define IDV_QX_G        708
+#define IDV_QY_G        709
+#define IDV_MZ_G        710
+#define IDV_MX_G        711
+#define IDV_MY_G        712
+#define IDV_NZ_B        713
+#define IDV_QX_B        714
+#define IDV_QY_B        715
+#define IDV_MZ_B        716
+#define IDV_MX_B        717
+#define IDV_MY_B        718
+#define IDV_NZ_W        719
+#define IDV_NZ_S        720
+
+#define IDV_REACTION    801
+#define IDV_SRCANRATE   802
+#define IDV_SRCANCOLOR  803
+#define IDV_SRCANMAX    804
+#define IDV_INPUTFILE   805
+#define IDV_OUTPUTFILE  806
+
+#define IDV_TXTGLOBALAXIS  811
+#define IDV_TXTNODECODE    812
+#define IDV_TXTGX          8120
+#define IDV_TXTGY          8121
+#define IDV_TXTGZ          8122
+#define IDV_TXTLOADS       813
+#define IDV_TXTCONFINEMENT 814
+#define IDV_TXTMASSCIRCLE  815
+#define IDV_TXTMASSVALUE   816
+#define IDV_TXTENERGYCIRCLE 817
+#define IDV_TXTPLASTICENERGY 8170
+#define IDV_TXTENERGYVALUE  818
+#define IDV_TXTELEMENTCODE 819
+#define IDV_TXTELEMENTAXIS 820
+#define IDV_TXTHINGE       821
+#define IDV_TXTSECTIONCODE 822
+#define IDV_TXTSECTIONSHAPE 823               //honda
+#define IDV_TXTCMQLINE     824
+#define IDV_TXTDEFORMATION 825
+#define IDV_TXTDX          826
+#define IDV_TXTDY          827
+#define IDV_TXTDZ          828
+
+#define IDV_TXTNZ          831
+#define IDV_TXTQX          832
+#define IDV_TXTQY          833
+#define IDV_TXTMZ          834
+#define IDV_TXTMX          835
+#define IDV_TXTMY          836
+#define IDV_TXTNZ_G        837
+#define IDV_TXTQX_G        838
+#define IDV_TXTQY_G        839
+#define IDV_TXTMZ_G        840
+#define IDV_TXTMX_G        841
+#define IDV_TXTMY_G        842
+#define IDV_TXTNZ_B        843
+#define IDV_TXTQX_B        844
+#define IDV_TXTQY_B        845
+#define IDV_TXTMZ_B        846
+#define IDV_TXTMX_B        847
+#define IDV_TXTMY_B        848
+#define IDV_TXTNZ_W        849
+#define IDV_TXTNZ_S        850
+
+#define IDV_TXTREACTION   901
+#define IDV_TXTSRCANRATE  902
+#define IDV_TXTSRCANCOLOR 903
+#define IDV_TXTSRCANMAX   904
+#define IDV_TXTINPUTFILE  905
+#define IDV_TXTOUTPUTFILE 906
+
+#define IDV_GAXISLENGTH 911
+#define IDV_EAXISLENGTH 912
+#define IDV_DFACTOR     913
+#define IDV_QFACTOR     914
+#define IDV_MFACTOR     915
+#define IDV_GYOPITCH    916
+#define IDV_HINGESIZE   917
+
+#define IDV_AXONO       918
+#define IDV_TXTAXONO    919
+#define IDV_PERS        920
+#define IDV_TXTPERS     921
+#define IDV_GFACTOR     922
+#define IDV_TXTGFACTOR  923
+
+#define IDV_MODENUM     924
+#define IDV_TXTMODENUM  925
+
+#define IDV_NULL        927
+#define IDV_COLUMN      928
+#define IDV_GIRDER      929
+#define IDV_BEAM        930
+#define IDV_BRACE       931
+#define IDV_WALL        932
+#define IDV_SLAB        933
+#define IDV_CURTAIN     934
+#define IDV_TXTNULL     935
+#define IDV_TXTCOLUMN   936
+#define IDV_TXTGIRDER   937
+#define IDV_TXTBEAM     938
+#define IDV_TXTBRACE    939
+#define IDV_TXTWALL     940
+#define IDV_TXTSLAB     941
+#define IDV_TXTCURTAIN  942
+
+#define IDV_PAGETITLE    943
+#define IDV_TXTPAGETITLE 944
+#define IDV_PAGETITLEBOX 945
+#define IDV_TITLE       946
+#define IDV_TXTTITLE    947
+#define IDV_TITLEBOX    948
+#define IDV_CONF        949
+#define IDV_TXTCONF     950
+#define IDV_CONFSIZE    951
+#define IDV_TXTCONFSIZE 952
+#define IDV_VIEW        953
+#define IDV_TXTVIEW     954
+
+/*DIALOGUE OPTION SECTION*/
+#define IDS_TXT001  1001
+#define IDS_TXT002  1002
+#define IDS_TXT003  1003
+#define IDS_TXT004  1004
+#define IDS_TXT005  1005
+#define IDS_TXT006  1006
+#define IDS_TXT007  1007
+#define IDS_TXT008  1008
+#define IDS_TXT009  1009
+#define IDS_TXT010  1010
+#define IDS_TXT011  1011
+#define IDS_TXT012  1012
+#define IDS_TXT013  1013
+#define IDS_TXT014  1014
+#define IDS_TXT015  1015
+#define IDS_TXT016  1016
+#define IDS_TXT017  1017
+#define IDS_TXT018  1018
+#define IDS_TXT019  1019
+#define IDS_TXT020  1020
+#define IDS_TXT021  1021
+#define IDS_TXT022  1022
+#define IDS_TXT023  1023
+#define IDS_CODE    1024
+#define IDS_TYPE    1025
+#define IDS_E       1026
+#define IDS_POISSON 1027
+#define IDS_A       1028
+#define IDS_IXX     1029
+#define IDS_IYY     1030
+#define IDS_J       1031
+#define IDS_NUPPER  1032
+#define IDS_NLOWER  1033
+#define IDS_QXUPPER 1034
+#define IDS_QXLOWER 1035
+#define IDS_QYUPPER 1036
+#define IDS_QYLOWER 1037
+#define IDS_MZUPPER 1042
+#define IDS_MZLOWER 1043
+#define IDS_MXUPPER 1044
+#define IDS_MXLOWER 1045
+#define IDS_MYUPPER 1046
+#define IDS_MYLOWER 1047
+
+#define IDVS_TXTOPAQUE    1048
+#define IDVS_OPAQUE       1049
+#define IDVS_TXTMASSHIJU  1050
+#define IDVS_MASSHIJU     1051
+#define IDVS_TXTPFACT     1052
+#define IDVS_PFACT        1053
+#define IDVS_TXTBASESHEAR 1054
+#define IDVS_BASESHEAR    1055
+#define IDVS_TXTLOCATE    1056
+#define IDVS_LOCATE       1057
+#define IDVS_TXTGPERIOD   1058
+#define IDVS_GPERIOD      1059
+
+/*DIALOGUE OPTION NODE*/
+#define IDN_TXT001  1101
+#define IDN_TXT002  1102
+#define IDN_TXT003  1103
+#define IDN_TXT004  1104
+#define IDN_TXT005  1105
+#define IDN_TXT006  1106
+#define IDN_TXT007  1107
+#define IDN_TXT008  1108
+#define IDN_TXT009  1109
+#define IDN_TXT010  1110
+#define IDN_TXT011  1111
+#define IDN_TXT012  1112
+#define IDN_TXT013  1113
+#define IDN_TXT014  1114
+#define IDN_TXT015  1115
+#define IDN_TXT016  1116
+#define IDN_TXT017  1117
+#define IDN_CODE    1118
+#define IDN_X       1119
+#define IDN_Y       1120
+#define IDN_Z       1121
+#define IDN_CONFX   1122
+#define IDN_VALUEX  1123
+#define IDN_CONFY   1124
+#define IDN_VALUEY  1125
+#define IDN_CONFZ   1126
+#define IDN_VALUEZ  1127
+#define IDN_CONFTX  1128
+#define IDN_VALUETX 1129
+#define IDN_CONFTY  1130
+#define IDN_VALUETY 1131
+#define IDN_CONFTZ  1132
+#define IDN_VALUETZ 1133
+#define IDN_TXTCONF 1134
+
+/*DIALOGUE OPTION ELEMENT*/
+#define IDE_TXT001     1201
+#define IDE_TXT002     1202
+#define IDE_TXT003     1203
+#define IDE_TXT004     1204
+#define IDE_TXT005     1205
+#define IDE_TXT006     1206
+#define IDE_TXT007     1207
+#define IDE_TXT008     1208
+#define IDE_TXT009     1209
+#define IDE_TXT010     1210
+#define IDE_TXT011     1211
+#define IDE_TXT012     1212
+#define IDE_TXT013     1213
+#define IDE_TXT014     1214
+#define IDE_TXT015     1215
+#define IDE_TXT016     1216
+#define IDE_TXT017     1217
+#define IDE_TXT018     1218
+#define IDE_TXT019     1219
+#define IDE_TXT020     1220
+#define IDE_TXT021     1221
+#define IDE_CODE       1222
+#define IDE_NHEAD      1223
+#define IDE_NTAIL      1224
+#define IDE_SECTION    1225
+#define IDE_COORDANGLE 1226
+#define IDE_BHEADX     1227
+#define IDE_BHEADY     1228
+#define IDE_BHEADZ     1229
+#define IDE_BHEADTX    1230
+#define IDE_BHEADTY    1231
+#define IDE_BHEADTZ    1232
+#define IDE_BTAILX     1233
+#define IDE_BTAILY     1234
+#define IDE_BTAILZ     1235
+#define IDE_BTAILTX    1236
+#define IDE_BTAILTY    1237
+#define IDE_BTAILTZ    1238
+
+/*DIALOGUE OPTION PRINT*/
+#define IDP_TXT001    1301
+#define IDP_TXT002    1302
+#define IDP_TXT003    1303
+#define IDP_TXT004    1304
+#define IDP_TXT005    1305
+#define IDP_TXT006    1306
+#define IDP_TXT007    1307
+#define IDP_TXT008    1308
+#define IDP_TXT009    1309
+#define IDP_TXT010    1310
+#define IDP_TXT011    1311
+#define IDP_TXT012    1312
+#define IDP_TXT013    1313
+#define IDP_MARGINTOP    1314
+#define IDP_MARGINBOTTOM 1315
+#define IDP_MARGINLEFT   1316
+#define IDP_MARGINRIGHT  1317
+#define IDP_JIHEIGHT  1318
+#define IDP_JIWIDTH   1319
+#define IDP_JIPITCH   1320
+#define IDP_GYOPITCH  1321
+#define IDP_DANS      1322
+#define IDP_DANGAP    1323
+
+//////////////////////////////////////////////////by MIHARA for Print Range Line
+
+#define IDP_A4TATE      1324
+#define IDP_TXTA4TATE   1325
+#define IDP_A4YOKO      1326
+#define IDP_TXTA4YOKO   1327
+#define IDP_A3TATE      1328
+#define IDP_TXTA3TATE   1329
+#define IDP_A3YOKO      1330
+#define IDP_TXTA3YOKO   1331
+#define IDP_PAPER       1332
+#define IDP_TXT014      1333
+
+////////////////////////////////////////////////////////////////////////////////
+
+/*DIALOGUE OPTION CREATE*/
+#define IDC_SAVEASARCLM 1401
+#define IDC_SAVEASFRAME 1402
+
+#define IDC_CREATE      1403
+#define IDC_TXTCREATE   1404
+
+#define IDC_TXTITEM     1405
+#define IDC_PROP        1406
+#define IDC_TXTPROP     1407
+#define IDC_SECT        1408
+#define IDC_TXTSECT     1409
+#define IDC_NODE        1410
+#define IDC_TXTNODE     1411
+#define IDC_ELEM        1412
+#define IDC_TXTELEM     1413
+
+#define IDC_TXTCOMMAND  1414
+#define IDC_ADD         1415
+#define IDC_TXTADD      1416
+#define IDC_CHANGE      1417
+#define IDC_TXTCHANGE   1418
+#define IDC_DELETE      1419
+#define IDC_TXTDELETE   1420
+#define IDC_REFER       1421
+#define IDC_TXTREFER    1422
+
+/*DIALOGUE OPTION FILETYPE*/
+#define IDF_TXTFILE  1501
+#define IDF_TXTARCLM 1502
+#define IDF_TXTFRAME 1503
+#define IDF_TXTSRCAN 1504
+#define IDF_TXTHOGAN 1505
+#define IDF_TXTORGAN 1506
+#define IDF_TXTBQUAD 1507
+#define IDF_ARCLM    1508
+#define IDF_FRAME    1509
+#define IDF_SRCAN    1510
+#define IDF_HOGAN    1511
+#define IDF_ORGAN    1512
+#define IDF_BQUAD    1513
+
+/*DIALOGUE OPTION RANGE*/
+#define IDR_TXT001 1601
+#define IDR_TXT002 1602
+#define IDR_TXT003 1603
+#define IDR_TXT004 1604
+#define IDR_TXT005 1605
+#define IDR_TXT006 1606
+#define IDR_TXT007 1607
+#define IDR_XMAX   1608
+#define IDR_XMIN   1609
+#define IDR_YMAX   1610
+#define IDR_YMIN   1611
+#define IDR_ZMAX   1612
+#define IDR_ZMIN   1613
+
+/*DIALOGUE OPTION HOGANSHI*/
+#define IDH_TXTHOGANSI 1701
+
+#define IDH_TXTAXISX   1702
+#define IDH_TXTAXISY   1703
+#define IDH_TXTTITLEX  1704
+#define IDH_TXTTITLEY  1705
+#define IDH_TXTUNITX   1706
+#define IDH_TXTUNITY   1707
+#define IDH_TXTSCALEX  1708
+#define IDH_TXTSCALEY  1709
+#define IDH_TXTXMAX    1710
+#define IDH_TXTYMAX    1711
+#define IDH_TXTXMIN    1712
+#define IDH_TXTYMIN    1713
+#define IDH_TXTPITCHX  1714
+#define IDH_TXTPITCHY  1715
+#define IDH_TXTLABELX  1716
+#define IDH_TXTLABELY  1717
+
+#define IDH_TITLEX     1718
+#define IDH_TITLEY     1719
+#define IDH_UNITX      1720
+#define IDH_UNITY      1721
+#define IDH_SCALEX     1722
+#define IDH_SCALEY     1723
+#define IDH_XMAX       1724
+#define IDH_YMAX       1725
+#define IDH_XMIN       1726
+#define IDH_YMIN       1727
+#define IDH_PITCHX     1728
+#define IDH_PITCHY     1729
+#define IDH_LABELX     1730
+#define IDH_LABELY     1731
+
+#define IDH_TXTASIZE   1732
+#define IDH_ASIZE      1733
+#define IDH_TXTNSIZE   1734
+#define IDH_NSIZE      1735
+
+/*POPDIALOG TEXT*/
+#define IDT_TXTPOPPOSITION 1801
+#define IDT_TXTPOPX        1802
+#define IDT_TXTPOPY        1803
+#define IDT_POPX           1804
+#define IDT_POPY           1805
+#define IDT_TXTPOPTEXT     1806
+#define IDT_POPTEXT        1807
+
+/*SECTION LIST DIALOG*/
+#define IDDS_SECTCODE     1901
+#define IDDS_TXTSECTCODE  1902
+#define IDDS_COLOR        1903
+#define IDDS_TXTRED       1904
+#define IDDS_RED          1905
+#define IDDS_TXTGREEN     1906
+#define IDDS_GREEN        1907
+#define IDDS_TXTBLUE      1908
+#define IDDS_BLUE         1909
+
+#define IDDS_SECTICON     1910
+#define IDDS_TXTSECTNAME  1911
+
+/*PROPERTY LIST DIALOG*/
+#define IDDP_PROPCODE     1951
+#define IDDP_TXTPROPCODE  1952
+#define IDDP_TXTRED       1954
+#define IDDP_RED          1955
+#define IDDP_TXTGREEN     1956
+#define IDDP_GREEN        1957
+#define IDDP_TXTBLUE      1958
+#define IDDP_BLUE         1959
+
+#define IDDP_PROPICON     1960
+#define IDDP_TXTPROPNAME  1961
+
+/*POPDIALOG INCREMENT*/
+#define IDT_TXTPOPDX      2001
+#define IDT_POPDX         2002
+#define IDT_TXTPOPDY      2003
+#define IDT_POPDY         2004
+#define IDT_TXTPOPDZ      2005
+#define IDT_POPDZ         2006
+
+/*POPDIALOG KATAKOU*/
+#define IDK_POPTXTTYPE 2101
+#define IDK_POPFB      2102
+#define IDK_POPTXTFB   2103
+#define IDK_POPL       2104
+#define IDK_POPTXTL    2105
+#define IDK_POPH       2106
+#define IDK_POPTXTH    2107
+#define IDK_POPCT      2108
+#define IDK_POPTXTCT   2109
+#define IDK_POPC       2110
+#define IDK_POPTXTC    2111
+#define IDK_POPO       2112
+#define IDK_POPTXTO    2113
+#define IDK_POPBOX     2114
+#define IDK_POPTXTBOX  2115
+#define IDK_POPTXTHEIGHT 2116
+#define IDK_POPHEIGHT    2117
+#define IDK_POPTXTWIDTH  2118
+#define IDK_POPWIDTH     2119
+#define IDK_POPTXTTF1    2120
+#define IDK_POPTF1       2121
+#define IDK_POPTXTTF2    2122
+#define IDK_POPTF2       2123
+#define IDK_POPTXTTW     2124
+#define IDK_POPTW        2125
+
+#define IDK_POPTXTRI1    2126
+#define IDK_POPRI1       2127
+#define IDK_POPTXTRI2    2128
+#define IDK_POPRI2       2129
+#define IDK_POPTXTRI3    2130
+#define IDK_POPRI3       2131
+#define IDK_POPTXTRI4    2132
+#define IDK_POPRI4       2133
+#define IDK_POPTXTRO1    2134
+#define IDK_POPRO1       2135
+#define IDK_POPTXTRO2    2136
+#define IDK_POPRO2       2137
+#define IDK_POPTXTRO3    2138
+#define IDK_POPRO3       2139
+#define IDK_POPTXTRO4    2140
+#define IDK_POPRO4       2141
+
+/*POPDIALOG PROPERTY*/
+#define IDPP_TXTCODE     2201
+#define IDPP_CODE        2202
+#define IDPP_TXTCAPTION  2203
+#define IDPP_CAPTION     2204
+
+#define IDPP_TXTE        2205
+#define IDPP_E           2206
+#define IDPP_TXTPOISSON  2207
+#define IDPP_POISSON     2208
+#define IDPP_TXTHIJU     2209
+#define IDPP_HIJU        2210
+#define IDPP_COLOR       2211
+#define IDPP_TXTRED      2212
+#define IDPP_RED         2213
+#define IDPP_TXTGREEN    2214
+#define IDPP_GREEN       2215
+#define IDPP_TXTBLUE     2216
+#define IDPP_BLUE        2217
+
+/*POPDIALOG SECTION REGIST*/
+#define IDSR_TXTPOPCAPTION 2301
+#define IDSR_POPCAPTION    2302
+#define IDSR_TXTPOPCODE    2303
+#define IDSR_POPCODE       2304
+
+/*POPDIALOG CHANGE CONF*/
+#define IDCC_TXTCODE 2401
+#define IDCC_CODE    2402
+#define IDCC_X       2403
+#define IDCC_TXTX    2404
+#define IDCC_Y       2405
+#define IDCC_TXTY    2406
+#define IDCC_Z       2407
+#define IDCC_TXTZ    2408
+#define IDCC_TX      2409
+#define IDCC_TXTTX   2410
+#define IDCC_TY      2411
+#define IDCC_TXTTY   2412
+#define IDCC_TZ      2413
+#define IDCC_TXTTZ   2414
+
+/*POPDIALOG CHANGE BOND*/
+#define IDCB_TXTELEM 2501
+#define IDCB_ELEM    2502
+#define IDCB_TXTNODE 2503
+#define IDCB_NODE    2504
+#define IDCB_z       2505
+#define IDCB_TXTz    2506
+#define IDCB_x       2507
+#define IDCB_TXTx    2508
+#define IDCB_y       2509
+#define IDCB_TXTy    2510
+#define IDCB_tz      2511
+#define IDCB_TXTtz   2512
+#define IDCB_tx      2513
+#define IDCB_TXTtx   2514
+#define IDCB_ty      2515
+#define IDCB_TXTty   2516
+
+/*POPDIALOG ELEMENT TYPE*/
+#define IDET_POPETYPENULL    2601
+#define IDET_POPTXTETYPENULL 2602
+#define IDET_POPCOLUMN       2603
+#define IDET_POPTXTCOLUMN    2604
+#define IDET_POPGIRDER       2605
+#define IDET_POPTXTGIRDER    2606
+#define IDET_POPBEAM         2607
+#define IDET_POPTXTBEAM      2608
+#define IDET_POPBRACE        2609
+#define IDET_POPTXTBRACE     2610
+#define IDET_POPWALL         2611
+#define IDET_POPTXTWALL      2612
+#define IDET_POPSLAB         2613
+#define IDET_POPTXTSLAB      2614
+
+/*DIALOG ITEM POSITIONS*/
+#define DPT_WIDTH     80
+
+#define DPT_LEFT1      0
+#define DPT_TOP1       0
+#define DPT_HEIGHT1  767
+
+#define DPT_LEFT2      0
+#define DPT_TOP2     710        /*710*/
+#define DPT_HEIGHT2 1177
+
+#define DPT_LEFT3      0
+#define DPT_TOP3    1887        /*1887*/
+#define DPT_HEIGHT3  202
+
+#define DPT_LEFT4      0
+#define DPT_TOP4    2089        /*2089*/
+#define DPT_HEIGHT4  195
+
+#define DPT_ANALYSIS  87
+#define DPT_FILE     176
+#define DPT_VIEW     377//387
+#define DPT_DPARAM   567//577
+#define DPT_RANGE    648//658
+
+#define DPT_PAPER    708//718    //by MIHARA for Print Range Line
+
+#define DPT_SECTION    0
+#define DPT_NODE     241
+#define DPT_ELEMENT  432
+#define DPT_VISIBLE  651
+#define DPT_COLUMN   840
+#define DPT_GIRDER   858
+#define DPT_BEAM     876
+#define DPT_BRACE    894
+#define DPT_WALL     912
+#define DPT_SLAB     930
+#define DPT_PRINT   1022
+
+#define DPT_CREATE     0
+
+#define DPT_HOGANSI    0
+

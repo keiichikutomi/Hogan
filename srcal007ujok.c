@@ -1,20 +1,14 @@
+
 /*SRCAL004.H:SRC SUBROUTINES SINCE 1995.12.21.JUNSATO.*/
 /*HEADER FOR HOGAN001.C.*/
 /*BASED ON SRCAM005.H.*/
 /*LAST CHANGE:2011.4.14.*/
 
+
+
 /*DRAW S,RC,SRC,PC SECTIONS.*/
 /*SECTION FROM SECTION LIST FILE.*/
 /*MDIFIED TO RC STANDARD 2010.*/
-
-/*
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <malloc.h>
-#include <math.h>
-#include <limits.h>
-*/
 
 #define STYPE_S     1                                      /*SECTION TYPE*/
 #define STYPE_RC    2
@@ -76,18 +70,21 @@
 #define SRCANBCLNGCONDENSATION 0       /*UJIOKA:BUCKLING CONDENSATION RESULT*/
                                        /*ONLY FOR S PLATE*/
 
+
 struct materials{
-                 double sE,sF,sft,sfc,sfb,sfs,sftu,sfcu;       		 /*S*/
-                 double rE,rft,rfc,wft,rftu,rfcu,wfp;          		 /*R*/
-                 double cE,Fc,cfc,cfs,srcfc,srcfs,cfcu;         	 /*C*/
-                 double pcE,pcF,pcfc,pcft,pcfs,pcfcu,pcfsu;    		/*PC*/
-                 double pcfco,pcfto;                 	   /*PC FOR DEAD*/
-                 double stfact;    		/*EFFECTIVE FACTOR FOR PC STRAND*/
+				 double sE,sF,sft,sfc,sfb,sfs,sftu,sfcu;       		 /*S*/
+				 double rE,rft,rfc,wft,rftu,rfcu,wfp;          		 /*R*/
+				 double cE,Fc,cfc,cfs,srcfc,srcfs,cfcu;         	 /*C*/
+				 double pcE,pcF,pcfc,pcft,pcfs,pcfcu,pcfsu;    		/*PC*/
+				 double pcfco,pcfto;                 	   /*PC FOR DEAD*/
+				 double stfact;    		/*EFFECTIVE FACTOR FOR PC STRAND*/
                  double stE,stft[4],stftu[4];              		/*STRAND*/
-                 double gE,gF,gft,gfc,gfb,gfs,gftu,gfcu;   		 /*GLASS*/
-                 double aE,aF,aft,afc,afb,afs,aftu,afcu;    	 /*ACRYL*/
-                 double alE,alF,alft,alfc,alfb,alfs,alftu,alfcu; /*ALUMI*/
-                };
+				 double gE,gF,gft,gfc,gfb,gfs,gftu,gfcu;   		 /*GLASS*/
+				 double aE,aF,aft,afc,afb,afs,aftu,afcu;    	 /*ACRYL*/
+				 double alE,alF,alft,alfc,alfb,alfs,alftu,alfcu; /*ALUMI*/
+				};
+
+
 struct materialrect{double top,bottom,left,right;
                     double F;};                   /*RECTANGLE[cm],F*/
 struct reinforcement{double area,x,y,F;};     /*REIN AREA,X,Y[cm],F*/
@@ -3658,7 +3655,7 @@ int createyieldsurface(struct arclmframe *af)
 	  gmaterial.Fc=240.0;                      /*CONCRETE Fc240*/
       gmaterial.wft=3000.0;
       gmaterial.wfp=3300.0;
-      gmaterial.cfs=11.1;
+	  gmaterial.cfs=11.1;
 
       h=100.0*wallheight(elem); /*[cm]*/
       h0[1]=h-elem.sect->face[1][HEAD]-elem.sect->face[1][TAIL];
@@ -5763,7 +5760,7 @@ double slablength(struct element elem,struct element pair)
 }/*slablength*/
 
 void translatesection(struct section sect,
-                      struct materials m,
+					  struct materials m,
                       double *As,double *Ac,double *Ar,     /*AREAS*/
                       double *Yg,               /*CENTER OF GRAVITY*/
                       int axis)
@@ -13681,7 +13678,7 @@ double ultimateshearofpccolumn(struct element elem,
 }/*ultimateshearofpccolumn*/
 
 double ultimateshearofpcgirder(struct element elem,
-                               struct materials m,
+							   struct materials m,
                                int axis, /*0:Qy 1:Qx*/
                                int tensedside,
                                double Nd,double Qd,double Md)
@@ -13825,6 +13822,7 @@ double ultimateshearofpcgirder(struct element elem,
   }
   */
   return Qu;
-}/*ultimateshearofpcgirder*/
+
+}
 
 

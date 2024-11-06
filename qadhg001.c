@@ -70,7 +70,7 @@ void inputbiquadframe(FILE *ftext,struct biquadframe *bqf);
 long int countmidnodes(struct biquadframe *bqf);
 void createmidnodes(struct biquadframe *bqf);
 void inputbquadinit(FILE *fin,int *nnode,
-                              int *nwire,int *nfilm,
+							  int *nwire,int *nfilm,
                               int *nwsec,int *nfsec);
 void inputbquadnode12(FILE *fdisp,struct node12 *n12);
 void inputbquadnode09(FILE *fdisp,int nnode,struct node09 *n09);
@@ -593,7 +593,7 @@ fstiff=assemtrifilmmtx1(film,FMATRIX); /*TRIANGLE LINEAR FILM MATRIX.*/
 
     /*errormessage("ASSEMBLAGE GLOBAL VECTOR.");*/
     bquadassemconf(confs,gvct,dsafety,nnode,nnmid);/*GLOBAL VECTOR.*/
-    bquadmodifygivend(gmtx,gvct,confs,nnode,nnmid);   /*COMPULSORY.*/
+	bquadmodifygivend(gmtx,gvct,confs,nnode,nnmid);   /*COMPULSORY.*/
 
 for(ii=12*nnode;ii<msize;ii++) /*PASS MID NODE.*/
 {
@@ -1090,7 +1090,7 @@ void inputbiquadframe(FILE *ftext,struct biquadframe *bqf)
       }
       loff++;
     }
-    loff=0;
+	loff=0;
     for(ii=0;ii<2;)                                        /*NODES.*/
     {
       if((bqf->nodes+loff)->code==code1)
@@ -1193,7 +1193,7 @@ void inputbiquadframe(FILE *ftext,struct biquadframe *bqf)
   bqf->nreact=0;
   for(i=0;i<(bqf->nnode);i++) /*CONF VECTOR:CONFINEMENT,VALUE.*/
   {
-    data=fgetsbrk(ftext,&n);
+	data=fgetsbrk(ftext,&n);
 
     for(j=0;j<12;j++)
     {
@@ -1265,11 +1265,11 @@ long int countmidnodes(struct biquadframe *bqf)
                ((bqf->films+i)->n12[soe[ii]]
                 ==(bqf->films+j)->n12[soe[jj+1]] &&
                 (bqf->films+i)->n12[soe[ii+1]]
-                ==(bqf->films+j)->n12[soe[jj]]))
+				==(bqf->films+j)->n12[soe[jj]]))
             {
               count[ii]=1;
             }
-          }
+		  }
         }
       }
     }
@@ -1356,8 +1356,8 @@ void createmidnodes(struct biquadframe *bqf)
                 ==(bqf->films+j)->n12[soe[jj]]))
             {
               count[ii]=1;
-              (bqf->films+i)->n09[ii]=(bqf->films+j)->n09[jj];
-            }
+			  (bqf->films+i)->n09[ii]=(bqf->films+j)->n09[jj];
+			}
           }
         }
       }
@@ -3780,6 +3780,8 @@ if(fout!=NULL) fprintf(fout,"%s\n",str);
   SelectObject(hdc,ppen);
   DeleteObject(hpen);
   return;
-}/*drawbiquadfilm*/
+}
+
+
 
 

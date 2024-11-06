@@ -1,0 +1,36 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{6B0038C2-BC7F-4BDD-81C0-0BDF2739C375}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="sdiapp.cbproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="sdiapp">
+        <MSBuild Projects="sdiapp.cbproj"/>
+    </Target>
+    <Target Name="sdiapp:Clean">
+        <MSBuild Projects="sdiapp.cbproj" Targets="Clean"/>
+    </Target>
+    <Target Name="sdiapp:Make">
+        <MSBuild Projects="sdiapp.cbproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="sdiapp"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="sdiapp:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="sdiapp:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
