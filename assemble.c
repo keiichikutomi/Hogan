@@ -121,6 +121,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 				struct gcomponent* mmtx, struct gcomponent* gmtx,
 				double* iform, double* ddisp, double* finternal, double* fexternal)
 {
+	char str[500];
 	struct oshell shell;
 	int i,j,ii,jj;
 	int nnod;
@@ -196,6 +197,22 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		TtPtHt = matrixtranspose(HPT, 6 * nnod);
 
 		assemshellestrain(&shell, B, edisp);
+
+		if(shell.loff==38)
+		{
+
+			dbgvct((shell.gp[0]).estrain,7,7,"38strain");
+			dbgmtx(*(B+0),7,18,"38strain");
+			dbgvct(edisp,18,6,"38");
+
+		}
+		if(shell.loff==118)
+		{
+			dbgvct((shell.gp[0]).estrain,7,7,"118strain");
+			dbgmtx(*(B+0),7,18,"118strain");
+			dbgvct(edisp,18,6,"118");
+		}
+
 		assemshellestress(&shell, C);
 		einternal = assemshelleinternal(&shell, B);
 
