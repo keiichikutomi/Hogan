@@ -28,7 +28,7 @@ double* extractdeformation(double* eforminit, double* eform, int nnod);
 
 double* rotationvct(double** rmtx)
 {
-	//char str[50];
+	char str[500];
 	double c, s;
 	double* rvct;
 	double theta;
@@ -38,11 +38,9 @@ double* rotationvct(double** rmtx)
 				+ pow( *(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0) ,2)
 				+ pow( *(*(rmtx + 1) + 0) - *(*(rmtx + 0) + 1) ,2))); /*|sin(theta)|>=0*/
 
-
-
 	theta = atan2(s , c);/*theta>=0*/
 
-	if(s > 1e-15)
+	if(s > 1e-8)
 	{
 		*(rvct + 0) = 0.5 * ((*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2)))* theta / s;
 		*(rvct + 1) = 0.5 * ((*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0)))* theta / s;
@@ -50,28 +48,30 @@ double* rotationvct(double** rmtx)
 	}
 	else if(c < 0.0)/*theta=PI*/
 	{
-		*(rvct + 0) = sqrt( ( *(*(rmtx + 0) + 0) + 1.0 ) / 2.0 );
-		if (*(rvct + 0) != 0.0)
+		if (*(*(rmtx + 0) + 0) >= *(*(rmtx + 1) + 1) && *(*(rmtx + 0) + 0) >= *(*(rmtx + 2) + 2))
 		{
+			*(rvct + 0) = sqrt( ( *(*(rmtx + 0) + 0) + 1.0 ) / 2.0 );
 			*(rvct + 1) = 0.5 * *(*(rmtx + 0) + 1) / (*(rvct + 0));
 			*(rvct + 2) = 0.5 * *(*(rmtx + 0) + 2) / (*(rvct + 0));
 		}
-		else
+		if (*(*(rmtx + 1) + 1) >= *(*(rmtx + 0) + 0) && *(*(rmtx + 1) + 1) >= *(*(rmtx + 2) + 2))
 		{
 			*(rvct + 1) = sqrt( ( *(*(rmtx + 1) + 1) + 1.0 ) / 2.0 );
-			if (*(rvct + 1) != 0.0)
-			{
-				*(rvct + 2) = 0.5 * *(*(rmtx + 1) + 2) / (*(rvct + 1));
-			}
-			else
-			{
-				*(rvct + 2) = sqrt( ( *(*(rmtx + 2) + 2) + 1.0 ) / 2.0 );
-			}
+			*(rvct + 0) = 0.5 * *(*(rmtx + 1) + 0) / (*(rvct + 1));
+			*(rvct + 2) = 0.5 * *(*(rmtx + 1) + 2) / (*(rvct + 1));
 		}
+		if (*(*(rmtx + 2) + 2) >= *(*(rmtx + 0) + 0) && *(*(rmtx + 2) + 2) >= *(*(rmtx + 1) + 1))
+		{
+			*(rvct + 2) = sqrt( ( *(*(rmtx + 2) + 2) + 1.0 ) / 2.0 );
+			*(rvct + 0) = 0.5 * *(*(rmtx + 2) + 0) / (*(rvct + 2));
+			*(rvct + 1) = 0.5 * *(*(rmtx + 2) + 1) / (*(rvct + 2));
+		}
+
 		*(rvct + 0) *= PI;
 		*(rvct + 1) *= PI;
 		*(rvct + 2) *= PI;
-		//sprintf(str,"%e %e %e\n",s,c,theta);
+
+		//sprintf(str,"%.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e\n",s,c,theta,*(rvct + 0),*(rvct + 1),*(rvct + 2), *(*(rmtx + 0) + 0), *(*(rmtx + 1) + 1), *(*(rmtx + 2) + 2));
 		//errormessage(str);
 
 	}

@@ -176,7 +176,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 		C = elasticCshell(shell);
 		B = assemshellshape(shell, drccosinit);
-		//Ke = assemshellemtx(shell);                                      /*[Ke]*/
+		//Kp = assemshellemtx(shell);                                      /*[Ke]*/
 		M = assemshellmmtx(shell, drccosinit);         				       /*[Me]*/
 
 		/*DEFORMED CONFIGFURATION*/
@@ -190,6 +190,9 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 		edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
 
+
+
+
 		T = transmatrixIII(drccos, nnod);         							/*[T].*/
 		Tt = matrixtranspose(T, 6 * nnod);                  				/*[Tt].*/
 
@@ -197,28 +200,12 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		TtPtHt = matrixtranspose(HPT, 6 * nnod);
 
 		assemshellestrain(&shell, B, edisp);
-
-		if(shell.loff==38)
-		{
-
-			dbgvct((shell.gp[0]).estrain,7,7,"38strain");
-			dbgmtx(*(B+0),7,18,"38strain");
-			dbgvct(edisp,18,6,"38");
-
-		}
-		if(shell.loff==118)
-		{
-			dbgvct((shell.gp[0]).estrain,7,7,"118strain");
-			dbgmtx(*(B+0),7,18,"118strain");
-			dbgvct(edisp,18,6,"118");
-		}
-
 		assemshellestress(&shell, C);
 		einternal = assemshelleinternal(&shell, B);
+		//einternal = matrixvector(Kp, edisp, 6*nnod);
 
 		if(finternal!=NULL)
 		{
-			//einternal = matrixvector(Ke, edisp, 6*nnod);
 
 			ginternal = matrixvector(TtPtHt, einternal, 6 * nnod);
 			for (ii = 0; ii < nnod; ii++)
@@ -260,8 +247,13 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 			}
 			symmetricmtx(Kt, 6 * nnod);											   /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 			assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+
+			//if(i==1)dbgmtx(Kt,18,18,"mtx");
+
 			freematrix(Kp, 6 * nnod);
 			freematrix(Kt, 6 * nnod);
+
+
 		}
 		if(mmtx!=NULL)
 		{

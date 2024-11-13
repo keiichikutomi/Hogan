@@ -809,24 +809,9 @@ int arclmDynamic(struct arclmframe* af)
 	while (nlap <= laps)
 	{
 		af->nlaps = nlap;
-
 		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
-		if((outputmode == 0 && iteration == 1) || outputmode == 1)
-		{
-			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
-			fprintf(fdsp, string);
-			fprintf(finr, string);
-			fprintf(finf, string);
-			fprintf(fexf, string);
-			fprintf(fubf, string);
-			fprintf(frct, string);
-			fprintf(fstr, string);
-			fprintf(fene, string);
-			fprintf(flog, string);
-			fprintf(fvel, string);
-			fprintf(facc, string);
-		}
+
 
 		if (iteration == 1)
 		{
@@ -896,11 +881,15 @@ int arclmDynamic(struct arclmframe* af)
 			}
 		}
 
-		/*GLOBAL MATRIX INITIALIZATION.*/
-		/*GLOBAL VECTOR INITIALIZATION.*/
 
-		if(solver==0)
-		{
+		/*
+			std::vector<Triplet> Ktriplet;
+			std::vector<Triplet> Mtriplet;
+
+			SparseMatrix Kglobal(msize, msize);
+			Eigen::SimplicialLDLT<SparseMatrix> solver;
+		*/
+
 			for (i = 1; i <= msize; i++)
 			{
 				g = (gmtx + (i - 1))->down;
@@ -910,16 +899,18 @@ int arclmDynamic(struct arclmframe* af)
 					g = g->down;
 					free(p);
 				}
-
 				ginit.m = (unsigned short int)i;
 				*(gmtx + (i - 1)) = ginit;
+			}
 
-				*(finertial  + (i - 1)) = 0.0;
-				*(finternal  + (i - 1)) = 0.0;
-				*(fexternal  + (i - 1)) = 0.0;
-				*(fpressure  + (i - 1)) = 0.0;
-				*(freaction  + (i - 1)) = 0.0;
-				*(funbalance + (i - 1)) = 0.0;
+			for (i = 0; i < msize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+			{
+				*(finertial  + i) = 0.0;
+				*(finternal  + i) = 0.0;
+				*(fexternal  + i) = 0.0;
+				*(fpressure  + i) = 0.0;
+				*(freaction  + i) = 0.0;
+				*(funbalance + i) = 0.0;
 			}
 			comps = msize;
 
@@ -1138,18 +1129,6 @@ int arclmDynamic(struct arclmframe* af)
 									  ginertial, Me, R, lastRt, lapH,
 									  alphaf, alpham, xi, beta, ddt, nnod);
 
-				if(0)
-				{
-					for (ii = 0; ii < 18; ii++)
-					{
-						for (jj = 0; jj < 18; jj++)
-						{
-						   fprintf(flog,"%5.5f ", *(*(Keff+ii)+jj) );
-						}
-						 fprintf(flog,"\n");
-					}
-				}
-
 				symmetricmtx(Keff, 6*nnod);
 				assemgstiffnessIIwithDOFelimination(gmtx, Keff, &shell, constraintmain);
 
@@ -1172,27 +1151,6 @@ int arclmDynamic(struct arclmframe* af)
 
 
 
-
-				(mshell+i-1)->SE = 0.0;
-				(mshell+i-1)->SEp = 0.0;
-				(mshell+i-1)->SEb = 0.0;
-				for (ii = 0; ii < nnod; ii++)
-				{
-					for (jj = 0; jj < 2; jj++)
-					{
-						(mshell+i-1)->SEp += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
-					}
-					for (jj = 2; jj < 5; jj++)
-					{
-						(mshell+i-1)->SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
-					}
-					(mshell+i-1)->SE += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
-				}
-				(mshell+i-1)->SE += (mshell+i-1)->SEp + (mshell+i-1)->SEb;
-
-				(mshell+i-1)->KE = 0.0;
-				(mshell+i-1)->KEt = 0.0;
-				(mshell+i-1)->KEr = 0.0;
 				for (ii = 0; ii < nnod; ii++)
 				{
 					for (jj = 0; jj < 3; jj++)
@@ -1271,8 +1229,262 @@ int arclmDynamic(struct arclmframe* af)
 				freematrix(Keff, 6 * nnod);
 
 			}
+
+
+
+
+
+
+		if(iteration==1)
+		{
+		  clearwindow(*(wdraw.childs+1));
+		  drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+		  overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
 		}
-		else if(solver==1)
+
+
+
+		/*UNBALANCED FORCE & RESIDUAL AT MID-POINT.*/
+		residual = 0.0;
+		for (i = 0; i < msize; i++)
+		{
+
+			if(solver==0)
+			{
+				*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * (*(fbaseload + i) + *(fpressure + i));
+				*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
+			}
+			else if(solver==1)
+			{
+				*(fexternal + i) = loadfactor * (*(fbaseload + i) + *(fpressure + i));
+				*(funbalance + i) = *(fexternal + i) - *(finternal + i);
+			}
+
+			if ((confs + i)->iconf == 1)
+			{
+				*(freaction + i) = *(funbalance + i);
+				*(funbalance + i) = 0.0;
+			}
+			residual += *(funbalance + i) * *(funbalance + i);
+			if(solver==0)*(gvct + i) = *(funbalance + i);
+		}
+
+
+
+		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
+		{
+			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
+			fprintf(fdsp, string);
+			fprintf(fvel, string);
+			fprintf(facc, string);
+
+			fprintf(finr, string);
+			fprintf(finf, string);
+			fprintf(fexf, string);
+			fprintf(fubf, string);
+			fprintf(frct, string);
+
+			fprintf(fstr, string);
+			fprintf(fene, string);
+			fprintf(flog, string);
+
+
+			outputdisp(ddisp, fdsp, nnode, nodes);                        /*FORMATION OUTPUT.*/
+			outputdisp(ud_m, fvel, nnode, nodes);                        /*FORMATION OUTPUT.*/
+			outputdisp(udd_m, facc, nnode, nodes);                        /*FORMATION OUTPUT.*/
+
+			outputdisp(finertial, finr, nnode, nodes);
+			outputdisp(finternal, finf, nnode, nodes);
+			outputdisp(fexternal, fexf, nnode, nodes);
+			outputdisp(funbalance, fubf, nnode, nodes);
+			outputdisp(freaction, frct, nnode, nodes);
+
+			for(i = 0; i < nshell; i++)
+			{
+				//fprintf(fene, "%5ld %e %e %e %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE, (mshell+i)->KEt, (mshell+i)->KEr, (mshell+i)->KE);
+				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
+				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
+				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5]
+				);
+			}
+		}
+
+			/*CROUT LU DECOMPOSITION.*/
+			nline = croutlu(gmtx, confs, msize, &det, &sign, gcomp1);
+			/*DECOMPOSITION FAILED*/
+			if (sign < 0.0)
+			{
+				for (ii = 1; ii <= msize; ii++)
+				{
+					gg = 0.0;
+					gread(gmtx, ii, ii, &gg);
+
+					if (gg < 0.0)
+					{
+						sprintf(string, "INSTABLE TERMINATION AT NODE %ld.",
+							(nodes + int((ii - 1) / 6))->code);
+						errormessage(" ");
+						errormessage(string);
+						if (fonl != NULL) fprintf(fonl, "%s\n", string);
+					}
+				}
+
+				fclose(fin);
+				fclose(fonl);
+				fclose(fdsp);
+				fclose(fexf);
+				fclose(finf);
+				fclose(fubf);
+				fclose(frct);
+				fclose(fstr);
+				fclose(fene);
+				fclose(ffig);
+				fclose(fbcl);
+
+				gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+				free(gvct);
+				free(funbalance);
+				free(finternal);
+				free(fexternal);
+				return 1;
+			}
+			nline = forwardbackward(gmtx, gvct, confs, msize, gcomp1);
+
+			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
+				nlap, iteration, loadfactor,/*residual*/gvctlen, det, sign, 0, 0.0, 0.0, time);
+			fprintf(ffig, "%s", string);
+			errormessage(string);
+
+
+			gvctlen = vectorlength(gvct,msize);
+			for (ii = 0; ii < msize; ii++)
+			{
+				if (*(constraintmain + ii) != ii)
+				{
+					*(gvct + ii) = *(gvct + *(constraintmain + ii));
+				}
+			}
+
+			updaterotation(lapddisp, gvct, nnode);
+			updaterotation(ddisp, gvct, nnode);
+
+			lapddisp_m = pullback(lastddisp,lapddisp,nnode);
+
+			for(ii = 0; ii < msize; ii++)
+			{
+				*(ud_m + ii)  = (gamma / (beta * ddt)) **(lapddisp_m + ii) + *(udinit_m + ii);
+				*(udd_m + ii) = (1.0 / (beta * ddt * ddt)) **(lapddisp_m + ii) + *(uddinit_m + ii);
+			}
+
+			if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
+			{
+				nlap++;
+				iteration = 0;
+	#if 0
+				if(nlap>3)
+				{
+				  ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
+				  sprintf(string, "ddt: %e time: %e\n",ddt, time);
+				  errormessage(string);
+				}
+	#endif
+			}
+			iteration++;
+			free(lapddisp_m);
+
+
+
+
+		//MESSAGE FOR UPDATE UI
+		//AVOID FREEZE ON LONG RUNNING TASK
+		MSG msg;
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+#if 1
+		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
+		{
+		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
+		  {
+			gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+			free(gvct);
+			free(funbalance);
+			free(finternal);
+			free(fexternal);
+			free(fpressure);
+
+			if(fonl!=NULL) fprintf(fonl,"\nABORTED.\n");
+
+			fclose(fonl);
+			fclose(fdsp);
+			fclose(fexf);
+			fclose(finf);
+			fclose(fubf);
+			fclose(frct);
+			fclose(fstr);
+			fclose(fene);
+			fclose(ffig);
+			fclose(fbcl);
+
+			laptime("\0",t0);
+			return 1;
+		  }
+
+		  //t2=clock();
+		  //if((t2-t1)/CLK_TCK>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
+		}
+#endif
+	}
+
+	clearwindow(*(wdraw.childs+1));
+	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+
+
+	fclose(fonl);
+	fclose(fdsp);
+	fclose(fexf);
+	fclose(finf);
+	fclose(fubf);
+	fclose(frct);
+	fclose(fstr);
+	fclose(fene);
+	fclose(ffig);
+	fclose(fbcl);
+	fclose(fout);
+
+	gfree(gmtx, nnode);  	/*FREE GLOBAL MATRIX.*/
+	free(fexternal);		/*FREE VECTOR*/
+	free(finternal);
+
+	errormessage(" ");
+	errormessage("COMPLETED.");
+
+	memory1=availablephysicalmemoryEx("REMAIN:");
+	sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory1));
+	errormessage(string);
+
+	return 0;
+}
+/*gnshnCR*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+#if 0
+		if(solver==1)
 		{
 
 			for (i = 0; i < msize; i++)
@@ -1449,156 +1661,7 @@ int arclmDynamic(struct arclmframe* af)
 		}
 
 
-
-
-
-
-		if(iteration==1)
-		{
-		  clearwindow(*(wdraw.childs+1));
-		  drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-		  overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
-		}
-
-
-
-		/*UNBALANCED FORCE & RESIDUAL AT MID-POINT.*/
-		residual = 0.0;
-		for (i = 0; i < msize; i++)
-		{
-
-			if(solver==0)
-			{
-				*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * (*(fbaseload + i) + *(fpressure + i));
-				*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
-			}
-			else if(solver==1)
-			{
-				*(fexternal + i) = loadfactor * (*(fbaseload + i) + *(fpressure + i));
-				*(funbalance + i) = *(fexternal + i) - *(finternal + i);
-			}
-
-			if ((confs + i)->iconf == 1)
-			{
-				*(freaction + i) = *(funbalance + i);
-				*(funbalance + i) = 0.0;
-			}
-			residual += *(funbalance + i) * *(funbalance + i);
-			if(solver==0)*(gvct + i) = *(funbalance + i);
-		}
-
-
-
-		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
-		{
-			outputdisp(ddisp, fdsp, nnode, nodes);                        /*FORMATION OUTPUT.*/
-			outputdisp(ud_m, fvel, nnode, nodes);                        /*FORMATION OUTPUT.*/
-			outputdisp(udd_m, facc, nnode, nodes);                        /*FORMATION OUTPUT.*/
-
-			outputdisp(finertial, finr, nnode, nodes);
-			outputdisp(finternal, finf, nnode, nodes);
-			outputdisp(fexternal, fexf, nnode, nodes);
-			outputdisp(funbalance, fubf, nnode, nodes);
-			outputdisp(freaction, frct, nnode, nodes);
-
-			for(i = 0; i < nshell; i++)
-			{
-				fprintf(fene, "%5ld %e %e %e %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE, (mshell+i)->KEt, (mshell+i)->KEr, (mshell+i)->KE);
-				fprintf(fstr, "%5ld %e %e %e %e %e %e\n", (shells+i)->code,
-				(mshell+i)->stress[0][0],
-				(mshell+i)->stress[0][1],
-				(mshell+i)->stress[0][2],
-				(mshell+i)->stress[0][3],
-				(mshell+i)->stress[0][4],
-				(mshell+i)->stress[0][5]);
-			}
-		}
-		if(solver==0)
-		{
-			/*CROUT LU DECOMPOSITION.*/
-			nline = croutlu(gmtx, confs, msize, &det, &sign, gcomp1);
-			/*DECOMPOSITION FAILED*/
-			if (sign < 0.0)
-			{
-				for (ii = 1; ii <= msize; ii++)
-				{
-					gg = 0.0;
-					gread(gmtx, ii, ii, &gg);
-
-					if (gg < 0.0)
-					{
-						sprintf(string, "INSTABLE TERMINATION AT NODE %ld.",
-							(nodes + int((ii - 1) / 6))->code);
-						errormessage(" ");
-						errormessage(string);
-						if (fonl != NULL) fprintf(fonl, "%s\n", string);
-					}
-				}
-
-				fclose(fin);
-				fclose(fonl);
-				fclose(fdsp);
-				fclose(fexf);
-				fclose(finf);
-				fclose(fubf);
-				fclose(frct);
-				fclose(fstr);
-				fclose(fene);
-				fclose(ffig);
-				fclose(fbcl);
-
-				gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
-				free(gvct);
-				free(funbalance);
-				free(finternal);
-				free(fexternal);
-				return 1;
-			}
-			nline = forwardbackward(gmtx, gvct, confs, msize, gcomp1);
-
-			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-				nlap, iteration, loadfactor,/*residual*/gvctlen, det, sign, 0, 0.0, 0.0, time);
-			fprintf(ffig, "%s", string);
-			errormessage(string);
-
-
-			gvctlen = vectorlength(gvct,msize);
-			for (ii = 0; ii < msize; ii++)
-			{
-				if (*(constraintmain + ii) != ii)
-				{
-					*(gvct + ii) = *(gvct + *(constraintmain + ii));
-				}
-			}
-
-			updaterotation(lapddisp, gvct, nnode);
-			updaterotation(ddisp, gvct, nnode);
-
-			lapddisp_m = pullback(lastddisp,lapddisp,nnode);
-
-			for(ii = 0; ii < msize; ii++)
-			{
-				*(ud_m + ii)  = (gamma / (beta * ddt)) **(lapddisp_m + ii) + *(udinit_m + ii);
-				*(udd_m + ii) = (1.0 / (beta * ddt * ddt)) **(lapddisp_m + ii) + *(uddinit_m + ii);
-			}
-
-			if ((gvctlen<tolerance || iteration>maxiteration) && iteration != 1)
-			{
-				nlap++;
-				iteration = 0;
-	#if 0
-				if(nlap>3)
-				{
-				  ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
-				  sprintf(string, "ddt: %e time: %e\n",ddt, time);
-				  errormessage(string);
-				}
-	#endif
-			}
-			iteration++;
-			free(lapddisp_m);
-		}
-		else if(solver==1)
+		if(solver==1)
 		{
 			leftleftKE = leftKE;
 			leftKE = rightKE;
@@ -1680,82 +1743,5 @@ int arclmDynamic(struct arclmframe* af)
 
 
 
-
-
-
-		//MESSAGE FOR UPDATE UI
-		//AVOID FREEZE ON LONG RUNNING TASK
-		MSG msg;
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-#if 1
-		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
-		{
-		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
-		  {
-			gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
-			free(gvct);
-			free(funbalance);
-			free(finternal);
-			free(fexternal);
-			free(fpressure);
-
-			if(fonl!=NULL) fprintf(fonl,"\nABORTED.\n");
-
-			fclose(fonl);
-			fclose(fdsp);
-			fclose(fexf);
-			fclose(finf);
-			fclose(fubf);
-			fclose(frct);
-			fclose(fstr);
-			fclose(fene);
-			fclose(ffig);
-			fclose(fbcl);
-
-			laptime("\0",t0);
-			return 1;
-		  }
-
-		  //t2=clock();
-		  //if((t2-t1)/CLK_TCK>=WAIT) break;               /*CONTINUE AFTER WAITING.*/
-		}
 #endif
-	}
-
-	clearwindow(*(wdraw.childs+1));
-	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
-
-
-	fclose(fonl);
-	fclose(fdsp);
-	fclose(fexf);
-	fclose(finf);
-	fclose(fubf);
-	fclose(frct);
-	fclose(fstr);
-	fclose(fene);
-	fclose(ffig);
-	fclose(fbcl);
-	fclose(fout);
-
-	gfree(gmtx, nnode);  	/*FREE GLOBAL MATRIX.*/
-	free(fexternal);		/*FREE VECTOR*/
-	free(finternal);
-
-	errormessage(" ");
-	errormessage("COMPLETED.");
-
-	memory1=availablephysicalmemoryEx("REMAIN:");
-	sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory1));
-	errormessage(string);
-
-	return 0;
-}
-/*gnshnCR*/
-
 

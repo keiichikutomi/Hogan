@@ -1,4 +1,4 @@
-﻿
+
 /*FUNCTIONS FOR SHELL*/
 double*** elasticCshell(struct oshell shell);
 double** shelldrccos(struct oshell shell);
@@ -1425,7 +1425,6 @@ void inputshell(struct oshell *shells,
 	  (shell->gp[i]).qn=((mshell+offset)->gp[i]).qn;
 	  (shell->gp[i]).qm=((mshell+offset)->gp[i]).qm;
 	  (shell->gp[i]).qnm=((mshell+offset)->gp[i]).qnm;
-	  (shell->gp[i]).qilyushin=((mshell+offset)->gp[i]).qilyushin;
 	  (shell->gp[i]).yinit=((mshell+offset)->gp[i]).yinit;
 	  (shell->gp[i]).y=((mshell+offset)->gp[i]).y;
 
@@ -1448,7 +1447,6 @@ void inputshell(struct oshell *shells,
 	  (shell->gp[i]).qn=((shells+offset)->gp[i]).qn;
 	  (shell->gp[i]).qm=((shells+offset)->gp[i]).qm;
 	  (shell->gp[i]).qnm=((shells+offset)->gp[i]).qnm;
-	  (shell->gp[i]).qilyushin=((shells+offset)->gp[i]).qilyushin;
 	  (shell->gp[i]).yinit=((shells+offset)->gp[i]).yinit;
 	  (shell->gp[i]).y=((shells+offset)->gp[i]).y;
 
@@ -1489,7 +1487,6 @@ void outputshell(struct oshell *shells,
 	((shells+offset)->gp[i]).qn=(shell->gp[i]).qn;
 	((shells+offset)->gp[i]).qm=(shell->gp[i]).qm;
 	((shells+offset)->gp[i]).qnm=(shell->gp[i]).qnm;
-	((shells+offset)->gp[i]).qilyushin=(shell->gp[i]).qilyushin;
 
 	((shells+offset)->gp[i]).yinit=(shell->gp[i]).yinit;
 	((shells+offset)->gp[i]).y=(shell->gp[i]).y;
@@ -1528,7 +1525,7 @@ void outputmemoryshell(struct oshell *shells,
 	((mshell+offset)->gp[i]).qn=((shells+offset)->gp[i]).qn;
 	((mshell+offset)->gp[i]).qm=((shells+offset)->gp[i]).qm;
 	((mshell+offset)->gp[i]).qnm=((shells+offset)->gp[i]).qnm;
-	((mshell+offset)->gp[i]).qilyushin=((shells+offset)->gp[i]).qilyushin;
+
 	((mshell+offset)->gp[i]).yinit=((shells+offset)->gp[i]).yinit;
 	((mshell+offset)->gp[i]).y=((shells+offset)->gp[i]).y;
 
@@ -1691,8 +1688,6 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, double** W)
   *(f+0) -= pow(y/yinit,2.0);
   *(f+1) -= pow(y/yinit,2.0);
 
-
-
   if(W!=NULL)
   {
 	  /*(diag[Q,Q])[O]^-1*(diag[Q^T,Q^T]){σtry-αtry}*/
@@ -1713,7 +1708,6 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, double** W)
 	  gp->qn = qn;
 	  gp->qm = qm;
 	  gp->qnm = qnm;
-	  //gp->qilyushin = *(f+0);
 
 	  gp->alpha = alpha;
 	  gp->yinit = yinit;
@@ -1721,6 +1715,7 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, double** W)
 
 	  gp->f[0] = *(f+0);
 	  gp->f[1] = *(f+1);
+
 
 	  for (i = 0; i < 2; i++)
 	  {
@@ -1833,16 +1828,6 @@ void assemshellestress(struct oshell* shell, double*** C)
 
 	/*UPDATE STRESS RESULTANT*/
 	lambda = returnmapilyushin(shell, ii, W);
-	/*
-	if(shell->loff==278 && ii==0)
-	{
-		dbgvct(lambda,2,2,"278");
-	}
-	if(shell->loff==2278 && ii==0)
-	{
-		dbgvct(lambda,2,2,"2278");
-	}
-    */
 
 	H = matrixmatrix(W,*(C+ii),nstress);
 
@@ -1962,12 +1947,9 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
    f=ilyushin(shell, ii, lambda, W);/*ILYUSHIN'S YIELD FUNCTION.{σ-α}^T[A]{σ-α}*/
 
 
-   if( *(f+0)>0 || *(f+1)>0 )/*IF BOTH YIELD SURFACES ARE ACTIVE.*/
+   if(/* *(f+0)>0 || *(f+1)>0*/0 )/*IF BOTH YIELD SURFACES ARE ACTIVE.*/
    {
 	   //sprintf(str,"YIELD DETECTED SHELL %d INTEGRATION POINT %d\n",shell->loff,ii);
-	   //dbgstr(str);
-
-	   //sprintf(str,"%f %f %f %f %f",(shell->gp[ii]).qn,(shell->gp[ii]).qm,(shell->gp[ii]).qnm,(shell->gp[ii]).yinit,(shell->gp[ii]).y);
 	   //dbgstr(str);
 
 	   /*RETURN-MAPPING PROCEDURE USING NEWTON-RAPTHON METHOD FOR ILYUSHIN'S YIELD CONDITION.*/
@@ -2135,7 +2117,7 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
    double** dfdl;
    double det;
    double residual;
-   double tolerance = 1.0e-8;
+   double tolerance = 1.0e-5;
    double eps = 1.0e-2;
    char str[800];
    int iteration;
@@ -2175,14 +2157,6 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 
    if(*(f+0)>0 || *(f+1)>0)/*RETURN-MAPPING PROCEDURE USING NEWTON-RAPTHON METHOD FOR ILYUSHIN'S YIELD CONDITION.*/
    {
-	   /*
-	   sprintf(str,"YIELD DETECTED SHELL %d INTEGRATION POINT %d\n",shell->loff,ii);
-	   dbgstr(str);
-
-	   sprintf(str,"%f %f %f %f %f",(shell->gp[ii]).qn,(shell->gp[ii]).qm,(shell->gp[ii]).qnm,(shell->gp[ii]).yinit,(shell->gp[ii]).y);
-	   dbgstr(str);
-       */
-
 
 	   /*BOTH YIELD SURFACES ARE ACTIVE.*/
 	   *(lambda + 0) = 0.0;
@@ -2200,10 +2174,23 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 		 {
 		   for(j=0;j<2;j++)
 		   {
-			 if(i==j) *(lambdaeps+j)=*(lambda+j)+eps;
-			 else     *(lambdaeps+j)=*(lambda+j);
+			 if(i==j)
+			 {
+				*(lambdaeps+j)=*(lambda+j)+eps;
+			 }
+			 else
+			 {
+				*(lambdaeps+j)=*(lambda+j);
+			 }
 		   }
 		   feps=ilyushin(shell, ii, lambdaeps, NULL);
+
+			 if(shell->loff==51 && ii==2)
+			 {
+				 sprintf(str,"%f %f %f %f %d\n",*(lambdaeps+0),*(lambdaeps+1),*(feps+0),*(feps+1),0);
+				 dbgstr(str);
+			 }
+
 		   for(j=0;j<2;j++)
 		   {
 			 *(*(dfdl+j)+i)=(*(feps+j)-*(f+j))/eps;
@@ -2212,7 +2199,8 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 		 }
 
 		 /*UPDATE*/
-		 det=*(*(dfdl+0)+0)**(*(dfdl+1)+1)-*(*(dfdl+0)+1)**(*(dfdl+1)+0);
+		 det=*(*(dfdl+0)+0)* *(*(dfdl+1)+1) - *(*(dfdl+0)+1)* *(*(dfdl+1)+0);
+		 if(det==0.0)break;
 
 		 *(dlambda + 0) = -( *(*(dfdl+1)+1)**(f+0)-*(*(dfdl+0)+1)**(f+1))/det;
 		 *(dlambda + 1) = -(-*(*(dfdl+1)+0)**(f+0)+*(*(dfdl+0)+0)**(f+1))/det;
@@ -2224,8 +2212,12 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 		 free(f);
 		 f=ilyushin(shell, ii, lambda, NULL);
 
-		 //sprintf(str,"%f %f %f %f %d",*(f+0),*(f+1),*(lambda+0),*(lambda+1),0);
-		 //dbgstr(str);
+		 if(shell->loff==51 && ii==2)
+		 {
+			 sprintf(str,"%f %f %f %f %d\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1),0);
+			 dbgstr(str);
+		 }
+
 
 		 residual=vectorlength(f,2);
 		 iteration++;
@@ -2249,7 +2241,14 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 	   {
 		 /*SENSITIVITY*/
 		 *(lambdaeps+0)=*(lambda+0)+eps;
+		 *(lambdaeps+1)=0.0;
 		 feps=ilyushin(shell, ii, lambdaeps, NULL);
+
+		 if(shell->loff==51 && ii==2)
+		 {
+			 sprintf(str,"%f %f %f %f %d\n",*(lambdaeps+0),*(lambdaeps+1),*(feps+0),*(feps+1),1);
+			 dbgstr(str);
+		 }
 
 		 /*UPDATE*/
 		 *(dlambda+0) = -*(f+0)*eps / (*(feps+0)-*(f+0));
@@ -2261,8 +2260,11 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 		 free(f);
 		 f=ilyushin(shell, ii, lambda, NULL);
 
-		 //sprintf(str,"%f %f %f %f %d",*(f+0),*(f+1),*(lambda+0),*(lambda+1),1);
-		 //dbgstr(str);
+		 if(shell->loff==51 && ii==2)
+		 {
+			 sprintf(str,"%f %f %f %f %d\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1),1);
+			 dbgstr(str);
+		 }
 
 		 residual = abs(*(f+0));
 		 iteration++;
@@ -2285,8 +2287,15 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 	   while(residual>tolerance && iteration<10)
 	   {
 		 /*SENSITIVITY*/
+		 *(lambdaeps+0)=0.0;
 		 *(lambdaeps+1)=*(lambda+1)+eps;
 		 feps=ilyushin(shell, ii, lambdaeps, NULL);
+
+		 if(shell->loff==51 && ii==2)
+		 {
+			 sprintf(str,"%f %f %f %f %d\n",*(lambdaeps+0),*(lambdaeps+1),*(feps+0),*(feps+1),2);
+			 dbgstr(str);
+		 }
 
 		 /*UPDATE*/
 		 *(dlambda+1) = -*(f+1)*eps / (*(feps+1)-*(f+1));
@@ -2298,8 +2307,11 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 		 free(f);
 		 f=ilyushin(shell, ii, lambda, NULL);
 
-		 //sprintf(str,"%f %f %f %f %d",*(f+0),*(f+1),*(lambda+0),*(lambda+1),2);
-		 //dbgstr(str);
+		 if(shell->loff==51 && ii==2)
+		 {
+			 sprintf(str,"%f %f %f %f %d\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1),2);
+			 dbgstr(str);
+		 }
 
 		 residual = abs(*(f+1));
 		 iteration++;
@@ -2328,8 +2340,6 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 		 *(lambda + 1) = *(lambda1 + 1);
 	   }
 
-	  //sprintf(str,"CONVERGED %f %f %f %f %f %f %f\n\n",*(lambda + 0),*(lambda + 1),(shell->gp[ii]).qn,(shell->gp[ii]).qm,(shell->gp[ii]).qnm,(shell->gp[ii]).yinit,(shell->gp[ii]).y);
-	  //dbgstr(str);
    }
    free(f);
    f=ilyushin(shell, ii, lambda, W);
@@ -2361,7 +2371,7 @@ double** consistentCilyushin(struct oshell* shell, int ii, double** H, double Ha
   double M00,M01,M10,M11;
   double det;
   double beta;
-  double tolerance = 1.0e-8;
+  double tolerance = 1.0e-5;
 
   consistentC = (double**)malloc(nstress * sizeof(double*));
   for (i = 0; i < nstress; i++)

@@ -3194,7 +3194,7 @@ void energyoutputtomemory(FILE *ftext,struct arclmframe *af)
     ddata=strtod(*(data+5),NULL);
     (af->elems+i)->Ee[0]=ddata;
 
-    ddata=strtod(*(data+7),NULL);
+	ddata=strtod(*(data+7),NULL);
     (af->elems+i)->Ep[0]=ddata;
 
     ddata=strtod(*(data+15),NULL);
@@ -3211,6 +3211,9 @@ void energyoutputtomemory(FILE *ftext,struct arclmframe *af)
   }
   return;
 }
+
+
+
 
 
 

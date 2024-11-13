@@ -618,14 +618,6 @@ int arclmStatic(struct arclmframe* af)
 			{
 			  outputmemoryshell(shells,mshell,i);
 			}
-
-			/*GLOBAL INCREMENTAL IN THIS LAP.*/
-			laploadfactor=0.0;
-			for(i = 0; i < msize; i++)
-			{
-			  *(lapddisp+i)=0.0;
-			}
-
 		}
 
 		/*STIFFNESS ASSEMBLAGE*/
@@ -650,6 +642,8 @@ int arclmStatic(struct arclmframe* af)
 			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
 
 			/*OUTPUT FOR GLOBAL*/
+			//dbgstr(string);
+
 			fprintf(fdsp, string);
 			fprintf(finf, string);
 			fprintf(fexf, string);
@@ -667,10 +661,11 @@ int arclmStatic(struct arclmframe* af)
 			for(i = 0; i < nshell; i++)
 			{
 				//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
-				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
 				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
 				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
-				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5]
+				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
+				((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 				);
 			}
 		}
@@ -972,9 +967,11 @@ int arclmStatic(struct arclmframe* af)
 						*(lastddisp + ii) = *(ddisp + ii);/*NODE COORDINATION AT CONVERGED POINT*/
 						*(lastgvct + ii) = *(gvct + ii);/*INCREMENTAL DISPLACEMENT OF PREDICTOR*/
 						*(lastpivot + ii) = (gmtx + ii)->value;/*PIVOT SIGN OF TANGENTIAL STIFFNESS*/
+						*(lapddisp + ii) = 0.0;
 					}
 					lastloadfactor = loadfactor;/*LOAD FACTOR AT CONVERGED POINT*/
 					lastlambda = lambda;/*INCREMENTAL LOAD FACTOR OF PREDICTOR*/
+					laploadfactor = 0.0;
 					lastsign = sign;/*SIGN AT CONVERGED POINT*/
 					BCLFLAG = 0;
 
@@ -1652,7 +1649,7 @@ int arclmStatic(struct arclmframe* af)
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-#if 1
+#if 0
 		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 		{
 		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/

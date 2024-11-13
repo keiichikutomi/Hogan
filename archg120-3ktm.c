@@ -211,7 +211,7 @@ struct gausspoint{double estrain[7];
 				  double pstrain[7];
 				  double stress[7];
 				  double backstress[7];
-				  double qn,qm,qnm,qilyushin;
+				  double qn,qm,qnm;
 				  double yinit,y,alpha;
 				  double f[2];
 				  double Ee;
@@ -19752,6 +19752,16 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			(af->ninit + i)->r[ii] = (af->nodes + i)->r[ii];
 		}
 	}
+	if (n == 7)
+	{
+		for (ii = 0; ii < 3; ii++)
+		{
+			(af->nodes + i)->d[ii] = strtod(*(data + 1 + ii), NULL);
+			(af->nodes + i)->r[ii] = strtod(*(data + 4 + ii), NULL);
+			(af->ninit + i)->d[ii] = (af->nodes + i)->d[ii];
+			(af->ninit + i)->r[ii] = (af->nodes + i)->r[ii];
+		}
+	}
 
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
@@ -19930,9 +19940,10 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  ((af->shells+i-1)->gp[ii]).qn=0.0;
 	  ((af->shells+i-1)->gp[ii]).qm=0.0;
 	  ((af->shells+i-1)->gp[ii]).qnm=0.0;
-	  ((af->shells+i-1)->gp[ii]).qilyushin=0.0;
 	  ((af->shells+i-1)->gp[ii]).yinit=0.0;
 	  ((af->shells+i-1)->gp[ii]).y=0.0;
+	  ((af->shells+i-1)->gp[ii]).f[0]=0.0;
+	  ((af->shells+i-1)->gp[ii]).f[1]=0.0;
 	  ((af->shells+i-1)->gp[ii]).alpha=0.0;
 	  ((af->shells+i-1)->gp[ii]).Ee=0.0;
 	  ((af->shells+i-1)->gp[ii]).Ep=0.0;
@@ -19983,6 +19994,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		*(af->nmass+offset) = strtod(*(data+j+12),NULL);
 	  }
 	}
+
 
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
