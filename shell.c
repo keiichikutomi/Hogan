@@ -1811,6 +1811,7 @@ void assemshellestress(struct oshell* shell, double*** C)
 	  gp->stress[i] = *(gpstress + i);/*TRIAL STRESS*/
 	}
 
+    /*CHECK FOR TRUE STRESS*/
 
 
 	free(gpstress);

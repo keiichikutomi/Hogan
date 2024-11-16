@@ -1,4 +1,4 @@
-
+﻿
 /*FUNCTIONS FOR SHELL*/
 double*** elasticCshell(struct oshell shell);
 double** shelldrccos(struct oshell shell);
@@ -1811,6 +1811,7 @@ void assemshellestress(struct oshell* shell, double*** C)
 	  gp->stress[i] = *(gpstress + i);/*TRIAL STRESS*/
 	}
 
+    /*CHECK FOR TRUE STRESS*/
 
 
 	free(gpstress);
