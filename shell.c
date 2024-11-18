@@ -209,6 +209,11 @@ double*** assemshellshape(struct oshell shell, double** drccos)
   double len;
   double** Bp,** Bb,** Bt;
   double*** B;
+  double alphab;
+  double beta[9];
+  double** Q1,Q2,Q3,Q4,Q5,Q6;
+
+
 
 
   a=(double *)malloc(3*sizeof(double));
@@ -226,6 +231,7 @@ double*** assemshellshape(struct oshell shell, double** drccos)
   {
 	*(L+i)=(double *)malloc(3*sizeof(double));
   }
+  len=(double *)malloc(3*sizeof(double));
   aa=(double *)malloc(3*sizeof(double));
   bb=(double *)malloc(3*sizeof(double));
   cc=(double *)malloc(3*sizeof(double));
@@ -309,12 +315,12 @@ double*** assemshellshape(struct oshell shell, double** drccos)
 #if 1
   for(i=0;i<3;i++)
   {
-	len    = *(b+i)**(b+i) + *(c+i)**(c+i);
-	*(aa+i)= *(c+i)                                /len;
-	*(bb+i)=-0.75**(b+i)**(c+i)                    /len;
-	*(cc+i)=(0.25**(c+i)**(c+i)-0.5**(b+i)**(b+i)) /len;
-	*(dd+i)=-*(b+i)                                /len;
-	*(ee+i)=(0.25**(b+i)**(b+i)-0.5**(c+i)**(c+i)) /len;
+	*(len+i)= *(b+i)**(b+i) + *(c+i)**(c+i);
+	*(aa+i)= *(c+i)                                / *(len+i);
+	*(bb+i)=-0.75**(b+i)**(c+i)                    / *(len+i);
+	*(cc+i)=(0.25**(c+i)**(c+i)-0.5**(b+i)**(b+i)) / *(len+i);
+	*(dd+i)=-*(b+i)                                / *(len+i);
+	*(ee+i)=(0.25**(b+i)**(b+i)-0.5**(c+i)**(c+i)) / *(len+i);
   }
 #endif
 
@@ -322,7 +328,7 @@ double*** assemshellshape(struct oshell shell, double** drccos)
   Bp=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
-	*(Bp+i)=(double *)malloc(6*sizeof(double));
+	*(Bp+i)=(double *)malloc(9*sizeof(double));
   }
   Bb=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
@@ -345,35 +351,155 @@ double*** assemshellshape(struct oshell shell, double** drccos)
 	  for(j=0;j<18;j++)
 	  {
 		*(*(*(B+ii)+i)+j) = 0.0;
-      }
+	  }
 	}
   }
 
+  /*Optimal ANDES Template*/
+  alphab = 1.5;
+  beta[0] = 1.0; beta[1] = 2.0; beta[2] = 1.0;
+  beta[3] = 0.0; beta[4] = 1.0; beta[5] =-1.0;
+  beta[6] =-1.0; beta[7] =-1.0; beta[8] =-2.0;
+
+
+  Q1=(double **)malloc(3*sizeof(double *));
+  Q2=(double **)malloc(3*sizeof(double *));
+  Q3=(double **)malloc(3*sizeof(double *));
+  Q4=(double **)malloc(3*sizeof(double *));
+  Q5=(double **)malloc(3*sizeof(double *));
+  Q6=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(Q1+i)=(double *)malloc(3*sizeof(double));
+	*(Q2+i)=(double *)malloc(3*sizeof(double));
+	*(Q3+i)=(double *)malloc(3*sizeof(double));
+	*(Q4+i)=(double *)malloc(3*sizeof(double));
+	*(Q5+i)=(double *)malloc(3*sizeof(double));
+	*(Q6+i)=(double *)malloc(3*sizeof(double));
+  }
+
+  *(*(Q1+0)+0) = 2.0*area*beta[0]/(3.0**(len+2));
+  *(*(Q1+0)+1) = 2.0*area*beta[1]/(3.0**(len+2));
+  *(*(Q1+0)+2) = 2.0*area*beta[2]/(3.0**(len+2));
+  *(*(Q1+1)+0) = 2.0*area*beta[3]/(3.0**(len+0));
+  *(*(Q1+1)+1) = 2.0*area*beta[4]/(3.0**(len+0));
+  *(*(Q1+1)+2) = 2.0*area*beta[5]/(3.0**(len+0));
+  *(*(Q1+2)+0) = 2.0*area*beta[6]/(3.0**(len+1));
+  *(*(Q1+2)+1) = 2.0*area*beta[7]/(3.0**(len+1));
+  *(*(Q1+2)+2) = 2.0*area*beta[8]/(3.0**(len+1));
+
+  *(*(Q2+0)+0) = 2.0*area*beta[8]/(3.0**(len+2));
+  *(*(Q2+0)+1) = 2.0*area*beta[6]/(3.0**(len+2));
+  *(*(Q2+0)+2) = 2.0*area*beta[7]/(3.0**(len+2));
+  *(*(Q2+1)+0) = 2.0*area*beta[2]/(3.0**(len+0));
+  *(*(Q2+1)+1) = 2.0*area*beta[0]/(3.0**(len+0));
+  *(*(Q2+1)+2) = 2.0*area*beta[1]/(3.0**(len+0));
+  *(*(Q2+2)+0) = 2.0*area*beta[5]/(3.0**(len+1));
+  *(*(Q2+2)+1) = 2.0*area*beta[3]/(3.0**(len+1));
+  *(*(Q2+2)+2) = 2.0*area*beta[4]/(3.0**(len+1));
+
+  *(*(Q3+0)+0) = 2.0*area*beta[4]/(3.0**(len+2));
+  *(*(Q3+0)+1) = 2.0*area*beta[5]/(3.0**(len+2));
+  *(*(Q3+0)+2) = 2.0*area*beta[3]/(3.0**(len+2));
+  *(*(Q3+1)+0) = 2.0*area*beta[7]/(3.0**(len+0));
+  *(*(Q3+1)+1) = 2.0*area*beta[8]/(3.0**(len+0));
+  *(*(Q3+1)+2) = 2.0*area*beta[6]/(3.0**(len+0));
+  *(*(Q3+2)+0) = 2.0*area*beta[1]/(3.0**(len+1));
+  *(*(Q3+2)+1) = 2.0*area*beta[2]/(3.0**(len+1));
+  *(*(Q3+2)+2) = 2.0*area*beta[0]/(3.0**(len+1));
+
+  for(i=0;i<3;i++)
+  {
+	for(j=0;j<3;j++)
+	{
+	  *(*(Q4+i)+j) = *(*(Q1+i)+j) + *(*(Q2+i)+j);
+	  *(*(Q5+i)+j) = *(*(Q2+i)+j) + *(*(Q3+i)+j);
+	  *(*(Q6+i)+j) = *(*(Q3+i)+j) + *(*(Q1+i)+j);
+	}
+  }
+
+  Thie=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(Thie+i)=(double *)malloc(9*sizeof(double));
+
+	*(*(Thie+i)+0) = 0.25**(c+j)/area;
+	*(*(Thie+i)+1) =-0.25**(b+j)/area;
+	*(*(Thie+i)+2) = 1.0;
+
+  }
+
+  Tnat=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(Tnat+i)=(double *)malloc(3*sizeof(double));
+	for(j=0;j<3;j++)
+	{
+	  *(*(Tnat+i)+3*j+0) = 0.25**(c+j)/area;
+	  *(*(Tnat+i)+3*j+1) =-0.25**(b+j)/area;
+	  if(i==j)
+	  {
+		*(*(Tnat+i)+3*j+2) = 1.0;
+	  }
+	  else
+	  {
+		*(*(Tnat+i)+3*j+2) = 0.0;
+	  }
+	}
+  }
+
+
+
+
+
+
+
   /*SHAPE FUNCTION FOR IN-PLANE*/
-  *(*(Bp+0)+0)=*(Lx+0);
-  *(*(Bp+0)+1)=0.0;
-  *(*(Bp+0)+2)=*(Lx+1);
-  *(*(Bp+0)+3)=0.0;
-  *(*(Bp+0)+4)=*(Lx+2);
-  *(*(Bp+0)+5)=0.0;
+  for(i=0;i<3;i++)
+  {
+	  j=i+1;
+	  k=i+2;
+	  if(j>=3)j-=3;
+	  if(k>=3)k-=3;
 
-  *(*(Bp+1)+0)=0.0;
-  *(*(Bp+1)+1)=*(Ly+0);
-  *(*(Bp+1)+2)=0.0;
-  *(*(Bp+1)+3)=*(Ly+1);
-  *(*(Bp+1)+4)=0.0;
-  *(*(Bp+1)+5)=*(Ly+2);
+	  /*LST-3/9R*/
+	  *(*(Bp+0)+3*i+0)=*(Lx+i);
+	  *(*(Bp+0)+3*i+1)=0.0;
+	  *(*(Bp+0)+3*i+2)=*(Lx+i)*(*(b+k)-*(b+j))*alphab/6.0;
 
-  *(*(Bp+2)+0)=*(Ly+0);
-  *(*(Bp+2)+1)=*(Lx+0);
-  *(*(Bp+2)+2)=*(Ly+1);
-  *(*(Bp+2)+3)=*(Lx+1);
-  *(*(Bp+2)+4)=*(Ly+2);
-  *(*(Bp+2)+5)=*(Lx+2);
+	  *(*(Bp+1)+3*i+0)=0.0;
+	  *(*(Bp+1)+3*i+1)=*(Ly+i);
+	  *(*(Bp+1)+3*i+2)=*(Ly+i)*(*(c+k)-*(c+j))*alphab/6.0;
+
+	  *(*(Bp+2)+3*i+0)=*(Ly+i);
+	  *(*(Bp+2)+3*i+1)=*(Lx+i);
+	  *(*(Bp+2)+3*i+2)=(*(b+j)**(c+j)-*(b+k)**(c+k))*alphab/(6.0*area);
+  }
+
+
+
+
+
+
+
+
+
 
   /*SHAPE FUNCTION FOR BENDING*/
   for(ii=0;ii<shell.ngp;ii++)
   {
+
+
+
+
+
+
+
+
+
+
+
+
 
 #if 0
 	/*Zienkiewicz‚ç‚Ì”ñ“K‡ŽOŠpŒ`—v‘fT-9N*/
@@ -513,23 +639,25 @@ double*** assemshellshape(struct oshell shell, double** drccos)
 	}
 #endif
 
-	  *(*(Bt+0)+0)=*(*(L+ii)+0)-*(*(L+0)+0);
-	  *(*(Bt+0)+1)=*(*(L+ii)+1)-*(*(L+0)+1);
-	  *(*(Bt+0)+2)=*(*(L+ii)+2)-*(*(L+0)+2);
+	  //*(*(Bt+0)+0)=*(*(L+ii)+0)-*(*(L+0)+0);
+	  //*(*(Bt+0)+1)=*(*(L+ii)+1)-*(*(L+0)+1);
+	  //*(*(Bt+0)+2)=*(*(L+ii)+2)-*(*(L+0)+2);
 
 
 	for(i=0;i<3;i++)
 	{
 	  for(j=0;j<3;j++)
 	  {
-		*(*(*(B+ii)+i)+6*j+0)=*(*(Bp+i)+2*j+0);
-		*(*(*(B+ii)+i)+6*j+1)=*(*(Bp+i)+2*j+1);
+		*(*(*(B+ii)+i)+6*j+0)=*(*(Bp+i)+3*j+0);
+		*(*(*(B+ii)+i)+6*j+1)=*(*(Bp+i)+3*j+1);
+		*(*(*(B+ii)+i)+6*j+5)=*(*(Bp+i)+3*j+2);
 
 		*(*(*(B+ii)+3+i)+6*j+2)=*(*(Bb+i)+3*j+0);
 		*(*(*(B+ii)+3+i)+6*j+3)=*(*(Bb+i)+3*j+1);
 		*(*(*(B+ii)+3+i)+6*j+4)=*(*(Bb+i)+3*j+2);
 	  }
 	}
+	/*
 	for(i=0;i<1;i++)
 	{
 	  for(j=0;j<3;j++)
@@ -537,6 +665,7 @@ double*** assemshellshape(struct oshell shell, double** drccos)
 		*(*(*(B+ii)+6+i)+6*j+5)=*(*(Bt+i)+j);
 	  }
 	}
+	*/
   }
 
 
@@ -547,6 +676,7 @@ double*** assemshellshape(struct oshell shell, double** drccos)
   free(Ly);
   freematrix(exy,3);
   freematrix(L,shell.ngp);
+  free(len);
   free(aa);
   free(bb);
   free(cc);
@@ -554,7 +684,7 @@ double*** assemshellshape(struct oshell shell, double** drccos)
   free(ee);
   freematrix(Bp,3);
   freematrix(Bb,3);
-  freematrix(Bt,1);
+  //freematrix(Bt,1);
 
   return B;
 }
@@ -855,6 +985,40 @@ double **assemshellpmtx(struct oshell shell,double*** C,double *** B)
 
   for(ii=0;ii<ngp;ii++)
   {
+	Bat=matrixtransposeIII(*(B+ii),7,18);
+	DaBa=matrixmatrixIII(*(C+ii),*(B+ii),7,7,18);
+	Ka=matrixmatrixIII(Bat,DaBa,18,7,18);
+
+	for(i=0;i<18;i++)
+	{
+	  for(j=0;j<18;j++)
+	  {
+		*(*(K+i)+j) += *(*(Ka+i)+j)**(w+ii);
+	  }
+	}
+	freematrix(Bat,18);
+	freematrix(DaBa,7);
+	freematrix(Ka,18);
+
+
+
+
+  }
+
+
+  free(w);
+  freematrix(Dp,3);
+  freematrix(Db,3);
+  freematrix(Dt,1);
+  freematrix(Bp,3);
+  freematrix(Bb,3);
+  freematrix(Bt,1);
+
+  return K;
+}
+
+
+
 	/*
 	//STRESS-STRAIN MATRIX
 	for(i=0;i<3;i++)
@@ -958,38 +1122,6 @@ double **assemshellpmtx(struct oshell shell,double*** C,double *** B)
 	freematrix(Kt,3);
 
 	*/
-
-	Bat=matrixtransposeIII(*(B+ii),7,18);
-	DaBa=matrixmatrixIII(*(C+ii),*(B+ii),7,7,18);
-	Ka=matrixmatrixIII(Bat,DaBa,18,7,18);
-
-	for(i=0;i<18;i++)
-	{
-	  for(j=0;j<18;j++)
-	  {
-		*(*(K+i)+j) += *(*(Ka+i)+j)**(w+ii);
-	  }
-	}
-	freematrix(Bat,18);
-	freematrix(DaBa,7);
-	freematrix(Ka,18);
-
-
-
-
-  }
-
-
-  free(w);
-  freematrix(Dp,3);
-  freematrix(Db,3);
-  freematrix(Dt,1);
-  freematrix(Bp,3);
-  freematrix(Bb,3);
-  freematrix(Bt,1);
-
-  return K;
-}
 
 double **assemshellmmtx(struct oshell shell,double **drccos)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
