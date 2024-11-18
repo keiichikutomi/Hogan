@@ -14,13 +14,20 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 void symmetricmtx(double** estiff, int msize);
 
 void updaterotation(double* ddisp, double* gvct, int nnode);
-//void updateforce(double* pvct, double* ddisp, int nnode);
 double* quaternionvct(double* rvct);
 double** updatedrccos(double** drccosinit, double* gforminit, double* gform);
 double** interpolatermtx(double* rvct1, double* rvct2, double alpha);
 
 double* extractlocalcoord(double* gform, double** drccos, double nnod);
 double* extractdeformation(double* eforminit, double* eform, int nnod);
+
+double* pullback(double* ddisp, double* gvct_s, int nnode);
+double** pullbackmtx(double* gform, int nnod);
+double* pushforward(double* ddisp, double* gvct_m, int nnode);
+double** pushforwardmtx(double* gform, int nnod);
+double* midpointvct(double* vct,double* lastvct,double alpha,int size);
+double** midpointmtx(double** mtx,double** lastmtx,double alpha,int size);
+
 
 
 
@@ -925,4 +932,184 @@ double*  extractdeformation(double* eforminit, double* eform, int nnod)
 	free(rinit);
 	return edisp;
 }
+
+
+
+/*MATERIAL & SPATIAL FORM VARIABLES.*/
+
+
+double* pullback(double* ddisp, double* gvct_s, int nnode)
+{
+	int i,n;
+	double* rvct, * vct_s, * vct_m, * gvct_m;
+	double** rmtx, ** trmtx;
+
+	gvct_m = (double*)malloc(6*nnode * sizeof(double));
+	vct_s = (double*)malloc(3 * sizeof(double));
+	rvct = (double*)malloc(3 * sizeof(double));
+	for (n = 0; n < nnode; n++)
+	{
+		for (i = 0; i < 3; i++)
+		{
+			*(rvct + i)  = *(ddisp + 6*n+3+i);
+			*(vct_s + i) = *(gvct_s + 6*n+3+i);
+		}
+		rmtx = rotationmtx(rvct);
+		trmtx = matrixtranspose(rmtx, 3);
+		vct_m = matrixvector(trmtx, vct_s, 3);
+		for (i = 0; i < 3; i++)
+		{
+			*(gvct_m + 6*n+i)   = *(gvct_s + 6*n+i);
+			*(gvct_m + 6*n+3+i) = *(vct_m + i);
+		}
+		freematrix(rmtx,3);
+		freematrix(trmtx,3);
+		free(vct_m);
+	}
+	free(rvct);
+	free(vct_s);
+	return gvct_m;
+}
+
+double** pullbackmtx(double* gform, int nnod)
+{
+	int i,j,n;
+	double* rvct;
+	double** rmtx,** trmtx, **Rt;
+
+	Rt = (double**)malloc(6*nnod * sizeof(double*));
+	for (i = 0; i < 6*nnod; i++)
+	{
+		*(Rt + i) = (double*)malloc(6*nnod * sizeof(double));
+		for (j = 0; j < 6*nnod; j++)
+		{
+			*(*(Rt + i) + j) = 0.0;
+		}
+	}
+
+	rvct = (double*)malloc(3 * sizeof(double));
+	for (n = 0; n < nnod; n++)
+	{
+		for (i = 0; i < 3; i++)
+		{
+			*(rvct  + i) = *(gform + 6*n+3+i);
+		}
+		rmtx = rotationmtx(rvct);
+		trmtx = matrixtranspose(rmtx, 3);
+		for (i = 0; i < 3; i++)
+		{
+			for (j = 0; j < 3; j++)
+			{
+				*(*(Rt + 6 * n + 3 + i) + 6 * n + 3 + j) = *(*(trmtx + i) + j);
+				if (i == j)*(*(Rt + 6 * n + i) + 6 * n + j) = 1.0;
+			}
+		}
+		freematrix(rmtx,3);
+		freematrix(trmtx,3);
+	}
+	free(rvct);
+	return Rt;
+}
+
+double* pushforward(double* ddisp, double* gvct_m, int nnode)
+{
+	int i,n;
+	double* rvct, * vct_s, * vct_m, * gvct_s;
+	double** rmtx;
+
+	gvct_s = (double*)malloc(6*nnode * sizeof(double));
+	vct_m = (double*)malloc(3 * sizeof(double));
+	rvct = (double*)malloc(3 * sizeof(double));
+	for (n = 0; n < nnode; n++)
+	{
+		for (i = 0; i < 3; i++)
+		{
+			*(rvct  + i) = *(ddisp + 6*n+3+i);
+			*(vct_m + i) = *(gvct_m + 6*n+3+i);
+		}
+		rmtx = rotationmtx(rvct);
+		vct_s = matrixvector(rmtx, vct_m, 3);
+		for (i = 0; i < 3; i++)
+		{
+			*(gvct_s + 6*n+i) = *(gvct_m + 6*n+i);
+			*(gvct_s + 6*n+i+3) = *(vct_s + i);
+		}
+		free(vct_s);
+		freematrix(rmtx,3);
+	}
+	free(rvct);
+	free(vct_m);
+	return gvct_s;
+}
+
+
+double** pushforwardmtx(double* gform, int nnod)
+{
+	int i,j,n;
+	double* rvct;
+	double** rmtx, **R;
+
+	R = (double**)malloc(6*nnod * sizeof(double*));
+	for (i = 0; i < 6*nnod; i++)
+	{
+		*(R + i) = (double*)malloc(6*nnod * sizeof(double));
+		for (j = 0; j < 6*nnod; j++)
+		{
+			*(*(R + i) + j) = 0.0;
+		}
+	}
+	rvct = (double*)malloc(3 * sizeof(double));
+	for (n = 0; n < nnod; n++)
+	{
+		for (i = 0; i < 3; i++)
+		{
+			*(rvct  + i) = *(gform + 6*n+3+i);
+		}
+		rmtx = rotationmtx(rvct);
+		for (i = 0; i < 3; i++)
+		{
+			for (j = 0; j < 3; j++)
+			{
+				*(*(R + 6 * n + 3 + i) + 6 * n + 3 + j) = *(*(rmtx + i) + j);
+				if (i == j)*(*(R + 6 * n + i) + 6 * n + j) = 1.0;
+			}
+		}
+		freematrix(rmtx,3);
+	}
+	free(rvct);
+
+	return R;
+}
+
+/*MID-POINT VARIABLES.*/
+double* midpointvct(double* vct,double* lastvct,double alpha,int size)
+{
+	int i;
+	double* midvct;
+
+	midvct = (double*)malloc(size * sizeof(double));
+	for (i=0;i<size;i++)
+	{
+		*(midvct+i)=(1.0-alpha)**(vct+i)+alpha**(lastvct+i);
+	}
+	return midvct;
+}
+
+double** midpointmtx(double** mtx,double** lastmtx,double alpha,int size)
+{
+	int i,j;
+	double** midmtx;
+
+	midmtx= (double**)malloc(size * sizeof(double*));
+	for (i=0;i<size;i++)
+	{
+		*(midmtx+i) = (double*)malloc(size * sizeof(double));
+		for(j=0;j<size;j++)
+		{
+			*(*(midmtx+i)+j)=(1.0-alpha)**(*(mtx+i)+j) + alpha**(*(lastmtx+i)+j);
+		}
+	}
+	return midmtx;
+}
+
 
