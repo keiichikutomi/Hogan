@@ -1,4 +1,4 @@
-﻿int vbrat001(struct arclmframe* af);
+int vbrat001(struct arclmframe* af);
 
 int vbrat001(struct arclmframe* af)
 {

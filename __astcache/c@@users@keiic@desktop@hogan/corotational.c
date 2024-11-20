@@ -1,4 +1,4 @@
-﻿/*FOR ROTATION CALCURATION*/
+/*FOR ROTATION CALCURATION*/
 double* rotationvct(double** rmtx);
 double** rotationmtx(double* rvct);/*[R]*/
 double** spinmtx(double* rvct);

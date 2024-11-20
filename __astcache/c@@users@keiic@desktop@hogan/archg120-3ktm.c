@@ -1,4 +1,4 @@
-
+﻿
 /*ARCHG120-2（白島応答用）との同期未完了, directioncosine と directioncosineII のみコピー*/
 
 /*ARCLM101.C FOR WIN32 SINCE 1995.11.24.JUNSATO.*/
@@ -17834,7 +17834,7 @@ int arclm101(struct arclmframe *af,int idinput)
 
 	  elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
-      drccos=directioncosine(elem.node[0]->d[0],
+	  drccos=directioncosine(elem.node[0]->d[0],
                              elem.node[0]->d[1],
                              elem.node[0]->d[2],
                              elem.node[1]->d[0],
@@ -17858,6 +17858,10 @@ int arclm101(struct arclmframe *af,int idinput)
       free(estiff);
 
 	}
+
+
+
+
 
 	sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
     laptime(string,t0);
