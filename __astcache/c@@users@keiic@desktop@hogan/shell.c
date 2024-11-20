@@ -200,7 +200,7 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
 {
   int i,j,k,ii;
   int nstress = shell.nstress;
-  int nnod = shell.nod;
+  int nnod = shell.nnod;
   double **exy;
   double area;
   double** L;
@@ -209,7 +209,7 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
   double *len,*aa,*bb,*cc,*dd,*ee;
   double alphab;
   double beta[10];
-  double** Q1,Q2,Q3,Q4,Q5,Q6;
+  double** Q1,**Q2,**Q3,**Q4,**Q5,**Q6,**Q;
   double** Th,** Tn,**TnQ;
   double** Bmb,**Bmh,** Bb;
   double*** B;
@@ -248,6 +248,7 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
   //Q4=(double **)malloc(3*sizeof(double *));
   //Q5=(double **)malloc(3*sizeof(double *));
   //Q6=(double **)malloc(3*sizeof(double *));
+  Q=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
 	*(Q1+i)=(double *)malloc(3*sizeof(double));
@@ -256,6 +257,7 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
 	//*(Q4+i)=(double *)malloc(3*sizeof(double));
 	//*(Q5+i)=(double *)malloc(3*sizeof(double));
 	//*(Q6+i)=(double *)malloc(3*sizeof(double));
+	*(Q+i)=(double *)malloc(3*sizeof(double));
   }
 
   Th=(double **)malloc(3*sizeof(double *));
@@ -683,10 +685,10 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
 }
 
 
-double** assemshellemtx(struct oshell shell, double*** C)
+double** assemshellemtx(struct oshell shell,double*** C,double*** B)
 {
   int i,j,k,ii;
-  int nnod = shell.nod;
+  int nnod = shell.nnod;
   int ngp = shell.ngp;
   int nstress = shell.nstress;
   double **exy;
@@ -697,9 +699,10 @@ double** assemshellemtx(struct oshell shell, double*** C)
   double *len,*aa,*bb,*cc,*dd,*ee;
   double alphab;
   double beta[10];
-  double** Q1,Q2,Q3,Q4,Q5,Q6;
+  double** Q1,**Q2,**Q3,**Q4,**Q5,**Q6,**Q;
   double** Th,** Tn,**TnQ;
-  double** Bmb,** Bmh,** Bb;
+  double** Bmb,** Bmh,** Bm;
+  double** Bb;
   double** Dm,** Dmb,** Dbm,** Db;
 
 
@@ -747,6 +750,7 @@ double** assemshellemtx(struct oshell shell, double*** C)
   Q4=(double **)malloc(3*sizeof(double *));
   Q5=(double **)malloc(3*sizeof(double *));
   Q6=(double **)malloc(3*sizeof(double *));
+  Q=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
 	*(Q1+i)=(double *)malloc(3*sizeof(double));
@@ -755,6 +759,7 @@ double** assemshellemtx(struct oshell shell, double*** C)
 	*(Q4+i)=(double *)malloc(3*sizeof(double));
 	*(Q5+i)=(double *)malloc(3*sizeof(double));
 	*(Q6+i)=(double *)malloc(3*sizeof(double));
+	*(Q+i)=(double *)malloc(3*sizeof(double));
   }
 
   Th=(double **)malloc(3*sizeof(double *));
@@ -780,6 +785,7 @@ double** assemshellemtx(struct oshell shell, double*** C)
   {
 	*(Bm+i)=(double *)malloc(9*sizeof(double));
   }
+
   Bb=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
@@ -978,6 +984,8 @@ double** assemshellemtx(struct oshell shell, double*** C)
 	}
 
 	/*STRAIN-DISPLACEMENT MATRIX*/
+
+	//INPLANE(BASE)
 	for(i=0;i<3;i++)
 	{
 	  j=(i+1)%3;
@@ -997,7 +1005,7 @@ double** assemshellemtx(struct oshell shell, double*** C)
 	  *(*(Bmb+2)+3*i+2)=(*(Lx+j)**(Ly+j)-*(Lx+k)**(Ly+k))*2.0*area*alphab/3.0;
 	}
 
-
+	//INPLANE(HIGH-ORDER)
 	for(i=0;i<3;i++)
 	{
 	  for(j=0;j<3;j++)
@@ -1009,11 +1017,19 @@ double** assemshellemtx(struct oshell shell, double*** C)
 	TnQ = matrixmatrixIII(Tn,Q,3,3,3);
 	Bmh = matrixmatrixIII(TnQ,Th,3,3,9);
 
-
-
-	/*DKT:Discrete Kirchhoff Triangular BY Stricklin & Dhatt*/
 	for(i=0;i<3;i++)
 	{
+	  for(j=0;j<9;j++)
+	  {
+		*(*(Bm+i)+6*j+0)=*(*(Bmb+i)+j)+*(*(Bmh+i)+j);
+	  }
+	}
+
+
+	//BENDING
+	for(i=0;i<3;i++)
+	{
+	  /*DKT:Discrete Kirchhoff Triangular BY Stricklin & Dhatt*/
 	  j=(i+1)%3;
 	  k=(i+2)%3;
 
@@ -1055,18 +1071,29 @@ double** assemshellemtx(struct oshell shell, double*** C)
 					   - 4.0 * *(bb+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
 	}
 
+	/*STIFFNESS MATRIX*/
 
 
 
 
-	Bmbt=matrixtransposeIII(Bmb,3,9);
-	DmBmb=matrixmatrixIII(Dm,Bmb,3,3,9);
-	Kmb=matrixmatrixIII(Bmbt,DmBmb,9,3,9);
 
 
+	Kmb = transformationEx(Dm,Bmb,3,9);
 
+	TtDmT = transformationEx(Dm, Tn, 3);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
+	QtDQ4 = transformationEx(TtDmT, Q4, 3);
+	QtDQ5 = transformationEx(TtDmT, Q5, 3);
+	QtDQ6 = transformationEX(TtDmT, Q6, 3);
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		 *(*(QtDQ+i)+j) = *(*(QtDQ4+i)+j)+*(*(QtDQ5+i)+j)+*(*(QtDQ6+i)+j);
+	  }
+	}
+	Kmh = transformationEx(QtDQ,Th,3,9);
 
-	Kmh=matrixmatrixIII(,,9,3,9);
+	Kb = transformationEx(Db,Bb,3,9);
 
 
 
@@ -1142,14 +1169,10 @@ double** assemshellemtx(struct oshell shell, double*** C)
 	  }
 	}
 
-	freematrix(Bmt,9);
-	freematrix(DmBm,3);
-	freematrix(Km,9);
-
-
-
-	freematrix(TnQ,3);
-	freematrix(Bh,3);
+	freematrix(Km,3*nnod);
+	freematrix(Kmb,3*nnod);
+	freematrix(Kbm,3*nnod);
+	freematrix(Kb,3*nnod);
   }
 
 
@@ -1182,7 +1205,7 @@ double** assemshellemtx(struct oshell shell, double*** C)
 }
 
 
-double **assemshellemtx(struct oshell shell)
+double **assemshellemtx(struct oshell shell,double*** C,double*** B)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
   int i,j;
@@ -1196,8 +1219,8 @@ double **assemshellemtx(struct oshell shell)
   double** drccos;
   double*** C, ***B;
   double** Dm,** Db;
-  double** Bm,** Bmt,** DmBm,** Km;
-  double** Bb,** Bbt,** DbBb,** Kb;
+  double** Bm,** Bb;
+  double** Km,** Kb;
 
   double prate = shell.prate;
   double brate = shell.brate;
@@ -1219,21 +1242,18 @@ double **assemshellemtx(struct oshell shell)
 	*(w+ii)=area*shell.w[ii];
   }
 
-  D=(double **)malloc(3*sizeof(double *));
+  Dm=(double **)malloc(3*sizeof(double *));
+  Db=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
-	*(D+i)=(double *)malloc(3*sizeof(double));
+	*(Dm+i)=(double *)malloc(3*sizeof(double));
+	*(Db+i)=(double *)malloc(3*sizeof(double));
   }
-
-
   Bp=(double **)malloc(3*sizeof(double *));
   Bb=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
 	*(Bp+i)=(double *)malloc(9*sizeof(double));
-  }
-  for(i=0;i<3;i++)
-  {
 	*(Bb+i)=(double *)malloc(9*sizeof(double));
   }
 
@@ -1262,31 +1282,6 @@ double **assemshellemtx(struct oshell shell)
 		*(*(Bb+i)+3*j+2) = *(*(*(B+ii)+i)+6*j+5);
 	  }
 	}
-
-	Bmt=matrixtransposeIII(Bm,3,9);
-	DmBm=matrixmatrixIII(Dm,Bm,3,3,9);
-	Km=matrixmatrixIII(Bmt,DpBm,9,3,9);
-
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(Ke+6*i+0)+6*j+0) += *(*(Kp+3*i+0)+3*j+0)**(w+ii)*prate;
-		*(*(Ke+6*i+0)+6*j+1) += *(*(Kp+3*i+0)+3*j+1)**(w+ii)*prate;
-		*(*(Ke+6*i+0)+6*j+5) += *(*(Kp+3*i+0)+3*j+2)**(w+ii)*prate;
-		*(*(Ke+6*i+1)+6*j+0) += *(*(Kp+3*i+1)+3*j+0)**(w+ii)*prate;
-		*(*(Ke+6*i+1)+6*j+1) += *(*(Kp+3*i+1)+3*j+1)**(w+ii)*prate;
-		*(*(Ke+6*i+1)+6*j+5) += *(*(Kp+3*i+1)+3*j+2)**(w+ii)*prate;
-		*(*(Ke+6*i+5)+6*j+0) += *(*(Kp+3*i+2)+3*j+0)**(w+ii)*prate;
-		*(*(Ke+6*i+5)+6*j+1) += *(*(Kp+3*i+2)+3*j+1)**(w+ii)*prate;
-		*(*(Ke+6*i+5)+6*j+5) += *(*(Kp+3*i+2)+3*j+2)**(w+ii)*prate;
-	  }
-	}
-
-	freematrix(Bmt,9);
-	freematrix(DmBm,3);
-	freematrix(Km,9);
-
 	//BENDING
 	for(i=0;i<3;i++)
 	{
@@ -1298,10 +1293,24 @@ double **assemshellemtx(struct oshell shell)
 	  }
 	}
 
-	Bbt=matrixtransposeIII(Bb,3,9);
-	DbBb=matrixmatrixIII(Db,Bb,3,3,9);
-	Kb=matrixmatrixIII(Bbt,DbBb,9,3,9);
+	Km = transformationEx(Dm,Bm,3,9);
+	Kb = transformationEx(Db,Bb,3,9);
 
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Ke+6*i+0)+6*j+0) += *(*(Km+3*i+0)+3*j+0)**(w+ii)*prate;
+		*(*(Ke+6*i+0)+6*j+1) += *(*(Km+3*i+0)+3*j+1)**(w+ii)*prate;
+		*(*(Ke+6*i+0)+6*j+5) += *(*(Km+3*i+0)+3*j+2)**(w+ii)*prate;
+		*(*(Ke+6*i+1)+6*j+0) += *(*(Km+3*i+1)+3*j+0)**(w+ii)*prate;
+		*(*(Ke+6*i+1)+6*j+1) += *(*(Km+3*i+1)+3*j+1)**(w+ii)*prate;
+		*(*(Ke+6*i+1)+6*j+5) += *(*(Km+3*i+1)+3*j+2)**(w+ii)*prate;
+		*(*(Ke+6*i+5)+6*j+0) += *(*(Km+3*i+2)+3*j+0)**(w+ii)*prate;
+		*(*(Ke+6*i+5)+6*j+1) += *(*(Km+3*i+2)+3*j+1)**(w+ii)*prate;
+		*(*(Ke+6*i+5)+6*j+5) += *(*(Km+3*i+2)+3*j+2)**(w+ii)*prate;
+	  }
+	}
 	for(i=0;i<3;i++)
 	{
 	  for(j=0;j<3;j++)
@@ -1318,65 +1327,10 @@ double **assemshellemtx(struct oshell shell)
 	  }
 	}
 
-	freematrix(Bbt,9);
-	freematrix(DbBb,3);
+	freematrix(Km,9);
 	freematrix(Kb,9);
-  }
-
-  freematrix(drccos,3);
-  for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
-  free(C);
-  for(ii=0;ii<ngp;ii++)freematrix(*(B+ii), nstress);
-  free(B);
-
-  free(w);
-  freematrix(Dm,3);
-  freematrix(Db,3);
-  freematrix(Bm,3);
-  freematrix(Bb,3);
-
-  return Ke;
-}
-
-
-double **assemshellpmtx(struct oshell shell,double*** C,double*** B)
-/*ASSEMBLAGE ELASTO-PLASTIC MATRIX.*/
-{
-  int i,j;
-  int ii;/*LOOP FOR INTEGRATION POINTS*/
-  int nnod = shell.nnod;
-  int ngp = shell.ngp;
-  int nstress = shell.nstress;
-  double** Ke;
-  double* w;
-  double area;
-  double** Bt,** DB,** K;
-
-  double prate = shell.prate;
-  double brate = shell.brate;
-
-  Ke=(double **)malloc(6*nnod*sizeof(double *));
-  for(i=0;i<6*nnod;i++)
-  {
-	*(Ke+i)=(double *)malloc(6*nnod*sizeof(double));
-	for(j=0;j<6*nnod;j++)
-	{
-	  *(*(Ke+i)+j)=0.0;                                              /*INITIAL.*/
-	}
-  }
-
-  area = shell.area;
-  w=(double *)malloc(ngp*sizeof(double));
-  for(ii=0;ii<ngp;ii++)
-  {
-	*(w+ii)=area*shell.w[ii];
-  }
-
-  for(ii=0;ii<ngp;ii++)
-  {
-	Bt=matrixtransposeIII(*(B+ii),nstress,6*nnod);
-	DB=matrixmatrixIII(*(C+ii),*(B+ii),nstress,nstress,6*nnod);
-	K=matrixmatrixIII(Bt,DB,6*nnod,nstress,6*nnod);
+	/*
+	K = transformationEx(*(C+ii),*(B+ii),nstress,6*nnod);
 
 	for(i=0;i<6*nnod;i++)
 	{
@@ -1385,18 +1339,25 @@ double **assemshellpmtx(struct oshell shell,double*** C,double*** B)
 		*(*(Ke+i)+j) += *(*(K+i)+j)*(w+ii);
 	  }
 	}
-	freematrix(Bt,6*nnod);
-	freematrix(DB,nstress);
 	freematrix(K,6*nnod);
+	*/
   }
 
+  freematrix(drccos,3);
+  for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
+  free(C);
+  for(ii=0;ii<ngp;ii++)freematrix(*(B+ii), nstress);
+  free(B);
+
+
+  freematrix(Dm,3);
+  freematrix(Db,3);
+  freematrix(Bm,3);
+  freematrix(Bb,3);
+
   free(w);
-  return K;
+  return Ke;
 }
-
-
-
-
 
 
 	/*

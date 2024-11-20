@@ -1029,6 +1029,8 @@ double **transformation(double **estiff,double **tmatrix);
 void transformationII(double **estiff,double **tmatrix,
 					  double **e,double **t);
 double **transformationIII(double **estiff,double **tmatrix,int msize);
+double **transformationEx(double **A,double **T,int row,int col);
+
 void assemgstiffness(struct gcomponent *gmtx,
                      double **estiff,
 					 struct owire *elem);
@@ -22640,6 +22642,22 @@ double **transformationIII(double **estiff,double **tmatrix,int msize)
 
   return estiff;
 }/*transformationIII*/
+
+double **transformationEx(double **A,double **T,int row,int col)
+/*TRANSFORM ELEMENT MATRIX INTO GLOBAL.*/
+{
+  int i;
+  double **AT,**Tt,**TtAT;
+
+  AT=matrixmatrixIII(A,T,row,row,col);
+  Tt=matrixtransposeIII(T,row,col);
+  TtAT=matrixmatrixIII(Tt,AT,col,row,col);
+
+  freematrix(AT,row);
+  freematrix(Tt,col);
+
+  return TtAT;
+}/*transformationEx*/
 
 void assemgstiffness(struct gcomponent *gmtx,
 					 double **estiff,
