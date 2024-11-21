@@ -174,10 +174,10 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
-		C = elasticCshell(shell);
-		B = assemshellshape(shell, drccosinit);
+		C = shellC(shell);
+		B = shellB(shell);
 		//Kp = assemshellemtx(shell);                                      /*[Ke]*/
-		M = assemshellmmtx(shell, drccosinit);         				       /*[Me]*/
+		M = assemshellmmtx(shell);         				       /*[Me]*/
 
 		/*DEFORMED CONFIGFURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -189,9 +189,6 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		eform = extractlocalcoord(gform,drccos,nnod); 			       	    /*{Xe+Ue}*/
 
 		edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
-
-
-
 
 		T = transmatrixIII(drccos, nnod);         							/*[T].*/
 		Tt = matrixtranspose(T, 6 * nnod);                  				/*[Tt].*/
@@ -248,12 +245,8 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 			symmetricmtx(Kt, 6 * nnod);											   /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 			assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
-			//if(i==1)dbgmtx(Kt,18,18,"mtx");
-
 			freematrix(Kp, 6 * nnod);
 			freematrix(Kt, 6 * nnod);
-
-
 		}
 		if(mmtx!=NULL)
 		{
@@ -347,11 +340,10 @@ void assemshellEx(struct oshell* shells, struct memoryshell* mshell, int nshell,
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
-		C = elasticCshell(shell);
-		B = assemshellshape(shell, drccosinit);
+		C = shellC(shell);
+		B = shellB(shell);
 		//K = assemshellemtx(shell);
-
-		M = assemshellmmtx(shell, drccosinit);         				/*[Me]*/
+		M = assemshellmmtx(shell);         				/*[Me]*/
 
 		/*DEFORMED CONFIGFURATION*/
 		for (ii = 0; ii < nnod; ii++)

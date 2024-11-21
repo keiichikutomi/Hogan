@@ -1,20 +1,20 @@
 
 /*FUNCTIONS FOR SHELL*/
-double*** elasticCshell(struct oshell shell);
+double*** shellC(struct oshell shell);
+double*** shellB(struct oshell shell);
 double** shelldrccos(struct oshell shell);
 double shellarea(struct oshell shell);
 double* extractshelldisplacement(struct oshell shell, double* ddisp);
+double** shelllocalcoord(struct oshell shell);
 
-/*STRAIN-DISPLACEMENT MATRIX*/
-double*** assemshellstraindispmtx(struct oshell shell, double** drccos);
 /*ELASTIC STIFFNESS MATRIX*/
 double** assemshellemtx(struct oshell shell);
 /*ELASTO-PLASTIC STIFFNESS MATRIX*/
-double** assemshellpmtx(struct oshell shell, double*** C);
+double** assemshellpmtx(struct oshell shell, double*** C, double*** B);
 /*MASS MATRIX*/
-double** assemshellmmtx(struct oshell shell, double **drccos);
+double** assemshellmmtx(struct oshell shell);
 /*ELEMENT LOAD*/
-double* assemshellpvct(struct oshell shell, double **drccos);
+double* assemshellpvct(struct oshell shell);
 /*VOLUME*/
 double shellvolume(struct oshell shell, double** drccos);
 void assemshellvolume(struct oshell* shells, int nshell, double* ddisp, double* volume);
@@ -28,7 +28,7 @@ void outputmemoryshell(struct oshell *shells,struct memoryshell *mshell,int offs
 /*FOR PLASTIC (ILYUSHIN'S STRESS RESULTANT)*/
 double* ilyushin(struct oshell* shell, int ii, double* lambda, double** W);/*YIELD FUNCTION*/
 double* returnmapilyushin(struct oshell* shell, int ii, double** W);/*RETURN-MAPPING*/
-double** consistentCilyushin(struct oshell* shell, int ii, double** H, double Halpha, double** g, double galpha, int nstress);/*UPDATE STIFFNESS MATRIX*/
+double** shellCconsistentilyushin(struct oshell* shell, int ii, double** H, double Halpha, double** g, double galpha, int nstress);/*UPDATE STIFFNESS MATRIX*/
 
 void assemshellestrain(struct oshell* shell, double*** B, double* edisp);
 void assemshellestress(struct oshell* shell, double*** C);
@@ -48,7 +48,7 @@ extern void dbgvct(double* vct, int size, int linesize, const char* str);
 extern void dbgmtx(double** mtx, int rows, int cols, const char* str);
 
 
-double*** elasticCshell(struct oshell shell)
+double*** shellC(struct oshell shell)
 {
 	int i,j,ii;
 	int nstress = shell.nstress;
@@ -80,8 +80,6 @@ double*** elasticCshell(struct oshell shell)
 		*(*(*(C+ii)+4)+3)=*(*(*(C+ii)+3)+4);
 		*(*(*(C+ii)+4)+4)=*(*(*(C+ii)+3)+3);
 		*(*(*(C+ii)+5)+5)=0.5*E*pow(t,3)/(12.0*(1+poi));
-
-		//if(nstress==7)*(*(*(C+ii)+6)+6)=E*t*27.0/50.0;
 	}
 	return C;
 }
@@ -196,7 +194,32 @@ double* extractshelldisplacement(struct oshell shell, double* ddisp)
 	return d;
 }/*extractshelldisplacement*/
 
-double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
+double** shelllocalcoord(struct oshell shell)
+{
+  int i,j;
+  double** exy,** drccos;
+
+  exy=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
+  {
+	*(exy+i)=(double *)malloc(2*sizeof(double));
+  }
+
+  drccos = shelldrccos(shell);
+  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
+  {
+	for(j=0;j<2;j++)/*IN-PLANE 2D VECTOR*/
+	{
+	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
+				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
+				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
+	  /*shell local coordinate {xi,yi(,zi=0)}*/
+	}
+  }
+  return exy;
+}
+
+double*** shellB(struct oshell shell)
 {
   int i,j,k,ii;
   int nstress = shell.nstress;
@@ -213,14 +236,6 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
   double** Th,** Tn,**TnQ;
   double** Bmb,**Bmh,** Bb;
   double*** B;
-
-
-  /*LOCAL COORD*/
-  exy=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
-  {
-	*(exy+i)=(double *)malloc(2*sizeof(double));
-  }
 
   /*TRIANGULAR COORDINATION OF INTEGRATION POINTS*/
   L=(double **)malloc(shell.ngp*sizeof(double *));
@@ -245,18 +260,14 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
   Q1=(double **)malloc(3*sizeof(double *));
   Q2=(double **)malloc(3*sizeof(double *));
   Q3=(double **)malloc(3*sizeof(double *));
-  //Q4=(double **)malloc(3*sizeof(double *));
-  //Q5=(double **)malloc(3*sizeof(double *));
-  //Q6=(double **)malloc(3*sizeof(double *));
+
   Q=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
 	*(Q1+i)=(double *)malloc(3*sizeof(double));
 	*(Q2+i)=(double *)malloc(3*sizeof(double));
 	*(Q3+i)=(double *)malloc(3*sizeof(double));
-	//*(Q4+i)=(double *)malloc(3*sizeof(double));
-	//*(Q5+i)=(double *)malloc(3*sizeof(double));
-	//*(Q6+i)=(double *)malloc(3*sizeof(double));
+
 	*(Q+i)=(double *)malloc(3*sizeof(double));
   }
 
@@ -297,47 +308,11 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
 	}
   }
 
-
-  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
-  {
-	for(j=0;j<2;j++)/*IN-PLANE 2D VECTOR*/
-	{
-	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
-				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
-				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
-	  /*shell local coordinate {xi,yi(,zi=0)}*/
-	}
-  }
+  exy = shelllocalcoord(shell);
   area = shell.area;
-
 
   /*AREA COORD Li=(ai+bix+ciy)/(2*area)*/
   /*3 NODES 7 GAUSS POINTS*/
-  for(i=0;i<3;i++)
-  {
-	*(*(L+0)+i)=1.0/3.0;
-	for(j=0;j<3;j++)
-	{
-	  if(i==j)
-	  {
-		*(*(L+(4+j))+i)=1.0;
-	  }
-	  else
-	  {
-		*(*(L+(4+j))+i)=0.0;
-	  }
-
-	  if((i+1)%3==j)
-	  {
-		*(*(L+(1+j))+i)=0.0;
-	  }
-	  else
-	  {
-		*(*(L+(1+j))+i)=0.5;
-	  }
-	}
-  }
-  /*
   *(*(L+0)+0)=1.0/3.0;*(*(L+0)+1)=1.0/3.0;*(*(L+0)+2)=1.0/3.0;
 
   *(*(L+1)+0)=1.0/2.0;*(*(L+1)+1)=1.0/2.0;*(*(L+1)+2)=0.0;
@@ -348,6 +323,7 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
   *(*(L+5)+0)=0.0;*(*(L+5)+1)=1.0;*(*(L+5)+2)=0.0;
   *(*(L+6)+0)=0.0;*(*(L+6)+1)=0.0;*(*(L+6)+2)=1.0;
 
+  /*
   6
   | \
   |  \
@@ -357,7 +333,6 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
   |   0  \
   |       \
   4----1----5
-
   */
 
   for(i=0;i<3;i++)
@@ -371,17 +346,13 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
 
 	  *(Lx+i)=0.5**(b+i)/area;/*dLi/dx=bi/(2*area)*/
 	  *(Ly+i)=0.5**(c+i)/area;/*dLi/dy=ci/(2*area)*/
-  }
 
-
-  for(i=0;i<3;i++)
-  {
-	*(len+i)= *(b+i)**(b+i) + *(c+i)**(c+i);
-	*(aa+i)= *(c+i)                                / *(len+i);
-	*(bb+i)=-0.75**(b+i)**(c+i)                    / *(len+i);
-	*(cc+i)=(0.25**(c+i)**(c+i)-0.5**(b+i)**(b+i)) / *(len+i);
-	*(dd+i)=-*(b+i)                                / *(len+i);
-	*(ee+i)=(0.25**(b+i)**(b+i)-0.5**(c+i)**(c+i)) / *(len+i);
+	  *(len+i)= *(b+i)**(b+i) + *(c+i)**(c+i);
+	  *(aa+i)= *(c+i)                                / *(len+i);
+	  *(bb+i)=-0.75**(b+i)**(c+i)                    / *(len+i);
+	  *(cc+i)=(0.25**(c+i)**(c+i)-0.5**(b+i)**(b+i)) / *(len+i);
+	  *(dd+i)=-*(b+i)                                / *(len+i);
+	  *(ee+i)=(0.25**(b+i)**(b+i)-0.5**(c+i)**(c+i)) / *(len+i);
   }
 
 
@@ -422,18 +393,6 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
   *(*(Q3+2)+0) = 2.0*area*beta[2]/(3.0**(len+1));
   *(*(Q3+2)+1) = 2.0*area*beta[3]/(3.0**(len+1));
   *(*(Q3+2)+2) = 2.0*area*beta[1]/(3.0**(len+1));
-
-  /*
-  for(i=0;i<3;i++)
-  {
-	for(j=0;j<3;j++)
-	{
-	  *(*(Q4+i)+j) = *(*(Q1+i)+j) + *(*(Q2+i)+j);
-	  *(*(Q5+i)+j) = *(*(Q2+i)+j) + *(*(Q3+i)+j);
-	  *(*(Q6+i)+j) = *(*(Q3+i)+j) + *(*(Q1+i)+j);
-	}
-  }
-  */
 
   /*TRANSFORMATION MATRIX TO EXTRACT HIERARCHICAL ROTATION*/
   for(i=0;i<3;i++)
@@ -685,527 +644,8 @@ double*** assemshellstraindispmtx(struct oshell shell, double** drccos)
 }
 
 
-double** assemshellemtx(struct oshell shell,double*** C,double*** B)
-{
-  int i,j,k,ii;
-  int nnod = shell.nnod;
-  int ngp = shell.ngp;
-  int nstress = shell.nstress;
-  double **exy;
-  double area;
-  double** L;
-  double *a,*b,*c;
-  double *Lx,*Ly;
-  double *len,*aa,*bb,*cc,*dd,*ee;
-  double alphab;
-  double beta[10];
-  double** Q1,**Q2,**Q3,**Q4,**Q5,**Q6,**Q;
-  double** Th,** Tn,**TnQ;
-  double** Bmb,** Bmh,** Bm;
-  double** Bb;
-  double** Dm,** Dmb,** Dbm,** Db;
 
-
-  Dm =(double **)malloc(3*sizeof(double *));
-  Dmb=(double **)malloc(3*sizeof(double *));
-  Dbm=(double **)malloc(3*sizeof(double *));
-  Db =(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Dm +i)=(double *)malloc(3*sizeof(double));
-	*(Dmb+i)=(double *)malloc(3*sizeof(double));
-	*(Dbm+i)=(double *)malloc(3*sizeof(double));
-	*(Db +i)=(double *)malloc(3*sizeof(double));
-  }
-
-  exy=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
-  {
-	*(exy+i)=(double *)malloc(2*sizeof(double));
-  }
-
-  /*TRIANGULAR COORDINATION OF INTEGRATION POINTS*/
-  L=(double **)malloc(shell.ngp*sizeof(double *));
-  for(i=0;i<shell.ngp;i++)
-  {
-	*(L+i)=(double *)malloc(3*sizeof(double));
-  }
-
-  a=(double *)malloc(3*sizeof(double));
-  b=(double *)malloc(3*sizeof(double));
-  c=(double *)malloc(3*sizeof(double));
-  Lx=(double *)malloc(3*sizeof(double));
-  Ly=(double *)malloc(3*sizeof(double));
-
-  len=(double *)malloc(3*sizeof(double));
-  aa=(double *)malloc(3*sizeof(double));
-  bb=(double *)malloc(3*sizeof(double));
-  cc=(double *)malloc(3*sizeof(double));
-  dd=(double *)malloc(3*sizeof(double));
-  ee=(double *)malloc(3*sizeof(double));
-
-  Q1=(double **)malloc(3*sizeof(double *));
-  Q2=(double **)malloc(3*sizeof(double *));
-  Q3=(double **)malloc(3*sizeof(double *));
-  Q4=(double **)malloc(3*sizeof(double *));
-  Q5=(double **)malloc(3*sizeof(double *));
-  Q6=(double **)malloc(3*sizeof(double *));
-  Q=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Q1+i)=(double *)malloc(3*sizeof(double));
-	*(Q2+i)=(double *)malloc(3*sizeof(double));
-	*(Q3+i)=(double *)malloc(3*sizeof(double));
-	*(Q4+i)=(double *)malloc(3*sizeof(double));
-	*(Q5+i)=(double *)malloc(3*sizeof(double));
-	*(Q6+i)=(double *)malloc(3*sizeof(double));
-	*(Q+i)=(double *)malloc(3*sizeof(double));
-  }
-
-  Th=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Th+i)=(double *)malloc(9*sizeof(double));
-  }
-  Tn=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Tn+i)=(double *)malloc(3*sizeof(double));
-  }
-
-
-  Bmb=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Bmb+i)=(double *)malloc(9*sizeof(double));
-  }
-
-  Bm=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Bm+i)=(double *)malloc(9*sizeof(double));
-  }
-
-  Bb=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(Bb+i)=(double *)malloc(9*sizeof(double));
-  }
-
-
-  for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
-  {
-	for(j=0;j<2;j++)/*IN-PLANE 2D VECTOR*/
-	{
-	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
-				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
-				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
-	  /*shell local coordinate {xi,yi(,zi=0)}*/
-	}
-  }
-  area = shell.area;
-
-
-  /*AREA COORD Li=(ai+bix+ciy)/(2*area)*/
-  /*3 NODES 7 GAUSS POINTS*/
-  for(i=0;i<3;i++)
-  {
-	*(*(L+0)+i)=1.0/3.0;
-	for(j=0;j<3;j++)
-	{
-	  if(i==j)
-	  {
-		*(*(L+(4+j))+i)=1.0;
-	  }
-	  else
-	  {
-		*(*(L+(4+j))+i)=0.0;
-	  }
-
-	  if((i+1)%3==j)
-	  {
-		*(*(L+(1+j))+i)=0.0;
-	  }
-	  else
-	  {
-		*(*(L+(1+j))+i)=0.5;
-	  }
-	}
-  }
-  /*
-  *(*(L+0)+0)=1.0/3.0;*(*(L+0)+1)=1.0/3.0;*(*(L+0)+2)=1.0/3.0;
-
-  *(*(L+1)+0)=1.0/2.0;*(*(L+1)+1)=1.0/2.0;*(*(L+1)+2)=0.0;
-  *(*(L+2)+0)=0.0;*(*(L+2)+1)=1.0/2.0;*(*(L+2)+2)=1.0/2.0;
-  *(*(L+3)+0)=1.0/2.0;*(*(L+3)+1)=0.0;*(*(L+3)+2)=1.0/2.0;
-
-  *(*(L+4)+0)=1.0;*(*(L+4)+1)=0.0;*(*(L+4)+2)=0.0;
-  *(*(L+5)+0)=0.0;*(*(L+5)+1)=1.0;*(*(L+5)+2)=0.0;
-  *(*(L+6)+0)=0.0;*(*(L+6)+1)=0.0;*(*(L+6)+2)=1.0;
-
-  6
-  | \
-  |  \
-  |   \
-  3    2
-  |     \
-  |   0  \
-  |       \
-  4----1----5
-
-  */
-
-  for(i=0;i<3;i++)
-  {
-	  j=(i+1)%3;
-	  k=(i+2)%3;
-
-	  *(a+i)=*(*(exy+j)+0)**(*(exy+k)+1)-*(*(exy+k)+0)**(*(exy+j)+1);/*xjyk-xkyj*/
-	  *(b+i)=*(*(exy+j)+1)-*(*(exy+k)+1);/*yj-yk*/
-	  *(c+i)=*(*(exy+k)+0)-*(*(exy+j)+0);/*xk-xj*/
-
-	  *(Lx+i)=0.5**(b+i)/area;/*dLi/dx=bi/(2*area)*/
-	  *(Ly+i)=0.5**(c+i)/area;/*dLi/dy=ci/(2*area)*/
-  }
-
-
-  for(i=0;i<3;i++)
-  {
-	*(len+i)= *(b+i)**(b+i) + *(c+i)**(c+i);
-	*(aa+i)= *(c+i)                                / *(len+i);
-	*(bb+i)=-0.75**(b+i)**(c+i)                    / *(len+i);
-	*(cc+i)=(0.25**(c+i)**(c+i)-0.5**(b+i)**(b+i)) / *(len+i);
-	*(dd+i)=-*(b+i)                                / *(len+i);
-	*(ee+i)=(0.25**(b+i)**(b+i)-0.5**(c+i)**(c+i)) / *(len+i);
-  }
-
-
-  /*FREE PARAMETERS OF ANDES OPTIMAL TRIANGLE*/
-  alphab = 1.5;
-  beta[0] = 1.0;
-  beta[1] = 1.0; beta[2] = 2.0; beta[3] = 1.0;
-  beta[4] = 0.0; beta[5] = 1.0; beta[6] =-1.0;
-  beta[7] =-1.0; beta[8] =-1.0; beta[9] =-2.0;
-
-
-  *(*(Q1+0)+0) = 2.0*area*beta[1]/(3.0**(len+2));
-  *(*(Q1+0)+1) = 2.0*area*beta[2]/(3.0**(len+2));
-  *(*(Q1+0)+2) = 2.0*area*beta[3]/(3.0**(len+2));
-  *(*(Q1+1)+0) = 2.0*area*beta[4]/(3.0**(len+0));
-  *(*(Q1+1)+1) = 2.0*area*beta[5]/(3.0**(len+0));
-  *(*(Q1+1)+2) = 2.0*area*beta[6]/(3.0**(len+0));
-  *(*(Q1+2)+0) = 2.0*area*beta[7]/(3.0**(len+1));
-  *(*(Q1+2)+1) = 2.0*area*beta[8]/(3.0**(len+1));
-  *(*(Q1+2)+2) = 2.0*area*beta[9]/(3.0**(len+1));
-
-  *(*(Q2+0)+0) = 2.0*area*beta[9]/(3.0**(len+2));
-  *(*(Q2+0)+1) = 2.0*area*beta[7]/(3.0**(len+2));
-  *(*(Q2+0)+2) = 2.0*area*beta[8]/(3.0**(len+2));
-  *(*(Q2+1)+0) = 2.0*area*beta[3]/(3.0**(len+0));
-  *(*(Q2+1)+1) = 2.0*area*beta[1]/(3.0**(len+0));
-  *(*(Q2+1)+2) = 2.0*area*beta[2]/(3.0**(len+0));
-  *(*(Q2+2)+0) = 2.0*area*beta[6]/(3.0**(len+1));
-  *(*(Q2+2)+1) = 2.0*area*beta[4]/(3.0**(len+1));
-  *(*(Q2+2)+2) = 2.0*area*beta[5]/(3.0**(len+1));
-
-  *(*(Q3+0)+0) = 2.0*area*beta[5]/(3.0**(len+2));
-  *(*(Q3+0)+1) = 2.0*area*beta[6]/(3.0**(len+2));
-  *(*(Q3+0)+2) = 2.0*area*beta[4]/(3.0**(len+2));
-  *(*(Q3+1)+0) = 2.0*area*beta[8]/(3.0**(len+0));
-  *(*(Q3+1)+1) = 2.0*area*beta[9]/(3.0**(len+0));
-  *(*(Q3+1)+2) = 2.0*area*beta[7]/(3.0**(len+0));
-  *(*(Q3+2)+0) = 2.0*area*beta[2]/(3.0**(len+1));
-  *(*(Q3+2)+1) = 2.0*area*beta[3]/(3.0**(len+1));
-  *(*(Q3+2)+2) = 2.0*area*beta[1]/(3.0**(len+1));
-
-
-  for(i=0;i<3;i++)
-  {
-	for(j=0;j<3;j++)
-	{
-	  *(*(Q4+i)+j) = *(*(Q1+i)+j) + *(*(Q2+i)+j);
-	  *(*(Q5+i)+j) = *(*(Q2+i)+j) + *(*(Q3+i)+j);
-	  *(*(Q6+i)+j) = *(*(Q3+i)+j) + *(*(Q1+i)+j);
-	}
-  }
-
-  /*TRANSFORMATION MATRIX TO EXTRACT HIERARCHICAL ROTATION*/
-  for(i=0;i<3;i++)
-  {
-	for(j=0;j<3;j++)
-	{
-	  *(*(Th+i)+3*j+0) = 0.5**(Ly+j);
-	  *(*(Th+i)+3*j+1) =-0.5**(Lx+j);
-	  if(i==j)
-	  {
-		*(*(Th+i)+3*j+2) = 1.0;
-	  }
-	  else
-	  {
-		*(*(Th+i)+3*j+2) = 0.0;
-	  }
-	}
-  }
-  /*STRAIN TRANSFORMATION MATRIX FROM NATURAL COORD TO CARTESIAN COORD*/
-  for(i=0;i<3;i++)
-  {
-	j=(i+1)%3;
-	k=(i+2)%3;
-
-	*(*(Tn+0)+i) = -*(Lx+i)**(Lx+j)**(len+k);
-	*(*(Tn+1)+i) = -*(Ly+i)**(Ly+j)**(len+k);
-	*(*(Tn+2)+i) = -(*(Lx+i)**(Ly+j)+*(Ly+i)**(Lx+j))**(len+k);
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-  /*SHAPE FUNCTION FOR BENDING*/
-  for(ii=0;ii<shell.ngp;ii++)
-  {
-	/*STRESS-STRAIN MATRIX*/
-  	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(Dm +i)+j) = *(*(*(C+ii)  +i)  +j);
-		*(*(Dmb+i)+j) = *(*(*(C+ii)  +i)+3+j);
-		*(*(Dbm+i)+j) = *(*(*(C+ii)+3+i)  +j);
-		*(*(Db +i)+j) = *(*(*(C+ii)+3+i)+3+j);
-	  }
-	}
-
-	/*STRAIN-DISPLACEMENT MATRIX*/
-
-	//INPLANE(BASE)
-	for(i=0;i<3;i++)
-	{
-	  j=(i+1)%3;
-	  k=(i+2)%3;
-
-	  /*LST-3/9R (or CST-3/6C if alphab=0.0)*/
-	  *(*(Bmb+0)+3*i+0)=*(Lx+i);
-	  *(*(Bmb+0)+3*i+1)=0.0;
-	  *(*(Bmb+0)+3*i+2)=*(Lx+i)*(*(Lx+k)-*(Lx+j))*2.0*area*alphab/6.0;
-
-	  *(*(Bmb+1)+3*i+0)=0.0;
-	  *(*(Bmb+1)+3*i+1)=*(Ly+i);
-	  *(*(Bmb+1)+3*i+2)=*(Ly+i)*(*(Ly+k)-*(Ly+j))*2.0*area*alphab/6.0;
-
-	  *(*(Bmb+2)+3*i+0)=*(Ly+i);
-	  *(*(Bmb+2)+3*i+1)=*(Lx+i);
-	  *(*(Bmb+2)+3*i+2)=(*(Lx+j)**(Ly+j)-*(Lx+k)**(Ly+k))*2.0*area*alphab/3.0;
-	}
-
-	//INPLANE(HIGH-ORDER)
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(Q+i)+j)=1.5*(*(*(L+ii)+0)**(*(Q1+i)+j)+*(*(L+ii)+1)**(*(Q2+i)+j)+*(*(L+ii)+2)**(*(Q3+i)+j));
-		/*1.5 IS FOR ISOTROPIC MATERIAL*/
-	  }
-	}
-	TnQ = matrixmatrixIII(Tn,Q,3,3,3);
-	Bmh = matrixmatrixIII(TnQ,Th,3,3,9);
-
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<9;j++)
-	  {
-		*(*(Bm+i)+6*j+0)=*(*(Bmb+i)+j)+*(*(Bmh+i)+j);
-	  }
-	}
-
-
-	//BENDING
-	for(i=0;i<3;i++)
-	{
-	  /*DKT:Discrete Kirchhoff Triangular BY Stricklin & Dhatt*/
-	  j=(i+1)%3;
-	  k=(i+2)%3;
-
-	  *(*(Bb+0)+3*i+0)=  6.0 * *(aa+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) )
-					   - 6.0 * *(aa+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) );
-
-	  *(*(Bb+0)+3*i+1)=  4.0 * *(bb+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) )
-					   + 4.0 * *(bb+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+0)+3*i+2)=        *(Lx+i) * ( 4.0 * *(*(L+ii)+i) - 1.0 )
-					   - 4.0 * *(cc+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) )
-					   - 4.0 * *(cc+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+1)+3*i+0)=  6.0 * *(dd+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) )
-					   - 6.0 * *(dd+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) );
-
-	  *(*(Bb+1)+3*i+1)=        *(Ly+i) * ( 1.0 - 4.0 * *(*(L+ii)+i) )
-					   + 4.0 * *(ee+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   + 4.0 * *(ee+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+1)+3*i+2)=- 4.0 * *(bb+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   - 4.0 * *(bb+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+2)+3*i+0)=  6.0 * *(aa+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) )
-					   - 6.0 * *(aa+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   + 6.0 * *(dd+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) )
-					   - 6.0 * *(dd+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) );
-
-	  *(*(Bb+2)+3*i+1)=  4.0 * *(bb+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   + 4.0 * *(bb+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) )
-					   +       *(Lx+i) * ( 1.0 - 4.0 * *(*(L+ii)+i) )
-					   + 4.0 * *(ee+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) )
-					   + 4.0 * *(ee+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
-
-	  *(*(Bb+2)+3*i+2)=        *(Ly+i) * ( 4.0 * *(*(L+ii)+i) - 1.0 )
-					   - 4.0 * *(cc+j) * ( *(Ly+k) * *(*(L+ii)+i) + *(Ly+i) * *(*(L+ii)+k) )
-					   - 4.0 * *(cc+k) * ( *(Ly+i) * *(*(L+ii)+j) + *(Ly+j) * *(*(L+ii)+i) )
-					   - 4.0 * *(bb+j) * ( *(Lx+k) * *(*(L+ii)+i) + *(Lx+i) * *(*(L+ii)+k) )
-					   - 4.0 * *(bb+k) * ( *(Lx+i) * *(*(L+ii)+j) + *(Lx+j) * *(*(L+ii)+i) );
-	}
-
-	/*STIFFNESS MATRIX*/
-
-
-
-
-
-
-	Kmb = transformationEx(Dm,Bmb,3,9);
-
-	TtDmT = transformationEx(Dm, Tn, 3);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
-	QtDQ4 = transformationEx(TtDmT, Q4, 3);
-	QtDQ5 = transformationEx(TtDmT, Q5, 3);
-	QtDQ6 = transformationEX(TtDmT, Q6, 3);
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		 *(*(QtDQ+i)+j) = *(*(QtDQ4+i)+j)+*(*(QtDQ5+i)+j)+*(*(QtDQ6+i)+j);
-	  }
-	}
-	Kmh = transformationEx(QtDQ,Th,3,9);
-
-	Kb = transformationEx(Db,Bb,3,9);
-
-
-
-
-
-
-
-
-
-
-	/*Km*/
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(Ke+6*i+0)+6*j+0) += *(*(Km+3*i+0)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+0)+6*j+1) += *(*(Km+3*i+0)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+0)+6*j+5) += *(*(Km+3*i+0)+3*j+2)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+0) += *(*(Km+3*i+1)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+1) += *(*(Km+3*i+1)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+5) += *(*(Km+3*i+1)+3*j+2)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+0) += *(*(Km+3*i+2)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+1) += *(*(Km+3*i+2)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+5) += *(*(Km+3*i+2)+3*j+2)**(w+ii);
-	  }
-	}
-	/*Kmb*/
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(Ke+6*i+0)+6*j+0) += *(*(Kmb+3*i+0)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+0)+6*j+1) += *(*(Kmb+3*i+0)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+0)+6*j+5) += *(*(Kmb+3*i+0)+3*j+2)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+0) += *(*(Kmb+3*i+1)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+1) += *(*(Kmb+3*i+1)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+5) += *(*(Kmb+3*i+1)+3*j+2)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+0) += *(*(Kmb+3*i+2)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+1) += *(*(Kmb+3*i+2)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+5) += *(*(Kmb+3*i+2)+3*j+2)**(w+ii);
-	  }
-	}
-	/*Kbm*/
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(Ke+6*i+0)+6*j+0) += *(*(Kbm+3*i+0)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+0)+6*j+1) += *(*(Kbm+3*i+0)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+0)+6*j+5) += *(*(Kbm+3*i+0)+3*j+2)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+0) += *(*(Kbm+3*i+1)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+1) += *(*(Kbm+3*i+1)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+5) += *(*(Kbm+3*i+1)+3*j+2)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+0) += *(*(Kbm+3*i+2)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+1) += *(*(Kbm+3*i+2)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+5) += *(*(Kbm+3*i+2)+3*j+2)**(w+ii);
-	  }
-	}
-	/*Kb*/
-	for(i=0;i<3;i++)
-	{
-	  for(j=0;j<3;j++)
-	  {
-		*(*(Ke+6*i+0)+6*j+0) += *(*(Kb+3*i+0)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+0)+6*j+1) += *(*(Kb+3*i+0)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+0)+6*j+5) += *(*(Kb+3*i+0)+3*j+2)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+0) += *(*(Kb+3*i+1)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+1) += *(*(Kb+3*i+1)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+1)+6*j+5) += *(*(Kb+3*i+1)+3*j+2)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+0) += *(*(Kb+3*i+2)+3*j+0)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+1) += *(*(Kb+3*i+2)+3*j+1)**(w+ii);
-		*(*(Ke+6*i+5)+6*j+5) += *(*(Kb+3*i+2)+3*j+2)**(w+ii);
-	  }
-	}
-
-	freematrix(Km,3*nnod);
-	freematrix(Kmb,3*nnod);
-	freematrix(Kbm,3*nnod);
-	freematrix(Kb,3*nnod);
-  }
-
-
-
-  freematrix(exy,3);
-  freematrix(L,shell.ngp);
-  free(a);
-  free(b);
-  free(c);
-  free(Lx);
-  free(Ly);
-  free(len);
-  free(aa);
-  free(bb);
-  free(cc);
-  free(dd);
-  free(ee);
-  freematrix(Q1,3);
-  freematrix(Q2,3);
-  freematrix(Q3,3);
-  freematrix(Q4,3);
-  freematrix(Q5,3);
-  freematrix(Q6,3);
-  freematrix(Th,3);
-  freematrix(Tn,3);
-  freematrix(Bmb,3);
-  freematrix(Bb,3);
-
-  return Ke;
-}
-
-
-double **assemshellemtx(struct oshell shell,double*** C,double*** B)
+double **assemshellemtx(struct oshell shell)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
   int i,j;
@@ -1216,7 +656,6 @@ double **assemshellemtx(struct oshell shell,double*** C,double*** B)
   double** Ke;
   double area;
   double* w;
-  double** drccos;
   double*** C, ***B;
   double** Dm,** Db;
   double** Bm,** Bb;
@@ -1249,17 +688,16 @@ double **assemshellemtx(struct oshell shell,double*** C,double*** B)
 	*(Dm+i)=(double *)malloc(3*sizeof(double));
 	*(Db+i)=(double *)malloc(3*sizeof(double));
   }
-  Bp=(double **)malloc(3*sizeof(double *));
+  Bm=(double **)malloc(3*sizeof(double *));
   Bb=(double **)malloc(3*sizeof(double *));
   for(i=0;i<3;i++)
   {
-	*(Bp+i)=(double *)malloc(9*sizeof(double));
+	*(Bm+i)=(double *)malloc(9*sizeof(double));
 	*(Bb+i)=(double *)malloc(9*sizeof(double));
   }
 
-  drccos = shelldrccos(shell);/*FOR [B]*/
-  C = elasticCshell(shell);
-  B = assemshellstraindispmtx(shell, drccos);
+  C = shellC(shell);
+  B = shellB(shell);
 
   for(i=0;i<3;i++)
   {
@@ -1277,9 +715,9 @@ double **assemshellemtx(struct oshell shell,double*** C,double*** B)
 	{
 	  for(j=0;j<3;j++)
 	  {
-		*(*(Bp+i)+3*j+0) = *(*(*(B+ii)+i)+6*j+0);
-		*(*(Bp+i)+3*j+1) = *(*(*(B+ii)+i)+6*j+1);
-		*(*(Bb+i)+3*j+2) = *(*(*(B+ii)+i)+6*j+5);
+		*(*(Bm+i)+3*j+0) = *(*(*(B+ii)+i)+6*j+0);
+		*(*(Bm+i)+3*j+1) = *(*(*(B+ii)+i)+6*j+1);
+		*(*(Bm+i)+3*j+2) = *(*(*(B+ii)+i)+6*j+5);
 	  }
 	}
 	//BENDING
@@ -1343,12 +781,10 @@ double **assemshellemtx(struct oshell shell,double*** C,double*** B)
 	*/
   }
 
-  freematrix(drccos,3);
   for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
   free(C);
   for(ii=0;ii<ngp;ii++)freematrix(*(B+ii), nstress);
   free(B);
-
 
   freematrix(Dm,3);
   freematrix(Db,3);
@@ -1358,6 +794,212 @@ double **assemshellemtx(struct oshell shell,double*** C,double*** B)
   free(w);
   return Ke;
 }
+
+
+double **assemshellpmtx(struct oshell shell,double*** C,double*** B)
+/*ASSEMBLAGE ELASTIC MATRIX.*/
+{
+  int i,j;
+  int ii;/*LOOP FOR INTEGRATION POINTS*/
+  int nnod = shell.nnod;
+  int ngp = shell.ngp;
+  int nstress = shell.nstress;
+  double** Kp;
+  double area;
+  double* w;
+  //double*** C, ***B;
+  double** Dm,** Dmb,** Dbm,** Db;
+  double** Bm,** Bb;
+  double** Bmt,** Bbt,** DmbBb,** DbmBm;
+  double** Km,** Kmb,** Kbm,** Kb;
+
+  double prate = shell.prate;
+  double brate = shell.brate;
+
+  Kp=(double **)malloc(6*nnod*sizeof(double *));
+  for(i=0;i<6*nnod;i++)
+  {
+	*(Kp+i)=(double *)malloc(6*nnod*sizeof(double));
+	for(j=0;j<6*nnod;j++)
+	{
+	  *(*(Kp+i)+j)=0.0;                                              /*INITIAL.*/
+	}
+  }
+
+  area = shell.area;
+  w=(double *)malloc(ngp*sizeof(double));
+  for(ii=0;ii<ngp;ii++)
+  {
+	*(w+ii)=area*shell.w[ii];
+  }
+
+  Dm =(double **)malloc(3*sizeof(double *));
+  Dmb=(double **)malloc(3*sizeof(double *));
+  Dbm=(double **)malloc(3*sizeof(double *));
+  Db =(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(Dm +i)=(double *)malloc(3*sizeof(double));
+	*(Dmb+i)=(double *)malloc(3*sizeof(double));
+	*(Dbm+i)=(double *)malloc(3*sizeof(double));
+	*(Db +i)=(double *)malloc(3*sizeof(double));
+  }
+
+  Bm=(double **)malloc(3*sizeof(double *));
+  Bb=(double **)malloc(3*sizeof(double *));
+  for(i=0;i<3;i++)
+  {
+	*(Bm+i)=(double *)malloc(9*sizeof(double));
+	*(Bb+i)=(double *)malloc(9*sizeof(double));
+  }
+
+  for(ii=0;ii<ngp;ii++)
+  {
+
+	/*STRESS-STRAIN MATRIX*/
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Dm +i)+j) = *(*(*(C+ii)  +i)  +j);
+		*(*(Dmb+i)+j) = *(*(*(C+ii)  +i)+3+j);
+		*(*(Dbm+i)+j) = *(*(*(C+ii)+3+i)  +j);
+		*(*(Db +i)+j) = *(*(*(C+ii)+3+i)+3+j);
+	  }
+	}
+	//IN-PLANE
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Bm+i)+3*j+0) = *(*(*(B+ii)+i)+6*j+0);
+		*(*(Bm+i)+3*j+1) = *(*(*(B+ii)+i)+6*j+1);
+		*(*(Bm+i)+3*j+2) = *(*(*(B+ii)+i)+6*j+5);
+	  }
+	}
+	//BENDING
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Bb+i)+3*j+0) = *(*(*(B+ii)+3+i)+6*j+2);
+		*(*(Bb+i)+3*j+1) = *(*(*(B+ii)+3+i)+6*j+3);
+		*(*(Bb+i)+3*j+2) = *(*(*(B+ii)+3+i)+6*j+4);
+	  }
+	}
+
+	Km  = transformationEx(Dm,Bm,3,9);
+
+	Bmt=matrixtransposeIII(Bm,3,9);
+	DmbBb=matrixmatrixIII(Dmb,Bb,3,3,9);
+	Kmb=matrixmatrixIII(Bmt,DmbBb,9,3,9);
+
+
+	Bbt=matrixtransposeIII(Bb,3,9);
+	DbmBm=matrixmatrixIII(Dbm,Bm,3,3,9);
+	Kbm=matrixmatrixIII(Bbt,DbmBm,9,3,9);
+
+	Kb  = transformationEx(Db,Bb,3,9);
+
+	freematrix(Bmt,9);
+	freematrix(Bbt,9);
+	freematrix(DmbBb,3);
+	freematrix(DbmBm,3);
+
+	/*Km*/
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Kp+6*i+0)+6*j+0) += *(*(Km+3*i+0)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+0)+6*j+1) += *(*(Km+3*i+0)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+0)+6*j+5) += *(*(Km+3*i+0)+3*j+2)**(w+ii);
+		*(*(Kp+6*i+1)+6*j+0) += *(*(Km+3*i+1)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+1)+6*j+1) += *(*(Km+3*i+1)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+1)+6*j+5) += *(*(Km+3*i+1)+3*j+2)**(w+ii);
+		*(*(Kp+6*i+5)+6*j+0) += *(*(Km+3*i+2)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+5)+6*j+1) += *(*(Km+3*i+2)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+5)+6*j+5) += *(*(Km+3*i+2)+3*j+2)**(w+ii);
+	  }
+	}
+	/*Kmb*/
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Kp+6*i+0)+6*j+2) += *(*(Kmb+3*i+0)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+0)+6*j+3) += *(*(Kmb+3*i+0)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+0)+6*j+4) += *(*(Kmb+3*i+0)+3*j+2)**(w+ii);
+		*(*(Kp+6*i+1)+6*j+2) += *(*(Kmb+3*i+1)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+1)+6*j+3) += *(*(Kmb+3*i+1)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+1)+6*j+4) += *(*(Kmb+3*i+1)+3*j+2)**(w+ii);
+		*(*(Kp+6*i+5)+6*j+2) += *(*(Kmb+3*i+2)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+5)+6*j+3) += *(*(Kmb+3*i+2)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+5)+6*j+4) += *(*(Kmb+3*i+2)+3*j+2)**(w+ii);
+	  }
+	}
+	/*Kbm*/
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Kp+6*i+2)+6*j+0) += *(*(Kbm+3*i+0)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+2)+6*j+1) += *(*(Kbm+3*i+0)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+2)+6*j+5) += *(*(Kbm+3*i+0)+3*j+2)**(w+ii);
+		*(*(Kp+6*i+3)+6*j+0) += *(*(Kbm+3*i+1)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+3)+6*j+1) += *(*(Kbm+3*i+1)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+3)+6*j+5) += *(*(Kbm+3*i+1)+3*j+2)**(w+ii);
+		*(*(Kp+6*i+4)+6*j+0) += *(*(Kbm+3*i+2)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+4)+6*j+1) += *(*(Kbm+3*i+2)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+4)+6*j+5) += *(*(Kbm+3*i+2)+3*j+2)**(w+ii);
+	  }
+	}
+	/*Kb*/
+	for(i=0;i<3;i++)
+	{
+	  for(j=0;j<3;j++)
+	  {
+		*(*(Kp+6*i+2)+6*j+2) += *(*(Kb+3*i+0)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+2)+6*j+3) += *(*(Kb+3*i+0)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+2)+6*j+4) += *(*(Kb+3*i+0)+3*j+2)**(w+ii);
+		*(*(Kp+6*i+3)+6*j+2) += *(*(Kb+3*i+1)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+3)+6*j+3) += *(*(Kb+3*i+1)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+3)+6*j+4) += *(*(Kb+3*i+1)+3*j+2)**(w+ii);
+		*(*(Kp+6*i+4)+6*j+2) += *(*(Kb+3*i+2)+3*j+0)**(w+ii);
+		*(*(Kp+6*i+4)+6*j+3) += *(*(Kb+3*i+2)+3*j+1)**(w+ii);
+		*(*(Kp+6*i+4)+6*j+4) += *(*(Kb+3*i+2)+3*j+2)**(w+ii);
+	  }
+	}
+	freematrix(Km,3*nnod);
+	freematrix(Kmb,3*nnod);
+	freematrix(Kbm,3*nnod);
+	freematrix(Kb,3*nnod);
+
+
+	/*
+	K = transformationEx(*(C+ii),*(B+ii),nstress,6*nnod);
+
+	for(i=0;i<6*nnod;i++)
+	{
+	  for(j=0;j<6*nnod;j++)
+	  {
+		*(*(Kp+i)+j) += *(*(K+i)+j)*(w+ii);
+	  }
+	}
+	freematrix(K,6*nnod);
+	*/
+  }
+
+  freematrix(Dm,3);
+  freematrix(Db,3);
+  freematrix(Bm,3);
+  freematrix(Bb,3);
+
+  free(w);
+  return Kp;
+}
+
+
 
 
 	/*
@@ -1456,7 +1098,7 @@ double **assemshellemtx(struct oshell shell,double*** C,double*** B)
 	}
   */
 
-double **assemshellmmtx(struct oshell shell,double **drccos)
+double **assemshellmmtx(struct oshell shell)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
   char string[100];
@@ -1483,19 +1125,9 @@ double **assemshellmmtx(struct oshell shell,double **drccos)
 	}
   }
 
-  exy=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(exy+i)=(double *)malloc(2*sizeof(double));
-	for(j=0;j<2;j++)
-	{
-	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
-				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
-				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
-	}
-  }
-  /*shell local coordinate {xi,yi(,zi=0)}*/
+  exy=shelllocalcoord(shell);/*shell local coordinate {xi,yi(,zi=0)}*/
   det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
+
 
 #if 1
   /*WEIGHT OF EACH NODE*/
@@ -1685,17 +1317,7 @@ double *assemshellpvct(struct oshell shell,double **drccos)
   b=(double *)malloc(3*sizeof(double));
   c=(double *)malloc(3*sizeof(double));
   q=(double *)malloc(3*sizeof(double));
-  exy=(double **)malloc(3*sizeof(double *));
-  for(i=0;i<3;i++)
-  {
-	*(exy+i)=(double *)malloc(2*sizeof(double));
-	for(j=0;j<2;j++)
-	{
-	  *(*(exy+i)+j)=(shell.node[i]->d[0]-shell.node[0]->d[0])**(*(drccos+j)+0)
-				   +(shell.node[i]->d[1]-shell.node[0]->d[1])**(*(drccos+j)+1)
-				   +(shell.node[i]->d[2]-shell.node[0]->d[2])**(*(drccos+j)+2);
-	}
-  }
+  exy=shelllocalcoord(shell);
   det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
 
   for(i=0;i<3;i++)
@@ -1802,39 +1424,16 @@ void assemshellvolume(struct oshell* shells, int nshell, double* ddisp, double* 
 		inputshell(shells, NULL, i - 1, &shell);
 		nnod = shell.nnod;
 
-
-		/*INITIAL CONFIGURATION*/
-		/*
-		for (ii = 0; ii < nnod; ii++)
-		{
-			inputnode(iform, shell.node[ii]);
-		}
-		drccosinit = shelldrccos(shell, &area);
-		gforminit = extractshelldisplacement(shell, iform);
-		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
-		*/
-
 		/*DEFORMED CONFIGFURATION*/
 		for (ii = 0; ii < nnod; ii++)
 		{
 			inputnode(ddisp, shell.node[ii]);
 		}
 		drccos = shelldrccos(shell);
-		//gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
-		//eform = extractlocalcoord(gform,drccos,nnod); 			       	    /*{Xe+Ue}*/
 
 		*volume += shellvolume(shell, drccos);                   		/*VOLUME*/
 
 		freematrix(drccos, 3);
-		/*
-		freematrix(drccosinit, 3);
-
-		free(eforminit);
-		free(gforminit);
-		free(eform);
-		free(gform);
-		*/
-
 	}
 	return;
 }
@@ -2331,7 +1930,6 @@ void assemshellestress(struct oshell* shell, double*** C)
 	*(*(g+0)+3) = a[0]/c[2] + a[3]/c[1];
 	*(*(g+0)+4) = a[1]/c[2] + a[4]/c[1];
 	*(*(g+0)+5) = a[2]/c[2] + a[5]/c[1];
-	*(*(g+0)+6) = 0.0;
 
 	*(*(g+1)+0) =   a[0]/c[0] - a[3]/c[2];
 	*(*(g+1)+1) =   a[1]/c[0] - a[4]/c[2];
@@ -2339,7 +1937,6 @@ void assemshellestress(struct oshell* shell, double*** C)
 	*(*(g+1)+3) = - a[0]/c[2] + a[3]/c[1];
 	*(*(g+1)+4) = - a[1]/c[2] + a[4]/c[1];
 	*(*(g+1)+5) = - a[2]/c[2] + a[5]/c[1];
-	*(*(g+1)+6) =   0.0;
 
 	/*UPDATE HARDENING PARAMS*/
 	for (i = 0; i < nstress; i++)
@@ -2357,7 +1954,7 @@ void assemshellestress(struct oshell* shell, double*** C)
 	Halpha = 1.0/(t*dy-(*(lambda+0)+*(lambda+1))*2.0*(dy*dy+y*ddy)/pow(yinit,2.0));
 
 	/*UPDATE CONSISTENT STIFFNESS*/
-	consistentC = consistentCilyushin(shell, ii, H, Halpha, g, galpha, nstress);
+	consistentC = shellCconsistentilyushin(shell, ii, H, Halpha, g, galpha, nstress);
 	for (i = 0; i < nstress; i++)
 	{
 	  for (j = 0; j < nstress; j++)
@@ -2828,7 +2425,7 @@ double* returnmapilyushin(struct oshell* shell, int ii, double** W)
 
 
 
-double** consistentCilyushin(struct oshell* shell, int ii, double** H, double Halpha, double** g, double galpha, int nstress)
+double** shellCconsistentilyushin(struct oshell* shell, int ii, double** H, double Halpha, double** g, double galpha, int nstress)
 {
   /*FOR ONE GAUSS INTEGRATION POINT*/
   int i,j;

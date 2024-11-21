@@ -878,7 +878,7 @@ int arclmDynamic(struct arclmframe* af)
 				eforminit = extractlocalcoord(gforminit,drccosinit,nnod);     		/*{Xe}*/
 
 				Ke = assemshellemtx(shell);   						/*[Ke]*/
-				Me = assemshellmmtx(shell, drccosinit);          					/*[Me]*/
+				Me = assemshellmmtx(shell);          					/*[Me]*/
 
 				/*DEFORMED CONFIGURATION OF LAST LAP.*/
 				for (ii = 0; ii < nnod; ii++)
