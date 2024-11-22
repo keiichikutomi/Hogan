@@ -1,4 +1,4 @@
-int arclmStatic(struct arclmframe* af);
+﻿int arclmStatic(struct arclmframe* af);
 
 void LDLmode(struct gcomponent* gmtx, struct oconf* confs, int* m, int nmode, double** mode, double* norm, double* dm, long int msize);
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);
@@ -25,17 +25,13 @@ extern double inversemethod(struct gcomponent *gmtx, struct oconf *confs, double
 int arclmStatic(struct arclmframe* af)
 {
 	DWORDLONG memory0,memory1;
-
 	char dir[]=DIRECTORY;
-	char string[400];
-	char fname[256];
+	char string[400],fname[100];
 	clock_t t0;
 	/*INPUT & OUTPUT FILE*/
 	FILE * fin, * fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout;         /*FILE 8 BYTES*/
 
-
 	int i, ii, jj;
-
 
 	int nnode, nelem, nshell, nsect, nconstraint;
 	long int msize;
@@ -53,7 +49,7 @@ int arclmStatic(struct arclmframe* af)
 
 	/*GLOBAL MATRIX*/
 	struct gcomponent ginit = { 0,0,0.0,NULL };
-	struct gcomponent *epsgmtx, *gmtx, *gmtxcpy, *dgmtx, * g, * p, * gcomp1;
+	struct gcomponent *gmtx, * g, * p, * gcomp1, *epsgmtx, *gmtxcpy, *dgmtx;
 	double gg;
 	double sign, determinant;
 	long int nline;
@@ -65,7 +61,7 @@ int arclmStatic(struct arclmframe* af)
 	double* givendisp;
 	double* gvct;
 	double* funbalance, * fexternal, * finternal, * freaction;
-	double* fbaseload, *fdeadload, * fpressure,* fgivendisp;
+	double* fbaseload, * fdeadload, * fpressure,* fgivendisp;
 	double* fswitching;
 
 
@@ -76,6 +72,7 @@ int arclmStatic(struct arclmframe* af)
 	int maxiteration = 20;
 	double tolerance = 1.0e-4;
 	double residual;
+	double gvctlen;
 	double loadfactor=0.0;
 	double lambda;
 	/*ARC-LENGTH METHOD*/
@@ -95,13 +92,15 @@ int arclmStatic(struct arclmframe* af)
 	int node;
 
 	/*OUTPUT*/
-	int outputmode = 0;/*0:ConvergedLaps.1:AllLaps.*/
+
 	double volume = 0.0;
 
 
-	///FOR PINPOINTING///
+	/*ANALYSIS MODE*/
+	int outputmode = 0;/*0:ConvergedLaps.1:AllLaps.*/
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int BCLFLAG = 0;/*FLAG FOR BUCKLING DETECTION*/
+	int UNLOADFLAG = 0;
 	/*LAST LAP*/
 	double* lastddisp,* lastgvct,* lastpivot;
 	double lastloadfactor,lastlambda,lastsign;
@@ -139,9 +138,6 @@ int arclmStatic(struct arclmframe* af)
 	int ENDFLAG = 0;
 	int fnode=NULL,fnodedrc=NULL;
 	double fnodemin, fnodemax;
-	/*UNLOADING*/
-	int UNLOADFLAG = 0;
-
 
 	/*FOR READING ANALYSISDATA*/
 	FILE *fdata;
@@ -178,8 +174,6 @@ int arclmStatic(struct arclmframe* af)
 		*(weight + i) = 0.0;
 	}
 	*(weight + 6*nnode) = 1.0;
-
-
 
 	strcpy(filename, (wdraw.childs+1)->inpfile);
 	dot = strrchr(filename, '.');
@@ -404,29 +398,27 @@ int arclmStatic(struct arclmframe* af)
 	constraintmain = af->constraintmain;
 #endif
 
-	/***GLOBAL MATRIX***/
+	/***GLOBAL MATRIX*/
 	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
 	epsgmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
 
-	/***GLOBAL VECTOR***/
+	/***GLOBAL VECTOR*/
 	gvct = (double *)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
+	due = (double*)malloc(msize * sizeof(double));
+	dup = (double*)malloc(msize * sizeof(double));
 
+	/*FORCE VECTOR INITIALIZATION*/
 	funbalance = (double*)malloc(msize * sizeof(double));          /*UNBALANCED INTERNAL FORCE VECTOR.*/
 	freaction = (double*)malloc(msize * sizeof(double));           /*EXTERNAL FORCE VECTOR.*/
 	fexternal = (double*)malloc(msize * sizeof(double));           /*EXTERNAL FORCE VECTOR.*/
 	finternal = (double*)malloc(msize * sizeof(double));           /*INTERNAL FORCE VECTOR.*/
-
 	fbaseload = (double*)malloc(msize * sizeof(double));           /*BASE LOAD VECTOR.*/
 	fdeadload = (double*)malloc(msize * sizeof(double));           /*DEAD LOAD VECTOR.*/
 	fpressure = (double*)malloc(msize * sizeof(double));           /*PRESSURE VECTOR.*/
 	fgivendisp = (double*)malloc(msize * sizeof(double));           /*BASE LOAD VECTOR.*/
-
 	fswitching = (double*)malloc(msize * sizeof(double));
 
-
-	due = (double*)malloc(msize * sizeof(double));
-	dup = (double*)malloc(msize * sizeof(double));
-
+	/*POSITION VECTOR INITIALIZATION*/
 	lastddisp = (double*)malloc(msize * sizeof(double));
 	lastgvct = (double*)malloc(msize * sizeof(double));
 	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
@@ -536,7 +528,7 @@ int arclmStatic(struct arclmframe* af)
 		volume = 0.0;
 		assemshellvolume(shells, nshell, ddisp, &volume);
 
-		/*FORCE ASSEMBLAGE*/
+		/*POST PROCESS*/
 		if(USINGEIGENFLAG==1)
 		{
 		  //assemelemEx(elems, melem, nelem, constraintmain, confs, NULL, NULL, iform, ddisp, finternal, fpressure);
@@ -594,18 +586,13 @@ int arclmStatic(struct arclmframe* af)
 		/*CONVERGENCE JUDGEMENT.*/
 		residual = vectorlength(funbalance,msize);
 
-		if ((residual < tolerance || iteration > maxiteration) && iteration != 1)
+		if (residual < tolerance || iteration > maxiteration-1)
 		{
 		  nlap++;
 		  iteration = 0;
 		}
-		else if (maxiteration == 1)
-		{
-		  nlap++;
-		  iteration = 0;
-		}
-
 		iteration++;
+		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
 		if(iteration==1)
 		{
@@ -1073,6 +1060,12 @@ int arclmStatic(struct arclmframe* af)
 				*(gvct + ii) = lambda * *(dup + ii) + *(due + ii);
 			}
 			fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, dupdue, dupdup);
+			#endif
+
+			#if 0
+			/*HYPERSPHERE CONSTRAINT : CRISFIELD'S METHOD*/
+			/*USING PREDICTOR DATA*/
+
 			#endif
 
 			#if 0

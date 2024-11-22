@@ -16,6 +16,7 @@
 ****/
 
 #ifndef _NO_SAL_2_H_
+#pragma option push -b -a8 -pc -A- -w-pun /*P_O_Push*/
 #define _NO_SAL_2_H_
 
 #ifdef _When_
@@ -1039,4 +1040,5 @@
 #undef _Post_writable_byte_size_
 #define _Post_writable_byte_size_(s) _Post_ _Writable_bytes_(s)
 
+#pragma option pop /*P_O_Pop*/
 #endif /* _NO_SAL_2_H_ */
