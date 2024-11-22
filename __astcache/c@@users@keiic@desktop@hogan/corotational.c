@@ -47,7 +47,7 @@ double* rotationvct(double** rmtx)
 
 	theta = atan2(s , c);/*theta>=0*/
 
-	if(s > 1e-8)
+	if(s > 1e-15)
 	{
 		*(rvct + 0) = 0.5 * ((*(*(rmtx + 2) + 1) - *(*(rmtx + 1) + 2)))* theta / s;
 		*(rvct + 1) = 0.5 * ((*(*(rmtx + 0) + 2) - *(*(rmtx + 2) + 0)))* theta / s;
@@ -79,8 +79,7 @@ double* rotationvct(double** rmtx)
 		*(rvct + 2) *= PI;
 
 		//sprintf(str,"%.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e\n",s,c,theta,*(rvct + 0),*(rvct + 1),*(rvct + 2), *(*(rmtx + 0) + 0), *(*(rmtx + 1) + 1), *(*(rmtx + 2) + 2));
-		//errormessage(str);
-
+		errormessage("DETECT 180 DEGREE ROTATION\n");
 	}
 	else/*theta=0*/
 	{

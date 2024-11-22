@@ -19860,7 +19860,8 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	if(((af->shells+i-1)->sect)->type==7)
 	{
 	  (af->shells+i-1)->nnod=3;
-	  (af->shells+i-1)->ngp=7;
+	  (af->shells+i-1)->ngp=3;
+	  //(af->shells+i-1)->ngp=3;
 	  (af->shells+i-1)->nstress=6;
 	  code1=strtol(*(data+2),NULL,10); /*HEAD NODE.*/
 	  code2=strtol(*(data+3),NULL,10); /*TAIL NODE.*/
@@ -19958,6 +19959,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	/*INITIAL AREA OF SHELL*/
 	(af->shells+i-1)->area = shellarea(*(af->shells+i-1));
 	/*WEIGHT OF GAUSS INTEGRATION POINT*/
+	/*
 	(af->shells+i-1)->w[0]=27.0/60.0;
 	(af->shells+i-1)->w[1]=8.0/60.0;
 	(af->shells+i-1)->w[2]=(af->shells+i-1)->w[1];
@@ -19965,6 +19967,11 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	(af->shells+i-1)->w[4]=3.0/60.0;
 	(af->shells+i-1)->w[5]=(af->shells+i-1)->w[4];
 	(af->shells+i-1)->w[6]=(af->shells+i-1)->w[4];
+	*/
+
+	(af->shells+i-1)->w[0]=1.0/3.0;
+	(af->shells+i-1)->w[1]=(af->shells+i-1)->w[0];
+	(af->shells+i-1)->w[2]=(af->shells+i-1)->w[0];
 
 	if(k==n-2)
 	{

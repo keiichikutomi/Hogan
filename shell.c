@@ -206,6 +206,7 @@ double** shelllocalcoord(struct oshell shell)
   }
 
   drccos = shelldrccos(shell);
+
   for(i=0;i<3;i++)/*NODE 0-0, 0-1, 0-2*/
   {
 	for(j=0;j<2;j++)/*IN-PLANE 2D VECTOR*/
@@ -222,8 +223,9 @@ double** shelllocalcoord(struct oshell shell)
 double*** shellB(struct oshell shell)
 {
   int i,j,k,ii;
-  int nstress = shell.nstress;
   int nnod = shell.nnod;
+  int ngp = shell.ngp;
+  int nstress = shell.nstress;
   double **exy;
   double area;
   double** L;
@@ -232,7 +234,7 @@ double*** shellB(struct oshell shell)
   double *len,*aa,*bb,*cc,*dd,*ee;
   double alphab;
   double beta[10];
-  double** Q1,**Q2,**Q3,**Q4,**Q5,**Q6,**Q;
+  double** Q1,**Q2,**Q3,**Q;
   double** Th,** Tn,**TnQ;
   double** Bmb,**Bmh,** Bb;
   double*** B;
@@ -312,27 +314,37 @@ double*** shellB(struct oshell shell)
   area = shell.area;
 
   /*AREA COORD Li=(ai+bix+ciy)/(2*area)*/
-  /*3 NODES 7 GAUSS POINTS*/
-  *(*(L+0)+0)=1.0/3.0;*(*(L+0)+1)=1.0/3.0;*(*(L+0)+2)=1.0/3.0;
+  if(nnod==3 && ngp==7)
+  {
+	  /*3 NODES 7 GAUSS POINTS*/
+	  *(*(L+0)+0)=1.0/3.0;*(*(L+0)+1)=1.0/3.0;*(*(L+0)+2)=1.0/3.0;
 
-  *(*(L+1)+0)=1.0/2.0;*(*(L+1)+1)=1.0/2.0;*(*(L+1)+2)=0.0;
-  *(*(L+2)+0)=0.0;*(*(L+2)+1)=1.0/2.0;*(*(L+2)+2)=1.0/2.0;
-  *(*(L+3)+0)=1.0/2.0;*(*(L+3)+1)=0.0;*(*(L+3)+2)=1.0/2.0;
+	  *(*(L+1)+0)=1.0/2.0;*(*(L+1)+1)=1.0/2.0;*(*(L+1)+2)=0.0;
+	  *(*(L+2)+0)=0.0;*(*(L+2)+1)=1.0/2.0;*(*(L+2)+2)=1.0/2.0;
+	  *(*(L+3)+0)=1.0/2.0;*(*(L+3)+1)=0.0;*(*(L+3)+2)=1.0/2.0;
 
-  *(*(L+4)+0)=1.0;*(*(L+4)+1)=0.0;*(*(L+4)+2)=0.0;
-  *(*(L+5)+0)=0.0;*(*(L+5)+1)=1.0;*(*(L+5)+2)=0.0;
-  *(*(L+6)+0)=0.0;*(*(L+6)+1)=0.0;*(*(L+6)+2)=1.0;
+	  *(*(L+4)+0)=1.0;*(*(L+4)+1)=0.0;*(*(L+4)+2)=0.0;
+	  *(*(L+5)+0)=0.0;*(*(L+5)+1)=1.0;*(*(L+5)+2)=0.0;
+	  *(*(L+6)+0)=0.0;*(*(L+6)+1)=0.0;*(*(L+6)+2)=1.0;
+  }
+  if(nnod==3 && ngp==3)
+  {
+  	  /*3 NODES 7 GAUSS POINTS*/
+	  *(*(L+0)+0)=1.0/6.0;*(*(L+0)+1)=1.0/6.0;*(*(L+0)+2)=2.0/3.0;
+	  *(*(L+1)+0)=1.0/6.0;*(*(L+1)+1)=2.0/3.0;*(*(L+1)+2)=1.0/6.0;
+	  *(*(L+2)+0)=2.0/3.0;*(*(L+2)+1)=1.0/6.0;*(*(L+2)+2)=1.0/6.0;
+  }
 
   /*
-  6
-  | \
-  |  \
-  |   \
-  3    2
-  |     \
-  |   0  \
-  |       \
-  4----1----5
+  6             |\
+  | \           | \
+  |  \          |  \
+  |   \         |   \
+  3    2        |2  3\
+  |     \       |     \
+  |   0  \      |      \
+  |       \     |    1  \
+  4----1----5   ----------
   */
 
   for(i=0;i<3;i++)
@@ -357,8 +369,17 @@ double*** shellB(struct oshell shell)
 
 
   /*FREE PARAMETERS OF ANDES OPTIMAL TRIANGLE*/
+
+  double poi = shell.sect->poi;
   alphab = 1.5;
-  beta[0] = 1.0;
+  if(poi!=0.5)
+  {
+	beta[0] = 0.5*(1-4*poi*poi);
+  }
+  else
+  {
+	beta[0] = 0.01;//FOR STABILITY
+  }
   beta[1] = 1.0; beta[2] = 2.0; beta[3] = 1.0;
   beta[4] = 0.0; beta[5] = 1.0; beta[6] =-1.0;
   beta[7] =-1.0; beta[8] =-1.0; beta[9] =-2.0;
@@ -443,14 +464,14 @@ double*** shellB(struct oshell shell)
   }
 
   /*SHAPE FUNCTION FOR BENDING*/
-  for(ii=0;ii<shell.ngp;ii++)
+  for(ii=0;ii<ngp;ii++)
   {
 	/*SHAPE FUNCTION FOR IN-PLANE*/
 	for(i=0;i<3;i++)
 	{
 	  for(j=0;j<3;j++)
 	  {
-		*(*(Q+i)+j)=1.5*(*(*(L+ii)+0)**(*(Q1+i)+j)+*(*(L+ii)+1)**(*(Q2+i)+j)+*(*(L+ii)+2)**(*(Q3+i)+j));
+		*(*(Q+i)+j)=1.5*sqrt(beta[0])*(*(*(L+ii)+0)**(*(Q1+i)+j)+*(*(L+ii)+1)**(*(Q2+i)+j)+*(*(L+ii)+2)**(*(Q3+i)+j));
 		/*1.5 IS FOR ISOTROPIC MATERIAL*/
 	  }
 	}
@@ -901,10 +922,6 @@ double **assemshellpmtx(struct oshell shell,double*** C,double*** B)
 
 	Kb  = transformationEx(Db,Bb,3,9);
 
-	freematrix(Bmt,9);
-	freematrix(Bbt,9);
-	freematrix(DmbBb,3);
-	freematrix(DbmBm,3);
 
 	/*Km*/
 	for(i=0;i<3;i++)
@@ -974,6 +991,10 @@ double **assemshellpmtx(struct oshell shell,double*** C,double*** B)
 	freematrix(Kmb,3*nnod);
 	freematrix(Kbm,3*nnod);
 	freematrix(Kb,3*nnod);
+	freematrix(Bmt,9);
+	freematrix(Bbt,9);
+	freematrix(DmbBb,3);
+	freematrix(DbmBm,3);
 
 
 	/*
@@ -1794,7 +1815,6 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, double** W)
 			  *(*(W+3*i+2)+3*j+2) = Oinv[i][j][2];
 		  }
 	  }
-	   *(*(W+6)+6) = 1.0;
 
   }
   free(qstress);
