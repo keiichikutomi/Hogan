@@ -564,8 +564,8 @@ int bclng001(struct arclmframe *af)
   if(0)
   {
   	/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
-	assemelem(elems, NULL, nelem, constraintmain, NULL, gmtx1, iform, ddisp, NULL, NULL);
-	assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx1, iform, ddisp, NULL, NULL);
+	assemelem(elems, NULL, nelem, constraintmain, NULL, gmtx1, iform, ddisp);
+	assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx1, iform, ddisp);
 
 	gmtx1cpy=copygcompmatrix(gmtx1,msize);
 
@@ -584,8 +584,8 @@ int bclng001(struct arclmframe *af)
 	updateform(epsddisp, epsgvct, nnode);
 
 	/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
-	assemelem(elems, NULL, nelem, constraintmain, NULL, epsgmtx1, iform, epsddisp, NULL, NULL);
-	assemshell(shells, NULL, nshell, constraintmain, NULL, epsgmtx1, iform, epsddisp, NULL, NULL);
+	assemelem(elems, NULL, nelem, constraintmain, NULL, epsgmtx1, iform, epsddisp);
+	assemshell(shells, NULL, nshell, constraintmain, NULL, epsgmtx1, iform, epsddisp);
 
 	gmtx2=gcomponentadd3(epsgmtx,1.0/eps,gmtx1,-1.0/eps,msize);
   }

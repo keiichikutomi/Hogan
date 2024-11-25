@@ -651,6 +651,85 @@ double** assemtmtxCR(double** Ke, double* eform, double* edisp, double* estress,
 }
 
 
+
+double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, double** T, double** Ke,
+						  double** midTtPtHt, double** HPT,
+						  double* ginertial, double** Me, double** R, double** lastRt, double** lapH,
+						  double alphaf, double alpham, double xi, double beta, double ddt, int nnod)
+{
+	int ii,jj,n;
+	double** Kint1, ** Kint2;
+	double** Kmas1, ** Kmas2;
+	double* mvct;
+	double** mspin;
+	double** TPHK;
+	double** RM, ** RMR;
+	double** Keff;
+
+	Kint1 = assemgmtxCR(eform, edisp, mideinternal, NULL, T, NULL, nnod);
+
+	TPHK = matrixmatrix(midTtPtHt, Ke, 6*nnod);
+	Kint2 = matrixmatrix(TPHK, HPT, 6*nnod);
+
+	mvct = (double*)malloc(3 * sizeof(double));
+	Kmas1 = (double**)malloc(6*nnod * sizeof(double*));
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		*(Kmas1 + ii) = (double*)malloc(6*nnod * sizeof(double));
+		for (jj = 0; jj < 6*nnod; jj++)
+		{
+			*(*(Kmas1 + ii) + jj)=0.0;
+		}
+	}
+	for (n = 0; n < nnod; n++)
+	{
+		for (ii = 0; ii < 3; ii++)
+		{
+			*(mvct + ii) = *(ginertial + 6 * n + 3 + ii);
+		}
+		mspin = spinmtx(mvct);
+		for (ii = 0; ii < 3; ii++)
+		{
+			for (jj = 0; jj < 3; jj++)
+			{
+				*(*(Kmas1 + 6 * n + 3 + ii) + 6 * n + 3 + jj) = - *(*(mspin + ii) + jj);
+			}
+		}
+		freematrix(mspin, 3);
+	}
+
+	RM = matrixmatrix(R, Me, 6*nnod);
+	RMR = matrixmatrix(RM, lastRt, 6*nnod);
+	Kmas2 = matrixmatrix(RMR, lapH, 6*nnod);
+
+	Keff = (double**)malloc(6*nnod * sizeof(double*));
+	for (ii = 0; ii < 6*nnod; ii++)
+	{
+		*(Keff + ii) = (double*)malloc(6*nnod * sizeof(double));
+		for (jj = 0; jj < 6*nnod; jj++)
+		{
+			*(*(Keff + ii) + jj) = (1-alphaf)     **(*(Kint1 + ii) + jj)
+								 + (1-alphaf + xi)**(*(Kint2 + ii) + jj)
+								 + (1-alpham)     **(*(Kmas1 + ii) + jj)
+								 + (1-alpham)     **(*(Kmas2 + ii) + jj) / (beta * ddt * ddt);
+		}
+	}
+
+	freematrix(Kint1, 6 * nnod);
+	freematrix(TPHK,  6 * nnod);
+	freematrix(Kint2, 6 * nnod);
+	free(mvct);
+
+	freematrix(Kmas1, 6 * nnod);
+	freematrix(RM,    6 * nnod);
+	freematrix(RMR,   6 * nnod);
+	freematrix(Kmas2, 6 * nnod);
+
+	return Keff;
+}
+
+
+
 void symmetricmtx(double** estiff, int msize)
 {
 	int i, j;

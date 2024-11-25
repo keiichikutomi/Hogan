@@ -75,6 +75,7 @@ int arclmStatic(struct arclmframe* af)
 	double gvctlen;
 	double loadfactor=0.0;
 	double lambda;
+	double volume = 0.0;
 	/*ARC-LENGTH METHOD*/
 	double arclength;
 	double arcsum, predictorsign;/*FOR PREDICTOR*/
@@ -91,9 +92,6 @@ int arclmStatic(struct arclmframe* af)
 	double *weight;
 	int node;
 
-	/*OUTPUT*/
-
-	double volume = 0.0;
 
 
 	/*ANALYSIS MODE*/
@@ -529,16 +527,9 @@ int arclmStatic(struct arclmframe* af)
 		assemshellvolume(shells, nshell, ddisp, &volume);
 
 		/*POST PROCESS*/
-		if(USINGEIGENFLAG==1)
-		{
-		  //assemelemEx(elems, melem, nelem, constraintmain, confs, NULL, NULL, iform, ddisp, finternal, fpressure);
-		  //assemshellEx(shells, mshell, nshell, constraintmain, confs, NULL, NULL, iform, ddisp, finternal, fpressure);
-		}
-		else
-		{
-		  assemelem(elems, melem, nelem, constraintmain, NULL, NULL, iform, ddisp, finternal, fpressure);
-		  assemshell(shells, mshell, nshell, constraintmain, NULL, NULL, iform, ddisp, finternal, fpressure);
-		}
+		//elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
+		shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
+
 
 
 		if(/*UNLOADFLAG==1*/0)
@@ -621,8 +612,8 @@ int arclmStatic(struct arclmframe* af)
 		}
 		else
 		{
-		  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
-		  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
+		  //assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp);
+		  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp);
 		}
 
 		/*OUTPUT.*/
@@ -818,8 +809,8 @@ int arclmStatic(struct arclmframe* af)
 					*(gmtx + (i - 1)) = ginit;
 				}
 
-				assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
-				assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
+				//assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp);
+				assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp);
 
 				nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
 				sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
@@ -1116,8 +1107,8 @@ int arclmStatic(struct arclmframe* af)
 			updateform(epsddisp, epsgvct, nnode);
 
 			/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
-			assemelem(elems, melem, nelem, constraintmain, NULL, epsgmtx, iform, epsddisp, NULL, NULL);
-			assemshell(shells, mshell, nshell, constraintmain, NULL, epsgmtx, iform, epsddisp, NULL, NULL);
+			//assemelem(elems, melem, nelem, constraintmain, NULL, epsgmtx, iform, epsddisp);
+			assemshell(shells, mshell, nshell, constraintmain, NULL, epsgmtx, iform, epsddisp);
 
 			dgmtx=gcomponentadd3(epsgmtx,1.0/eps,gmtxcpy,-1.0/eps,msize);
 
@@ -1283,8 +1274,8 @@ int arclmStatic(struct arclmframe* af)
 
 
 
-	assemelem(elems, melem, nelem, constraintmain, NULL, NULL, iform, ddisp, NULL, NULL);
-	assemshell(shells, mshell, nshell, constraintmain, NULL, NULL, iform, ddisp, NULL, NULL);
+	//elemstress(elems, melem, nelem, constraintmain, iform, ddisp, NULL, NULL);
+	shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, NULL, NULL);
 
 	////////// OUTPUT RESULT FOR SRCAN//////////
 	if(fout!=NULL)
@@ -1720,7 +1711,7 @@ int arclmStatic(struct arclmframe* af)
 			}
 
 
-			assemshell(shells, mshell, nshell, constraintmain,NULL, gmtx,iform, epsddisp, epsfinternal, epsfexternal);
+			shellstress(shells, mshell, nshell, constraintmain,iform, epsddisp, epsfinternal, epsfexternal);
 
 			for (ii = 0; ii < msize; ii++)
 			{

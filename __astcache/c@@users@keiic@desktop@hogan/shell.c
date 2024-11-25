@@ -1895,7 +1895,7 @@ void assemshellestress(struct oshell* shell, double*** C)
 	  gp->stress[i] = *(gpstress + i);/*TRIAL STRESS*/
 	}
 
-    /*CHECK FOR TRUE STRESS*/
+	/*CHECK FOR TRUE STRESS*/
 
 
 	free(gpstress);
@@ -1965,8 +1965,6 @@ void assemshellestress(struct oshell* shell, double*** C)
 	  gp->estrain[i] -= gtotal[i];
 	  gp->pstrain[i] += gtotal[i];
 	}
-
-
 
 	/*df/dq=d/dq(-σy^2/σyinit^2)=-2*σy*σy'(q)/(σyinit^2)=beta*/
 	y = yieldstress(shell->sect, gp->alpha, &dy, &ddy);

@@ -227,8 +227,8 @@ int vbrat001(struct arclmframe* af)
   availablephysicalmemoryEx("REMAIN:");            /*MEMORY AVAILABLE*/
   //laptime("ASSEMBLING GLOBAL MATRIX.",t0);
 
-  assemelem(elems, melem, nelem, constraintmain, mmtx, kmtx, iform, ddisp, NULL, NULL);
-  assemshell(shells, mshell, nshell, constraintmain, mmtx, kmtx, iform, ddisp, NULL, NULL);
+  //assemelem(elems, melem, nelem, constraintmain, mmtx, kmtx, iform, ddisp);
+  assemshell(shells, mshell, nshell, constraintmain, mmtx, kmtx, iform, ddisp);
 
   //laptime("GLOBAL MATRIX ASSEMBLED.",t0);
 

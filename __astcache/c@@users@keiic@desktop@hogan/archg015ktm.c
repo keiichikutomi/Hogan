@@ -69,12 +69,11 @@ int stressintofile(struct arclmframe *af);
 
 
 extern void clearwindow(struct windowparams wp);
-extern void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,
-			   struct gcomponent* mmtx, struct gcomponent* gmtx,
-			   double* iform, double* ddisp, double* finternal, double* fexternal);
-extern void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,
-			   struct gcomponent* mmtx, struct gcomponent* gmtx,
-			   double* iform, double* ddisp, double* finternal, double* fexternal);
+//extern void assemelem (struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain, struct gcomponent* mmtx, struct gcomponent* gmtx, double* iform, double* ddisp);
+extern void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain, struct gcomponent* mmtx, struct gcomponent* gmtx, double* iform, double* ddisp);
+
+//extern void elemstress (struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain, double* iform, double* ddisp, double* finternal, double* fexternal);
+extern void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain, double* iform, double* ddisp, double* finternal, double* fexternal);
 
 
 int arclm001(struct arclmframe *af,int idinput,int idoutput)
@@ -258,8 +257,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	memory1=availablephysicalmemory("REMAIN:");    /*MEMORY AVAILABLE*/
 	laptime("ASSEMBLING GLOBAL MATRIX.",t0);
 
-	assemelem(elems, NULL, nelem, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
-	assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx, iform, ddisp, NULL, NULL);
+	//assemelem(elems, NULL, nelem, constraintmain, NULL, gmtx, iform, ddisp);
+	assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx, iform, ddisp);
 
 #if 0
 	  for(i=1;i<=nelem;i++)               /*ASSEMBLAGE GLOBAL MATRIX.*/
