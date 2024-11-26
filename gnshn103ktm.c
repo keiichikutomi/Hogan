@@ -39,13 +39,15 @@
 */
 
 
-struct accdata {
+struct accdata
+{
 	long int ndata;
 	double dt;
 	double *a;
 }; /* ACCELERATION DATA. */
 
-struct structrigid {
+struct structrigid
+{
 	int ielem, floor;
 	double x, y;
 	double K[2];

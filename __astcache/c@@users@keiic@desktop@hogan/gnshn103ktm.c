@@ -1,4 +1,4 @@
-
+﻿
 /* ========================================================= */
 /* PROGRAM GUNBASHIRA SHINDOU 002 */
 /* 6 D.O.F. 3D FRAME WITH POINT MASS */
@@ -39,13 +39,15 @@
 */
 
 
-struct accdata {
+struct accdata
+{
 	long int ndata;
 	double dt;
 	double *a;
 }; /* ACCELERATION DATA. */
 
-struct structrigid {
+struct structrigid
+{
 	int ielem, floor;
 	double x, y;
 	double K[2];

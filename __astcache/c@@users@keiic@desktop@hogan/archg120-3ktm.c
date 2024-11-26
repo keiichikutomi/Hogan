@@ -214,6 +214,7 @@ struct gausspoint{double estrain[7];
 				  double qn,qm,qnm;
 				  double yinit,y,alpha;
 				  double f[2];
+				  double lambda[2];
 				  double Ee;
 				  double Ep;
 				  };

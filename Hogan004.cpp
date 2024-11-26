@@ -39,11 +39,8 @@
 #include "corotational.c"
 #include "arclmEigen.c"
 #include "assemble.c"
-
 #include "archg015ktm.c"                  /*ANALYSIS STATIC LINEAR.*/
 #include "arclmStatic.c"              /*ANALYSIS STATIC NON-LINEAR.*/
-//#include "arclmStaticEx.c"            /*ANALYSIS STATIC NON-LINEAR.*/
-
 #include "bclng021ujok.c"                       /*ELASTIC BUCKLING.*/
 #include "qadhg001.c"               /*ANALYSIS BIQUADRATIC ELEMENT.*/
 #include "srcal007ujok.c"                     /*DRAW SECTIONS LIST.*/
