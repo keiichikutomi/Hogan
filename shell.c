@@ -1934,17 +1934,7 @@ double*** shellCconsistentilyushin(struct oshell shell)
 
   char str[800];
 
-  C = shellC(shell);
 
-  consistentC = (double***)malloc(ngp * sizeof(double**));
-  for (ii = 0; ii < ngp; ii++)
-  {
-	*(consistentC + ii) = (double**)malloc(nstress * sizeof(double*));
-	for (i = 0; i < nstress; i++)
-	{
-	  *(*(consistentC + ii) + i) = (double*)malloc(nstress * sizeof(double));
-	}
-  }
 
   nnod = shell.nnod;
   ngp = shell.ngp;
@@ -1975,6 +1965,19 @@ double*** shellCconsistentilyushin(struct oshell shell)
   c[0] = fn*fn;
   c[1] = fm*fm;
   c[2] = 2.0*sqrt(3.0)*fn*fm;
+
+
+  C = shellC(shell);
+
+  consistentC = (double***)malloc(ngp * sizeof(double**));
+  for (ii = 0; ii < ngp; ii++)
+  {
+	*(consistentC + ii) = (double**)malloc(nstress * sizeof(double*));
+	for (i = 0; i < nstress; i++)
+	{
+	  *(*(consistentC + ii) + i) = (double*)malloc(nstress * sizeof(double));
+	}
+  }
 
 
 
@@ -2142,10 +2145,6 @@ double*** shellCconsistentilyushin(struct oshell shell)
 		}
 	  }
 	}
-
-
-
-
 	freematrix(H,nstress);
   }
   freematrix(W,nstress);

@@ -790,8 +790,11 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		symmetricmtx(Kt, 6 * nnod);											   /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
-		M = transformationIII(M, T, 6*nnod);
-		assemgstiffnessIIwithDOFelimination(mmtx, M, &shell, constraintmain);
+		if(mmtx!=NULL)
+		{
+		  M = transformationIII(M, T, 6*nnod);
+		  assemgstiffnessIIwithDOFelimination(mmtx, M, &shell, constraintmain);
+		}
 
 
 		for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);

@@ -19952,6 +19952,8 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  ((af->shells+i-1)->gp[ii]).y=0.0;
 	  ((af->shells+i-1)->gp[ii]).f[0]=0.0;
 	  ((af->shells+i-1)->gp[ii]).f[1]=0.0;
+	  ((af->shells+i-1)->gp[ii]).lambda[0]=0.0;
+	  ((af->shells+i-1)->gp[ii]).lambda[1]=0.0;
 	  ((af->shells+i-1)->gp[ii]).alpha=0.0;
 	  ((af->shells+i-1)->gp[ii]).Ee=0.0;
 	  ((af->shells+i-1)->gp[ii]).Ep=0.0;
