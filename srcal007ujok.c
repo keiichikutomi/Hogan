@@ -70,7 +70,6 @@
 #define SRCANBCLNGCONDENSATION 0       /*UJIOKA:BUCKLING CONDENSATION RESULT*/
                                        /*ONLY FOR S PLATE*/
 
-
 struct materials{
 				 double sE,sF,sft,sfc,sfb,sfs,sftu,sfcu;       		 /*S*/
 				 double rE,rft,rfc,wft,rftu,rfcu,wfp;          		 /*R*/
@@ -84,9 +83,8 @@ struct materials{
 				 double alE,alF,alft,alfc,alfb,alfs,alftu,alfcu; /*ALUMI*/
 				};
 
-
 struct materialrect{double top,bottom,left,right;
-                    double F;};                   /*RECTANGLE[cm],F*/
+					double F;};                   /*RECTANGLE[cm],F*/
 struct reinforcement{double area,x,y,F;};     /*REIN AREA,X,Y[cm],F*/
 struct reinshear{int n;                            /*NUMBER OF REIN*/
                  double area,pitch,F;};     /*REIN AREA,PITCH[cm],F*/

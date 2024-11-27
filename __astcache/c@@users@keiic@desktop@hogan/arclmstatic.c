@@ -1,4 +1,4 @@
-int arclmStatic(struct arclmframe* af);
+﻿int arclmStatic(struct arclmframe* af);
 
 void LDLmode(struct gcomponent* gmtx, struct oconf* confs, int* m, int nmode, double** mode, double* norm, double* dm, long int msize);
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);

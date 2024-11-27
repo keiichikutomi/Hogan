@@ -632,19 +632,19 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 }
 
 
-double** assemtmtxCR(double** Ke, double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod)
+double** assemtmtxCR(double** K, double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod)
 {
 	int i, j;
 	double** Kt;
 
 	Kt = assemgmtxCR(eform, edisp, estress, gstress, T, HPT, nnod);/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
-	Ke = transformationIII(Ke, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
+	K = transformationIII(K, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
 
 	for (i = 0; i < 6*nnod; i++)
 	{
 		for (j = 0; j < 6*nnod; j++)
 		{
-			*(*(Kt + i) + j) += *(*(Ke + i) + j);/*[Kt]=[Ke]+[Kg]*/
+			*(*(Kt + i) + j) += *(*(K + i) + j);/*[Kt]=[Ke]+[Kg]*/
 		}
 	}
 	return Kt;

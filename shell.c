@@ -29,6 +29,7 @@ void outputmemoryshell(struct oshell *shells,struct memoryshell *mshell,int offs
 
 /*FOR PLASTIC (ILYUSHIN'S STRESS RESULTANT)*/
 double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG);/*YIELD FUNCTION*/
+double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy);
 void returnmapilyushin(struct oshell* shell, int ii);/*RETURN-MAPPING*/
 
 
@@ -36,14 +37,7 @@ void assemshellestrain(struct oshell* shell, double*** B, double* edisp);
 void assemshellestress(struct oshell* shell, double*** C);
 double* assemshelleinternal(struct oshell* shell, double*** B);
 
-double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy);
 
-extern double* extractlocalcoord(double* gform, double** drccos, double nnod);
-extern double* extractshelldisplacement(struct oshell shell, double* ddisp);
-extern double* extractdeformation(double* eforminit, double* eform, int nnod);
-
-extern double** assemtmtxCR(double** Ke, double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod);
-extern void symmetricmtx(double** estiff, int msize);
 
 extern void dbgstr(const char* str);
 extern void dbgvct(double* vct, int size, int linesize, const char* str);

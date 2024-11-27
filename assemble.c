@@ -714,7 +714,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 	double* gform, * eform, * edisp;
 
 	double** drccosinit;
-	double** drccos,** T,** Tt,** HPT,** TtPtHt;
+	double** drccos,** T,** HPT;
 
 	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 	double* gexternal, * eexternal;                        /*EXTERNAL FORCE OF ELEMENT*/
@@ -749,9 +749,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
-		//C = shellC(shell);
 		B = shellB(shell);
-		//Kp = assemshellemtx(shell);
 		M = assemshellmmtx(shell);
 
 		/*DEFORMED CONFIGFURATION*/
@@ -766,12 +764,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
 
 		T = transmatrixIII(drccos, nnod);         							/*[T].*/
-		//Tt = matrixtranspose(T, 6 * nnod);
 		HPT = transmatrixHPT(eform, edisp, T, nnod);
-		//TtPtHt = matrixtranspose(HPT, 6 * nnod);
-
-		//assemshellestrain(&shell, B, edisp);
-		//assemshellestress(&shell, C);
 
 		inputshell(shells, NULL, i - 1, &shell);
 		C = shellCconsistentilyushin(shell);
@@ -816,11 +809,8 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		freematrix(drccos, 3);
 		freematrix(drccosinit, 3);
 		freematrix(T, 6 * nnod);
-		//freematrix(Tt, 6 * nnod);
 		freematrix(HPT, 6 * nnod);
-		//freematrix(TtPtHt, 6 * nnod);
 	}
-
 	return;
 }
 
@@ -859,7 +849,7 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 	double* gexternal, * eexternal;                          /*EXTERNAL FORCE OF ELEMENT*/
 
 	double*** C, ***B;
-	double** M,** Kp;
+
 
 	for (i = 1; i <= nshell; i++)
 	{
@@ -888,8 +878,7 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
 		C = shellC(shell);
-		B = shellB(shell);//Kp = assemshellemtx(shell);
-		M = assemshellmmtx(shell);
+		B = shellB(shell);
 
 		/*DEFORMED CONFIGFURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -910,9 +899,9 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 		assemshellestrain(&shell, B, edisp);
 		assemshellestress(&shell, C);
 		einternal = assemshelleinternal(&shell, B);//einternal = matrixvector(Kp, edisp, 6*nnod);
-		eexternal = assemshellpvct(shell, drccos);
-
 		ginternal = matrixvector(TtPtHt, einternal, 6 * nnod);
+
+		eexternal = assemshellpvct(shell, drccos);
 		gexternal = matrixvector(Tt, eexternal, 6 * nnod);
 
 		for (ii = 0; ii < nnod; ii++)
@@ -931,7 +920,6 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 		for(ii=0;ii<ngp;ii++)freematrix(*(B+ii), nstress);
 		free(B);
 
-		freematrix(M, 6 * nnod);
 
 		free(loffset);
 		free(eforminit);
@@ -985,9 +973,7 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,
 					 struct gcomponent* gmtx,
 					 double* iform, double* lastddisp, double* ddisp, double* lapddisp,
-					 double* lastudd_m, double* udd_m,
-					 double* lastud_m, double* ud_m,
-					 double* finertial, double* fdamping, double* finternal, double* fexternal,
+					 double* ud_m, double* udd_m,
 					 double alpham, double alphaf, double xi, double beta, double ddt)
 {
 	char str[500];
@@ -1002,19 +988,17 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 	double* lastgform, * lasteform, * lastedisp, * lastgacc_m;
 	double* gform, * eform, * edisp, * gacc_m;
 
-	double* lasteinternal, *lasteexternal, * lastginertial_m, * lastginertial;
-	double* einternal, * eexternal, * ginertial_m, * ginertial;
-	double* mideinternal, * mideexternal;
-	double* midginternal, * midgexternal, * midginertial;
+	double* lasteinternal;
+	double* einternal, * ginertial_m, * ginertial;
+	double* mideinternal;
 
 	double** drccosinit;
-	double** lastdrccos,** lastT,** lastTt,** lastHPT,** lastTtPtHt,** lastRt;
-	double** drccos,** T,** Tt,** HPT,** TtPtHt,** R;
-	double** midT, ** midTt, ** midHPT, ** midTtPtHt;
+	double** lastdrccos,** lastT,** lastHPT,** lastRt;
+	double** drccos,** T,** HPT,** R;
+	double** midHPT, ** midTtPtHt;
 
 	double** lapH;
 	double* lapgform;
-
 	double*** C, ***B;
 	double** M, ** Kp, ** Keff;
 
@@ -1041,13 +1025,11 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 		{
 			inputnode(iform, shell.node[ii]);
 		}
-		drccosinit = shelldrccos(shell);
-		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
-		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
+		drccosinit = shelldrccos(shell);//
+		gforminit = extractshelldisplacement(shell, iform);//
+		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);//
 
-		//C = shellC(shell);
-		B = shellB(shell);
-		//Kp = assemshellemtx(shell);                                      /*[Ke]*/
+		B = shellB(shell);//
 		M = assemshellmmtx(shell);         				                   /*[Me]*/
 
 		/*DEFORMED CONFIGURATION OF LAST LAP.*/
@@ -1055,23 +1037,18 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 		{
 			inputnode(lastddisp, shell.node[ii]);
 		}
-		lastdrccos = shelldrccos(shell);
-		lastgform = extractshelldisplacement(shell, lastddisp);             /*{Xg+Ug}*/
-		lasteform = extractlocalcoord(lastgform,lastdrccos,nnod);           /*{Xe+Ue}*/
+		lastdrccos = shelldrccos(shell); //
+		lastgform = extractshelldisplacement(shell, lastddisp);//             /*{Xg+Ug}*/
+		lasteform = extractlocalcoord(lastgform,lastdrccos,nnod); //          /*{Xe+Ue}*/
 
 		lastedisp = extractdeformation(eforminit, lasteform, nnod);           		/*{Ue}*/
 
-		lastT = transmatrixIII(lastdrccos, nnod);         					/*[T]*/
-		lastHPT = transmatrixHPT(lasteform, lastedisp, lastT, nnod);
+		lastT = transmatrixIII(lastdrccos, nnod);//         					/*[T]*/
+		lastHPT = transmatrixHPT(lasteform, lastedisp, lastT, nnod);//
 		lastRt = pullbackmtx(lastgform, nnod);
 
 		inputshell(shells, mshell, i - 1, &shell);
-		//C = shellCconsistentilyushin(shell);
-		lasteinternal = assemshelleinternal(&shell, B);//mshell ‚©‚ç
-
-		lastgacc_m = extractshelldisplacement(shell, lastudd_m);
-		lastginertial_m = matrixvector(M, lastgacc_m, 6 * nnod);
-		lastginertial = pushforward(lastgform, lastginertial_m, nnod);
+		lasteinternal = assemshelleinternal(&shell, B);//
 
 
 		/*DEFORMED CONFIGFURATION*/
@@ -1079,60 +1056,43 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 		{
 			inputnode(ddisp, shell.node[ii]);
 		}
-		drccos = shelldrccos(shell);
-		gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
-		eform = extractlocalcoord(gform,drccos,nnod); 			       	    /*{Xe+Ue}*/
+		drccos = shelldrccos(shell);//
+		gform = extractshelldisplacement(shell, ddisp);//
+		eform = extractlocalcoord(gform,drccos,nnod);// 			       	    /*{Xe+Ue}*/
 
-		edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
+		edisp = extractdeformation(eforminit, eform, nnod);//
 
-		T = transmatrixIII(drccos, nnod);         							/*[T].*/
-		HPT = transmatrixHPT(eform, edisp, T, nnod);
+		T = transmatrixIII(drccos, nnod);//         							/*[T].*/
+		HPT = transmatrixHPT(eform, edisp, T, nnod);//
 		R = pushforwardmtx(gform,nnod);
 
-		//assemshellestrain(&shell, B, edisp);
-		//assemshellestress(&shell, C);
 		inputshell(shells, NULL, i - 1, &shell);
 		C = shellCconsistentilyushin(shell);
-		einternal = assemshelleinternal(&shell, B);
+		einternal = assemshelleinternal(&shell, B);//
 
 		gacc_m = extractshelldisplacement(shell, udd_m);
 		ginertial_m = matrixvector(M, gacc_m, 6 * nnod);
-		ginertial = pushforward(gform, ginertial_m, nnod);
+		ginertial = pushforward(gform, ginertial_m, nnod);//
 
 		Kp = assemshellpmtx(shell,C,B);
 
 
 		lapgform = extractshelldisplacement(shell, lapddisp);                     /*{Xg+Ug}*/
+		//lapgform = extractdeformation(lastgform, gform, nnod);
 		lapH = blockjacobimtx(lapgform, NULL, NULL, nnod);
 
 
-			/*(24):MID-POINT TRANSFORMATION MATRIX.*/
-			midHPT = midpointmtx(HPT, lastHPT, alphaf, 6 * nnod);
-			midTtPtHt = matrixtranspose(midHPT, 6 * nnod);
 
-			midT = midpointmtx(T, lastT, alphaf, 6 * nnod);
-			midTt = matrixtranspose(midT, 6 * nnod);
+		/*(24):MID-POINT TRANSFORMATION MATRIX.*/
+		midHPT = midpointmtx(HPT, lastHPT, alphaf, 6 * nnod);
+		midTtPtHt = matrixtranspose(midHPT, 6 * nnod);
 
-			/*(21)&(22)&(23):MID-POINT FORCE VECTOR.*/
-			mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);
-			midginternal = matrixvector(midTtPtHt, mideinternal, 6 * nnod);
-
-			midginertial = midpointvct(ginertial, lastginertial, alpham, 6*nnod);
-
-			mideexternal = midpointvct(eexternal, lasteexternal, alphaf, 6*nnod);
-			midgexternal = matrixvector(midTt, mideexternal, 6 * nnod);
-
-
-
-
-		double* gvel_m, * gmomentum_m;
-		double masstotal,massdiag;
-		double momentumlinear,momentumangular;
+		/*(21)&(22)&(23):MID-POINT FORCE VECTOR.*/
+		mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);//
 
 		Keff = assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Kp, midTtPtHt, HPT,
-							  ginertial, M, R, lastRt, lapH,
-							  alphaf, alpham, xi, beta, ddt, nnod);
-
+								ginertial, M, R, lastRt, lapH,
+								alphaf, alpham, xi, beta, ddt, nnod);
 		symmetricmtx(Keff, 6*nnod);
 		assemgstiffnessIIwithDOFelimination(gmtx, Keff, &shell, constraintmain);
 
@@ -1145,7 +1105,7 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 		freematrix(Kp, 6 * nnod);
 		freematrix(Keff, 6 * nnod);
 
-        free(loffset);
+		free(loffset);
 
 		free(eforminit);
 		free(gforminit);
@@ -1161,37 +1121,27 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 		free(gacc_m);
 
 		free(lasteinternal);
-		free(lastginertial_m);
-		free(lastginertial);
 
 		free(einternal);
 		free(ginertial_m);
 		free(ginertial);
 
 		free(mideinternal);
-		free(midginternal);
-		free(midginertial);
-		free(mideexternal);
-		free(midgexternal);
+
+
 
 		freematrix(drccosinit, 3);
 
 		freematrix(lastdrccos, 3);
 		freematrix(lastT, 6 * nnod);
-		freematrix(lastTt, 6 * nnod);
 		freematrix(lastHPT, 6 * nnod);
-		freematrix(lastTtPtHt, 6 * nnod);
 		freematrix(lastRt, 6 * nnod);
 
 		freematrix(drccos, 3);
 		freematrix(T, 6 * nnod);
-		freematrix(Tt, 6 * nnod);
 		freematrix(HPT, 6 * nnod);
-		freematrix(TtPtHt, 6 * nnod);
 		freematrix(R, 6 * nnod);
 
-		freematrix(midT, 6 * nnod);
-		freematrix(midTt, 6 * nnod);
 		freematrix(midHPT, 6 * nnod);
 		freematrix(midTtPtHt, 6 * nnod);
 
@@ -1250,7 +1200,13 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 	double* lapgform;
 
 	double*** C, ***B;
-	double** M,** Kp;
+	double** M;
+
+
+
+		double* gvel_m, * gmomentum_m;
+		double masstotal,massdiag;
+		double momentumlinear,momentumangular;
 
 	for (i = 1; i <= nshell; i++)
 	{
@@ -1278,8 +1234,7 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
-		C = shellC(shell);
-		B = shellB(shell);//Kp = assemshellemtx(shell);
+		B = shellB(shell);
 		M = assemshellmmtx(shell);
 
 		/*DEFORMED CONFIGURATION OF LAST LAP.*/
@@ -1298,7 +1253,6 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 		lastHPT = transmatrixHPT(lasteform, lastedisp, lastT, nnod);
 		lastTtPtHt = matrixtranspose(lastHPT, 6 * nnod);
 
-		inputshell(shells, mshell, i - 1, &shell);
 		lasteinternal = assemshelleinternal(&shell, B);
 
 		lasteexternal = assemshellpvct(shell, lastdrccos);
@@ -1325,7 +1279,7 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 
 		assemshellestrain(&shell, B, edisp);
 		assemshellestress(&shell, C);
-		einternal = assemshelleinternal(&shell, B);//einternal = matrixvector(Kp, edisp, 6*nnod);
+		einternal = assemshelleinternal(&shell, B);
 
 		eexternal = assemshellpvct(shell, drccos);
 

@@ -640,9 +640,7 @@ int arclmDynamic(struct arclmframe* af)
 		  assemshell_DYNA(shells, mshell, nshell, constraintmain,
 						  gmtx,
 						  iform, lastddisp, ddisp, lapddisp,
-						  lastudd_m, udd_m,
-						  lastud_m, ud_m,
-						  finertial, fdamping, finternal, fexternal,
+						  ud_m, udd_m,
 						  alpham, alphaf, xi, beta, ddt);
 		}
 

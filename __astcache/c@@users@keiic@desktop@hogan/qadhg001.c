@@ -1,4 +1,4 @@
-/*QADHG001.C FOR WIN32 SINCE 1995.11.24.JUNSATO.*/
+﻿/*QADHG001.C FOR WIN32 SINCE 1995.11.24.JUNSATO.*/
 /*LAST CHANGE:1997.6.28.*/
 
 /*NODE:12 DOF.*/
@@ -3781,14 +3781,6 @@ if(fout!=NULL) fprintf(fout,"%s\n",str);
   DeleteObject(hpen);
   return;
 }
-
-
-
-
-
-
-
-
 
 
 
