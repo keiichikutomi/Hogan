@@ -19862,7 +19862,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	{
 	  (af->shells+i-1)->nnod=3;
 	  (af->shells+i-1)->ngp=3;
-	  //(af->shells+i-1)->ngp=3;
+	  //(af->shells+i-1)->ngp=7;
 	  (af->shells+i-1)->nstress=6;
 	  code1=strtol(*(data+2),NULL,10); /*HEAD NODE.*/
 	  code2=strtol(*(data+3),NULL,10); /*TAIL NODE.*/

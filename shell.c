@@ -2068,10 +2068,17 @@ double*** shellCconsistentilyushin(struct oshell shell)
 
 	/*df/dq=d/dq(-ƒÐy^2/ƒÐyinit^2)=-2*ƒÐy*ƒÐy'(q)/(ƒÐyinit^2)=beta*/
 	y = yieldstress(shell.sect, gp->alpha, &dy, &ddy);
-	Halpha = 1.0/(t*dy-((gp->lambda[0])+(gp->lambda[1]))*2.0*(dy*dy+y*ddy)/pow(yinit,2.0));
-	galpha = -2.0*y*dy/pow(yinit,2.0);
+	if(dy!=0)
+	{
+		Halpha = 1.0/(t*dy-((gp->lambda[0])+(gp->lambda[1]))*2.0*(dy*dy+y*ddy)/pow(yinit,2.0));
+		galpha = -2.0*y*dy/pow(yinit,2.0);
 
-	beta=Halpha*pow(galpha,2.0);
+		beta = Halpha*pow(galpha,2.0);
+	}
+	else
+	{
+		beta = 0;
+    }
 
 	/*CONSISTENT STIFFNESS*/
 	if(abs(gp->f[0])<tolerance && abs(gp->f[1])<tolerance)

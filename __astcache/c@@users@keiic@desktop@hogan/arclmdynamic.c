@@ -423,6 +423,9 @@ int arclmDynamic(struct arclmframe* af)
 
 		*(ud_m + i) = 0.0;
 		*(udd_m + i) = 0.0;
+
+		*(lapddisp  + i) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+		*(lastddisp + i) = *(ddisp + i);
 	}
 
 	for (i = 0; i < msize; i++)

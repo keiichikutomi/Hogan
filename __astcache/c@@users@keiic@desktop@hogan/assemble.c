@@ -1113,16 +1113,13 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 		free(lasteform);
 		free(lastgform);
 		free(lastedisp);
-		free(lastgacc_m);
+		free(lasteinternal);
 
 		free(eform);
 		free(gform);
 		free(edisp);
-		free(gacc_m);
-
-		free(lasteinternal);
-
 		free(einternal);
+		free(gacc_m);
 		free(ginertial_m);
 		free(ginertial);
 
@@ -1234,6 +1231,7 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
+        C = shellC(shell);
 		B = shellB(shell);
 		M = assemshellmmtx(shell);
 
