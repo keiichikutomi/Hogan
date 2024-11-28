@@ -1,4 +1,4 @@
-﻿
+
 /*ARCHG120-2（白島応答用）との同期未完了, directioncosine と directioncosineII のみコピー*/
 
 /*ARCLM101.C FOR WIN32 SINCE 1995.11.24.JUNSATO.*/

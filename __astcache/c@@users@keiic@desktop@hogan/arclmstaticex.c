@@ -1,4 +1,4 @@
-﻿int arclmStaticEx(struct arclmframe* af);
+int arclmStaticEx(struct arclmframe* af);
 
 void updaterotationEx(double* ddisp, double* gvct, int nnode);
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);

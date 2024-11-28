@@ -7,6 +7,7 @@
 
 int arclmDynamic(struct arclmframe* af);
 double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* lastudd_m, double* lastlastudd_m, double beta, int msize);
+double loadfactormap(double time);
 
 int arclmDynamic(struct arclmframe* af)
 {
@@ -49,7 +50,6 @@ int arclmDynamic(struct arclmframe* af)
 	double* fbaseload, * fdeadload, * fpressure,* finertial,* fdamping;
 	double* funbalance_m;
 	double* gvct,* gvct_s;
-	double* udinit_m,* uddinit_m;
 	double* lastlastudd_m;
 	double* lastud_m,* lastudd_m;
 	double* ud_m,* udd_m;
@@ -403,8 +403,6 @@ int arclmDynamic(struct arclmframe* af)
 	/*VELOSITY & ACCELERATION VECTOR INITIALIZATION*/
 	//ud : VELOSITY, udd : ACCELERATION
 	//_m : ROTATIONAL DOFs ARE REPRESENTED IN SPATIAL & MATERIAL FORM
-	udinit_m = (double*)malloc(msize * sizeof(double));  	   	/*NEWMARK INITIAL IN LAP*/
-	uddinit_m = (double*)malloc(msize * sizeof(double));
 	lastlastudd_m = (double*)malloc(msize * sizeof(double));
 	lastud_m = (double*)malloc(msize * sizeof(double));     /*LATEST LAP IN MATERIAL*/
 	lastudd_m = (double*)malloc(msize * sizeof(double));
@@ -414,9 +412,6 @@ int arclmDynamic(struct arclmframe* af)
 	for (i = 0; i < msize; i++)
 	{
 		*(lastlastudd_m + i) = 0.0;
-
-		*(udinit_m + i) = 0.0;
-		*(uddinit_m + i) = 0.0;
 
 		*(lastud_m + i) = 0.0;
 		*(lastudd_m + i) = 0.0;
@@ -450,8 +445,8 @@ int arclmDynamic(struct arclmframe* af)
 	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);  /*DRAW GLOBAL AXIS.*/
 	}
 
-	nlap = 0;
-	iteration = 0;
+	nlap = 1;
+	iteration = 1;
 	residual = 0.0;
 
 	assemconf(confs,fdeadload,1.0,nnode);               /*GLOBAL VECTOR.*/
@@ -459,6 +454,10 @@ int arclmDynamic(struct arclmframe* af)
 
 	while (nlap <= laps && ENDFLAG == 0)
 	{
+		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+
+
+		/*MATRIX INITIALIZE*/
 		std::vector<Triplet> Ktriplet;
 		std::vector<Triplet> Mtriplet;
 
@@ -466,7 +465,6 @@ int arclmDynamic(struct arclmframe* af)
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
 		Eigen::SimplicialLDLT<SparseMatrix> solver;
-
 
 		for (i = 1; i <= msize; i++)
 		{
@@ -480,160 +478,9 @@ int arclmDynamic(struct arclmframe* af)
 			ginit.m = (unsigned short int)i;
 			*(gmtx + (i - 1)) = ginit;
 		}
-
-		for (i = 0; i < msize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
-		{
-			*(finertial  + i) = 0.0;
-			*(finternal  + i) = 0.0;
-			*(fexternal  + i) = 0.0;
-			*(fpressure  + i) = 0.0;
-			*(freaction  + i) = 0.0;
-			*(funbalance + i) = 0.0;
-		}
 		comps = msize;
 
-		volume = 0.0;
-		assemshellvolume(shells, nshell, ddisp, &volume);
-
-		/*POST PROCESS*/
-		/*elemstress_DYNA(elems, melem, nelem, constraintmain,
-						iform, lastddisp, ddisp,
-						lastudd_m, udd_m,
-						lastud_m, ud_m,
-						finertial, fdamping, finternal, fexternal,
-						alpham, alphaf, xi);*/
-		shellstress_DYNA(shells, mshell, nshell, constraintmain,
-					   iform, lastddisp, ddisp,
-					   lastudd_m, udd_m,
-					   lastud_m, ud_m,
-					   finertial, fdamping, finternal, fexternal,
-					   alpham, alphaf, xi);
-
-		for (i = 0; i < msize; i++)
-		{
-			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
-			*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
-			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
-			if ((confs + i)->iconf == 1)
-			{
-				*(freaction + i) = *(funbalance + i);
-				*(funbalance + i) = 0.0;
-				*(fbaseload + i) = 0.0;
-			}
-			*(gvct + i) = *(funbalance + i);
-		}
-
-		/*CONVERGENCE JUDGEMENT.*/
-		residual = vectorlength(funbalance,msize);
-		//gvctlen = vectorlength(gvct,msize);
-
-		if (residual < tolerance || iteration > maxiteration-1)
-		{
-		  nlap++;
-		  time += ddt;
-		  iteration = 0;
-		}
-		/*
-		if (gvctlen < tolerance || iteration > maxiteration-1)
-		{
-		  nlap++;
-		  time += ddt;
-		  iteration = 0;
-		}
-		*/
-		iteration++;
-		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
-
-
-		if(iteration==1)
-		{
-			clearwindow(*(wdraw.childs+1));
-			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
-
-			af->nlaps = nlap;
-
-
-			/*
-			if(nlap>3)
-			{
-				ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
-				sprintf(string, "ddt: %e time: %e\n",ddt, time);
-				errormessage(string);
-			}
-			*/
-
-			/*LOCAL INCREMENTAL IN THIS LAP.*/
-			for(i = 0; i < nshell; i++)
-			{
-			  outputmemoryshell(shells,mshell,i);
-			}
-
-			lastloadfactor = loadfactor;
-
-#if 0/*FOR SHELL*/
-			if(time<=0.2)
-			{
-			  loadfactor = 2.5e+8 * time;
-			}
-			else
-			{
-			  loadfactor = 5.0e+7;
-			}
-#endif
-#if 0/*FOR HINGE*/
-			if(time<=1.0)
-			{
-			  loadfactor = 0.012 * time;
-			}
-			else
-			{
-			  loadfactor = 0.012;
-			}
-#endif
-#if 1/*FOR HINGE*/
-			if(time<=10.0)
-			{
-			  loadfactor = 0.0012* time;
-			}
-			else
-			{
-			  loadfactor = 0.012;
-			}
-#endif
-#if 0/*FOR CYLINDER*/
-			if(time<=0.5)
-			{
-			  loadfactor = 10.0 * time;
-			}
-			else if(time<=1.0 && time>0.5)
-			{
-			  loadfactor = 10.0-10.0*time;
-			}
-			else
-			{
-			  loadfactor = 0.0;
-			}
-#endif
-
-			for (i = 0; i < msize; i++)
-			{
-				*(lapddisp  + i) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-				*(lastddisp + i) = *(ddisp + i);
-
-				*(lastlastudd_m  + i) = *(lastud_m  + i);
-
-				*(lastud_m  + i) = *(ud_m  + i);
-				*(lastudd_m + i) = *(udd_m + i);
-
-				*(udinit_m + i)  =- (gamma / beta - 1.0) **(lastud_m + i)
-								  - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + i);
-				*(uddinit_m + i) =- (1.0 / (beta * ddt)) **(lastud_m + i)
-								  - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + i);
-			}
-		}
-
-		/*STIFFNESS ASSEMBLAGE*/
+		/*MATRIX ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
 		{
 		  //assemelemEx(elems, melem, nelem, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
@@ -747,10 +594,132 @@ int arclmDynamic(struct arclmframe* af)
 		lapddisp_m = pullback(lastddisp,lapddisp,nnode);
 		for(ii = 0; ii < msize; ii++)
 		{
-			*(ud_m + ii)  = (gamma / (beta * ddt)) **(lapddisp_m + ii) + *(udinit_m + ii);
-			*(udd_m + ii) = (1.0 / (beta * ddt * ddt)) **(lapddisp_m + ii) + *(uddinit_m + ii);
+			*(ud_m + ii)  =  (gamma / (beta * ddt)) **(lapddisp_m + ii)
+						   - (gamma / beta - 1.0) **(lastud_m + ii)
+						   - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + ii);
+			*(udd_m + ii) =  (1.0 / (beta * ddt * ddt)) **(lapddisp_m + ii)
+						   - (1.0 / (beta * ddt)) **(lastud_m + ii)
+						   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
+
+			*(finertial  + ii) = 0.0;
+			*(finternal  + ii) = 0.0;
+			*(fexternal  + ii) = 0.0;
+			*(fpressure  + ii) = 0.0;
+			*(freaction  + ii) = 0.0;
+			*(funbalance + ii) = 0.0;
 		}
 		free(lapddisp_m);
+
+
+		/*STRESS*/
+		/*elemstress_DYNA(elems, melem, nelem, constraintmain,
+						iform, lastddisp, ddisp,
+						lastudd_m, udd_m,
+						lastud_m, ud_m,
+						finertial, fdamping, finternal, fexternal,
+						alpham, alphaf, xi);*/
+		shellstress_DYNA(shells, mshell, nshell, constraintmain,
+					   iform, lastddisp, ddisp,
+					   lastudd_m, udd_m,
+					   lastud_m, ud_m,
+					   finertial, fdamping, finternal, fexternal,
+					   alpham, alphaf, xi);
+
+
+		/*CONVERGENCE JUDGEMENT.*/
+		/*
+		residual = vectorlength(funbalance,msize);
+		if (residual < tolerance || iteration > maxiteration-1)
+		{
+		  nlap++;
+		  time += ddt;
+		  iteration = 0;
+		}
+		*/
+		gvctlen = vectorlength(gvct,msize);
+		if (gvctlen < tolerance || iteration > maxiteration-1)
+		{
+		  nlap++;
+		  time += ddt;
+		  iteration = 0;
+		}
+
+		iteration++;
+
+		if(iteration==1)
+		{
+			clearwindow(*(wdraw.childs+1));
+			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+
+			af->nlaps = nlap;
+
+			//if(nlap>3)ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
+
+			/*LOCAL INCREMENTAL IN THIS LAP.*/
+			for(i = 0; i < nshell; i++)
+			{
+			  outputmemoryshell(shells,mshell,i);
+			}
+
+			lastloadfactor = loadfactor;
+			loadfactor = laodfactormap(time);
+
+			for (ii = 0; ii < msize; ii++)
+			{
+				*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+				*(lastddisp + ii) = *(ddisp + ii);
+
+				*(lastlastudd_m  + ii) = *(lastud_m  + ii);
+
+				*(lastud_m  + ii) = *(ud_m  + ii);
+				*(lastudd_m + ii) = *(udd_m + ii);
+
+				*(ud_m + ii)  =- (gamma / beta - 1.0) **(lastud_m + ii)
+							   - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + ii);
+				*(udd_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
+							   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
+
+				*(finertial  + ii) = 0.0;
+				*(finternal  + ii) = 0.0;
+				*(fexternal  + ii) = 0.0;
+				*(fpressure  + ii) = 0.0;
+				*(freaction  + ii) = 0.0;
+				*(funbalance + ii) = 0.0;
+			}
+
+			/*STRESS*/
+			/*elemstress_DYNA(elems, melem, nelem, constraintmain,
+							  iform, lastddisp, ddisp,
+							  lastudd_m, udd_m,
+							  lastud_m, ud_m,
+							  finertial, fdamping, finternal, fexternal,
+							  alpham, alphaf, xi);*/
+			shellstress_DYNA(shells, mshell, nshell, constraintmain,
+							 iform, lastddisp, ddisp,
+							 lastudd_m, udd_m,
+							 lastud_m, ud_m,
+							 finertial, fdamping, finternal, fexternal,
+							 alpham, alphaf, xi);
+		}
+
+		volume = 0.0;
+		assemshellvolume(shells, nshell, ddisp, &volume);
+
+		for (i = 0; i < msize; i++)
+		{
+			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
+			*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
+			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
+			if ((confs + i)->iconf == 1)
+			{
+				*(freaction + i) = *(funbalance + i);
+				*(funbalance + i) = 0.0;
+				*(fbaseload + i) = 0.0;
+			}
+			*(gvct + i) = *(funbalance + i);
+		}
+
 
 		//MESSAGE FOR UPDATE UI
 		//AVOID FREEZE ON LONG RUNNING TASK
@@ -1285,4 +1254,55 @@ double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* la
 	return ddt;
 }
 
+
+double loadfactormap(double time)
+{
+	double loadfactor;
+
+#if 0/*FOR SHELL*/
+	if(time<=0.2)
+	{
+	  loadfactor = 2.5e+8 * time;
+	}
+	else
+	{
+	  loadfactor = 5.0e+7;
+	}
+#endif
+#if 0/*FOR HINGE*/
+	if(time<=1.0)
+	{
+	  loadfactor = 0.012 * time;
+	}
+	else
+	{
+	  loadfactor = 0.012;
+	}
+#endif
+#if 1/*FOR HINGE*/
+	if(time<=10.0)
+	{
+	  loadfactor = 0.0012* time;
+	}
+	else
+	{
+	  loadfactor = 0.012;
+	}
+#endif
+#if 0/*FOR CYLINDER*/
+	if(time<=0.5)
+	{
+	  loadfactor = 10.0 * time;
+	}
+	else if(time<=1.0 && time>0.5)
+	{
+	  loadfactor = 10.0-10.0*time;
+	}
+	else
+	{
+	  loadfactor = 0.0;
+	}
+#endif
+	return loadfactor;
+}
 
