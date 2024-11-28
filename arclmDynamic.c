@@ -425,6 +425,12 @@ int arclmDynamic(struct arclmframe* af)
 		*(udd_m + i) = 0.0;
 	}
 
+	for (i = 0; i < msize; i++)
+	{
+		(gmtx + i)->down = NULL;
+		*(gvct + i) = 0.0;
+	}
+
 
 
 

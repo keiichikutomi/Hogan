@@ -177,7 +177,8 @@ struct viewparam vpdefault={PERSPECTIVE,0,0,
                              500.0, 0.0, 0.01,
 							 0.5,
                              3},
-                            {3000.0}};
+							{3000.0}};
+
 # endif
 
 # if 0

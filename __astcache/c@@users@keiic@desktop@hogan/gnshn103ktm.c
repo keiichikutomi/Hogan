@@ -1,4 +1,4 @@
-
+﻿
 /* ========================================================= */
 /* PROGRAM GUNBASHIRA SHINDOU 002 */
 /* 6 D.O.F. 3D FRAME WITH POINT MASS */
@@ -3213,6 +3213,7 @@ void energyoutputtomemory(FILE *ftext,struct arclmframe *af)
   }
   return;
 }
+
 
 
 

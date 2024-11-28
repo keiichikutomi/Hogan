@@ -1876,8 +1876,9 @@ double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy)
 
 	if(n==0.0)
 	{
-	  sprintf(str,"INVALID MATERIAL : YIELD STRESS FUNCTION");
-	  MessageBox(NULL,str,"ERROR",MB_OK);
+	  y = yinit;
+	  if(dy!=NULL)*dy = 0.0;
+	  if(ddy!=NULL)*ddy = 0.0;
 	}
 	else
 	{
