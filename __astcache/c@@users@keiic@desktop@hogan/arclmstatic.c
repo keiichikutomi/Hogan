@@ -71,32 +71,34 @@ int arclmStatic(struct arclmframe* af)
 	int iteration;
 	int maxiteration = 20;
 	double tolerance = 1.0e-4;
-	double residual;
-	double gvctlen;
-	double loadfactor=0.0;
-	double lambda;
+	double residual = 0.0;
+	double gvctlen = 0.0;
+
+	double loadfactor = 0.0;
+	double lambda = 0.0;
+
 	double volume = 0.0;
+
 	/*ARC-LENGTH METHOD*/
 	double arclength;
 	double arcsum, predictorsign;/*FOR PREDICTOR*/
 	double dupdue, dupdup;       /*FOR CORRECTOR*/
 	double* due, * dup;
-	/*ARCLENGTH CONTROL*/
-	int SCALINGARCFLAG = 0;
+
+	int SCALINGARCFLAG = 0;/*ARCLENGTH CONTROL*/
 	double k1, k, scaledarclength;
-	/*BIGINING ARC-LENGTH*/
-	int BIGININGARCFLAG = 0;
+
+	int BIGININGARCFLAG = 0;/*BIGINING ARC-LENGTH*/
 	double biginingarcratio = 1.0;
 	int biginingarclap = 0;
-	/*WEIGHT*/
-	double *weight;
+
+	double *weight;/*WEIGHT*/
 	int node;
-
-
 
 	/*ANALYSIS MODE*/
 	int outputmode = 0;/*0:ConvergedLaps.1:AllLaps.*/
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
+
 	int BCLFLAG = 0;/*FLAG FOR BUCKLING DETECTION*/
 	int UNLOADFLAG = 0;
 	/*LAST LAP*/
@@ -108,8 +110,8 @@ int arclmStatic(struct arclmframe* af)
 
 	/*FOR BISECSYLVESTER*/
 	double LL,LR,LM;
-	double* nextddisp;
-	double nextloadfactor;
+	double* bisecddisp;
+	double bisecloadfactor;
 	double biseceps = 1.0e-5;
 	/*FOR INVERSE ITERATION*/
 	double biseceigen;
@@ -399,6 +401,12 @@ int arclmStatic(struct arclmframe* af)
 	/***GLOBAL MATRIX*/
 	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
 	epsgmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	for (i = 0; i < msize; i++)
+	{
+		(gmtx + i)->down = NULL;
+		(epsgmtx + i)->down = NULL;
+	}
+
 
 	/***GLOBAL VECTOR*/
 	gvct = (double *)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
@@ -413,17 +421,18 @@ int arclmStatic(struct arclmframe* af)
 	fbaseload = (double*)malloc(msize * sizeof(double));           /*BASE LOAD VECTOR.*/
 	fdeadload = (double*)malloc(msize * sizeof(double));           /*DEAD LOAD VECTOR.*/
 	fpressure = (double*)malloc(msize * sizeof(double));           /*PRESSURE VECTOR.*/
-	fgivendisp = (double*)malloc(msize * sizeof(double));           /*BASE LOAD VECTOR.*/
+	fgivendisp = (double*)malloc(msize * sizeof(double));
 	fswitching = (double*)malloc(msize * sizeof(double));
 
 	/*POSITION VECTOR INITIALIZATION*/
 	lastddisp = (double*)malloc(msize * sizeof(double));
-	lastgvct = (double*)malloc(msize * sizeof(double));
-	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
 	lapddisp = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
-	nextddisp = (double*)malloc(msize * sizeof(double));
 	givendisp = (double*)malloc(msize * sizeof(double));
 
+	lastgvct = (double*)malloc(msize * sizeof(double));
+	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
+
+	bisecddisp = (double*)malloc(msize * sizeof(double));
 	bisecevct = (double*)malloc(msize * sizeof(double));
 
 	epsddisp = (double*)malloc(6 * nnode * sizeof(double));
@@ -447,12 +456,7 @@ int arclmStatic(struct arclmframe* af)
 	  }
 	}
 
-	for (i = 0; i < msize; i++)
-	{
-		(gmtx + i)->down = NULL;
-        (epsgmtx + i)->down = NULL;
-		*(gvct + i) = 0.0;
-	}
+
 
 
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
@@ -468,12 +472,99 @@ int arclmStatic(struct arclmframe* af)
 	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);                     /*DRAW GLOBAL AXIS.*/
 	}
 
-	nlap = 0;
-	iteration = 0;
-	residual = 0.0;
+
+
+
+	/*INITIAL*/
+	nlap = 1;
+	af->nlaps = nlap;
+	iteration = 1;
+	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
 	assemconf(confs,fdeadload,1.0,nnode);
 	assemgivend(confs,givendisp,1.0,nnode);
+
+	for (i = 0; i < msize; i++)
+	{
+		*(finternal + i) = 0.0;
+		*(fexternal + i) = 0.0;
+		*(funbalance + i) = 0.0;
+		*(freaction + i) = 0.0;
+		*(fbaseload + i) = 0.0;
+		*(fpressure + i) = 0.0;
+	}
+
+	volume = 0.0;
+	assemshellvolume(shells, nshell, ddisp, &volume);
+
+	/*POST PROCESS*/
+	elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
+	shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
+
+
+	if(UNLOADFLAG==1)
+	{
+		for (i = 0; i < msize; i++)
+		{
+			*(fdeadload + i) = -*(finternal + i);
+		}
+		loadfactor = -1.0;
+	}
+
+	for (i = 0; i < msize; i++)
+	{
+		*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
+		*(fexternal + i) = loadfactor * *(fbaseload + i);
+		*(funbalance + i) = *(fexternal + i) - *(finternal + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
+		if ((confs + i)->iconf == 1)
+		{
+			*(freaction + i) = *(funbalance + i);
+			*(funbalance + i) = 0.0;
+			*(fbaseload + i) = 0.0;
+		}
+		*(dup + i) = *(fbaseload + i);
+		*(due + i) = *(funbalance + i);
+	}
+
+	/*OUTPUT(INITIAL)*/
+	sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
+
+	fprintf(fdsp, string);
+	outputdisp(ddisp, fdsp, nnode, nodes);
+
+	fprintf(finf, string);
+	fprintf(fexf, string);
+	fprintf(fubf, string);
+	fprintf(frct, string);
+	outputdisp(finternal, finf, nnode, nodes);
+	outputdisp(fexternal, fexf, nnode, nodes);
+	outputdisp(funbalance, fubf, nnode, nodes);
+	outputdisp(freaction, frct, nnode, nodes);
+
+	/*OUTPUT FOR LOCAL*/
+	fprintf(fstr, string);
+	fprintf(fene, string);
+	for(i = 0; i < nshell; i++)
+	{
+		//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
+		fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+		((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
+		((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
+		((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
+		((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+		);
+	}
+
+	clearwindow(*(wdraw.childs+1));
+	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+
+	/*LOCAL INCREMENTAL IN THIS LAP.*/
+	for(i = 0; i < nshell; i++)
+	{
+	  outputmemoryshell(shells,mshell,i);
+	}
+
 
 
 	while (nlap <= laps && ENDFLAG == 0)
@@ -510,95 +601,8 @@ int arclmStatic(struct arclmframe* af)
 			ginit.m = (unsigned short int)i;
 			*(epsgmtx + (i - 1)) = ginit;
 		}
+		//comps = msize; /*INITIAL COMPONENTS = DIAGONALS.*/
 
-
-		for (i = 0; i < msize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
-		{
-			*(finternal + i) = 0.0;
-			*(fexternal + i) = 0.0;
-			*(funbalance + i) = 0.0;
-			*(freaction + i) = 0.0;
-			*(fbaseload + i) = 0.0;
-			*(fpressure + i) = 0.0;
-		}
-		comps = msize; /*INITIAL COMPONENTS = DIAGONALS.*/
-
-		volume = 0.0;
-		assemshellvolume(shells, nshell, ddisp, &volume);
-
-		/*POST PROCESS*/
-		//elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
-		shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
-
-
-
-		if(/*UNLOADFLAG==1*/0)
-		{
-			for (i = 0; i < msize; i++)
-			{
-				if(nlap==1 && iteration==1)
-				{
-					*(fdeadload + i) = -*(finternal + i);
-				}
-				*(dup + i) = *(fdeadload + i)+*(fpressure + i);
-				*(fexternal + i) = - *(fdeadload + i) + loadfactor * *(dup + i);
-				*(funbalance + i) = *(fexternal + i) - *(finternal + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
-				if ((confs + i)->iconf == 1)
-				{
-					*(freaction + i) = *(funbalance + i);
-					*(funbalance + i) = 0.0;
-					*(dup + i) = 0.0;
-				}
-
-				*(due + i) = *(funbalance + i);
-			}
-
-
-		}
-		else
-		{
-			for (i = 0; i < msize; i++)
-			{
-				*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
-				*(fexternal + i) = loadfactor * *(fbaseload + i);
-				*(funbalance + i) = *(fexternal + i) - *(finternal + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
-				if ((confs + i)->iconf == 1)
-				{
-					*(freaction + i) = *(funbalance + i);
-					*(funbalance + i) = 0.0;
-					*(fbaseload + i) = 0.0;
-				}
-				*(dup + i) = *(fbaseload + i);
-				*(due + i) = *(funbalance + i);
-			}
-
-		}
-
-		/*CONVERGENCE JUDGEMENT.*/
-		residual = vectorlength(funbalance,msize);
-
-		if (residual < tolerance || iteration > maxiteration-1)
-		{
-		  nlap++;
-		  iteration = 0;
-		}
-		iteration++;
-		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
-
-		if(iteration==1)
-		{
-			clearwindow(*(wdraw.childs+1));
-			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
-
-			af->nlaps = nlap;
-
-			/*LOCAL INCREMENTAL IN THIS LAP.*/
-			for(i = 0; i < nshell; i++)
-			{
-			  outputmemoryshell(shells,mshell,i);
-			}
-		}
 
 		/*STIFFNESS ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
@@ -612,43 +616,10 @@ int arclmStatic(struct arclmframe* af)
 		}
 		else
 		{
-		  //assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp);
+		  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp);
 		  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp);
 		}
 
-		/*OUTPUT.*/
-		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
-		{
-			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
-
-			/*OUTPUT FOR GLOBAL*/
-			//dbgstr(string);
-
-			fprintf(fdsp, string);
-			fprintf(finf, string);
-			fprintf(fexf, string);
-			fprintf(fubf, string);
-			fprintf(frct, string);
-			outputdisp(ddisp, fdsp, nnode, nodes);                    /*FORMATION OUTPUT.*/
-			outputdisp(finternal, finf, nnode, nodes);                /*FORMATION OUTPUT.*/
-			outputdisp(fexternal, fexf, nnode, nodes);                /*FORMATION OUTPUT.*/
-			outputdisp(funbalance, fubf, nnode, nodes);               /*FORMATION OUTPUT.*/
-			outputdisp(freaction, frct, nnode, nodes);                /*FORMATION OUTPUT.*/
-
-			/*OUTPUT FOR LOCAL*/
-			fprintf(fstr, string);
-			fprintf(fene, string);
-			for(i = 0; i < nshell; i++)
-			{
-				//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
-				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
-				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
-				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
-				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
-				((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
-				);
-			}
-		}
 
 		if(iteration==1 && USINGEIGENFLAG==0)
 		{
@@ -777,12 +748,6 @@ int arclmStatic(struct arclmframe* af)
 			fprintf(fbcl, "%s", string);
 
 			/*BISEC INITIAL*/
-			nextloadfactor = loadfactor;
-			for (ii = 0; ii < msize; ii++)
-			{
-				*(nextddisp + ii) = *(ddisp + ii);
-			}
-
 			LR = 1.0;
 			LL = 0.0;
 
@@ -790,11 +755,14 @@ int arclmStatic(struct arclmframe* af)
 			{
 				LM = 0.5 * (LL + LR);
 
-				loadfactor = (1 - LM) * lastloadfactor + LM * nextloadfactor;
+				bisecloadfactor = (1 - LM) * lastloadfactor + LM * loadfactor;
 				for (ii = 0; ii < msize; ii++)
 				{
-					*(ddisp + ii) = (1 - LM) * *(lastddisp + ii) + LM * *(nextddisp + ii);
+					*(bisecddisp + ii) = (1 - LM) * *(lastddisp + ii) + LM * *(ddisp + ii);
 				}
+				elemstress(elems, melem, nelem, constraintmain, iform, bisecddisp, finternal, fpressure);
+				shellstress(shells, mshell, nshell, constraintmain, iform, bisecddisp, finternal, fpressure);
+
 
 				for (i = 1; i <= msize; i++)
 				{
@@ -809,8 +777,9 @@ int arclmStatic(struct arclmframe* af)
 					*(gmtx + (i - 1)) = ginit;
 				}
 
-				//assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp);
-				assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp);
+				assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, bisecddisp);
+				assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, bisecddisp);
+
 
 				nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
 				sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
@@ -881,21 +850,13 @@ int arclmStatic(struct arclmframe* af)
 				*(bisecevct + 6*ii + 5));
 			}
 
-			if (1)//(abs(evctdot) > 1.0e-3)/*LIMIT POINT*/
-			{
-				loadfactor = nextloadfactor;
-				for (ii = 0; ii < msize; ii++)
-				{
-					*(ddisp + ii) = *(nextddisp + ii);
-				}
-			}
-			else/*PATH=SWITCHING FOR BIFURCATION*/
+			if (0)//(abs(evctdot) < 1.0e-3)/*PATH=SWITCHING FOR BIFURCATION*/
 			{
 				/*UNDER CONSTRUCTION*/
-				loadfactor = lastloadfactor;
+				loadfactor = bisecloadfactor;
 				for (ii = 0; ii < msize; ii++)
 				{
-					*(ddisp + ii) = *(lastddisp + ii);
+					*(ddisp + ii) = *(bisecddisp + ii);
 				}
 			}
 
@@ -1053,11 +1014,6 @@ int arclmStatic(struct arclmframe* af)
 			fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, dupdue, dupdup);
 			#endif
 
-			#if 0
-			/*HYPERSPHERE CONSTRAINT : CRISFIELD'S METHOD*/
-			/*USING PREDICTOR DATA*/
-
-			#endif
 
 			#if 0
 			/*HYPERSPHERE CONSTRAINT WITH RADIAL RETURN*/
@@ -1107,7 +1063,7 @@ int arclmStatic(struct arclmframe* af)
 			updateform(epsddisp, epsgvct, nnode);
 
 			/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
-			//assemelem(elems, melem, nelem, constraintmain, NULL, epsgmtx, iform, epsddisp);
+			assemelem(elems, melem, nelem, constraintmain, NULL, epsgmtx, iform, epsddisp);
 			assemshell(shells, mshell, nshell, constraintmain, NULL, epsgmtx, iform, epsddisp);
 
 			dgmtx=gcomponentadd3(epsgmtx,1.0/eps,gmtxcpy,-1.0/eps,msize);
@@ -1160,10 +1116,112 @@ int arclmStatic(struct arclmframe* af)
 		}
 
 		laploadfactor += lambda;
-		updaterotation(lapddisp, gvct, nnode);
-
 		loadfactor += lambda;
+
+		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
+
+		for (i = 0; i < msize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+		{
+			*(finternal  + i) = 0.0;
+			*(fexternal  + i) = 0.0;
+			*(funbalance + i) = 0.0;
+			*(freaction  + i) = 0.0;
+			*(fbaseload  + i) = 0.0;
+			*(fpressure  + i) = 0.0;
+		}
+
+		volume = 0.0;
+		assemshellvolume(shells, nshell, ddisp, &volume);
+
+		/*POST PROCESS*/
+		elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
+		shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
+
+
+		for (i = 0; i < msize; i++)
+		{
+			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
+			*(fexternal + i) = loadfactor * *(fbaseload + i);
+			*(funbalance + i) = *(fexternal + i) - *(finternal + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
+			if ((confs + i)->iconf == 1)
+			{
+				*(freaction + i) = *(funbalance + i);
+				*(funbalance + i) = 0.0;
+				*(fbaseload + i) = 0.0;
+			}
+			*(dup + i) = *(fbaseload + i);
+			*(due + i) = *(funbalance + i);
+		}
+
+		/*CONVERGENCE JUDGEMENT.*/
+		residual = vectorlength(funbalance,msize);
+		gvctlen = vectorlength(gvct,msize);
+
+		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
+		if (residual < tolerance || iteration > maxiteration-1)
+		{
+		  nlap++;
+		  af->nlaps = nlap;
+		  iteration = 0;
+		}
+		iteration++;
+		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+
+		/*OUTPUT.*/
+		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
+		{
+			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
+
+			/*OUTPUT FOR GLOBAL*/
+			//dbgstr(string);
+
+			fprintf(fdsp, string);
+			outputdisp(ddisp, fdsp, nnode, nodes);
+
+			fprintf(finf, string);
+			fprintf(fexf, string);
+			fprintf(fubf, string);
+			fprintf(frct, string);
+			outputdisp(finternal, finf, nnode, nodes);
+			outputdisp(fexternal, fexf, nnode, nodes);
+			outputdisp(funbalance, fubf, nnode, nodes);
+			outputdisp(freaction, frct, nnode, nodes);
+
+			/*OUTPUT FOR LOCAL*/
+			fprintf(fstr, string);
+			fprintf(fene, string);
+			for(i = 0; i < nshell; i++)
+			{
+				//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
+				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
+				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
+				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
+				((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+				);
+			}
+		}
+
+		if(iteration==1)
+		{
+			clearwindow(*(wdraw.childs+1));
+			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+			/*LOCAL INCREMENTAL IN THIS LAP.*/
+			for(i = 0; i < nshell; i++)
+			{
+			  outputmemoryshell(shells,mshell,i);
+			}
+		}
+
+
+
+
+
+
+
+
 
 
 		/*TERMINATION FLAG*/
@@ -1184,21 +1242,23 @@ int arclmStatic(struct arclmframe* af)
 					}
 				}
 			}
+			/*GO TO NEXT LAP&ITERATION*/
+			if (BCLFLAG==-1 && sign > 20)
+			{
+				ENDFLAG = 1;
+				sprintf(string,"DIVERGENCE DITECTED(SIGN = %5ld). ANALYSIS TERMINATED.\n", sign);
+				errormessage(string);
+			}
+			if (0/*nlap>20 && loadfactor < 0.0*/)
+			{
+				ENDFLAG = 1;
+				sprintf(string,"NEGATIVE LOAD DITECTED(LOADFACTOR = %8.5f). ANALYSIS TERMINATED.\n", loadfactor);
+				errormessage(string);
+			}
 
 		}
-		/*GO TO NEXT LAP&ITERATION*/
-		if (BCLFLAG==-1 && sign > 20)
-		{
-			ENDFLAG = 1;
-			sprintf(string,"DIVERGENCE DITECTED(SIGN = %5ld). ANALYSIS TERMINATED.\n", sign);
-			errormessage(string);
-		}
-		if (0/*nlap>20 && loadfactor < 0.0*/)
-		{
-			ENDFLAG = 1;
-			sprintf(string,"NEGATIVE LOAD DITECTED(LOADFACTOR = %8.5f). ANALYSIS TERMINATED.\n", loadfactor);
-			errormessage(string);
-		}
+
+
 
 
 
@@ -1269,13 +1329,6 @@ int arclmStatic(struct arclmframe* af)
 		}
 #endif
 	}
-
-
-
-
-
-	//elemstress(elems, melem, nelem, constraintmain, iform, ddisp, NULL, NULL);
-	shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, NULL, NULL);
 
 	////////// OUTPUT RESULT FOR SRCAN//////////
 	if(fout!=NULL)

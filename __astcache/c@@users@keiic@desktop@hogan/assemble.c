@@ -1,4 +1,4 @@
-﻿#if 0
+#if 0
 void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,
 			   struct gcomponent* mmtx, struct gcomponent* gmtx,
 			   double* iform, double* ddisp, double* finternal, double* fexternal)

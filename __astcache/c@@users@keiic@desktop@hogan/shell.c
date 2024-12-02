@@ -2288,7 +2288,9 @@ void returnmapilyushin(struct oshell* shell, int ii)
 
 
 		 /*UPDATE*/
-		 *(dlambda+0) = -*(f+0)*eps / (*(feps+0)-*(f+0));
+		 if((*(feps+0)-*(f+0))==0.0)break;
+		 else *(dlambda+0) = -*(f+0)*eps / (*(feps+0)-*(f+0));
+
 		 free(feps);
 
 		 *(lambda+0) += *(dlambda+0);
@@ -2324,7 +2326,8 @@ void returnmapilyushin(struct oshell* shell, int ii)
 		 feps=ilyushin(shell, ii, lambdaeps, NULL);
 
 		 /*UPDATE*/
-		 *(dlambda+1) = -*(f+1)*eps / (*(feps+1)-*(f+1));
+		 if((*(feps+1)-*(f+1))==0.0)break;
+		 else *(dlambda+1) = -*(f+1)*eps / (*(feps+1)-*(f+1));
 		 free(feps);
 
 		 *(lambda+1) += *(dlambda+1);

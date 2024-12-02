@@ -38,9 +38,11 @@ int arclmDynamic(struct arclmframe* af)
 	/*GLOBAL MATRIX*/
 	struct gcomponent ginit = {0,0,0.0,NULL};
 	struct gcomponent* gmtx, * g, * p, * gcomp1;/*GLOBAL MATRIX*/
+	struct gcomponent* gmtx2;
 	double gg;
 	double sign ,determinant;
-	long int nline;
+	double sign2,determinant2;
+	long int nline,nline2;
 
 	int USINGEIGENFLAG = 0;
 
@@ -63,8 +65,8 @@ int arclmDynamic(struct arclmframe* af)
 	int iteration;
 	int maxiteration = 20;
 	double tolerance = 1.0E-4;
-	double residual;
-	double gvctlen;
+	double residual = 0.0;
+	double gvctlen = 0.0;
 
 	double ddt = 0.001;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
@@ -72,13 +74,8 @@ int arclmDynamic(struct arclmframe* af)
 	double loadfactor = 0.0;
 	double lastloadfactor = 0.0;
 	//double lambda = 0.0;
+
 	double volume = 0.0;
-
-	double leftleftKE,leftKE,KE,rightKE;/*KINETIC ENERGY AT t-3*dt/2, t-dt/2, t, t+dt/2*/
-	int PEAKFLAG = 0;
-	double q;
-
-
 
 
 
@@ -278,7 +275,7 @@ int arclmDynamic(struct arclmframe* af)
 		beta = 1.0/pow(rho+1,2);
 		gamma = (3.0-rho)/(2.0*(rho+1.0));
 	}
-	sprintf(string,"alpham=%e alphaf=%e beta=%e gamma=%e ",alpham,alphaf,beta,gamma);
+	sprintf(string,"alpham=%.3f alphaf=%.3f beta=%.3f gamma=%.3f ",alpham,alphaf,beta,gamma);
 	errormessage(string);
 
 
@@ -377,9 +374,17 @@ int arclmDynamic(struct arclmframe* af)
 
 	/*GLOBAL MATRIX*/
 	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	gmtx2 = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	for (i = 0; i < msize; i++)
+	{
+		(gmtx + i)->down = NULL;
+		(gmtx2 + i)->down = NULL;
+	}
 
 	/*GLOBAL VECTOR*/
 	gvct = (double *)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
+	due = (double*)malloc(msize * sizeof(double));
+	dup = (double*)malloc(msize * sizeof(double));
 
 	/*FORCE VECTOR INITIALIZATION*/
 	funbalance = (double*)malloc(msize * sizeof(double));        /*UNBALANCED FORCE VECTOR.*/
@@ -391,13 +396,13 @@ int arclmDynamic(struct arclmframe* af)
 	fbaseload = (double*)malloc(msize * sizeof(double));           /*BASE LOAD VECTOR.*/
 	fdeadload = (double*)malloc(msize * sizeof(double));           /*DEAD LOAD VECTOR.*/
 	fpressure = (double*)malloc(msize * sizeof(double));         /*BASE PRESSURE FORCE VECTOR.*/
-
+	fgivendisp = (double*)malloc(msize * sizeof(double));
 
 	/*POSITION VECTOR INITIALIZATION*/
 	/*IN SPATIAL FORM*/
 	lastddisp = (double*)malloc(msize * sizeof(double));	/*LATEST LAP*/
-	lapddisp  = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
-	//lapddisp_m = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
+	lapddisp  = (double*)malloc(msize * sizeof(double));	/*INCREMENT IN THE LAP*/
+	givendisp = (double*)malloc(msize * sizeof(double));
 
 
 	/*VELOSITY & ACCELERATION VECTOR INITIALIZATION*/
@@ -408,27 +413,6 @@ int arclmDynamic(struct arclmframe* af)
 	lastudd_m = (double*)malloc(msize * sizeof(double));
 	ud_m = (double*)malloc(msize * sizeof(double));  		/*LATEST ITERATION IN MATERIAL*/
 	udd_m = (double*)malloc(msize * sizeof(double));
-
-	for (i = 0; i < msize; i++)
-	{
-		*(lastlastudd_m + i) = 0.0;
-
-		*(lastud_m + i) = 0.0;
-		*(lastudd_m + i) = 0.0;
-
-		*(ud_m + i) = 0.0;
-		*(udd_m + i) = 0.0;
-
-		*(lapddisp  + i) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-		*(lastddisp + i) = *(ddisp + i);
-	}
-
-	for (i = 0; i < msize; i++)
-	{
-		(gmtx + i)->down = NULL;
-		*(gvct + i) = 0.0;
-	}
-
 
 
 
@@ -445,17 +429,133 @@ int arclmDynamic(struct arclmframe* af)
 	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);  /*DRAW GLOBAL AXIS.*/
 	}
 
-	nlap = 1;
-	iteration = 1;
-	residual = 0.0;
 
-	assemconf(confs,fdeadload,1.0,nnode);               /*GLOBAL VECTOR.*/
-	//assemgivend(confs,givendisp,1.0,nnode);
+
+
+	/*INITIAL*/
+	nlap = 1;
+	af->nlaps = nlap;
+	iteration = 1;
+	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+
+	assemconf(confs,fdeadload,1.0,nnode);
+	assemgivend(confs,givendisp,1.0,nnode);
+
+
+	for(ii = 0; ii < msize; ii++)
+	{
+		*(lapddisp  + i) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+		*(lastddisp + i) = *(ddisp + i);
+
+		*(lastlastudd_m + i) = 0.0;
+
+		*(lastud_m + i) = 0.0;
+		*(lastudd_m + i) = 0.0;
+
+		*(ud_m + i) = 0.0;
+		*(udd_m + i) = 0.0;
+	}
+
+	for(ii = 0; ii < msize; ii++)
+	{
+		*(finertial  + ii) = 0.0;
+		*(finternal  + ii) = 0.0;
+		*(fexternal  + ii) = 0.0;
+		*(funbalance + ii) = 0.0;
+	　　*(freaction  + ii) = 0.0;
+		*(fbaseload  + i) = 0.0;
+		*(fpressure  + ii) = 0.0;
+	}
+
+	volume = 0.0;
+	assemshellvolume(shells, nshell, ddisp, &volume);
+
+	/*POST PROCESS*/
+	/*elemstress_DYNA(elems, melem, nelem, constraintmain,
+					iform, lastddisp, ddisp,
+					lastudd_m, udd_m,
+					lastud_m, ud_m,
+					finertial, fdamping, finternal, fexternal,
+					alpham, alphaf, xi);*/
+	shellstress_DYNA(shells, mshell, nshell, constraintmain,
+				   iform, lastddisp, ddisp,
+				   lastudd_m, udd_m,
+				   lastud_m, ud_m,
+				   finertial, fdamping, finternal, fexternal,
+				   alpham, alphaf, xi);
+
+
+	for (i = 0; i < msize; i++)
+	{
+		*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
+		*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
+		*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
+		if ((confs + i)->iconf == 1)
+		{
+			*(freaction + i) = *(funbalance + i);
+			*(funbalance + i) = 0.0;
+			*(fbaseload + i) = 0.0;
+		}
+		//*(gvct + i) = *(funbalance + i);
+		*(dup + i) = *(fbaseload + i);
+		*(due + i) = *(funbalance + i);
+	}
+
+	/*OUTPUT(INITIAL)*/
+	sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
+
+	fprintf(fdsp, string);
+	fprintf(fvel, string);
+	fprintf(facc, string);
+	outputdisp(ddisp, fdsp, nnode, nodes);
+	outputdisp(ud_m, fvel, nnode, nodes);
+	outputdisp(udd_m, facc, nnode, nodes);
+
+	fprintf(finr, string);
+	fprintf(finf, string);
+	fprintf(fexf, string);
+	fprintf(fubf, string);
+	fprintf(frct, string);
+	outputdisp(finertial, finr, nnode, nodes);
+	outputdisp(finternal, finf, nnode, nodes);
+	outputdisp(fexternal, fexf, nnode, nodes);
+	outputdisp(funbalance, fubf, nnode, nodes);
+	outputdisp(freaction, frct, nnode, nodes);
+
+	fprintf(fstr, string);
+	fprintf(fene, string);
+	for(i = 0; i < nshell; i++)
+	{
+		//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
+		fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+		((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
+		((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
+		((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
+		((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+		);
+	}
+
+	clearwindow(*(wdraw.childs+1));
+	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+
+	/*LOCAL INCREMENTAL IN THIS LAP.*/
+	for(i = 0; i < nshell; i++)
+	{
+	  outputmemoryshell(shells,mshell,i);
+	}
+
+	//loadfactor = loadfactormap(time);
+
+
+
+
+
+
+
 
 	while (nlap <= laps && ENDFLAG == 0)
 	{
-		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
-
 
 		/*MATRIX INITIALIZE*/
 		std::vector<Triplet> Ktriplet;
@@ -478,7 +578,19 @@ int arclmDynamic(struct arclmframe* af)
 			ginit.m = (unsigned short int)i;
 			*(gmtx + (i - 1)) = ginit;
 		}
-		comps = msize;
+		for (i = 1; i <= msize; i++)
+		{
+			g = (gmtx2 + (i - 1))->down;
+			while (g != NULL)
+			{
+				p = g;
+				g = g->down;
+				free(p);
+			}
+			ginit.m = (unsigned short int)i;
+			*(gmtx2 + (i - 1)) = ginit;
+		}
+		//comps = msize;
 
 		/*MATRIX ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
@@ -498,47 +610,15 @@ int arclmDynamic(struct arclmframe* af)
 						  iform, lastddisp, ddisp, lapddisp,
 						  ud_m, udd_m,
 						  alpham, alphaf, xi, beta, ddt);
+
+		  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx2, iform, ddisp);
+		  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx2, iform, ddisp);
 		}
 
-
-		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
-		{
-			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
-
-			fprintf(fdsp, string);
-			fprintf(fvel, string);
-			fprintf(facc, string);
-			outputdisp(ddisp, fdsp, nnode, nodes);
-			outputdisp(ud_m, fvel, nnode, nodes);
-			outputdisp(udd_m, facc, nnode, nodes);
-
-			fprintf(finr, string);
-			fprintf(finf, string);
-			fprintf(fexf, string);
-			fprintf(fubf, string);
-			fprintf(frct, string);
-			outputdisp(finertial, finr, nnode, nodes);
-			outputdisp(finternal, finf, nnode, nodes);
-			outputdisp(fexternal, fexf, nnode, nodes);
-			outputdisp(funbalance, fubf, nnode, nodes);
-			outputdisp(freaction, frct, nnode, nodes);
-
-			fprintf(fstr, string);
-			fprintf(fene, string);
-			for(i = 0; i < nshell; i++)
-			{
-				//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
-				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
-				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
-				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
-				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
-				((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
-				);
-			}
-		}
 
 		/*CROUT LU DECOMPOSITION.*/
 		nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);
+		nline2 = croutlu(gmtx2, confs, msize, &determinant2, &sign2, gcomp1);
 		/*DECOMPOSITION FAILED*/
 		if (sign < 0.0)
 		{
@@ -576,17 +656,40 @@ int arclmDynamic(struct arclmframe* af)
 			free(fexternal);
 			return 1;
 		}
-		nline = forwardbackward(gmtx, gvct, confs, msize, gcomp1);
-
 		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-			nlap, iteration, loadfactor,/*residual*/gvctlen, determinant, sign, 0, 0.0, 0.0, time);
+				nlap, iteration, loadfactor,residual, determinant, sign2, 0, 0.0, 0.0, time);
 		fprintf(ffig, "%s", string);
 		errormessage(string);
+
+
+
+
+		if(iteration == 1)
+		{
+			nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
+			lambda = loadfactormap(time);
+			for (ii = 0; ii < msize; ii++)
+			{
+				*(gvct + ii) = lambda * (*(dup + ii)+*(givendisp + ii));/*INCREMANTAL DISPLACEMENT.*/
+			}
+		}
+		else
+		{
+			nline = forwardbackward(gmtx, due, confs, msize, gcomp1);
+			lambda = 0.0;
+			for (ii = 0; ii < msize; ii++)
+			{
+				*(gvct + ii) = *(due + ii);/*INCREMANTAL DISPLACEMENT.*/
+			}
+		}
 
 		for (ii = 0; ii < msize; ii++)
 		{
 			*(gvct + ii) = *(gvct + *(constraintmain + ii));
 		}
+
+		loadfactor += lambda
+		laploadfactor += lambda;
 
 		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
@@ -600,18 +703,25 @@ int arclmDynamic(struct arclmframe* af)
 			*(udd_m + ii) =  (1.0 / (beta * ddt * ddt)) **(lapddisp_m + ii)
 						   - (1.0 / (beta * ddt)) **(lastud_m + ii)
 						   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
-
-			*(finertial  + ii) = 0.0;
-			*(finternal  + ii) = 0.0;
-			*(fexternal  + ii) = 0.0;
-			*(fpressure  + ii) = 0.0;
-			*(freaction  + ii) = 0.0;
-			*(funbalance + ii) = 0.0;
 		}
 		free(lapddisp_m);
 
 
-		/*STRESS*/
+		for(ii = 0; ii < msize; ii++)
+		{
+			*(finertial  + ii) = 0.0;
+			*(finternal  + ii) = 0.0;
+			*(fexternal  + ii) = 0.0;
+			*(funbalance + ii) = 0.0;
+			*(freaction  + ii) = 0.0;
+			*(fbaseload  + ii) = 0.0;
+			*(fpressure  + ii) = 0.0;
+		}
+
+		volume = 0.0;
+		assemshellvolume(shells, nshell, ddisp, &volume);
+
+		/*POST PROCESS*/
 		/*elemstress_DYNA(elems, melem, nelem, constraintmain,
 						iform, lastddisp, ddisp,
 						lastudd_m, udd_m,
@@ -626,33 +736,78 @@ int arclmDynamic(struct arclmframe* af)
 					   alpham, alphaf, xi);
 
 
+		for (i = 0; i < msize; i++)
+		{
+			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
+			*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
+			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
+			if ((confs + i)->iconf == 1)
+			{
+				*(freaction + i) = *(funbalance + i);
+				*(funbalance + i) = 0.0;
+				*(fbaseload + i) = 0.0;
+			}
+			//*(gvct + i) = *(funbalance + i);
+			//*(dup + i) = *(fbaseload + i);
+			*(due + i) = *(funbalance + i);
+		}
+
+
 		/*CONVERGENCE JUDGEMENT.*/
-		/*
 		residual = vectorlength(funbalance,msize);
-		if (residual < tolerance || iteration > maxiteration-1)
-		{
-		  nlap++;
-		  time += ddt;
-		  iteration = 0;
-		}
-		*/
 		gvctlen = vectorlength(gvct,msize);
-		if (gvctlen < tolerance || iteration > maxiteration-1)
+
+		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
+		if ((gvctlen < tolerance || iteration > maxiteration-1) && iteration!=1)
 		{
 		  nlap++;
+		  af->nlaps = nlap;
 		  time += ddt;
 		  iteration = 0;
 		}
-
 		iteration++;
+		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
-		if(iteration==1)
+		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
+		{
+			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
+
+			fprintf(fdsp, string);
+			fprintf(fvel, string);
+			fprintf(facc, string);
+			outputdisp(ddisp, fdsp, nnode, nodes);
+			outputdisp(ud_m, fvel, nnode, nodes);
+			outputdisp(udd_m, facc, nnode, nodes);
+
+			fprintf(finr, string);
+			fprintf(finf, string);
+			fprintf(fexf, string);
+			fprintf(fubf, string);
+			fprintf(frct, string);
+			outputdisp(finertial, finr, nnode, nodes);
+			outputdisp(finternal, finf, nnode, nodes);
+			outputdisp(fexternal, fexf, nnode, nodes);
+			outputdisp(funbalance, fubf, nnode, nodes);
+			outputdisp(freaction, frct, nnode, nodes);
+
+			fprintf(fstr, string);
+			fprintf(fene, string);
+			for(i = 0; i < nshell; i++)
+			{
+				//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
+				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
+				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
+				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
+				((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+				);
+			}
+		}
+        if(iteration==1)
 		{
 			clearwindow(*(wdraw.childs+1));
 			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
 			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
-
-			af->nlaps = nlap;
 
 			//if(nlap>3)ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
 
@@ -663,7 +818,7 @@ int arclmDynamic(struct arclmframe* af)
 			}
 
 			lastloadfactor = loadfactor;
-			loadfactor = laodfactormap(time);
+			loadfactor = loadfactormap(time);
 
 			for (ii = 0; ii < msize; ii++)
 			{
@@ -679,15 +834,18 @@ int arclmDynamic(struct arclmframe* af)
 							   - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + ii);
 				*(udd_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
 							   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
+			}
 
+			for(ii = 0; ii < msize; ii++)
+			{
 				*(finertial  + ii) = 0.0;
 				*(finternal  + ii) = 0.0;
 				*(fexternal  + ii) = 0.0;
-				*(fpressure  + ii) = 0.0;
-				*(freaction  + ii) = 0.0;
 				*(funbalance + ii) = 0.0;
+			　　*(freaction  + ii) = 0.0;
+				*(fbaseload  + i) = 0.0;
+				*(fpressure  + ii) = 0.0;
 			}
-
 			/*STRESS*/
 			/*elemstress_DYNA(elems, melem, nelem, constraintmain,
 							  iform, lastddisp, ddisp,
@@ -701,24 +859,28 @@ int arclmDynamic(struct arclmframe* af)
 							 lastud_m, ud_m,
 							 finertial, fdamping, finternal, fexternal,
 							 alpham, alphaf, xi);
-		}
 
-		volume = 0.0;
-		assemshellvolume(shells, nshell, ddisp, &volume);
-
-		for (i = 0; i < msize; i++)
-		{
-			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
-			*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
-			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
-			if ((confs + i)->iconf == 1)
+			for (i = 0; i < msize; i++)
 			{
-				*(freaction + i) = *(funbalance + i);
-				*(funbalance + i) = 0.0;
-				*(fbaseload + i) = 0.0;
+				*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
+				*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
+				*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
+				if ((confs + i)->iconf == 1)
+				{
+					*(freaction + i) = *(funbalance + i);
+					*(funbalance + i) = 0.0;
+					*(fbaseload + i) = 0.0;
+				}
+				//*(gvct + i) = *(funbalance + i);
+                *(dup + i) = *(fbaseload + i);
+				//*(due + i) = *(funbalance + i);
 			}
-			*(gvct + i) = *(funbalance + i);
+
 		}
+
+
+
+
 
 
 		//MESSAGE FOR UPDATE UI
@@ -808,6 +970,12 @@ int arclmDynamic(struct arclmframe* af)
 
 
 #if 0
+
+	double leftleftKE,leftKE,KE,rightKE;/*KINETIC ENERGY AT t-3*dt/2, t-dt/2, t, t+dt/2*/
+	int PEAKFLAG = 0;
+	double q;
+
+
 		if(solver==1)
 		{
 
@@ -1259,7 +1427,7 @@ double loadfactormap(double time)
 {
 	double loadfactor;
 
-#if 0/*FOR SHELL*/
+#if 1/*FOR SHELL*/
 	if(time<=0.2)
 	{
 	  loadfactor = 2.5e+8 * time;
@@ -1279,7 +1447,7 @@ double loadfactormap(double time)
 	  loadfactor = 0.012;
 	}
 #endif
-#if 1/*FOR HINGE*/
+#if 0/*FOR HINGE*/
 	if(time<=10.0)
 	{
 	  loadfactor = 0.0012* time;
