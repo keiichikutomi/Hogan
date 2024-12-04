@@ -11,6 +11,10 @@ double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod);/*
 double** transmatrixHPT(double* eform, double* edisp, double** T, int nnod);
 double** assemtmtxCR(double** Ke, double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod);
 double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod);
+double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, double** T, double** Ke,
+						  double** midTtPtHt, double** HPT,
+						  double* ginertial_m, double** Me, double** R, double** lastRt, double** lapH,
+						  double alphaf, double alpham, double xi, double beta, double ddt, int nnod);
 void symmetricmtx(double** estiff, int msize);
 
 void updaterotation(double* ddisp, double* gvct, int nnode);

@@ -1,4 +1,4 @@
-#include <vcl.h>
+﻿#include <vcl.h>
 #pragma hdrstop
 #include <tchar.h>
 //---------------------------------------------------------------------
@@ -41,11 +41,11 @@
 #include "assemble.c"
 #include "archg015ktm.c"                  /*ANALYSIS STATIC LINEAR.*/
 #include "arclmStatic.c"              /*ANALYSIS STATIC NON-LINEAR.*/
+#include "arclmDynamic.c"
 #include "bclng021ujok.c"                       /*ELASTIC BUCKLING.*/
 #include "qadhg001.c"               /*ANALYSIS BIQUADRATIC ELEMENT.*/
 #include "srcal007ujok.c"                     /*DRAW SECTIONS LIST.*/
 #include "gnshn103ktm.c"                        /*DYNAMIC ANALYSIS.*/
-#include "arclmDynamic.c"
 #include "vbrat001.c"
 #include "optimization.c"                 			 /*OPTIMIZATION*/
 #include "model001.c"                      /*INP-TO-DXF CONVERSION.*/

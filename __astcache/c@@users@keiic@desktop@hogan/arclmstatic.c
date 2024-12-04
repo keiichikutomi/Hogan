@@ -99,7 +99,6 @@ int arclmStatic(struct arclmframe* af)
 	int outputmode = 0;/*0:ConvergedLaps.1:AllLaps.*/
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 
-	int BCLFLAG = 0;/*FLAG FOR BUCKLING DETECTION*/
 	int UNLOADFLAG = 0;
 	/*LAST LAP*/
 	double* lastddisp,* lastgvct,* lastpivot;
@@ -462,6 +461,9 @@ int arclmStatic(struct arclmframe* af)
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
 	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
+	assemconf(confs,fdeadload,1.0,nnode);
+	assemgivend(confs,givendisp,1.0,nnode);
+
 	setviewpoint((wdraw.childs+0)->hwnd,*af,&((wdraw.childs+1)->vparam));
 	setviewparam((wmenu.childs+2)->hwnd,(wdraw.childs+1)->vparam);
 
@@ -476,13 +478,18 @@ int arclmStatic(struct arclmframe* af)
 
 
 	/*INITIAL*/
-	nlap = 1;
-	af->nlaps = nlap;
+	if(af->nlaps == NULL)
+	{
+		nlap = 1;
+		loadfactor = 0.0;
+	}
+	else
+	{
+		nlap = af->nlaps;
+		loadfactor = af->loadfactor;
+	}
 	iteration = 1;
 	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
-
-	assemconf(confs,fdeadload,1.0,nnode);
-	assemgivend(confs,givendisp,1.0,nnode);
 
 	for (i = 0; i < msize; i++)
 	{
@@ -558,13 +565,6 @@ int arclmStatic(struct arclmframe* af)
 	clearwindow(*(wdraw.childs+1));
 	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
 	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
-
-	/*LOCAL INCREMENTAL IN THIS LAP.*/
-	for(i = 0; i < nshell; i++)
-	{
-	  outputmemoryshell(shells,mshell,i);
-	}
-
 
 
 	while (nlap <= laps && ENDFLAG == 0)
@@ -738,7 +738,7 @@ int arclmStatic(struct arclmframe* af)
 		}
 
 		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %8.5f\n",
-				nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, 0.0, volume);
+				nlap, iteration, loadfactor, residual, determinant, sign, 0, 0.0, volume);
 		fprintf(ffig, "%s", string);
 		errormessage(string);
 
@@ -783,7 +783,7 @@ int arclmStatic(struct arclmframe* af)
 
 				nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
 				sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
-					nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, LM, volume);
+					nlap, iteration, loadfactor, residual, determinant, sign, 0, LM, volume);
 				fprintf(ffig, "%s", string);
 				fprintf(fbcl, "%s", string);
 				errormessage(string);
@@ -968,7 +968,6 @@ int arclmStatic(struct arclmframe* af)
 			lastlambda = lambda;/*INCREMENTAL LOAD FACTOR OF PREDICTOR*/
 			laploadfactor = 0.0;
 			lastsign = sign;/*SIGN AT CONVERGED POINT*/
-			BCLFLAG = 0;
 
 		}
 		else/*CORRECTOR CALCULATION*/
@@ -1075,7 +1074,7 @@ int arclmStatic(struct arclmframe* af)
 			{
 				for(i=0;i<neig;i++)
 				{
-					fprintf(feig,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e ", af->nlaps, (i+1), *(eigen + i), 0.0);
+					fprintf(feig,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e ", nlap, (i+1), *(eigen + i), 0.0);
 
 					if (*(eigen + i) > 0.0)
 					{
@@ -1162,7 +1161,6 @@ int arclmStatic(struct arclmframe* af)
 		if (residual < tolerance || iteration > maxiteration-1)
 		{
 		  nlap++;
-		  af->nlaps = nlap;
 		  iteration = 0;
 		}
 		iteration++;
@@ -1242,8 +1240,7 @@ int arclmStatic(struct arclmframe* af)
 					}
 				}
 			}
-			/*GO TO NEXT LAP&ITERATION*/
-			if (BCLFLAG==-1 && sign > 20)
+			if (sign > 20)
 			{
 				ENDFLAG = 1;
 				sprintf(string,"DIVERGENCE DITECTED(SIGN = %5ld). ANALYSIS TERMINATED.\n", sign);
@@ -1255,7 +1252,6 @@ int arclmStatic(struct arclmframe* af)
 				sprintf(string,"NEGATIVE LOAD DITECTED(LOADFACTOR = %8.5f). ANALYSIS TERMINATED.\n", loadfactor);
 				errormessage(string);
 			}
-
 		}
 
 
@@ -1330,6 +1326,9 @@ int arclmStatic(struct arclmframe* af)
 #endif
 	}
 
+	af->nlaps = nlap;
+	af->loadfactor = loadfactor;
+
 	////////// OUTPUT RESULT FOR SRCAN//////////
 	if(fout!=NULL)
 	{
@@ -1348,9 +1347,6 @@ int arclmStatic(struct arclmframe* af)
 		fprintf(fout,"\n\n");
 	}
 
-	clearwindow(*(wdraw.childs+1));
-	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
 
 	fclose(fonl);
 	fclose(fdsp);
@@ -1384,7 +1380,7 @@ int arclmStatic(struct arclmframe* af)
 	free(lastgvct);
 	free(lastpivot);
 	free(lapddisp);
-	free(nextddisp);
+	free(bisecddisp);
 	free(bisecevct);
 	free(epsddisp);
 	free(epsgvct);

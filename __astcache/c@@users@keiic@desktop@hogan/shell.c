@@ -325,7 +325,7 @@ double*** shellB(struct oshell shell)
   }
   if(nnod==3 && ngp==3)
   {
-  	  /*3 NODES 7 GAUSS POINTS*/
+	  /*3 NODES 7 GAUSS POINTS*/
 	  *(*(L+0)+0)=1.0/6.0;*(*(L+0)+1)=1.0/6.0;*(*(L+0)+2)=2.0/3.0;
 	  *(*(L+1)+0)=1.0/6.0;*(*(L+1)+1)=2.0/3.0;*(*(L+1)+2)=1.0/6.0;
 	  *(*(L+2)+0)=2.0/3.0;*(*(L+2)+1)=1.0/6.0;*(*(L+2)+2)=1.0/6.0;
@@ -1119,12 +1119,14 @@ double **assemshellmmtx(struct oshell shell)
 /*ASSEMBLAGE ELASTIC MATRIX.*/
 {
   char string[100];
+  int nnod = shell.nnod;
+  int ngp = shell.ngp;
   int i,j,k,ii;
   double **m,**exy,**N,**Nt,**NtN,**L;
   double t,hiju;
   double *b,*c;
-  double *a;
-  double det;
+  double *w;
+  double area;
   double Liij,Lijj,Liik,Likk,Lijk;
   double alpha=0.0;
   //double alpha=0.15;
@@ -1132,66 +1134,59 @@ double **assemshellmmtx(struct oshell shell)
   t=shell.sect->area;
   hiju=shell.sect->hiju[0];
 
-  m=(double **)malloc(18*sizeof(double *));
-  for(i=0;i<18;i++)
+  m=(double **)malloc(6*nnod*sizeof(double *));
+  for(i=0;i<6*nnod;i++)
   {
-	*(m+i)=(double *)malloc(18*sizeof(double));
-	for(j=0;j<18;j++)
+	*(m+i)=(double *)malloc(6*nnod*sizeof(double));
+	for(j=0;j<6*nnod;j++)
 	{
 	  *(*(m+i)+j)=0.0;                                              /*INITIAL.*/
 	}
   }
+  area = shell.area;
+
+
+#if 0
+  /*WEIGHT OF EACH NODE*/
+
+  w=(double *)malloc(ngp*sizeof(double));
+  for(ii=0;ii<ngp;ii++)
+  {
+	*(w+ii)=area*shell.w[ii];
+  }
 
   exy=shelllocalcoord(shell);/*shell local coordinate {xi,yi(,zi=0)}*/
-  det=0.5*(*(*(exy+1)+0)**(*(exy+2)+1)-*(*(exy+1)+1)**(*(exy+2)+0));
-
-
-#if 1
-  /*WEIGHT OF EACH NODE*/
-  a=(double *)malloc(7*sizeof(double));
-  *(a+0)=27.0/60.0;
-  *(a+1)=8.0/60.0;
-  *(a+2)=8.0/60.0;
-  *(a+3)=8.0/60.0;
-  *(a+4)=3.0/60.0;
-  *(a+5)=3.0/60.0;
-  *(a+6)=3.0/60.0;
-
   /*TRIANGLE COORDINATION*/
-  L=(double **)malloc(7*sizeof(double *));
-  for(i=0;i<7;i++)
+  L=(double **)malloc(ngp*sizeof(double *));
+  for(i=0;i<ngp;i++)
   {
 	*(L+i)=(double *)malloc(3*sizeof(double));
   }
-  for(i=0;i<3;i++)
+  /*AREA COORD Li=(ai+bix+ciy)/(2*area)*/
+  if(nnod==3 && ngp==7)
   {
-	*(*(L+0)+i)=1.0/3.0;
-	for(j=0;j<3;j++)
-	{
-	  if(i==j)
-	  {
-		*(*(L+(4+j))+i)=1.0;
-	  }
-	  else
-	  {
-		*(*(L+(4+j))+i)=0.0;
-	  }
+	  /*3 NODES 7 GAUSS POINTS*/
+	  *(*(L+0)+0)=1.0/3.0;*(*(L+0)+1)=1.0/3.0;*(*(L+0)+2)=1.0/3.0;
 
-	  if((i+1)%3==j)
-	  {
-		*(*(L+(1+j))+i)=0.0;
-	  }
-	  else
-	  {
-		*(*(L+(1+j))+i)=0.5;
-	  }
-	}
+	  *(*(L+1)+0)=1.0/2.0;*(*(L+1)+1)=1.0/2.0;*(*(L+1)+2)=0.0;
+	  *(*(L+2)+0)=0.0;*(*(L+2)+1)=1.0/2.0;*(*(L+2)+2)=1.0/2.0;
+	  *(*(L+3)+0)=1.0/2.0;*(*(L+3)+1)=0.0;*(*(L+3)+2)=1.0/2.0;
+
+	  *(*(L+4)+0)=1.0;*(*(L+4)+1)=0.0;*(*(L+4)+2)=0.0;
+	  *(*(L+5)+0)=0.0;*(*(L+5)+1)=1.0;*(*(L+5)+2)=0.0;
+	  *(*(L+6)+0)=0.0;*(*(L+6)+1)=0.0;*(*(L+6)+2)=1.0;
   }
-  /*area coordinate Li=(ai+bix+ciy)/(2*det)*/
+  if(nnod==3 && ngp==3)
+  {
+	  /*3 NODES 7 GAUSS POINTS*/
+	  *(*(L+0)+0)=1.0/6.0;*(*(L+0)+1)=1.0/6.0;*(*(L+0)+2)=2.0/3.0;
+	  *(*(L+1)+0)=1.0/6.0;*(*(L+1)+1)=2.0/3.0;*(*(L+1)+2)=1.0/6.0;
+	  *(*(L+2)+0)=2.0/3.0;*(*(L+2)+1)=1.0/6.0;*(*(L+2)+2)=1.0/6.0;
+  }
 
   b=(double *)malloc(3*sizeof(double));
   c=(double *)malloc(3*sizeof(double));
-  for(i=0;i<3;i++)
+  for(i=0;i<nnod;i++)
   {
 	  j=i+1;
 	  k=i+2;
@@ -1203,13 +1198,13 @@ double **assemshellmmtx(struct oshell shell)
 
 
 
-  for(ii=0;ii<7;ii++)
+  for(ii=0;ii<ngp;ii++)
   {
-	N=(double **)malloc(3*sizeof(double *));
-	for(i=0;i<3;i++)
+	N=(double **)malloc(nnod*sizeof(double *));
+	for(i=0;i<nnod;i++)
 	{
-	  *(N+i)=(double *)malloc(18*sizeof(double));
-	  for(j=0;j<18;j++)
+	  *(N+i)=(double *)malloc(6*nnod*sizeof(double));
+	  for(j=0;j<6*nnod;j++)
 	  {
 		*(*(N+i)+j)=0.0;                                              /*INITIAL.*/
 	  }
@@ -1232,26 +1227,27 @@ double **assemshellmmtx(struct oshell shell)
 		*(*(N+2)+6*i+3) = (1.0-alpha)*(*(b+j) * (Liik+0.5*Lijk) - *(b+k) * (Liij+0.5*Lijk));
 		*(*(N+2)+6*i+4) = (1.0-alpha)*(*(c+j) * (Liik+0.5*Lijk) - *(c+k) * (Liij+0.5*Lijk));
 	}
-	Nt=matrixtransposeIII(N,3,18);
-	NtN=matrixmatrixIII(Nt,N,18,3,18);
-	for(i=0;i<18;i++)
+	Nt=matrixtransposeIII(N,nnod,6*nnod);
+	NtN=matrixmatrixIII(Nt,N,6*nnod,nnod,6*nnod);
+	for(i=0;i<6*nnod;i++)
 	{
-	  for(j=0;j<18;j++)
+	  for(j=0;j<6*nnod;j++)
 	  {
-		*(*(m+i)+j) += *(*(NtN+i)+j)**(a+ii)*det*t*hiju;
+		*(*(m+i)+j) += *(*(NtN+i)+j)**(w+ii)*t*hiju;
 	  }
 	}
-	freematrix(N,3);
-	freematrix(Nt,18);
-	freematrix(NtN,18);
+	freematrix(N,nnod);
+	freematrix(Nt,6*nnod);
+	freematrix(NtN,6*nnod);
   }
 
-  free(a);
-  freematrix(L,7);
+  free(w);
+  freematrix(L,ngp);
+  freematrix(exy,3);
   free(b);
   free(c);
 #endif
-#if 0
+#if 1
   for(i=0;i<3;i++)
   {
 	for(j=0;j<3;j++)
@@ -1260,13 +1256,13 @@ double **assemshellmmtx(struct oshell shell)
 	  {
 		if(i==j)
 		{
-		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*det*t/6.0;
-		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*det*pow(t,3)/18.0;
+		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*area*t/6.0;
+		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*area*pow(t,3)/18.0;
 		}
 		else
 		{
-		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*det*t/12.0;
-		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*det*pow(t,3)/36.0;
+		  *(*(m+6*i+k+0)+6*j+k+0) = hiju*area*t/12.0;
+		  *(*(m+6*i+k+3)+6*j+k+3) = hiju*area*pow(t,3)/36.0;
 		}
 	  }
 	}
@@ -1274,7 +1270,7 @@ double **assemshellmmtx(struct oshell shell)
   /*MASS MATRIX BY ZHONG AND ALMEDIA.*/
 #endif
 
-  freematrix(exy,3);
+
 
   return m;
 }/*assemshellmmtx*/
