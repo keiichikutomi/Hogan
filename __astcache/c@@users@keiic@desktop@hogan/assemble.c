@@ -85,7 +85,7 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 
 		einternal = matrixvector(Ke, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
 
-		Kt = assemtmtxCR(Ke, eform, edisp, einternal, NULL, T, NULL, nnod);	/*TANGENTIAL MATRIX[Kt].*/
+		Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
 		symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 
 		assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
@@ -325,7 +325,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 		Kp = assemshellpmtx(shell,C,B);
 		Kp = transformationIII(Kp, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
-		Kt = assemgmtxCR(eform, edisp, einternal, NULL, T, NULL, nnod);/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
+		Kt = assemgmtxCR(eform, edisp, einternal, T, nnod);/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
 		for (ii = 0; ii < 6*nnod; ii++)
 		{
 			for (jj = 0; jj < 6*nnod; jj++)
@@ -499,7 +499,7 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 
 
 void assemelem_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,
-					 struct gcomponent* gmtx,
+					 struct gcomponent* gmtx,struct gcomponent* gmtx2,
 					 double* iform, double* lastddisp, double* ddisp,
 					 double* ud_m, double* udd_m,
 					 double alpham, double alphaf, double xi, double beta, double ddt)
@@ -623,6 +623,9 @@ void assemelem_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, lo
 								alphaf, alpham, xi, beta, ddt, nnod);
 		symmetricmtx(Keff, 6*nnod);
 		assemgstiffnesswithDOFelimination(gmtx, Keff, &elem, constraintmain);
+
+
+
 
 
 
@@ -929,7 +932,7 @@ void elemstress_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, l
 ##########################################################################################################################################################################################
 */
 void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,
-					 struct gcomponent* gmtx,
+					 struct gcomponent* gmtx,struct gcomponent* gmtx2,
 					 double* iform, double* lastddisp, double* ddisp,
 					 double* ud_m, double* udd_m,
 					 double alpham, double alphaf, double xi, double beta, double ddt)
@@ -1267,26 +1270,32 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 			}
 		}
 
+		/*
+		for (ii = 0; ii < nnod; ii++)
+		{
+			for (jj = 0; jj < ngp; jj++)
+			{
+				shell->Ee += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
+				shell->Ep += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
+			}
+		}
 
-	//Kinetic Energy Output
-	/*
-	gvel_m = extractshelldisplacement(shell, ud_m);
-	gmomentum_m = matrixvector(Me, gvel_m, 6 * nnod);
-	for (ii = 0; ii < nnod; ii++)
-	{
-		for (jj = 0; jj < 3; jj++)
+		gvel_m = extractshelldisplacement(shell, ud_m);
+		gmomentum_m = matrixvector(Me, gvel_m, 6 * nnod);
+		for (ii = 0; ii < nnod; ii++)
 		{
-			(mshell+i-1)->KEt += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
+			for (jj = 0; jj < 3; jj++)
+			{
+				shell->KEt += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
+			}
+			for (jj = 3; jj < 6; jj++)
+			{
+				shell->KEr += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
+			}
 		}
-		for (jj = 3; jj < 6; jj++)
-		{
-			(mshell+i-1)->KEr += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
-		}
-	}
-	(mshell+i-1)->KE = (mshell+i-1)->KEt + (mshell+i-1)->KEr;
-	free(gvel_m);
-	free(gmomentum_m);
-	*/
+		free(gvel_m);
+		free(gmomentum_m);
+        */
 
 
 

@@ -71,16 +71,16 @@
                                        /*ONLY FOR S PLATE*/
 
 struct materials{
-				 double sE,sF,sft,sfc,sfb,sfs,sftu,sfcu;       		 /*S*/
-				 double rE,rft,rfc,wft,rftu,rfcu,wfp;          		 /*R*/
-				 double cE,Fc,cfc,cfs,srcfc,srcfs,cfcu;         	 /*C*/
-				 double pcE,pcF,pcfc,pcft,pcfs,pcfcu,pcfsu;    		/*PC*/
-				 double pcfco,pcfto;                 	   /*PC FOR DEAD*/
-				 double stfact;    		/*EFFECTIVE FACTOR FOR PC STRAND*/
-                 double stE,stft[4],stftu[4];              		/*STRAND*/
-				 double gE,gF,gft,gfc,gfb,gfs,gftu,gfcu;   		 /*GLASS*/
-				 double aE,aF,aft,afc,afb,afs,aftu,afcu;    	 /*ACRYL*/
-				 double alE,alF,alft,alfc,alfb,alfs,alftu,alfcu; /*ALUMI*/
+					 double sE,sF,sft,sfc,sfb,sfs,sftu,sfcu;       		 /*S*/
+					 double rE,rft,rfc,wft,rftu,rfcu,wfp;          		 /*R*/
+					 double cE,Fc,cfc,cfs,srcfc,srcfs,cfcu;         	 /*C*/
+					 double pcE,pcF,pcfc,pcft,pcfs,pcfcu,pcfsu;    		/*PC*/
+					 double pcfco,pcfto;                 	   /*PC FOR DEAD*/
+					 double stfact;    		/*EFFECTIVE FACTOR FOR PC STRAND*/
+					 double stE,stft[4],stftu[4];              		/*STRAND*/
+					 double gE,gF,gft,gfc,gfb,gfs,gftu,gfcu;   		 /*GLASS*/
+					 double aE,aF,aft,afc,afb,afs,aftu,afcu;    	 /*ACRYL*/
+					 double alE,alF,alft,alfc,alfb,alfs,alftu,alfcu; /*ALUMI*/
 				};
 
 struct materialrect{double top,bottom,left,right;
@@ -456,7 +456,7 @@ double ultimateshearofpcgirder(struct element elem,
 FILE *fout0;
 char prj[20];
 double jis;                                        /*1.1=JIS STEEL.*/
-struct materials gmaterial;                       /*GLOBAL MATERIAL*/
+struct materials gmaterial;
 extern int globalmessageflag;
 extern int globalstatus;
 
@@ -13822,6 +13822,8 @@ double ultimateshearofpcgirder(struct element elem,
   return Qu;
 
 }
+
+
 
 
 

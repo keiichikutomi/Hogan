@@ -463,7 +463,7 @@ int bclng001(struct arclmframe *af)
 		{
 			*(HPT + ii) = (double*)malloc(6 * nnod * sizeof(double));
 		}
-		Kg = assemgmtxCR(eform, edisp, einternal, NULL, T, HPT, nnod);		/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
+		Kg = assemgmtxCR(eform, edisp, einternal, T, nnod);		/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
 		symmetricmtx(Kg, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		Ke = transformationIII(Ke, HPT, 6*nnod);							/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
 
@@ -536,7 +536,7 @@ int bclng001(struct arclmframe *af)
 		{
 			*(HPT + ii) = (double*)malloc(6 * nnod * sizeof(double));
 		}
-		Kg = assemgmtxCR(eform, edisp, einternal, NULL, T, HPT, nnod);		/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
+		Kg = assemgmtxCR(eform, edisp, einternal, T, nnod);		/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
 		symmetricmtx(Kg, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		Ke = transformationIII(Ke, HPT, 6*nnod);							/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
 

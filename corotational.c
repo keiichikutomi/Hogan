@@ -9,11 +9,17 @@ double** projectionmtx(double* eform, double** G, int nnod);/*[P]*/
 double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod);/*[H]&[M]*/
 
 double** transmatrixHPT(double* eform, double* edisp, double** T, int nnod);
-double** assemtmtxCR(double** Ke, double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod);
-double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod);
-double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, double** T, double** Ke,
+
+double** assemgmtxCR(double* eform, double* edisp, double* estress, double** T, int nnod);
+double** assemtmtxCR(double** Kp, double* eform, double* edisp, double* estress,
+					 double** T, double** HPT,
+					 int nnod);
+double **assemtmtxCR_MID(double** Kp, double* eform, double* edisp, double* mideinternal,
+						 double** T, double** midTtPtHt, double** HPT,
+						 double alphaf, double xi, int nnod);
+double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, double** T, double** Kp,
 						  double** midTtPtHt, double** HPT,
-						  double* ginertial_m, double** Me, double** R, double** lastRt, double** lapH,
+						  double* ginertial_m, double** M, double** R, double** lastRt, double** lapH,
 						  double alphaf, double alpham, double xi, double beta, double ddt, int nnod);
 void symmetricmtx(double** estiff, int msize);
 
@@ -504,7 +510,7 @@ double** transmatrixHPT(double* eform, double* edisp, double** T, int nnod)
 }
 
 
-double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod)
+double** assemgmtxCR(double* eform, double* edisp, double* estress, double** T, int nnod)
 {
 	int i, j, n;
 	double** G, ** P, ** H;
@@ -539,18 +545,6 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 	HP = matrixmatrix(H, P, 6*nnod);                    						/*[H][P]*/
 	PtHt = matrixtranspose(HP, 6*nnod);
 	pstress = matrixvector(PtHt, estress, 6*nnod);     							/*projected estress {Fp}*/
-
-	if(HPT!=NULL)
-	{
-		matrixmatrixII(HPT, HP, T, 6*nnod);                 						/*[H][P][T]*/
-		if(gstress!=NULL)
-		{
-			TtPtHt = matrixtranspose(HPT, 6*nnod);
-			matrixvectorII(gstress, TtPtHt, estress, 6*nnod);      						/*global estress {Fg}*/
-			freematrix(TtPtHt, 6*nnod);
-		}
-	}
-
 
 	nm = (double*)malloc(3 * sizeof(double));           						/*projected estress of each node {n}&{m}*/
 
@@ -636,94 +630,118 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double* gstr
 }
 
 
-double** assemtmtxCR(double** K, double* eform, double* edisp, double* estress, double* gstress, double** T, double** HPT, int nnod)
+double** assemtmtxCR(double** Kp, double* eform, double* edisp, double* einternal,
+					 double** T, double** HPT,
+					 int nnod)
 {
 	int i, j;
 	double** Kt;
 
-	Kt = assemgmtxCR(eform, edisp, estress, gstress, T, HPT, nnod);/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
-	K = transformationIII(K, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
+	Kt = assemgmtxCR(eform, edisp, einternal, T, nnod);/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
+	Kp = transformationIII(Kp, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
 
 	for (i = 0; i < 6*nnod; i++)
 	{
 		for (j = 0; j < 6*nnod; j++)
 		{
-			*(*(Kt + i) + j) += *(*(K + i) + j);/*[Kt]=[Ke]+[Kg]*/
+			*(*(Kt + i) + j) += *(*(Kp + i) + j);/*[Kt]=[Ke]+[Kg]*/
 		}
 	}
 	return Kt;
 }
 
+double **assemtmtxCR_MID(double** Kp, double* eform, double* edisp, double* mideinternal,
+						 double** T, double** midTtPtHt, double** HPT,
+						 double alphaf, double xi, int nnod)
+{
+	int i,j,n;
+	double** TPHK, ** TPHKHPT;
+	double** Kt;
+
+	Kt = assemgmtxCR(eform, edisp, mideinternal, T, nnod);
+
+	TPHK = matrixmatrix(midTtPtHt, Kp, 6*nnod);
+	TPHKHPT = matrixmatrix(TPHK, HPT, 6*nnod);
+
+	for (i = 0; i < 6*nnod; i++)
+	{
+		for (j = 0; j < 6*nnod; j++)
+		{
+			*(*(Kt + i) + j) = (1-alphaf)**(*(Kt + i) + j) + (1-alphaf + xi)**(*(TPHKHPT + i) + j);
+		}
+	}
+
+	freematrix(TPHK,  6 * nnod);
+	freematrix(TPHKHPT, 6 * nnod);
 
 
-double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, double** T, double** Ke,
+	return Kt;
+}
+
+
+
+
+
+
+double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, double** T, double** Kp,
 						  double** midTtPtHt, double** HPT,
-						  double* ginertial, double** Me, double** R, double** lastRt, double** lapH,
+						  double* ginertial, double** M, double** R, double** lastRt, double** lapH,
 						  double alphaf, double alpham, double xi, double beta, double ddt, int nnod)
 {
-	int ii,jj,n;
-	double** Kint1, ** Kint2;
-	double** Kmas1, ** Kmas2;
-	double* mvct;
+	int i,j,n;
+
 	double** mspin;
-	double** TPHK;
+	double* mvct;
+	double** Kmas1, ** Kmas2;
 	double** RM, ** RMR;
+
 	double** Keff;
 
-	Kint1 = assemgmtxCR(eform, edisp, mideinternal, NULL, T, NULL, nnod);
 
-	TPHK = matrixmatrix(midTtPtHt, Ke, 6*nnod);
-	Kint2 = matrixmatrix(TPHK, HPT, 6*nnod);
+	Keff = assemtmtxCR_MID(Kp, eform, edisp, mideinternal, T, midTtPtHt, HPT, alphaf, xi, nnod);
 
 	mvct = (double*)malloc(3 * sizeof(double));
 	Kmas1 = (double**)malloc(6*nnod * sizeof(double*));
-	for (ii = 0; ii < 6*nnod; ii++)
+	for (i = 0; i < 6*nnod; i++)
 	{
-		*(Kmas1 + ii) = (double*)malloc(6*nnod * sizeof(double));
-		for (jj = 0; jj < 6*nnod; jj++)
+		*(Kmas1 + i) = (double*)malloc(6*nnod * sizeof(double));
+		for (j = 0; j < 6*nnod; j++)
 		{
-			*(*(Kmas1 + ii) + jj)=0.0;
+			*(*(Kmas1 + i) + j)=0.0;
 		}
 	}
 	for (n = 0; n < nnod; n++)
 	{
-		for (ii = 0; ii < 3; ii++)
+		for (i = 0; i < 3; i++)
 		{
-			*(mvct + ii) = *(ginertial + 6 * n + 3 + ii);
+			*(mvct + i) = *(ginertial + 6 * n + 3 + i);
 		}
 		mspin = spinmtx(mvct);
-		for (ii = 0; ii < 3; ii++)
+		for (i = 0; i < 3; i++)
 		{
-			for (jj = 0; jj < 3; jj++)
+			for (j = 0; j < 3; j++)
 			{
-				*(*(Kmas1 + 6 * n + 3 + ii) + 6 * n + 3 + jj) = - *(*(mspin + ii) + jj);
+				*(*(Kmas1 + 6 * n + 3 + i) + 6 * n + 3 + j) = - *(*(mspin + i) + j);
 			}
 		}
 		freematrix(mspin, 3);
 	}
 
-	RM = matrixmatrix(R, Me, 6*nnod);
+	RM = matrixmatrix(R, M, 6*nnod);
 	RMR = matrixmatrix(RM, lastRt, 6*nnod);
 	Kmas2 = matrixmatrix(RMR, lapH, 6*nnod);
 
-	Keff = (double**)malloc(6*nnod * sizeof(double*));
-	for (ii = 0; ii < 6*nnod; ii++)
+
+	for (i = 0; i < 6*nnod; i++)
 	{
-		*(Keff + ii) = (double*)malloc(6*nnod * sizeof(double));
-		for (jj = 0; jj < 6*nnod; jj++)
+
+		for (j = 0; j < 6*nnod; j++)
 		{
-			*(*(Keff + ii) + jj) = (1-alphaf)     **(*(Kint1 + ii) + jj)
-								 + (1-alphaf + xi)**(*(Kint2 + ii) + jj)
-								 + (1-alpham)     **(*(Kmas1 + ii) + jj)
-								 + (1-alpham)     **(*(Kmas2 + ii) + jj) / (beta * ddt * ddt);
+			*(*(Keff + i) + j) += (1-alpham)*(*(*(Kmas1 + i) + j) + *(*(Kmas2 + i) + j) / (beta * ddt * ddt));
 		}
 	}
 
-	freematrix(Kint1, 6 * nnod);
-	freematrix(TPHK,  6 * nnod);
-	freematrix(Kint2, 6 * nnod);
 	free(mvct);
-
 	freematrix(Kmas1, 6 * nnod);
 	freematrix(RM,    6 * nnod);
 	freematrix(RMR,   6 * nnod);
@@ -731,6 +749,9 @@ double **assemtmtxCR_DYNA(double* eform, double* edisp, double* mideinternal, do
 
 	return Keff;
 }
+
+
+
 
 
 

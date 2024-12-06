@@ -9,6 +9,7 @@
 /*SLAB DIVISION FOR CMQ.....NOT YET.*/
 /*SORT COMPONENTS.....NOT YET.*/
 /*IMPROVE "CROUTLUDECOMPOSITION".....NOT YET.*/
+
 /*COMPONENT CONSISTS OF LINE,ROW,VALUE,DOWN.*/
 
 /*CODES AT WILL.*/
@@ -9863,6 +9864,7 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
   int ii,selected;
   int j; /****SRCANMAX****/
 
+
   if(vp.vflag.mv.pagetitle)
   {
     if(mode==ONPRINTER || mode==ONPREVIEW)
@@ -9905,6 +9907,7 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
 
   }
 
+
   /*PAGE NUMBER*/
   if(vp.vflag.mv.pagenum)
   {
@@ -9928,6 +9931,7 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
 	else if(mode==ONPREVIEW) TextOut(hdc,1200,1000,str,strlen(str));
 	else                     TextOut(hdc,1250,1000,str,strlen(str));
   }
+
 
   /*GET FRAME RANGE FOR DRAWING TEXTS*/
   if(mode==ONPRINTER || mode==ONPREVIEW)
@@ -10124,11 +10128,11 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
   if(vp.vflag.ev.srcanrate || vp.vflag.ev.srcancolor)   /*Modified by Ujioka*/
   {
     imax[1]+=size.cy;
-    sprintf(str,"安全率 (断面検定比図)");
-    TextOut(hdc,imin[0],imax[1],str,strlen(str));
+	sprintf(str,"安全率 (断面検定比図)");
+	TextOut(hdc,imin[0],imax[1],str,strlen(str));
 
-    if(mode==ONPRINTER)
-    {
+	if(mode==ONPRINTER)
+	{
 	sprintf(str,"安全率の凡例");
 #if 1
 	TextOut(hdc,3500,imax[1]+size.cy,str,strlen(str));
@@ -10791,8 +10795,15 @@ if(vp.vflag.nv.conffig)
       }
     }
   }
+
+  MSG msg;
   for(i=0;i<af.nshell;i++)
   {
+	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
 	 drawglobalshell(hdc,vp,af,*(af.shells+i),255,0,255,255,0,255,code,mode);
   }
   return;
@@ -19686,7 +19697,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
   int i,j,ii,jj,k,n;
   long int offset,mainoff,suboff;
   long int scode,ncode,dcode,code1,code2,code3,code4;
-  //char str[50];/*for debug*/
+  char str[50];/*for debug*/
 
   fseek(ftext,0L,SEEK_SET);
   inputinitII(ftext,&(af->nnode),&(af->nelem),&(af->nshell),&(af->nsect),&(af->nconstraint));
@@ -19730,6 +19741,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	*/
 	(af->sects+i)->ppc.npcurve=0;
   }
+
 
   for(i=0;i<(af->nnode);i++)
   {
@@ -19840,6 +19852,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
   }
+
   for(i=1;i<=(af->nshell);i++)
   {
 	(af->shells+i-1)->loff=i-1;
@@ -19950,8 +19963,8 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  ((af->shells+i-1)->gp[ii]).qnm=0.0;
 	  ((af->shells+i-1)->gp[ii]).yinit=0.0;
 	  ((af->shells+i-1)->gp[ii]).y=0.0;
-	  ((af->shells+i-1)->gp[ii]).f[0]=0.0;
-	  ((af->shells+i-1)->gp[ii]).f[1]=0.0;
+	  ((af->shells+i-1)->gp[ii]).f[0]=-1.0;
+	  ((af->shells+i-1)->gp[ii]).f[1]=-1.0;
 	  ((af->shells+i-1)->gp[ii]).lambda[0]=0.0;
 	  ((af->shells+i-1)->gp[ii]).lambda[1]=0.0;
 	  ((af->shells+i-1)->gp[ii]).alpha=0.0;
@@ -20067,6 +20080,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  (af->confs + i)->iconf = (signed char)1;
 	}
   }
+
   return;
 }/*inputtexttomemory*/
 

@@ -3,6 +3,9 @@
 #include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
 //#include <Eigen/Dense>
+#include <Spectra/SymGEigsSolver.h>
+#include <Spectra/MatOp/SparseGenMatProd.h>
+#include <Spectra/MatOp/SparseCholesky.h>
 
 #include <iostream>
 #include <vector>

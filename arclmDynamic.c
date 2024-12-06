@@ -5,9 +5,25 @@
 /* CODED BY KEIICHI KUTOMI SINSE 2024.05.26                  */
 /* ========================================================= */
 
+int arclmStatDyna(struct arclmframe* af);
 int arclmDynamic(struct arclmframe* af);
 double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* lastudd_m, double* lastlastudd_m, double beta, int msize);
 double loadfactormap(double time);
+
+int arclmStatDyna(struct arclmframe* af)
+{
+	double targetload;
+	targetload = 100000;
+	while(1)
+	{
+		arclmStatic(af);
+		if(af->loadfactor > targetload)break;
+		arclmDynamic(af);
+		if(af->loadfactor > targetload)break;
+	}
+	return 0;
+}
+
 
 int arclmDynamic(struct arclmframe* af)
 {
@@ -34,6 +50,7 @@ int arclmDynamic(struct arclmframe* af)
 	struct memoryelem* melem;
 	struct memoryshell* mshell;
 	long int* constraintmain;
+    double *nmass;
 
 	/*GLOBAL MATRIX*/
 	struct gcomponent ginit = {0,0,0.0,NULL};
@@ -62,21 +79,66 @@ int arclmDynamic(struct arclmframe* af)
 	double* mvct, * cvct;/*MASS & DAMPING VECTOR(DIAGONAL MATRIX)*/
 
 	///FOR ITERATIVE CALCULATION///
-	int nlap, laps;
+	int nlap = 1;
+	int laps;
 	int iteration;
 	int maxiteration = 20;
 	double tolerance = 1.0E-4;
 	double residual = 0.0;
 	double gvctlen = 0.0;
 
-	double ddt = 0.001;/*TIME INCREMENT[sec]*/
+	double ddt = 0.01;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
+	double initialloadfactor = 0.0;
 	double loadfactor = 0.0;
 	double lastloadfactor = 0.0;
 	double lambda = 0.0;
 
 	double volume = 0.0;
+	double Wkt,Wet,Wpt,Wot,*wk[3],*wo[3]; /* ENERGY */
+
+		/*
+
+		Wkt = 0.0;
+		Wet = 0.0;
+		Wpt = 0.0;
+		Wot = 0.0;
+		for (ii = 0; ii < nnode; ii++)
+		{
+			for (jj = 0; jj < 3; jj++)
+			{
+				*(wk[jj] + ii) = 0.5 * (*(nmass + ii)) * (*(ud + 6 * ii + jj)) *(*(ud + 6 * ii + jj));
+				*(wo[jj] + ii) -= 0.5 * (*(nmass + ii)) * (2 * tacc[jj] - dacc[jj]) *(*(du + 6 * ii + jj));
+
+				Wkt += *(wk[jj] + ii);
+				Wot += *(wo[jj] + ii);
+			}
+		}
+
+		for (ii = 0; ii < nelem; ii++)
+		{
+			for (jj = 0; jj < 2; jj++)
+			{
+				Wet += (elems + ii)->Ee[jj];
+				Wpt += (elems + ii)->Ep[jj];
+			}
+		}
+		for (ii = 0; ii < nshell; ii++)
+		{
+			for (jj = 0; jj < 2; jj++)
+			{
+				Wet += (shells + ii)->Ee[jj];
+				Wpt += (shells + ii)->Ep[jj];
+			}
+		}
+
+		if (ftxt != NULL) {
+			fprintf(ftxt, " %11.7f %11.7f %11.7f", Wkt, Wkt + Wet,
+				Wkt + Wet + Wpt);
+			fprintf(ftxt, "\n");
+		}
+		*/
 
 
 
@@ -98,6 +160,9 @@ int arclmDynamic(struct arclmframe* af)
 	1      | HTT-alpha       | Runge-Kutta(RK4)
 	2      | Energy Momentum | Dynamic Relaxation(CD)
 	*/
+
+	int STATDYNAFLAG = 0;
+	int UNLOADFLAG = 0;
 
 	/*ANALYSIS TERMINATION*/
 	int ENDFLAG = 0;
@@ -218,9 +283,9 @@ int arclmDynamic(struct arclmframe* af)
 						if (!strcmp(*(data + pstr), "LOADFACTOR"))
 						{
 							pstr++;
-							loadfactor = (double)strtod(*(data + pstr), NULL);
+							initialloadfactor = (double)strtod(*(data + pstr), NULL);
 						}
-                        if (!strcmp(*(data + pstr), "SOLVER"))
+						if (!strcmp(*(data + pstr), "SOLVER"))
 						{
 							pstr++;
 							solver = (int)strtol(*(data + pstr), NULL, 10);
@@ -229,6 +294,14 @@ int arclmDynamic(struct arclmframe* af)
 						{
 							pstr++;
 							method = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						if (!strcmp(*(data + pstr), "STATDYNA"))
+						{
+							STATDYNAFLAG = 1;
+						}
+						if (!strcmp(*(data + pstr), "UNLOAD"))
+						{
+							UNLOADFLAG = 1;
 						}
 						else
 						{
@@ -354,6 +427,7 @@ int arclmDynamic(struct arclmframe* af)
 	af->melem = melem;
 	af->mshell = mshell;
 	af->constraintmain = constraintmain;
+	af->nmass = nmass;
 
 	inputtexttomemory(fin, af);
 	fclose(fin);
@@ -371,6 +445,7 @@ int arclmDynamic(struct arclmframe* af)
 	melem = af->melem;
 	mshell = af->mshell;
 	constraintmain = af->constraintmain;
+	nmass = af->nmass;
 #endif
 
 	/*GLOBAL MATRIX*/
@@ -433,20 +508,14 @@ int arclmDynamic(struct arclmframe* af)
 	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);  /*DRAW GLOBAL AXIS.*/
 	}
 
-
-
-
 	/*INITIAL*/
-	if(af->nlaps == NULL)
+	if(STATDYNAFLAG == 1)
 	{
-		nlap = 1;
-		loadfactor = 0.0;
+		if(af->nlaps != NULL)nlap = af->nlaps;
+		initialloadfactor = af->loadfactor;
 	}
-	else
-	{
-		nlap = af->nlaps;
-		loadfactor = af->loadfactor;
-	}
+	loadfactor = initialloadfactor;
+
 	iteration = 1;
 	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
@@ -490,7 +559,7 @@ int arclmDynamic(struct arclmframe* af)
 				   iform, lastddisp, ddisp,
 				   lastudd_m, udd_m,
 				   lastud_m, ud_m,
-				   finertial, fdamping, finternal, fexternal,
+				   finertial, fdamping, finternal, fpressure,
 				   alpham, alphaf, xi);
 
 
@@ -555,7 +624,10 @@ int arclmDynamic(struct arclmframe* af)
 
 			time += ddt;
 			lastloadfactor = loadfactor;
-			loadfactor = loadfactormap(time);
+
+			if(STATDYNAFLAG == 1)loadfactor = initialloadfactor + loadfactormap(time);
+			else loadfactor = loadfactormap(time);
+
 
 			for (ii = 0; ii < msize; ii++)
 			{
@@ -594,7 +666,7 @@ int arclmDynamic(struct arclmframe* af)
 							 iform, lastddisp, ddisp,
 							 lastudd_m, udd_m,
 							 lastud_m, ud_m,
-							 finertial, fdamping, finternal, fexternal,
+							 finertial, fdamping, finternal, fpressure,
 							 alpham, alphaf, xi);
 
 			for (i = 0; i < msize; i++)
@@ -660,20 +732,12 @@ int arclmDynamic(struct arclmframe* af)
 		}
 		else
 		{
-		  /*elemstress_DYNA(elems, melem, nelem, constraintmain,
-						iform, lastddisp, ddisp,
-						lastudd_m, udd_m,
-						lastud_m, ud_m,
-						finertial, fdamping, finternal, fexternal,
-						alpham, alphaf, xi);*/
+
 		  assemshell_DYNA(shells, mshell, nshell, constraintmain,
-						  gmtx,
+						  gmtx,gmtx2,
 						  iform, lastddisp, ddisp,
 						  ud_m, udd_m,
 						  alpham, alphaf, xi, beta, ddt);
-
-		  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx2, iform, ddisp);
-		  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx2, iform, ddisp);
 		}
 
 
@@ -718,7 +782,7 @@ int arclmDynamic(struct arclmframe* af)
 			return 1;
 		}
 		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-				nlap, iteration, loadfactor,residual, determinant, sign2, 0, 0.0, 0.0, time);
+				nlap, iteration, loadfactor,residual, determinant, sign2, 0, 0.0, volume, time);
 		fprintf(ffig, "%s", string);
 		errormessage(string);
 
@@ -771,7 +835,7 @@ int arclmDynamic(struct arclmframe* af)
 					   iform, lastddisp, ddisp,
 					   lastudd_m, udd_m,
 					   lastud_m, ud_m,
-					   finertial, fdamping, finternal, fexternal,
+					   finertial, fdamping, finternal, fpressure,
 					   alpham, alphaf, xi);
 
 
@@ -864,7 +928,7 @@ int arclmDynamic(struct arclmframe* af)
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-#if 1
+#if 0
 		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 		{
 		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
@@ -982,7 +1046,7 @@ double loadfactormap(double time)
 {
 	double loadfactor;
 
-#if 1/*FOR SHELL*/
+#if 0/*FOR SHELL*/
 	if(time<=0.2)
 	{
 	  loadfactor = 2.5e+8 * time;
@@ -992,24 +1056,15 @@ double loadfactormap(double time)
 	  loadfactor = 5.0e+7;
 	}
 #endif
-#if 0/*FOR HINGE*/
-	if(time<=1.0)
+#if 1/*FOR HINGE*/
+/*0.1Mpa = 100000Pa*/
+	if(time<=100.0)
 	{
-	  loadfactor = 0.012 * time;
+	  loadfactor = 100 * time;
 	}
 	else
 	{
-	  loadfactor = 0.012;
-	}
-#endif
-#if 0/*FOR HINGE*/
-	if(time<=10.0)
-	{
-	  loadfactor = 0.0012* time;
-	}
-	else
-	{
-	  loadfactor = 0.012;
+	  loadfactor = 10000;
 	}
 #endif
 #if 0/*FOR CYLINDER*/

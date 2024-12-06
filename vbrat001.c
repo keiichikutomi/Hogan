@@ -35,11 +35,14 @@ int vbrat001(struct arclmframe* af)
 	char filename[256];
 	char* dot;
 	int neig = 1;
-	int solver = 0;
+	//int solver = 0;
 	/*
 	neig=NEIGEN;
 	solver=SOLVER;
 	*/
+	double BRIGHT,BLEFT;
+
+	int USINGEIGENFLAG = 0;
 
 #if 0
 	fin = fgetstofopenII(dir, "r", (wdraw.childs+1)->inpfile);
@@ -71,8 +74,8 @@ int vbrat001(struct arclmframe* af)
 	if (fdata == NULL)
 	{
 		errormessage("couldn't open analysisdata.txt\n");
-		if(MessageBox(NULL,"DEIGABGENERAL","SOLVER",MB_OKCANCEL)==IDOK)solver=0;
-		else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)solver=1;
+		//if(MessageBox(NULL,"DEIGABGENERAL","SOLVER",MB_OKCANCEL)==IDOK)solver=0;
+		//else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)solver=1;
 
 		/*READ ARCLENGTH PARAMS*/
 		getincrement((wmenu.childs+2)->hwnd,&neig,NULL);
@@ -104,8 +107,8 @@ int vbrat001(struct arclmframe* af)
 							if(strstr(*(data + pstr),filename)==NULL)
 							{
 								readflag = 0;
-								if(MessageBox(NULL,"DEIGABGENERAL","SOLVER",MB_OKCANCEL)==IDOK)solver=0;
-								else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)solver=1;
+								//if(MessageBox(NULL,"DEIGABGENERAL","SOLVER",MB_OKCANCEL)==IDOK)solver=0;
+								//else if(MessageBox(NULL,"BISECSYLVESTER","SOLVER",MB_OKCANCEL)==IDOK)solver=1;
 								getincrement((wmenu.childs+2)->hwnd,&neig,NULL);
 							}
 							else
@@ -121,7 +124,17 @@ int vbrat001(struct arclmframe* af)
 						if (!strcmp(*(data + pstr), "SOLVER"))
 						{
 							pstr++;
-							solver = (int)strtol(*(data + pstr), NULL, 10);
+							//solver = (int)strtol(*(data + pstr), NULL, 10);
+						}
+						if (!strcmp(*(data + pstr), "BRIGHT"))
+						{
+							pstr++;
+							BRIGHT = (double)strtod(*(data + pstr), NULL);
+						}
+						if (!strcmp(*(data + pstr), "BLEFT"))
+						{
+							pstr++;
+							BLEFT = (double)strtod(*(data + pstr), NULL);
 						}
 						else
 						{
@@ -200,6 +213,13 @@ int vbrat001(struct arclmframe* af)
 #endif
 
 
+	std::vector<Triplet> Ktriplet;
+	std::vector<Triplet> Mtriplet;
+
+	SparseMatrix Kglobal(msize, msize);
+	/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
+	//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
+	Eigen::SimplicialLDLT<SparseMatrix> solver;
 
   /***GLOBAL MATRIX***/
   kmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
@@ -207,7 +227,7 @@ int vbrat001(struct arclmframe* af)
   if(kmtx==NULL || mmtx==NULL) return 0;
   for(i=0;i<msize;i++)
   {
-    (kmtx+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
+	(kmtx+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
     (mmtx+i)->down=NULL;
   }
 
@@ -227,8 +247,24 @@ int vbrat001(struct arclmframe* af)
   availablephysicalmemoryEx("REMAIN:");            /*MEMORY AVAILABLE*/
   //laptime("ASSEMBLING GLOBAL MATRIX.",t0);
 
-  //assemelem(elems, melem, nelem, constraintmain, mmtx, kmtx, iform, ddisp);
-  assemshell(shells, mshell, nshell, constraintmain, mmtx, kmtx, iform, ddisp);
+
+
+	/*STIFFNESS ASSEMBLAGE*/
+	if(USINGEIGENFLAG==1)
+	{
+	  //assemelemEx(elems, melem, nelem, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
+	  //assemshellEx(shells, mshell, nshell, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
+
+	  /*GLOBAL MATRIX USING EIGEN*/
+	  Kglobal.reserve(msize*msize);
+	  Kglobal.setFromTriplets(Ktriplet.begin(), Ktriplet.end());//SPARSE MATRIX FROM TRIPLET
+	}
+	else
+	{
+	  assemelem(elems, melem, nelem, constraintmain, mmtx, kmtx, iform, ddisp);
+	  assemshell(shells, mshell, nshell, constraintmain, mmtx, kmtx, iform, ddisp);
+	}
+
 
   //laptime("GLOBAL MATRIX ASSEMBLED.",t0);
 
@@ -262,7 +298,7 @@ int vbrat001(struct arclmframe* af)
 	for(j=0;j<msize;j++) *(*(evct+i)+j)=0.0;
   }
 
-  bisecgeneral(mmtx,1.0,kmtx,-1.0,confs,msize,neig,0,biseceps,eigen,evct,0.0,1.0);
+  bisecgeneral(mmtx,1.0,kmtx,-1.0,confs,msize,neig,0,biseceps,eigen,evct,BLEFT,BRIGHT);
 
   laptime("EIGEN COMPLETED.",t0);
 

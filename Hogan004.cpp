@@ -4906,12 +4906,12 @@ gelem.type=TYPENULL;
 	  }
 	  break;
 
-    /*Zoom with Wheel*/
-    #if 1
+	/*Zoom with Wheel*/
+	#if 1
 	case WM_MOUSEWHEEL:
-    //if (GetKeyState(VK_SHIFT) < 0)
-    {
-    	point.x = LOWORD(lParam);
+	//if (GetKeyState(VK_SHIFT) < 0)
+	{
+		point.x = LOWORD(lParam);
 		point.y = HIWORD(lParam);
 		x = point.x;
 		y = point.y;
@@ -4922,6 +4922,7 @@ gelem.type=TYPENULL;
 		if (LOWORD(wParam) == MK_CONTROL) fflag=1;
 //        fflag=1;
 		rotation = int(HIWORD(wParam));
+
 		if(fflag==1)   //underconstruction
 		{
 			x0=(wdraw.childs + 1)->vparam.Xo;
@@ -4929,16 +4930,16 @@ gelem.type=TYPENULL;
 			len=sqrt(pow((x0-x),2)+pow((y0-y),2));
 			sprintf(str,"len:%f",len);
 			errormessage(str);
-
-
 		}
 
-		if (rotation < 10000) {
+		if (rotation <= 10000)
+		{
 			(wdraw.childs + 1)->vparam.odv = initv.odv + scrollunit;
 			sprintf(str, "%.1f", (wdraw.childs + 1)->vparam.odv);
 			SetDlgItemText((wmenu.childs + 2)->hwnd, IDV_L, str);
 		}
-		else if (rotation > 10000) {
+		else if (rotation > 10000)
+		{
 			(wdraw.childs + 1)->vparam.odv = initv.odv - scrollunit;
 			sprintf(str, "%.1f", (wdraw.childs + 1)->vparam.odv);
 			SetDlgItemText((wmenu.childs + 2)->hwnd, IDV_L, str);
@@ -4946,19 +4947,22 @@ gelem.type=TYPENULL;
 
 		clearwindow(*(wdraw.childs + 1));
 		if ((wmenu.childs + 2)->vparam.vflag.mv.ftype == F_ARCLM ||
-			(wmenu.childs + 2)->vparam.vflag.mv.ftype == F_FRAME) {
+			(wmenu.childs + 2)->vparam.vflag.mv.ftype == F_FRAME)
+		{
 			drawarclmframe((wdraw.childs + 1)->hdcC, (wdraw.childs + 1)->vparam,
 				arc, code, ONSCREEN);
 		}
-		if ((wmenu.childs + 2)->vparam.vflag.mv.ftype == F_ORGAN) {
+		if ((wmenu.childs + 2)->vparam.vflag.mv.ftype == F_ORGAN)
+		{
 			draworganization((wdraw.childs + 1)->hdcC,
 				(wdraw.childs + 1)->vparam, (wdraw.childs + 1)->org, ONSCREEN);
 		}
 		SendMessage((wdraw.childs + 1)->hwnd, WM_PAINT, 0, 0);
-    }
+	}
     break;
   #endif
 	/*Zoom with Wheel*/
+
 //Modified by fukushima 2014/4/30////////////////////
 	case WM_MBUTTONDOWN:
 	  x = LOWORD(lParam);
@@ -11061,10 +11065,10 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			arclm001(&arc,ID_INPUTFILE,ID_OUTPUTFILE);
           }
           break;
-          */
-          if(MessageBox(NULL,"Arclm001:Begin.","ARCLM001",
-             MB_OKCANCEL)==IDOK)
-          {
+		  */
+		  if(MessageBox(NULL,"Arclm001:Begin.","ARCLM001",
+			 MB_OKCANCEL)==IDOK)
+		  {
           if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
             {
             getviewparam((wmenu.childs+2)->hwnd,
@@ -11120,25 +11124,8 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
           }
 		  break;
 
-		case IDD_ARCLM201:
-		   if ((wmenu.childs + 2)->vparam.vflag.mv.ftype != F_ARCLM) {
-			MessageBox(NULL, "File Type Error.", "ARCLM201", MB_OK);
-			break;
-		   }
-		   if (MessageBox(NULL, "ArclmCR:Begin.", "ARCLMCR",MB_OKCANCEL) == IDCANCEL)
-		   {
-				if (MessageBox(NULL, "Arclm201:Begin.", "ARCLM201",MB_OKCANCEL) == IDCANCEL)
-				{
-					break;
-				}
-				else
-				{
-					getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-					clearwindow(*(wdraw.childs + 1));
-					arclm201(&arc, ID_INPUTFILE);
-				}
-		   }
-		   else
+		case IDD_ARCLMSTATIC:
+		   if ((wmenu.childs + 2)->vparam.vflag.mv.ftype == F_ARCLM)
 		   {
 			   getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
 			   clearwindow(*(wdraw.childs + 1));
@@ -11147,21 +11134,24 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		   break;
 
 
-		/*
-		case IDD_BCLNG001:
-		  if(MessageBox(NULL,"Bclng001:Begin.","BCLNG001",
-			 MB_OKCANCEL)==IDCANCEL) break;
+		case IDD_ARCLMDYNAMIC:
+		   if ((wmenu.childs + 2)->vparam.vflag.mv.ftype == F_ARCLM)
+		   {
+			   getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
+			   clearwindow(*(wdraw.childs + 1));
+			   arclmDynamic(&arc);
+		   }
+		   break;
 
+
+		case IDD_ARCLMSTATDYNA:
 		  if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
 		  {
-			if(arc.elems==NULL) break;
-			getviewparam((wmenu.childs+2)->hwnd,
-						 &((wdraw.childs+1)->vparam));
-			// clearwindow(*(wdraw.childs+1));
-
-			bclng001(&arc);
+			getviewparam((wmenu.childs+2)->hwnd,&((wdraw.childs+1)->vparam));
+			clearwindow(*(wdraw.childs+1));
+			arclmStatDyna(&arc);
 		  }
-		  break;                         */
+		  break;
 
 		case IDD_BCLNG001:
 		  /*if(MessageBox(NULL,"Bclng001:Begin.","BCLNG001",
@@ -11291,10 +11281,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
           /*EXTRACT ARCLM FROM ORGAN.           */
           /*SAVE AS ARCLM.                      */
 		  /*GRAVITY LOADED ANALYSIS BY ARCLM001.*/
-		  if ((wmenu.childs + 2)->vparam.vflag.mv.ftype != F_ARCLM) {
-			if(arc.elems==NULL) break;
-		  }
-		  if (MessageBox(NULL, "GnshnCR:Begin.", "GNSHNCR",MB_OKCANCEL) == IDCANCEL)
+		  if ((wmenu.childs + 2)->vparam.vflag.mv.ftype == F_ARCLM)
 		  {
 			  if(MessageBox(NULL,"Gnshn101:Begin.","GNSHN101",MB_OKCANCEL)==IDCANCEL)
 			  {
@@ -11305,21 +11292,16 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 				  else
 				  {
 					getviewparam((wmenu.childs+2)->hwnd,&((wdraw.childs+1)->vparam));
-					/*clearwindow(*(wdraw.childs+1));*/
+					clearwindow(*(wdraw.childs+1));
 					vbrat001(&arc);
 				  }
 			  }
 			  else
 			  {
 				getviewparam((wmenu.childs+2)->hwnd,&((wdraw.childs+1)->vparam));
-				/*clearwindow(*(wdraw.childs+1));*/
+				clearwindow(*(wdraw.childs+1));
 				gnshn101(&arc);
 			  }
-		  }
-		  else
-		  {
-			  getviewparam((wmenu.childs + 2)->hwnd,&((wdraw.childs + 1)->vparam));
-			  arclmDynamic(&arc);
 		  }
 		  break;
 
@@ -11375,6 +11357,8 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			arc.constraintmain=(long int *)malloc(6*arc.nnode*sizeof(long int));
 			arc.nmass=(double *)malloc(6*arc.nnode*sizeof(double));
 
+
+
 			inputtexttomemory(fin,&arc);
 			fclose(fin);
 
@@ -11384,10 +11368,10 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 						 (wdraw.childs+1)->vparam);
 
 			clearwindow(*(wdraw.childs+1));
+
 			drawarclmframe((wdraw.childs+1)->hdcC,
 						   (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
 			SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
-
 			(wdraw.childs+1)->lstatus=ROTATE;
 		  }
 		  if(wdraw.nchilds>=2 &&
@@ -11595,7 +11579,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
             strcpy((wdraw.childs+1)->otpfiley,str);
 			strcat((wdraw.childs+1)->otpfiley,".ohy");
 
-            saveasarclm((wdraw.childs+1)->inpfilez,&arc);
+			saveasarclm((wdraw.childs+1)->inpfilez,&arc);
             sprintf((wdraw.childs+1)->inpfile,
                     (wdraw.childs+1)->inpfilez);
 
