@@ -525,7 +525,7 @@ void assemelem_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, lo
 
 	double** lapH;
 	double* lapgform;
-	double** M, ** Kp, ** Keff;
+	double** M, ** Kp, ** Kint, ** Keff;
 
 	for (i = 1; i <= nelem; i++)
 	{
@@ -616,21 +616,21 @@ void assemelem_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		midTtPtHt = matrixtranspose(midHPT, 6 * nnod);
 
 		/*(21)&(22)&(23):MID-POINT FORCE VECTOR.*/
-		mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);//
+		mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);
 
-		Keff = assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Kp, midTtPtHt, HPT,
+		Kint = assemtmtxCR_MID(Kp, eform, edisp, mideinternal, T, midTtPtHt, HPT, alphaf, xi, nnod);
+		symmetricmtx(Kint, 6*nnod);
+		if(gmtx2!=NULL)assemgstiffnesswithDOFelimination(gmtx2, Kint, &elem, constraintmain);
+
+		Keff = assemtmtxCR_DYNA(Kint,
 								ginertial, M, R, lastRt, lapH,
-								alphaf, alpham, xi, beta, ddt, nnod);
+								alpham, beta, ddt, nnod);
 		symmetricmtx(Keff, 6*nnod);
 		assemgstiffnesswithDOFelimination(gmtx, Keff, &elem, constraintmain);
 
-
-
-
-
-
 		//freematrix(M, 6 * nnod);
 		//freematrix(Kp, 6 * nnod);
+		freematrix(Kint, 6 * nnod);
 		freematrix(Keff, 6 * nnod);
 
 		free(loffset);
@@ -961,7 +961,7 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 	double** lapH;
 	double* lapgform;
 	double*** C, ***B;
-	double** M, ** Kp, ** Keff;
+	double** M, ** Kp, ** Kint, ** Keff;
 
 	for (i = 1; i <= nshell; i++)
 	{
@@ -1049,9 +1049,13 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 		/*(21)&(22)&(23):MID-POINT FORCE VECTOR.*/
 		mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);//
 
-		Keff = assemtmtxCR_DYNA(eform, edisp, mideinternal, T, Kp, midTtPtHt, HPT,
+		Kint = assemtmtxCR_MID(Kp, eform, edisp, mideinternal, T, midTtPtHt, HPT, alphaf, xi, nnod);
+		symmetricmtx(Kint, 6*nnod);
+		if(gmtx2!=NULL)assemgstiffnessIIwithDOFelimination(gmtx2, Kint, &shell, constraintmain);
+
+		Keff = assemtmtxCR_DYNA(Kint,
 								ginertial, M, R, lastRt, lapH,
-								alphaf, alpham, xi, beta, ddt, nnod);
+								alpham, beta, ddt, nnod);
 		symmetricmtx(Keff, 6*nnod);
 		assemgstiffnessIIwithDOFelimination(gmtx, Keff, &shell, constraintmain);
 
@@ -1062,6 +1066,7 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 
 		freematrix(M, 6 * nnod);
 		freematrix(Kp, 6 * nnod);
+		freematrix(Kint, 6 * nnod);
 		freematrix(Keff, 6 * nnod);
 
 		free(loffset);

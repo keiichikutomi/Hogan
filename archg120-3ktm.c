@@ -22667,7 +22667,7 @@ double **transformationIII(double **estiff,double **tmatrix,int msize)
   return estiff;
 }/*transformationIII*/
 
-double **transformationEx(double **A,double **T,int row,int col)
+double **transformationEx(double **A,double **T,int row, int col)
 /*TRANSFORM ELEMENT MATRIX INTO GLOBAL.*/
 {
   int i;
