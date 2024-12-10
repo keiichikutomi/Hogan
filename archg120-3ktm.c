@@ -216,8 +216,6 @@ struct gausspoint{double estrain[7];
 				  double yinit,y,alpha;
 				  double f[2];
 				  double lambda[2];
-				  double Ee;
-				  double Ep;
 				  };
 
 struct owire{long int code,loff;
@@ -249,6 +247,8 @@ struct oshell{long int code,loff;
 			  double stress[4][6];
 			  double area,w[9];
 			  struct gausspoint gp[9];/*INTEGRATION POINTS PARAMS*/
+
+			  double Ee,Ep;
 			  double prate;/*IN-PLANE STIFFNESS RATIO BY KUTOMI*/
 			  double brate;/*BENDING STIFFNESS RATIO BY KUTOMI*/
 			 }; /*SHELL ELEM*/
@@ -257,8 +257,6 @@ struct memoryshell{
 					long int code;
 					double stress[4][6];
 					struct gausspoint gp[9];/*INTEGRATION POINTS PARAMS*/
-					double SE,SEp,SEb;
-					double KE,KEt,KEr;
 				  };                     /*SHELL ELEMENT MEMORY FOR ARCLM.*/
 
 
@@ -19968,8 +19966,6 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  ((af->shells+i-1)->gp[ii]).lambda[0]=0.0;
 	  ((af->shells+i-1)->gp[ii]).lambda[1]=0.0;
 	  ((af->shells+i-1)->gp[ii]).alpha=0.0;
-	  ((af->shells+i-1)->gp[ii]).Ee=0.0;
-	  ((af->shells+i-1)->gp[ii]).Ep=0.0;
 	}
 
 	/*INITIAL AREA OF SHELL*/
@@ -24431,21 +24427,21 @@ void outputreaction(struct gcomponent *gmtx,
 
   for(i=1;i<=6*nnode;i++)
   {
-    iconf=(confs+i-1)->iconf;
+	iconf=(confs+i-1)->iconf;
     offset=(i-1)/6;
 
 	if(iconf==1)
     {
       dreaction=0.0;
       for(j=1;j<=6*nnode;j++)
-      {
+	  {
         gread(gmtx,i,j,&gstiff);
-        dreaction+=gstiff*(*(gvct+j-1));             /*{dR}=[K]{dU}*/
+		dreaction+=gstiff*(*(gvct+j-1));             /*{dR}=[K]{dU}*/
       }
 
       *(dreact+nreact)+=dreaction;               /*UPDATE REACTION.*/
-      /*reaction=*(dreact+nreact-1);*//*ERROR*/          /*{R}+{dR}*/
-      reaction=*(dreact+nreact);                         /*{R}+{dR}*/
+	  /*reaction=*(dreact+nreact-1);*//*ERROR*/          /*{R}+{dR}*/
+	  reaction=*(dreact+nreact);                         /*{R}+{dR}*/
 
 	  sprintf(string,"NODE:%5ld %ld %12.5f / %12.5f",
 			  (nodes+offset)->code,(i-1)%6+1,dreaction,reaction);
@@ -24453,7 +24449,7 @@ void outputreaction(struct gcomponent *gmtx,
 
 
 	  nreact++;
-    }
+	}
   }
   return;
 }/*outputreaction*/

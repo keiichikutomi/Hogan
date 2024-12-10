@@ -1,6 +1,7 @@
 
 
 #include <Eigen/Sparse>
+#include <Eigen/SparseLU>
 #include <Eigen/SparseCholesky>
 //#include <Eigen/Dense>
 #include <Spectra/SymGEigsSolver.h>
@@ -40,8 +41,8 @@ void assemtriplet(std::vector<Triplet>& triplets,
 		  jj=6*(elem->node[n2]->loff)+j;
 		  if(constraintmain!=NULL)jj=*(constraintmain+jj);
 
-		  if(ii>=jj)
-		  {
+		  //if(ii>=jj)
+		  //{
 			if((confs+ii)->iconf!=1 && (confs+jj)->iconf!=1)
 			{
 				edata=*(*(estiff+6*n1+i)+6*n2+j);
@@ -54,7 +55,7 @@ void assemtriplet(std::vector<Triplet>& triplets,
 			{
 				triplets.emplace_back(ii, jj, 1.0);
 			}
-		  }
+		  //}
 		}
 	  }
 	}

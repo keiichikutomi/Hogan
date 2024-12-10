@@ -39,6 +39,7 @@
 #include "corotational.c"
 #include "arclmEigen.c"
 #include "assemble.c"
+#include "assembleEigen.c"
 #include "archg015ktm.c"                  /*ANALYSIS STATIC LINEAR.*/
 #include "arclmStatic.c"              /*ANALYSIS STATIC NON-LINEAR.*/
 #include "arclmDynamic.c"

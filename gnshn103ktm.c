@@ -98,7 +98,7 @@ int gnshn101(struct arclmframe *af)
 	struct gcomponent ginit = {0, 0, 0.0, NULL};
 
 	struct gcomponent *gmtx, *g, *p; /* GLOBAL MATRIX [K] */
-	/* double *gvct; */                                 /* GLOBAL VECTOR */
+
 	double **drccos, **tmatrix, **estiff, *estress, **e, **t;
 	double *gdisp, *edisp;
 	double determinant, func[2];
@@ -122,21 +122,21 @@ int gnshn101(struct arclmframe *af)
 	/* int neig=NEIGEN,ncount; */
 	int neig = 1, ncount; /* T1 */
 	/* int neig=5,ncount; */                  /* T1,T2,---,Tn */
+
+
 	double **evct, *eigen; /* EIGEN VECTORS,EIGEN VALUES */
 	double eps = 1.0E-8, data, d, xdisp1, xdisp2, xdispgap, maxxdisp = 0;
 	double h1 = DAMPING, w1, T1, Ti, T11,T12, ene1, ene2;
-	struct gcomponent *cmtx, *mtx1, *mtx2, *mtx3, *mtx4, *mtx5, *mtx6, *mtx7, *mtx8, *mtx9, *mtx10, *mtx11, *mtx12, *mtx13, *mtx14, *mtx15, *mtx16, *mtx17, *mtx18, *mtx19, *mtx20, *mtx21, *mtx22, *mtx23, *mtx24; /* MATRIX [C] */
+	struct gcomponent *cmtx,*mtx1,*mtx2; /* MATRIX [C] */
 	double mtotal;
 	int dtype = DAMPINGTYPE;
 
 	struct snode *sn;
 
-	/* DEIGAB TEST */
-	double A[MSIZE][MSIZE], B[MSIZE][MSIZE], W[7][MSIZE], E[MSIZE],
-		V[MSIZE][MSIZE];
+
 
     double *ncr; /*BCLNG CONDENSATION RESULT*/      //ujioka
-    int bclngcondensation;
+	int bclngcondensation;
 
     double gdata;
 
@@ -165,18 +165,12 @@ int gnshn101(struct arclmframe *af)
 	ferr = fopen("gnshn.txt", "w"); /* ERROR FILE */
 	if (ferr != NULL) {
 		fprintf(ferr, "   LAP     TIME");
-		fprintf(ferr,
-			"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
-		fprintf(ferr,
-			"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
-		fprintf(ferr,
-			"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
-		fprintf(ferr,
-			"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
-		fprintf(ferr,
-			"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
-		fprintf(ferr,
-			"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
+		fprintf(ferr,"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
+		fprintf(ferr,"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
+		fprintf(ferr,"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
+		fprintf(ferr,"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
+		fprintf(ferr,"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
+		fprintf(ferr,"      ELEM          Nzi          Qyi          Qyj          Mxi          Mxj");
 		fprintf(ferr, "      NODE           Dx");
 		fprintf(ferr, "      NODE           Dx");
 		fprintf(ferr, "      NODE           Dx");
@@ -302,29 +296,21 @@ int gnshn101(struct arclmframe *af)
 	sprintf(string, "MATRIX DIMENSION=%d", ncount);
 
 	gmtx = (struct gcomponent*)malloc(msize*sizeof(struct gcomponent));
-	gacc = mallocdoublevector(msize); /* ACCEL VECTOR */
-	if (gmtx == NULL || gacc == NULL)return 0;
 	for (i = 0; i < msize; i++)
 	{
 	  (gmtx+i)->down = NULL; /* GLOBAL MATRIX INITIALIZATION. */
 	}
-
-	mtx23 = (struct gcomponent*)malloc(msize*sizeof(struct gcomponent));  /* DIAGONALS OF MATRIX. */
-	for (i = 0; i < msize; i++)
-	{
-		(mtx23+i)->down = NULL;
+	mmtx = (struct gcomponent*)malloc(msize*sizeof(struct gcomponent));
+	for (i = 0; i < msize; i++) {
+		(mmtx + i)->m = (unsigned short int)(i + 1);
+		(mmtx + i)->n = (unsigned short int)(i + 1);
+		(mmtx + i)->value = 0.0;
+		(mmtx + i)->down = NULL;
 	}
-
-	mtx24 = (struct gcomponent*)malloc(msize*sizeof(struct gcomponent));  /* DIAGONALS OF MATRIX. */
-	for (i = 0; i < msize; i++)
-	{
-		(mtx24+i)->down = NULL;
-	}
-
 #if 1 /*FOR PRORORTION TO INITIAL STIFFNESS, OCCASIONAL STIFFNESS II.*/
-	if (dtype == 1 || dtype == 3) {
+	if (dtype == 1 || dtype == 3)
+	{
 		cmtx = (struct gcomponent*)malloc(msize*sizeof(struct gcomponent));
-		if (cmtx == NULL)return 0;
 		for (i = 0; i < msize; i++)
 		{
 		  (cmtx + i)->down = NULL; /* MATRIX [C] INITIALIZATION. */
@@ -338,7 +324,10 @@ int gnshn101(struct arclmframe *af)
 	for (i = 0; i < neig; i++)
 	{
 	  *(evct + i) = (double *)malloc(msize*sizeof(double));
-	  for (j = 0; j < msize; j++)* (*(evct + i) + j) = 0.0;
+	  for (j = 0; j < msize; j++)
+	  {
+		*(*(evct + i) + j) = 0.0;
+	  }
 	}
 
 	/* DISPLACEMENT VECTORS. */
@@ -348,31 +337,24 @@ int gnshn101(struct arclmframe *af)
 	du = mallocdoublevector(msize);
 	dud = mallocdoublevector(msize);
 	dudd = mallocdoublevector(msize);
-	if (u == NULL || ud == NULL || udd == NULL || du == NULL || dud == NULL ||  dudd == NULL)return 0;
-	for (i = 0; i < msize; i++) {
-		*(u + i) = 0.0;
-		*(ud + i) = 0.0;
-		*(udd + i) = 0.0;
-		*(du + i) = 0.0;
-		*(dud + i) = 0.0;
+
+	gacc = mallocdoublevector(msize); /* ACCEL VECTOR */
+
+	for (i = 0; i < msize; i++)
+	{
+		*(u + i)    = 0.0;
+		*(ud + i)   = 0.0;
+		*(udd + i)  = 0.0;
+		*(du + i)   = 0.0;
+		*(dud + i)  = 0.0;
 		*(dudd + i) = 0.0;
 	}
 
-	mmtx = (struct gcomponent*) /* DIAGONALS OF MASS MATRIX. */
-		malloc(msize*sizeof(struct gcomponent));
-	if (mmtx == NULL)
-		return 0;
-	for (i = 0; i < msize; i++) {
-		(mmtx + i)->m = (unsigned short int)(i + 1);
-		(mmtx + i)->n = (unsigned short int)(i + 1);
-		(mmtx + i)->value = 0.0;
-		(mmtx + i)->down = NULL;
-	}
 
 	ddisp = (double *)malloc(6 * nnode*sizeof(double));
-	af->ddisp = ddisp; /* DISPLACEMENT:6 DIRECTIONS. */
+	melem = (struct memoryelem*)malloc(nelem*sizeof(struct memoryelem));
 
-	melem = (struct memoryelem*) malloc(nelem*sizeof(struct memoryelem));
+	af->ddisp = ddisp; /* DISPLACEMENT:6 DIRECTIONS. */
 	af->melem = melem; /* CODE,12 BOUNDARIES,12 STRESS. */
 
 
@@ -390,8 +372,7 @@ int gnshn101(struct arclmframe *af)
 	af->dreact = dreact;
 	initialreact(fin, dreact, nreact); /* ASSEMBLAGE LONG REACTIONS. */
 
-	GetAsyncKeyState(VK_LBUTTON); /* CLEAR KEY LEFT. */
-	GetAsyncKeyState(VK_RBUTTON); /* CLEAR KEY RIGHT. */
+
 
 	drawglobalaxis((wdraw.childs + 1)->hdcC, (wdraw.childs + 1)->vparam, 0, 0,
 		255); /* DRAW GLOBAL AXIS. */
@@ -433,8 +414,7 @@ int gnshn101(struct arclmframe *af)
 
 	/* ASSEMBLAGE MASS MATRIX. */
 	mtotal = assemmass(mmtx, nnode, confs, nmass);
-	if (fout != NULL)
-		fprintf(fout, "TOTAL MASS = %12.5f\n\n", mtotal);
+	if (fout != NULL)fprintf(fout, "TOTAL MASS = %12.5f\n\n", mtotal);
 
 
 	/* MEMORIES. */
@@ -495,10 +475,9 @@ int gnshn101(struct arclmframe *af)
 			assemgstiffness(cmtx, estiff, &elem); /* ASSEMBLAGE. */
 		}
 
-		/*CHANGE T1*/ //change 101
-		T1 = 1.77364112 ;
-		//T1 = 0.78363682; /* FUNDAMENTAL NATURAL PERIOD 1次固有周期 */
 		/*CHANGE T1*/
+		T1 = 1.77364112 ;/* FUNDAMENTAL NATURAL PERIOD 1次固有周期 */
+
 
 		w1 = 2.0 * PI / T1;
 		for (ii = 1; ii <= msize; ii++) {
@@ -513,25 +492,13 @@ int gnshn101(struct arclmframe *af)
 	}
 #endif
 
-	/* step number og getting matrix */
 
-	/*
-	n11 = 243;
-	n22 = 244;
-	n33 = 250;
-	n44 = 251;
-	n55 = 252;
-
-	n66 = 265;
-	n77 = 266;
-	n88 = 267;
-	n99 = 268;
-	n100 = 269;
-	*/
 	int n101 = 750;
 	/*changeanalysis*/
-	/*bool FLAG1 = 0;*/ /* 0:dynamic analysis, 1:eigenvalue analysis */
 	bool FLAG2 = 0; /* 0:bisecsylvester  , 1:deigabgeneral */
+
+
+
 	/* ここから振動解析の繰り返し演算 */
 	for (nlap = 1; nlap <= n101 ; nlap++) { /*　n11で強制終了 or lapsまで　*/
 
@@ -612,12 +579,12 @@ int gnshn101(struct arclmframe *af)
 			estiff = modifyhinge(elem, estiff); /* MODIFY MATRIX. */
 
 
-            if(bclngcondensation) /***UJIOKA***/
-            {
-              estiff = assempmtxbc(elem,estiff,ncr[i]);
+			if(bclngcondensation) /***UJIOKA***/
+			{
+			  estiff = assempmtxbc(elem,estiff,ncr[i]);
                                                    /* ADD PLASTIC MATRIX. */
-            }
-            else estiff = assempmtx(elem, estiff); /* ADD PLASTIC MATRIX. */
+			}
+			else estiff = assempmtx(elem, estiff); /* ADD PLASTIC MATRIX. */
 
             
 			transformationII(estiff, tmatrix, e, t); /* [K]=[Tt][k][T] */
@@ -626,68 +593,7 @@ int gnshn101(struct arclmframe *af)
 
 		}
 
-		/*get matrix*/
-        /*
-		if(nlap == n11)
-		{
-		  mtx3 = copygcompmatrix(gmtx, msize);
-		  mtx4 = copygcompmatrix(mmtx, msize);
-		}
 
-		if(nlap == n22)
-		{
-		  mtx5 = copygcompmatrix(gmtx, msize);
-		  mtx6 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n33)
-		{
-		  mtx7 = copygcompmatrix(gmtx, msize);
-		  mtx8 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n44)
-		{
-		  mtx9 = copygcompmatrix(gmtx, msize);
-		  mtx10 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n55)
-		{
-		  mtx11 = copygcompmatrix(gmtx, msize);
-		  mtx12 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n66)
-		{
-		  mtx13 = copygcompmatrix(gmtx, msize);
-		  mtx14 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n77)
-		{
-		  mtx15 = copygcompmatrix(gmtx, msize);
-		  mtx16 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n88)
-		{
-		  mtx17 = copygcompmatrix(gmtx, msize);
-		  mtx18 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n99)
-		{
-		  mtx19 = copygcompmatrix(gmtx, msize);
-		  mtx20 = copygcompmatrix(mmtx, msize);
-		}
-		if(nlap == n100)
-		{
-		  mtx21 = copygcompmatrix(gmtx, msize);
-		  mtx22 = copygcompmatrix(mmtx, msize);
-		}
-        */
-		/*get matrix*/
 
         sprintf(string, "GLOBAL MATRIX %ld COMPS ASSEMBLED.", comps);
 		laptime(string, t0);
@@ -734,29 +640,22 @@ int gnshn101(struct arclmframe *af)
                    sprintf(string,"%3d",ii);
                    for(jj=1;jj<=msize;jj++)
                    {
-	                 gread(mtx1,ii,jj,&gdata);
-//	                 sprintf(s," %18.12f",gdata);
-//	                 strcat(string,s);
-                   }
-//                   if(fout!=NULL) fprintf(fout,"%s\n",string);
-                }
-                for(ii=1;ii<=msize;ii++)
+					 gread(mtx1,ii,jj,&gdata);
+				   }
+
+				}
+				for(ii=1;ii<=msize;ii++)
                 {
                    sprintf(string,"%3d",ii);
                    for(jj=1;jj<=msize;jj++)
                    {
-	                 gread(mtx2,ii,jj,&gdata);
-//	                 sprintf(s," %18.12f",gdata);
-//	                 strcat(string,s);
-                   }
-//                   if(fout!=NULL) fprintf(fout,"%s\n",string);
-                }
+					 gread(mtx2,ii,jj,&gdata);
+				   }
+				}
 
 
 				if (FLAG2) { // deigabgeneral
 					MessageBox(NULL, "DEIGABGENERAL BEGIN.", "Gnshn", MB_OK);
-				  	/*deigabgeneral(mtx1, mtx2, confs, msize, -neig, neig, eps,
-						eigen, evct);*/
 					deigabgeneral(mtx2, mtx1, confs, msize, neig, neig, eps,
 						eigen, evct);
 					laptime("EIGEN COMPLETED.", t0);
@@ -780,20 +679,15 @@ int gnshn101(struct arclmframe *af)
 							"DEIGABGENERAL EIGEN VALUE %ld=%.8f\n", (i + 1),
 							*(eigen + i));
 						if (*(eigen + i) > 0.0)
-                        {
-							//Ti = 2.0 * PI / sqrt(*(eigen + i));
+						{
 							Ti = 2.0 * PI * sqrt(*(eigen + i));
 							sprintf(string, "PERIOD T%ld=%.8f [sec]",
 								(i + 1), Ti);
-							if (fout != NULL)
-								fprintf(fout, "%s\n", string);
-							/* errormessage(string); */
-							MessageBox(NULL, string, "Gnshn", MB_OK);
+							fprintf(fout, "%s\n", string);
 						}
 						else
-                        {
-							if (fout != NULL)
-								fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
+						{
+							fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
 						}
 					}
 					else // bisecsylvester
@@ -807,23 +701,17 @@ int gnshn101(struct arclmframe *af)
 							Ti = 2.0 * PI * sqrt(*(eigen + i));
 							sprintf(string, "PERIOD T%ld=%.8f [sec]",
 								(i + 1), Ti);
-							if (fout != NULL)
-								fprintf(fout, "%s\n", string);
-							/* errormessage(string); */
-							MessageBox(NULL, string, "Gnshn", MB_OK);
+							fprintf(fout, "%s\n", string);
 						}
 						else
                         {
-							if (fout != NULL)
-								fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
+							fprintf(fout, "ERROR:EIGEN VALUE NEGATIVE.\n");
 						}
 					}
 
-					if (fout != NULL)
-						fprintf(fout, "\nEIGEN VECTOR %ld\n",(i + 1));
+					fprintf(fout, "\nEIGEN VECTOR %ld\n",(i + 1));
 					for (ii = 0; ii < nnode; ii++)
-                    {
-						if (fout != NULL)
+					{
 							fprintf(fout,
 							"%4ld %11.7f %11.7f %11.7f %11.7f %11.7f %11.7f\n",
 							(nodes + ii)->code, *(*(evct + i) + 6*ii + 0),
@@ -876,11 +764,10 @@ int gnshn101(struct arclmframe *af)
 			    	g = g->down;
 				    free(p);
 			    }
-			    ginit.m = (unsigned short int)i;
-			    /* ginit.n=(unsigned short int)i; */
+				ginit.m = (unsigned short int)i;
 			    *(cmtx + (i - 1)) = ginit;
 		    }
-		    for (i = 0; i < nelem;i++) /* TEST */      /* ASSEMBLAGE DAMPING MATRIX. */
+			for (i = 0; i < nelem;i++) /* TEST */      /* ASSEMBLAGE DAMPING MATRIX. */
             {
 			    inputelem(elems, melem, i, &elem); /* READ ELEMENT DATA. */
 
@@ -929,49 +816,9 @@ int gnshn101(struct arclmframe *af)
             }
         }
 #endif
-		/*CHECK KOYUSYUKI*/
-		/*
-		for (i = 0; i < neig; i++)
-		{
-			*(evct + i) = (double *)malloc(msize*sizeof(double));
-			for (j = 0; j < msize; j++)
-				* (*(evct + i) + j) = 0.0;
-		}
 
 
-		for (i = 1; i <= msize; i++)
-		{
-			g = (mtx23 + (i - 1))->down;
-			while (g != NULL)
-			 {
-				p = g;
-				g = g->down;
-				free(p);
-			}
 
-			ginit.m = (unsigned short int)i;
-
-
-			*(mtx23 + (i - 1)) = ginit;
-		}
-
-		for (i = 0; i < msize; i++) {
-		(mtx24 + i)->m = (unsigned short int)(i + 1);
-		(mtx24 + i)->n = (unsigned short int)(i + 1);
-		(mtx24 + i)->value = 0.0;
-		(mtx24 + i)->down = NULL;
-		}
-
-		mtx23 = copygcompmatrix(gmtx, msize);
-		mtx24 = copygcompmatrix(mmtx, msize);
-
-		deigabgeneral(mtx23, mtx24, confs, msize, -neig, neig, eps,
-						eigen, evct);
-		T12 = 2.0 * PI / sqrt(*(eigen + 0));
-
-        */
-
-		if (fout != NULL)
 			fprintf(fout, "T1=%.5f w1=%.5f h1=%.5f\n", T1, w1, h1);
 
 		/* NEWMARK'S BETA PROCESS. */
@@ -981,8 +828,7 @@ int gnshn101(struct arclmframe *af)
 
 		sprintf(string, "DETERMINANT=%.5E COMPS=%ld", determinant, comps);
 		errormessage(string);
-		if (fout != NULL)
-			fprintf(fout, "%s\n", string);
+		fprintf(fout, "%s\n", string);
 
 
 		if (determinant <= 0.0) {
@@ -1019,25 +865,6 @@ int gnshn101(struct arclmframe *af)
 		if (fout != NULL)
 			fprintf(fout, "\"DISPLACEMENT\"\n");
 		outputdisp(du, fout, nnode, nodes); /* INCREMENTAL DISPLACEMENT. */
-		/* while(!GetAsyncKeyState(VK_LBUTTON))
-		 ; */                                   /* LEFT CLICK TO CONTINUE. */
-
-		/* if(ferr!=NULL) fprintf(ferr," %7.5f",((double)nlap)*ddt); */
-
-		/*
-		if (fout != NULL)
-		{
-			fprintf(fout,
-					" STRESS %12.5f %12.5f %12.5f %12.8f %12.8f %12.8f\n",
-					(elems + 0)->stress[1][0],
-					(elems + 0)->stress[1][1],
-					(elems + 0)->stress[1][2],
-					(elems + 0)->stress[1][3],
-					(elems + 0)->stress[1][4],
-					(elems + 0)->stress[1][5]);
-
-		}
-        */
 
 
 		for (i = 0; i < nelem; i++) /* STRESS OUTPUT,UPDATE. */ {
@@ -1053,8 +880,8 @@ int gnshn101(struct arclmframe *af)
             if(elem.stress[0][0]>0)  //compression
             {
   	          sprintf(string,"ELEM %d :Ncr=%5.8f\n",
-      	     			(af->elems+i-1)->code,ncr[i]);
-//            errormessage(string);/*for check*/
+						(af->elems+i-1)->code,ncr[i]);
+
               elemstressIIbc(estress, &elem, du, melem, fout, drccos, tmatrix,
 				estiff, gdisp, edisp, func,ftxt,ncr[i]);
             }
@@ -1065,7 +892,7 @@ int gnshn101(struct arclmframe *af)
               /*
                 便宜上Ncr=0とし、この場合降伏曲面は修正しない。
                 (updatestressbc,coefficientsbcでの条件分岐による)
-              */
+			  */
             }
 
           }
@@ -1078,13 +905,7 @@ int gnshn101(struct arclmframe *af)
 			(elems + i)->Ee[1] = elem.Ee[1];
 			(elems + i)->Ep[0] = elem.Ep[0];
 			(elems + i)->Ep[1] = elem.Ep[1];
-/*
-           if(elem.code==1026)
-           {
-           fprintf(ftest,"ELEM %5ld %-6.12f %-6.12f %-6.12f %-6.12f\n",
-                   elem.code,elem.Ee[0],elem.Ep[0],elem.Ee[1],elem.Ep[1]);
-           }
-*/
+
 		}
 
 		/* UPDATE DISPLAY. */
@@ -1100,7 +921,7 @@ int gnshn101(struct arclmframe *af)
 
 
 
-		if (fout != NULL)
+
 			fprintf(fout, "\"REACTION\"\n");
 		outputreaction(gmtx, du, nodes, confs, dreact, fout, nnode);
 
@@ -1412,7 +1233,7 @@ int gnshn101(struct arclmframe *af)
 
 int gnshn102(struct arclmframe *af)
     /* gosei:timely, t1:first */
-    /* DYNAMIC RESPONSE ANALYSIS. */
+	/* DYNAMIC RESPONSE ANALYSIS. */
 	/* NODE MASSES ARE ALREADY SUMMED IN EXTRACTION. */
 	/* GRAVITY LOADED ANALYSIS IS ALREADY DONE BY ARCLM. */ 
     {
@@ -1469,9 +1290,7 @@ int gnshn102(struct arclmframe *af)
 
 	struct snode *sn;
 
-	/* DEIGAB TEST */
-	double A[MSIZE][MSIZE], B[MSIZE][MSIZE], W[7][MSIZE], E[MSIZE],
-		V[MSIZE][MSIZE];
+
 
     double *ncr; /*BCLNG CONDENSATION RESULT*/      //ujioka
 
@@ -1909,7 +1728,6 @@ int gnshn102(struct arclmframe *af)
 	definencr(&arc,&*ncr);          //ujioka
 
 	/*change analysis*/
-	/*bool FLAG1 = 0;*/ /* 0:dynamic analysis, 1:eigenvalue analysis */
 	bool FLAG2 = 0; /* 0:bisecsylvester  , 1:deigabgeneral */
 	/* ここから振動解析の繰り返し演算 */
 	for (nlap = 1; nlap <= laps; nlap++) { /*　n11で強制終了 or lapsまで　*/
@@ -2072,68 +1890,7 @@ int gnshn102(struct arclmframe *af)
 
 
 
-		/*get matrix*/
-        /*
-		if(nlap == n11)
-		{
-		  mtx3 = copygcompmatrix(gmtx, msize);
-		  mtx4 = copygcompmatrix(mmtx, msize);
-		}
 
-		if(nlap == n22)
-		{
-		  mtx5 = copygcompmatrix(gmtx, msize);
-		  mtx6 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n33)
-		{
-		  mtx7 = copygcompmatrix(gmtx, msize);
-		  mtx8 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n44)
-		{
-		  mtx9 = copygcompmatrix(gmtx, msize);
-		  mtx10 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n55)
-		{
-		  mtx11 = copygcompmatrix(gmtx, msize);
-		  mtx12 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n66)
-		{
-		  mtx13 = copygcompmatrix(gmtx, msize);
-		  mtx14 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n77)
-		{
-		  mtx15 = copygcompmatrix(gmtx, msize);
-		  mtx16 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n88)
-		{
-		  mtx17 = copygcompmatrix(gmtx, msize);
-		  mtx18 = copygcompmatrix(mmtx, msize);
-		}
-
-		if(nlap == n99)
-		{
-		  mtx19 = copygcompmatrix(gmtx, msize);
-		  mtx20 = copygcompmatrix(mmtx, msize);
-		}
-		if(nlap == n100)
-		{
-		  mtx21 = copygcompmatrix(gmtx, msize);
-		  mtx22 = copygcompmatrix(mmtx, msize);
-		}
-        */
-		/*get matrix*/
 
 		sprintf(string, "GLOBAL MATRIX %ld COMPS ASSEMBLED.", comps);
 		laptime(string, t0);

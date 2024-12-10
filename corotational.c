@@ -229,14 +229,20 @@ double** spinfittermtx(double* eform, int nnod)
 		/*G1*/
 		*(*(G + 0) + 2) = 0.5 * (*(eform + 12) - *(eform + 6)) / A;
 		*(*(G + 1) + 2) = 0.5 * (*(eform + 13) - *(eform + 7)) / A;
-		*(*(G + 2) + 1) = -1 / len;
+		//*(*(G + 2) + 1) = -1 / len;
+		*(*(G + 2) + 0) = -0.5**(*(G + 0) + 2);
+		*(*(G + 2) + 1) = -0.5**(*(G + 1) + 2);
 		/*G2*/
 		*(*(G + 0) + 8) = 0.5 * (*(eform + 0) - *(eform + 12)) / A;
 		*(*(G + 1) + 8) = 0.5 * (*(eform + 1) - *(eform + 13)) / A;
-		*(*(G + 2) + 7) = 1 / len;
+		//*(*(G + 2) + 7) = 1 / len;
+		*(*(G + 2) + 6) = -0.5**(*(G + 0) + 8);
+		*(*(G + 2) + 7) = -0.5**(*(G + 1) + 8);
 		/*G3*/
 		*(*(G + 0) + 14) = 0.5 * (*(eform + 6) - *(eform + 0)) / A;
 		*(*(G + 1) + 14) = 0.5 * (*(eform + 7) - *(eform + 1)) / A;
+		*(*(G + 2) + 12) = -0.5**(*(G + 0) + 14);
+		*(*(G + 2) + 13) = -0.5**(*(G + 1) + 14);
 	}
 	return G;
 }
@@ -712,6 +718,7 @@ double **assemtmtxCR_DYNA(double** Kint,
 			*(*(Kmas1 + i) + j)=0.0;
 		}
 	}
+
 	for (n = 0; n < nnod; n++)
 	{
 		for (i = 0; i < 3; i++)
@@ -738,7 +745,7 @@ double **assemtmtxCR_DYNA(double** Kint,
 	{
 		for (j = 0; j < 6*nnod; j++)
 		{
-			*(*(Keff + i) + j) = *(*(Kmas1 + i) + j) + (1-alpham)*(*(*(Kmas1 + i) + j) + *(*(Kmas2 + i) + j) / (beta * ddt * ddt));
+			*(*(Keff + i) + j) = *(*(Kint + i) + j) + (1-alpham)*(*(*(Kmas1 + i) + j) + *(*(Kmas2 + i) + j) / (beta * ddt * ddt));
 		}
 	}
 
@@ -1260,9 +1267,9 @@ double* midpointvct(double* vct,double* lastvct,double alpha,int size)
 	double* midvct;
 
 	midvct = (double*)malloc(size * sizeof(double));
-	for (i=0;i<size;i++)
+	for(i=0;i<size;i++)
 	{
-		*(midvct+i)=(1.0-alpha)**(vct+i)+alpha**(lastvct+i);
+		*(midvct+i) = (1.0-alpha)**(vct+i) + alpha**(lastvct+i);
 	}
 	return midvct;
 }
@@ -1278,7 +1285,7 @@ double** midpointmtx(double** mtx,double** lastmtx,double alpha,int size)
 		*(midmtx+i) = (double*)malloc(size * sizeof(double));
 		for(j=0;j<size;j++)
 		{
-			*(*(midmtx+i)+j)=(1.0-alpha)**(*(mtx+i)+j) + alpha**(*(lastmtx+i)+j);
+			*(*(midmtx+i)+j) = (1.0-alpha)**(*(mtx+i)+j) + alpha**(*(lastmtx+i)+j);
 		}
 	}
 	return midmtx;

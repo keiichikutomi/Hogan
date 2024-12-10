@@ -456,7 +456,7 @@ double ultimateshearofpcgirder(struct element elem,
 FILE *fout0;
 char prj[20];
 double jis;                                        /*1.1=JIS STEEL.*/
-struct materials gmaterial;
+struct materials gmaterial = {0};
 extern int globalmessageflag;
 extern int globalstatus;
 
@@ -3580,7 +3580,7 @@ int createyieldsurface(struct arclmframe *af)
         }
         else if(sect1.stype==STYPE_RC)               /*RC*/
         {
-          Qu=ultimateshearofrc(elem,gmaterial,ia,
+		  Qu=ultimateshearofrc(elem,gmaterial,ia,
                                (-uN),0.0,0.0);
         }
         else if(sect1.stype==STYPE_SRC)             /*SRC*/
@@ -13822,8 +13822,4 @@ double ultimateshearofpcgirder(struct element elem,
   return Qu;
 
 }
-
-
-
-
 

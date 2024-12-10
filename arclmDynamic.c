@@ -13,7 +13,8 @@ double loadfactormap(double time);
 int arclmStatDyna(struct arclmframe* af)
 {
 	double targetload;
-	targetload = 100000;
+	//targetload = 100000;
+	targetload = 1e+10;
 	while(1)
 	{
 		arclmStatic(af);
@@ -34,7 +35,7 @@ int arclmDynamic(struct arclmframe* af)
 	FILE *fin, *fonl, * fdsp, * fexf, * finf, * fubf, * frct, * finr, * fstr, * fene, * ffig, * fbcl, * feig, *fout;         /*FILE 8 BYTES*/
 	FILE *fvel,*facc;
 
-	int i, ii, jj;
+	int i, j, ii, jj;
 
 	/*MODEL SIZE*/
 	int nnode, nelem, nshell, nsect, nconstraint;
@@ -61,7 +62,7 @@ int arclmDynamic(struct arclmframe* af)
 	double sign2,determinant2;
 	long int nline,nline2;
 
-	int USINGEIGENFLAG = 0;
+	int USINGEIGENFLAG = 1;
 
 	/*GLOBAL VECTOR*/
 	double* iform,* ddisp,* lastddisp,* lapddisp,* lapddisp_m,*givendisp;
@@ -96,54 +97,16 @@ int arclmDynamic(struct arclmframe* af)
 	double lambda = 0.0;
 
 	double volume = 0.0;
-	double Wkt,Wet,Wpt,Wot,*wk[3],*wo[3]; /* ENERGY */
-
-		/*
-
-		Wkt = 0.0;
-		Wet = 0.0;
-		Wpt = 0.0;
-		Wot = 0.0;
-		for (ii = 0; ii < nnode; ii++)
-		{
-			for (jj = 0; jj < 3; jj++)
-			{
-				*(wk[jj] + ii) = 0.5 * (*(nmass + ii)) * (*(ud + 6 * ii + jj)) *(*(ud + 6 * ii + jj));
-				*(wo[jj] + ii) -= 0.5 * (*(nmass + ii)) * (2 * tacc[jj] - dacc[jj]) *(*(du + 6 * ii + jj));
-
-				Wkt += *(wk[jj] + ii);
-				Wot += *(wo[jj] + ii);
-			}
-		}
-
-		for (ii = 0; ii < nelem; ii++)
-		{
-			for (jj = 0; jj < 2; jj++)
-			{
-				Wet += (elems + ii)->Ee[jj];
-				Wpt += (elems + ii)->Ep[jj];
-			}
-		}
-		for (ii = 0; ii < nshell; ii++)
-		{
-			for (jj = 0; jj < 2; jj++)
-			{
-				Wet += (shells + ii)->Ee[jj];
-				Wpt += (shells + ii)->Ep[jj];
-			}
-		}
-
-		if (ftxt != NULL) {
-			fprintf(ftxt, " %11.7f %11.7f %11.7f", Wkt, Wkt + Wet,
-				Wkt + Wet + Wpt);
-			fprintf(ftxt, "\n");
-		}
-		*/
+	double Wkt,Wet,Wpt,Wot; /* ENERGY */
+	Wkt = 0.0;
+	Wet = 0.0;
+	Wpt = 0.0;
+	Wot = 0.0;
 
 
 
 
-   	/*ANALYSIS MODE*/
+	/*ANALYSIS MODE*/
 	int outputmode   = 0;/*0:ConvergedLaps.1:AllLaps.*/
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int solver = 0;
@@ -174,6 +137,7 @@ int arclmDynamic(struct arclmframe* af)
 	int nstr, pstr, readflag;
 	char **data;
 	char filename[256];
+	char description[256];
 	char* dot;
 
 	memory0 = availablephysicalmemoryEx("INITIAL:");   /*MEMORY AVAILABLE*/
@@ -197,6 +161,8 @@ int arclmDynamic(struct arclmframe* af)
 #endif
 
 	msize = 6 * nnode;                                      /*SIZE OF GLOBAL MATRIX.*/
+
+
 
 	strcpy(filename, (wdraw.childs+1)->inpfile);
 	dot = strrchr(filename, '.');
@@ -242,6 +208,13 @@ int arclmDynamic(struct arclmframe* af)
 							{
 								strcpy(filename, *(data + pstr));
                             }
+						}
+						if (!strcmp(*(data + pstr), "DESCRIPTION"))
+						{
+							pstr++;
+							strcpy(description, *(data + pstr));
+							strcat(filename, "_");
+							strcat(filename, description);
 						}
 						if (!strcmp(*(data + pstr), "LAPS"))
 						{
@@ -333,11 +306,13 @@ int arclmDynamic(struct arclmframe* af)
 	}
 	else if(method==2)/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
 	{
-		rho = 1.0;
+		//rho = 1.0;
+		rho = 0.8;
 		alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
 		alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
+		//xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
 		xi = 0.056;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
-		beta = pow(1-alpham+alphaf,2)/4.0;
+		beta = 0.25*pow(1-alpham+alphaf,2);
 		gamma = 0.5-alpham+alphaf;
 	}
 	else/*NEWMARK METHOD'S PARAMETER.*/
@@ -355,36 +330,73 @@ int arclmDynamic(struct arclmframe* af)
 
 
 	///INPUT FILE OPEN & OUTPUT FILE SETTING///
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
-	fdsp = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "inf");
-	finf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "exf");
-	fexf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "ubf");
-	fubf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "rct");
-	frct = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "inr");
-	finr = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "str");
-	fstr = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "ene");
-	fene = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "onl");
-	fonl = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "fig");
-	ffig = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "bcl");
-	fbcl = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "eig");
-	feig = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
-	fout = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "vel");
-	fvel = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "acc");
-	facc = fopen(fname, "w");
+
+	if(STATDYNAFLAG == 1 && af->nlaps != NULL)
+	{
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
+		fdsp = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "inf");
+		finf = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "exf");
+		fexf = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "ubf");
+		fubf = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "rct");
+		frct = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "inr");
+		finr = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "str");
+		fstr = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "ene");
+		fene = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "onl");
+		fonl = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "fig");
+		ffig = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "bcl");
+		fbcl = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "eig");
+		feig = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
+		fout = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "vel");
+		fvel = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "acc");
+		facc = fopen(fname, "a");
+	}
+	else
+	{
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
+		fdsp = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "inf");
+		finf = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "exf");
+		fexf = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "ubf");
+		fubf = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "rct");
+		frct = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "inr");
+		finr = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "str");
+		fstr = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "ene");
+		fene = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "onl");
+		fonl = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "fig");
+		ffig = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "bcl");
+		fbcl = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "eig");
+		feig = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
+		fout = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "vel");
+		fvel = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "acc");
+		facc = fopen(fname, "w");
+	}
 
 	t0 = clock();                                                   /*CLOCK BEGIN.*/
 
@@ -620,7 +632,6 @@ int arclmDynamic(struct arclmframe* af)
 	{
 		if(iteration==1)
 		{
-			//if(nlap>3)ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
 
 			time += ddt;
 			lastloadfactor = loadfactor;
@@ -687,12 +698,14 @@ int arclmDynamic(struct arclmframe* af)
 
 		/*MATRIX INITIALIZE*/
 		std::vector<Triplet> Ktriplet;
-		std::vector<Triplet> Mtriplet;
+		std::vector<Triplet> Ktriplet2;
 
 		SparseMatrix Kglobal(msize, msize);
+		SparseMatrix Kglobal2(msize, msize);
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
-		Eigen::SimplicialLDLT<SparseMatrix> solver;
+		//Eigen::SimplicialLDLT<SparseMatrix> solver;
+		Eigen::SparseLU<SparseMatrix> solver;
 
 		for (i = 1; i <= msize; i++)
 		{
@@ -723,16 +736,19 @@ int arclmDynamic(struct arclmframe* af)
 		/*MATRIX ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
 		{
-		  //assemelemEx(elems, melem, nelem, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
-		  //assemshellEx(shells, mshell, nshell, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
-
+		  assemshellEigen_DYNA(shells, mshell, nshell, constraintmain, confs,
+							   Ktriplet,Ktriplet2,
+							   iform, lastddisp, ddisp,
+							   ud_m, udd_m,
+							   alpham, alphaf, xi, beta, ddt);
 		  /*GLOBAL MATRIX USING EIGEN*/
 		  Kglobal.reserve(msize*msize);
 		  Kglobal.setFromTriplets(Ktriplet.begin(), Ktriplet.end());//SPARSE MATRIX FROM TRIPLET
+		  Kglobal2.reserve(msize*msize);
+		  Kglobal2.setFromTriplets(Ktriplet2.begin(), Ktriplet2.end());//SPARSE MATRIX FROM TRIPLET
 		}
 		else
 		{
-
 		  assemshell_DYNA(shells, mshell, nshell, constraintmain,
 						  gmtx,gmtx2,
 						  iform, lastddisp, ddisp,
@@ -741,58 +757,104 @@ int arclmDynamic(struct arclmframe* af)
 		}
 
 
-		/*CROUT LU DECOMPOSITION.*/
-		nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);
-		nline2 = croutlu(gmtx2, confs, msize, &determinant2, &sign2, gcomp1);
-		/*DECOMPOSITION FAILED*/
-		if (sign < 0.0)
+
+
+		solver.compute(Kglobal);
+
+		/*SOLVE [K]*/
+		if(USINGEIGENFLAG==1)
 		{
-			for (ii = 1; ii <= msize; ii++)
+			solver.compute(Kglobal);
+
+			/*
+			Eigen::VectorXd D = solver.vectorD();
+			determinant= 0.0;
+			sign = 0;
+			for (i = 0; i < msize; i++)
 			{
-				gg = 0.0;
-				gread(gmtx, ii, ii, &gg);
-
-				if (gg < 0.0)
-				{
-					sprintf(string, "INSTABLE TERMINATION AT NODE %ld.",
-						(nodes + int((ii - 1) / 6))->code);
-					errormessage(" ");
-					errormessage(string);
-					if (fonl != NULL) fprintf(fonl, "%s\n", string);
-				}
+			  if((confs+i)->iconf!=1)
+			  {
+				if(D(i)<0.0) sign += 1;
+				determinant += log10(fabs(D(i)));
+			  }
 			}
+			*/
 
-			fclose(fin);
-			fclose(fonl);
-			fclose(fdsp);
-			fclose(fexf);
-			fclose(finf);
-			fclose(fubf);
-			fclose(frct);
-			fclose(fstr);
-			fclose(fene);
-			fclose(ffig);
-			fclose(fbcl);
+			if (solver.info() != Eigen::Success)sign=-1;
 
-			gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
-			free(gvct);
-			free(funbalance);
-			free(finternal);
-			free(fexternal);
-			return 1;
+			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
+					nlap, iteration, loadfactor,residual, NULL, NULL, 0, 0.0, volume, time);
+			fprintf(ffig, "%s", string);
+			errormessage(string);
+
+			Vector P = Vector::Zero(msize);
+			for(i=0;i<msize;i++)P(i)=*(gvct+i);
+			Vector U = solver.solve(P);
+			for(i=0;i<msize;i++)*(gvct+i)=U(i);
+			if (solver.info() != Eigen::Success)return -1;
 		}
-		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-				nlap, iteration, loadfactor,residual, determinant, sign2, 0, 0.0, volume, time);
-		fprintf(ffig, "%s", string);
-		errormessage(string);
+		else
+		{
+			/*CROUT LU DECOMPOSITION.*/
+			nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);
+			nline2 = croutlu(gmtx2, confs, msize, &determinant2, &sign2, gcomp1);
+
+			/*DECOMPOSITION FAILED*/
+			if (sign < 0.0)
+			{
+				for (ii = 1; ii <= msize; ii++)
+				{
+					gg = 0.0;
+					gread(gmtx, ii, ii, &gg);
+
+					if (gg < 0.0)
+					{
+						sprintf(string, "INSTABLE TERMINATION AT NODE %ld.",
+							(nodes + int((ii - 1) / 6))->code);
+						errormessage(" ");
+						errormessage(string);
+						if (fonl != NULL) fprintf(fonl, "%s\n", string);
+					}
+				}
+
+				fclose(fin);
+				fclose(fonl);
+				fclose(fdsp);
+				fclose(fexf);
+				fclose(finf);
+				fclose(fubf);
+				fclose(frct);
+				fclose(fstr);
+				fclose(fene);
+				fclose(ffig);
+				fclose(fbcl);
+
+				gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+				free(gvct);
+				free(funbalance);
+				free(finternal);
+				free(fexternal);
+				return 1;
+			}
+			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
+					nlap, iteration, loadfactor,residual, determinant, sign2, 0, 0.0, volume, time);
+			fprintf(ffig, "%s", string);
+			errormessage(string);
 
 
-		nline = forwardbackward(gmtx, gvct, confs, msize, gcomp1);
+			nline = forwardbackward(gmtx, gvct, confs, msize, gcomp1);
+        }
+
+
+
 
 		for (ii = 0; ii < msize; ii++)
 		{
 			*(gvct + ii) = *(gvct + *(constraintmain + ii));
 		}
+
+
+
 
 		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
@@ -807,8 +869,6 @@ int arclmDynamic(struct arclmframe* af)
 						   - (1.0 / (beta * ddt)) **(lastud_m + ii)
 						   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
 		}
-		free(lapddisp_m);
-
 
 		for(ii = 0; ii < msize; ii++)
 		{
@@ -838,7 +898,6 @@ int arclmDynamic(struct arclmframe* af)
 					   finertial, fdamping, finternal, fpressure,
 					   alpham, alphaf, xi);
 
-
 		for (i = 0; i < msize; i++)
 		{
 			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
@@ -866,6 +925,11 @@ int arclmDynamic(struct arclmframe* af)
 		}
 		iteration++;
 		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+
+		//if(iteration == 1 && nlap>3)ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
+		free(lapddisp_m);
+
+
 
 		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
 		{
@@ -1016,11 +1080,11 @@ double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* la
 	{
 #if 0
 	  /*Time Step Control Algorithm by Schweizerhof & Riccius*/
-	  *(error + i) = ddt * ddt * ((beta-1.0/8.0)**(udd_m + i) + (1.0/12.0 - beta)**(lastudd_m + i) + 1.0/24.0**(lastlastudd_m + i));
+	  *(error + i) = ddt * ddt * ( (beta-(1.0/8.0))**(udd_m + i) + ((1.0/12.0)-beta)**(lastudd_m + i) + (1.0/24.0)**(lastlastudd_m + i));
 #endif
 #if 1
 	  /*Time Step Control Algorithm by Zienkiewics & Xie*/
-	  *(error + i) = ddt * ddt * (beta-1.0/6.0) * (*(udd_m + i) - *(lastudd_m + i));
+	  *(error + i) = ddt * ddt * (beta-(1.0/6.0)) * (*(udd_m + i) - *(lastudd_m + i));
 #endif
 	}
 
@@ -1046,7 +1110,7 @@ double loadfactormap(double time)
 {
 	double loadfactor;
 
-#if 0/*FOR SHELL*/
+#if 1/*FOR SHELL*/
 	if(time<=0.2)
 	{
 	  loadfactor = 2.5e+8 * time;
@@ -1056,7 +1120,7 @@ double loadfactormap(double time)
 	  loadfactor = 5.0e+7;
 	}
 #endif
-#if 1/*FOR HINGE*/
+#if 0/*FOR HINGE*/
 /*0.1Mpa = 100000Pa*/
 	if(time<=100.0)
 	{

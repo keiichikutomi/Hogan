@@ -136,6 +136,7 @@ int arclmStatic(struct arclmframe* af)
 	int nstr, pstr, readflag;
 	char** data;
 	char filename[256];
+	char description[256];
 	char* dot;
 
 	memory0 = availablephysicalmemoryEx("INITIAL:");   /*MEMORY AVAILABLE*/
@@ -210,7 +211,14 @@ int arclmStatic(struct arclmframe* af)
 							else
 							{
 								strcpy(filename, *(data + pstr));
-                            }
+							}
+						}
+						if (!strcmp(*(data + pstr), "DESCRIPTION"))
+						{
+							pstr++;
+							strcpy(description, *(data + pstr));
+							strcat(filename, "_");
+							strcat(filename, description);
 						}
 						if (!strcmp(*(data + pstr), "LAPS"))
 						{
@@ -315,32 +323,60 @@ int arclmStatic(struct arclmframe* af)
 	if (outputmode == 0)errormessage("OUTPUT CONVERGED RESULT\n");
 	if (outputmode == 1)errormessage("OUTPUT ALL RESULT\n");
 
-
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
-	fdsp = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "inf");
-	finf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "exf");
-	fexf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "ubf");
-	fubf = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "rct");
-	frct = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "str");
-	fstr = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "onl");
-	fonl = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "fig");
-	ffig = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "bcl");
-	fbcl = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "ene");
-	fene = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "eig");
-	feig = fopen(fname, "w");
-	snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
-	fout = fopen(fname, "w");
-
+	if(STATDYNAFLAG == 1 && af->nlaps != NULL)
+	{
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
+		fdsp = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "inf");
+		finf = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "exf");
+		fexf = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "ubf");
+		fubf = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "rct");
+		frct = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "str");
+		fstr = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "ene");
+		fene = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "onl");
+		fonl = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "fig");
+		ffig = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "bcl");
+		fbcl = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "eig");
+		feig = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
+		fout = fopen(fname, "a");
+	}
+	else
+	{
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
+		fdsp = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "inf");
+		finf = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "exf");
+		fexf = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "ubf");
+		fubf = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "rct");
+		frct = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "str");
+		fstr = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "ene");
+		fene = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "onl");
+		fonl = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "fig");
+		ffig = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "bcl");
+		fbcl = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "eig");
+		feig = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
+		fout = fopen(fname, "w");
+	}
 	t0 = clock();                                                   /*CLOCK BEGIN.*/
 
 
@@ -690,8 +726,8 @@ int arclmStatic(struct arclmframe* af)
 			return 1;
 		}
 
-		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %8.5f\n",
-				nlap, iteration, loadfactor, residual, determinant, sign, 0, 0.0, volume);
+		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
+					nlap, iteration, loadfactor, residual, determinant, sign, 0, 0.0, volume, 0.0);
 		fprintf(ffig, "%s", string);
 		errormessage(string);
 
@@ -747,8 +783,8 @@ int arclmStatic(struct arclmframe* af)
 
 
 				nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
-				sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
-					nlap, iteration, loadfactor, residual, determinant, sign, 0, LM, volume);
+				sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
+					nlap, iteration, loadfactor, residual, determinant, sign, 0, 0.0, volume, time);
 				fprintf(ffig, "%s", string);
 				fprintf(fbcl, "%s", string);
 				errormessage(string);

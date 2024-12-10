@@ -1502,8 +1502,6 @@ void inputshell(struct oshell *shells,
 		  (shell->gp[i]).lambda[1]=((mshell+offset)->gp[i]).lambda[1];
 
 		  (shell->gp[i]).alpha=((mshell+offset)->gp[i]).alpha;
-		  (shell->gp[i]).Ee=((mshell+offset)->gp[i]).Ee;
-		  (shell->gp[i]).Ep=((mshell+offset)->gp[i]).Ep;
 	  }
   }
   else
@@ -1539,8 +1537,7 @@ void inputshell(struct oshell *shells,
 		  (shell->gp[i]).lambda[1]=((shells+offset)->gp[i]).lambda[1];
 
 		  (shell->gp[i]).alpha=((shells+offset)->gp[i]).alpha;
-		  (shell->gp[i]).Ee=((shells+offset)->gp[i]).Ee;
-		  (shell->gp[i]).Ep=((shells+offset)->gp[i]).Ep;
+
 	  }
   }
 
@@ -1584,8 +1581,7 @@ void outputshell(struct oshell *shells,
 	((shells+offset)->gp[i]).lambda[1]=(shell->gp[i]).lambda[1];
 
 	((shells+offset)->gp[i]).alpha=(shell->gp[i]).alpha;
-	((shells+offset)->gp[i]).Ee=(shell->gp[i]).Ee;
-	((shells+offset)->gp[i]).Ep=(shell->gp[i]).Ep;
+
   }
   return;
 }/*inputshell*/
@@ -1625,8 +1621,6 @@ void outputmemoryshell(struct oshell *shells,
 	((mshell+offset)->gp[i]).lambda[1]=((shells+offset)->gp[i]).lambda[1];
 
 	((mshell+offset)->gp[i]).alpha=((shells+offset)->gp[i]).alpha;
-	((mshell+offset)->gp[i]).Ee=((shells+offset)->gp[i]).Ee;
-	((mshell+offset)->gp[i]).Ep=((shells+offset)->gp[i]).Ep;
   }
   return;
 }/*inputmemoryshell*/
@@ -2498,6 +2492,7 @@ double* assemshelleinternal(struct oshell* shell, double*** B)
   }
   return einternal;
 }
+
 
 
 
