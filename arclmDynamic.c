@@ -306,12 +306,12 @@ int arclmDynamic(struct arclmframe* af)
 	}
 	else if(method==2)/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
 	{
-		//rho = 1.0;
-		rho = 0.8;
+		rho = 1.0;
+		//rho = 0.8;
 		alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
 		alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
-		//xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
-		xi = 0.056;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+		xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+		//xi = 0.056;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
 		beta = 0.25*pow(1-alpham+alphaf,2);
 		gamma = 0.5-alpham+alphaf;
 	}

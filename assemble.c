@@ -1341,8 +1341,7 @@ void strainenergy(struct arclmframe* af, double* Wet, double* Wpt)
 
 
 
-
-double kineticenergy(struct arclmframe* af, double* ud_m, double* Wkt)
+void kineticenergy(struct arclmframe* af, double* ud_m, double* Wkt)
 {
 	int i,j,k;
 	int nnod,ngp,nstress;
@@ -1378,7 +1377,7 @@ double kineticenergy(struct arclmframe* af, double* ud_m, double* Wkt)
 		}
 	}
 
-	return Wkt;
+	return;
 }
 
 
