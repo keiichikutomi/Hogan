@@ -1312,83 +1312,56 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 }
 
 
-
-double assemstrainenergy(struct arclmframe* af, double* Wpt)
+void strainenergy(struct arclmframe* af, double* Wet, double* Wpt)
 {
-	int i,j,k;
-	int nnod,ngp,nstress;
-	double Wet = 0.0;
-	//double Wpt = 0.0;
-	int nelem,nshell;
+	int i,j;
 
-	nelem = af->nelem;
-	nshell = af->nshell;
+	*Wet = 0.0;
+	*Wpt = 0.0;
 
-	for(i = 0; i < nshell; i++)
+	for (i = 0; i < af->nelem; i++)
 	{
-	  nnod    = (af->shells+i)->nnod;
-	  ngp     = (af->shells+i)->ngp;
-	  nstress = (af->shells+i)->nstress;
-
-	  (af->shells+i)->Ee = 0.0;
-	  for(j = 0; j < ngp; j++)/*FOR EACH INTEGRATION POINT*/
-	  {
-		for(k = 0; k < nstress; k++)
+		for (j = 0; j < 2; j++)
 		{
-		  (af->shells+i)->Ee += ((af->shells+i)->area) * ((af->shells+i)->w[j]) * 0.5
-							   *((af->shells+i)->gp[j]).stress[k]
-							   *((af->shells+i)->gp[j]).estrain[k];
-		  (af->shells+i)->Ep += ((af->shells+i)->area) * ((af->shells+i)->w[j]) * 0.5
-							   *(((af->shells+i)->gp[j]).stress[k]  + ((af->mshell+i)->gp[j]).stress[k]  )
-							   *(((af->shells+i)->gp[j]).pstrain[k] - ((af->mshell+i)->gp[j]).pstrain[k] );
-		}
-	  }
-	}
-
-
-
-	for (i = 0; i < nelem; i++)
-	{
-		for (j = 0; j < nnod; j++)
-		{
-			Wet += (af->elems+i)->Ee[j];
-			Wpt += (af->elems+i)->Ep[j];
+			*Wet += (af->elems+i)->Ee[j];
+			*Wpt += (af->elems+i)->Ep[j];
 		}
 	}
-	for (i = 0; i < nshell; i++)
+	for (i = 0; i < af->nshell; i++)
 	{
-		for (j = 0; j < nnod; j++)
+		for (j = 0; j < (af->shells+i)->ngp; j++)
 		{
-			Wet += (af->shells+i)->Ee;
-			Wpt += (af->shells+i)->Ep;
+			*Wet += ((af->shells+i)->gp[j]).Ee;
+			*Wpt += ((af->shells+i)->gp[j]).Ep;
 		}
 	}
 
-	return Wet;
+	return;
 }
 
 
 
 
-double assemkineticenergy(struct arclmframe* af, struct oshell* shells, int nshell, double* ud_m)
+double kineticenergy(struct arclmframe* af, double* ud_m, double* Wkt)
 {
 	int i,j,k;
 	int nnod,ngp,nstress;
 	double** M;
 	double* gvel_m, * gmomentum_m;
-	double Wkt = 0.0;
 
-	for(i = 0; i < nshell; i++)
+	*Wkt = 0.0;
+
+	for(i = 0; i < af->nshell; i++)
 	{
-		nnod = (shells+i)->nnod;
-		M = assemshellmmtx(*(shells+i));
-		gvel_m = extractshelldisplacement(*(shells+i), ud_m);
+		nnod = (af->shells+i)->nnod;
+		M = assemshellmmtx(*(af->shells+i));
+		gvel_m = extractshelldisplacement(*(af->shells+i), ud_m);
 		gmomentum_m = matrixvector(M, gvel_m, 6 * nnod);
 		for (j = 0; j < nnod; j++)
 		{
 			for (k= 0; k < 6; k++)
 			{
-				Wkt += 0.5 * *(gvel_m + 6 * j + k) * *(gmomentum_m + 6 * j + k);
+				*Wkt += 0.5 * *(gvel_m + 6 * j + k) * *(gmomentum_m + 6 * j + k);
 			}
 		}
 		free(gvel_m);
@@ -1400,7 +1373,7 @@ double assemkineticenergy(struct arclmframe* af, struct oshell* shells, int nshe
 	{
 		for (j = 0; j < 3; j++)
 		{
-			Wkt = 0.5 * (*(af->nmass + i)) * (*(ud_m + 6 * i + j)) *(*(ud_m + 6 * i + j));
+			*Wkt += 0.5 * (*(af->nmass + i)) * (*(ud_m + 6 * i + j)) *(*(ud_m + 6 * i + j));
 			//Wot -= 0.5 * (*(nmass + ii)) * (2 * tacc[jj] - dacc[jj]) *(*(du + 6 * ii + jj));
 		}
 	}
@@ -1408,15 +1381,6 @@ double assemkineticenergy(struct arclmframe* af, struct oshell* shells, int nshe
 	return Wkt;
 }
 
-
-
-#if 0
-
-std::vector<Triplet>& Ktriplet,
-
-assemtripletshell(Ktriplet, K, &shell, constraintmain, confs);
-
-#endif
 
 
 

@@ -35,6 +35,7 @@
 
 #include "canhead.h"                    /*DEFINITION OF COMMAND ID.*/
 #include "archg120-3ktm.c"       /*ANALYSIS NONLINEAR,MATH,VIEWING.*/
+#include "elem.c"
 #include "shell.c"
 #include "corotational.c"
 #include "arclmEigen.c"

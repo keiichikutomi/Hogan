@@ -641,16 +641,6 @@ void assemshellEigen_DYNA(struct oshell* shells, struct memoryshell* mshell, int
 
 
 
-#if 0
-
-std::vector<Triplet>& Ktriplet,
-
-assemtripletshell(Ktriplet, K, &shell, constraintmain, confs);
-
-#endif
-
-
-
 
 
 

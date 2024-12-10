@@ -216,6 +216,7 @@ struct gausspoint{double estrain[7];
 				  double yinit,y,alpha;
 				  double f[2];
 				  double lambda[2];
+				  double Ee,Ep;
 				  };
 
 struct owire{long int code,loff;
@@ -248,9 +249,8 @@ struct oshell{long int code,loff;
 			  double area,w[9];
 			  struct gausspoint gp[9];/*INTEGRATION POINTS PARAMS*/
 
-			  double Ee,Ep;
-			  double prate;/*IN-PLANE STIFFNESS RATIO BY KUTOMI*/
-			  double brate;/*BENDING STIFFNESS RATIO BY KUTOMI*/
+			  double prate;/*IN-PLANE STIFFNESS RATIO*/
+			  double brate;/*BENDING STIFFNESS RATIO*/
 			 }; /*SHELL ELEM*/
 
 struct memoryshell{
@@ -444,7 +444,7 @@ struct winparamsreg{
 struct arclmframe{long int code,loff;
 				  char *appelation;
 				  int nnode,nelem,nshell,nsect,nreact,nlaps,neig,nconstraint;/*ADD neig 240926*/
-				  double loadfactor;/*ADD loadfactor 240926*/
+				  double loadfactor;/*ADDED 240926*/
 				  double *eigenval,**eigenvec;
 				  double *iform, *ddisp;
 				  struct memoryelem *melem;
@@ -23274,19 +23274,9 @@ void elemstressII(double *estress,
   matrixvectorII(edisp,tmatrix,gdisp,12);            /*{du}=[T]{dU}*/
   matrixvectorII(estress,estiff,edisp,12);           /*{df}=[k]{du}*/
 
-  /*fprintf(fout,"ELEM %d [Kp]{du}\n",elem->code);
-  for(i=0;i<12;i++)
-  {
-    data=0.0;
-    for(j=0;j<12;j++)
-    {
-      data+=(*(*(ee+i)+j)-*(*(estiff+i)+j))*(*(edisp+j));
-    }
-    fprintf(fout,"%8.5f\n",data);
-  }*/
 
   updatestress(melem,fout,edisp,estress,ee,elem,
-               func,ftxt);                               /*{f}+{df}*/
+			   func,ftxt);                               /*{f}+{df}*/
 
   freematrix(ee,12);
 
@@ -23698,6 +23688,10 @@ if(fout!=NULL) fprintf(fout,"ELEM%d DISLOADED.\n",elem->code);
   }
   return;
 }/*updatestress*/
+
+
+
+
 
 void updatestressbc(struct memoryelem *melem,FILE *fout,FILE *fsrf,
                   double *edisp,double *dstress,double **estiff,

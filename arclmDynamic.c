@@ -898,6 +898,9 @@ int arclmDynamic(struct arclmframe* af)
 					   finertial, fdamping, finternal, fpressure,
 					   alpham, alphaf, xi);
 
+		strainenergy(af, &Wet, &Wpt);
+		kineticenergy(af, ud_m, &Wkt);
+
 		for (i = 0; i < msize; i++)
 		{
 			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
@@ -965,6 +968,7 @@ int arclmDynamic(struct arclmframe* af)
 				((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 				);
 			}
+			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 		}
 		if(iteration==1)
 		{

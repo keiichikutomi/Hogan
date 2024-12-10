@@ -433,23 +433,28 @@ int gnshn101(struct arclmframe *af)
 	definencr(&arc,&*ncr);          //ujioka
 
 #if 0 /*FOR PRORORTION TO INITIAL STIFFNESS. (DAMPING MATRIX (dtype=1))*/
-	if (dtype == 1) {
-		for (i = 1; i <= msize; i++) /* INITIALIZATION. */ {
+	if (dtype == 1)
+	{
+		for (i = 1; i <= msize; i++) /* INITIALIZATION. */
+		{
 			g = (cmtx + (i - 1))->down; /* NEXT OF DIAGONAL. */
-			while (g != NULL) /* CLEAR ROW. */ {
+			while (g != NULL) /* CLEAR ROW. */
+			{
 				p = g;
 				g = g->down;
 				free(p);
 			}
 			ginit.m = (unsigned short int)i;
-			/* ginit.n=(unsigned short int)i; */
 			*(cmtx + (i - 1)) = ginit;
 		}
-		for (i = 0; i < nelem;i++) /* TEST */      /* ASSEMBLAGE DAMPING MATRIX. */ {
+		for (i = 0; i < nelem;i++) /* TEST */      /* ASSEMBLAGE DAMPING MATRIX. */
+		{
 			inputelem(elems, melem, i, &elem); /* READ ELEMENT DATA. */
 
-			for (ii = 0; ii <= 1; ii++) {
-				for (jj = 0; jj <= 5; jj++) {
+			for (ii = 0; ii <= 1; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
 					(elems + i)->iconf[ii][jj] = elem.iconf[ii][jj];
 				}
 			}
@@ -463,9 +468,14 @@ int gnshn101(struct arclmframe *af)
 			elem.sect = &esect;
 			/* elem.sect->area=0.0; */
 
-			directioncosineII(elem.node[0]->d[0], elem.node[0]->d[1],
-				elem.node[0]->d[2], elem.node[1]->d[0], elem.node[1]->d[1],
-				elem.node[1]->d[2], elem.cangle, drccos); /* [DRCCOS] */
+			directioncosineII  (elem.node[0]->d[0],
+								elem.node[0]->d[1],
+								elem.node[0]->d[2],
+								elem.node[1]->d[0],
+								elem.node[1]->d[1],
+								elem.node[1]->d[2],
+								elem.cangle,
+								drccos); /* [DRCCOS] */
 
 			transmatrixII(drccos, tmatrix); /* TRANSFORMATION MATRIX. */
 			assememtxII(elem, estiff); /* ELASTIC MATRIX OF ELEMENT. */
@@ -500,7 +510,8 @@ int gnshn101(struct arclmframe *af)
 
 
 	/* ここから振動解析の繰り返し演算 */
-	for (nlap = 1; nlap <= n101 ; nlap++) { /*　n11で強制終了 or lapsまで　*/
+	for (nlap = 1; nlap <= n101 ; nlap++)
+	{ /*　n11で強制終了 or lapsまで　*/
 
 		/* af->nlaps=nlap; */
 		af->nlaps = 1;
@@ -568,9 +579,14 @@ int gnshn101(struct arclmframe *af)
 					255, 255, 0, ONSCREEN);
 			}
 
-			directioncosineII(elem.node[0]->d[0], elem.node[0]->d[1],
-				elem.node[0]->d[2], elem.node[1]->d[0], elem.node[1]->d[1],
-				elem.node[1]->d[2], elem.cangle, drccos); /* [DRCCOS] */
+			directioncosineII  (elem.node[0]->d[0],
+								elem.node[0]->d[1],
+								elem.node[0]->d[2],
+								elem.node[1]->d[0],
+								elem.node[1]->d[1],
+								elem.node[1]->d[2],
+								elem.cangle,
+								drccos); /* [DRCCOS] */
 
 			transmatrixII(drccos, tmatrix); /* TRANSFORMATION MATRIX. */
 
@@ -581,29 +597,32 @@ int gnshn101(struct arclmframe *af)
 
 			if(bclngcondensation) /***UJIOKA***/
 			{
-			  estiff = assempmtxbc(elem,estiff,ncr[i]);
-                                                   /* ADD PLASTIC MATRIX. */
+			  estiff = assempmtxbc(elem,estiff,ncr[i]);/* ADD PLASTIC MATRIX. */
 			}
-			else estiff = assempmtx(elem, estiff); /* ADD PLASTIC MATRIX. */
+			else
+			{
+			  estiff = assempmtx(elem, estiff); /* ADD PLASTIC MATRIX. */
+			}
 
-            
 			transformationII(estiff, tmatrix, e, t); /* [K]=[Tt][k][T] */
-
 			assemgstiffness(gmtx, estiff, &elem); /* ASSEMBLAGE. */
-
 		}
 
 
 
-        sprintf(string, "GLOBAL MATRIX %ld COMPS ASSEMBLED.", comps);
+		sprintf(string, "GLOBAL MATRIX %ld COMPS ASSEMBLED.", comps);
 		laptime(string, t0);
 
 		overlayhdc(*(wdraw.childs + 1), SRCPAINT); /* UPDATE DISPLAY. */
 
-		for (i = 0; i < 3; i++) {
+		for (i = 0; i < 3; i++)
+		{
 			if (acc[i].a == NULL)
+			{
 				dacc[i] = 0.0;
-			else {
+			}
+			else
+			{
 				dacc[i] = accelerationincrement(acc[i], ddt, nlap);
 				dacc[i] *= afact;
 			}
@@ -617,8 +636,7 @@ int gnshn101(struct arclmframe *af)
 			/* TOTAL GROUND VELOCITY. */
 			/* tdis[i]+=ddt*(pdis[i]+tvel[i])/2.0; */ /* ERROR */
 			/* GROUND DISPLACEMENT. */
-			tdis[i] += ddt * (pvel[i] + tvel[i]) / 2.0;
-			/* GROUND DISPLACEMENT. */
+			tdis[i] += ddt * (pvel[i] + tvel[i]) / 2.0; /* GROUND DISPLACEMENT. */
 		}
 		if (fout != NULL)
 			fprintf(fout, "ACCELERATION=%.8f,%.8f,%.8f\n", dacc[0], dacc[1],
@@ -753,66 +771,66 @@ int gnshn101(struct arclmframe *af)
 			w1 = 2.0 * PI / T1;
 
 #if 1
-     	    if (dtype == 1)
-            {
-            for (i = 1; i <= msize; i++) /* INITIALIZATION. */
-            {
-			    g = (cmtx + (i - 1))->down; /* NEXT OF DIAGONAL. */
-			    while (g != NULL) /* CLEAR ROW. */
-                {
-		     		p = g;
-			    	g = g->down;
-				    free(p);
-			    }
-				ginit.m = (unsigned short int)i;
-			    *(cmtx + (i - 1)) = ginit;
-		    }
-			for (i = 0; i < nelem;i++) /* TEST */      /* ASSEMBLAGE DAMPING MATRIX. */
-            {
-			    inputelem(elems, melem, i, &elem); /* READ ELEMENT DATA. */
+			if (dtype == 1)
+			{
+				for (i = 1; i <= msize; i++) /* INITIALIZATION. */
+				{
+					g = (cmtx + (i - 1))->down; /* NEXT OF DIAGONAL. */
+					while (g != NULL) /* CLEAR ROW. */
+					{
+						p = g;
+						g = g->down;
+						free(p);
+					}
+					ginit.m = (unsigned short int)i;
+					*(cmtx + (i - 1)) = ginit;
+				}
+				for (i = 0; i < nelem;i++) /* TEST */      /* ASSEMBLAGE DAMPING MATRIX. */
+				{
+					inputelem(elems, melem, i, &elem); /* READ ELEMENT DATA. */
 
-			    for (ii = 0; ii <= 1; ii++)
-                {
-				    for (jj = 0; jj <= 5; jj++)
-                    {
-					    (elems + i)->iconf[ii][jj] = elem.iconf[ii][jj];
-				    }
-			    }
+					for (ii = 0; ii <= 1; ii++)
+					{
+						for (jj = 0; jj <= 5; jj++)
+						{
+							(elems + i)->iconf[ii][jj] = elem.iconf[ii][jj];
+						}
+					}
 
-			    inputnode(ddisp, elem.node[0]); /* HEAD */
-			    inputnode(ddisp, elem.node[1]); /* TAIL */
+					inputnode(ddisp, elem.node[0]); /* HEAD */
+					inputnode(ddisp, elem.node[1]); /* TAIL */
 
-			    /* elem.sect=(elems+i)->sect; */
-			    /* READ SECTION DATA. */
-			    esect = *((elems + i)->sect);
-			    elem.sect = &esect;
-			    /* elem.sect->area=0.0; */
+					/* elem.sect=(elems+i)->sect; */
+					/* READ SECTION DATA. */
+					esect = *((elems + i)->sect);
+					elem.sect = &esect;
+					/* elem.sect->area=0.0; */
 
-			    directioncosineII(elem.node[0]->d[0], elem.node[0]->d[1],
-				    elem.node[0]->d[2], elem.node[1]->d[0], elem.node[1]->d[1],
-				    elem.node[1]->d[2], elem.cangle, drccos); /* [DRCCOS] */
+					directioncosineII(elem.node[0]->d[0], elem.node[0]->d[1],
+						elem.node[0]->d[2], elem.node[1]->d[0], elem.node[1]->d[1],
+						elem.node[1]->d[2], elem.cangle, drccos); /* [DRCCOS] */
 
-			    transmatrixII(drccos, tmatrix); /* TRANSFORMATION MATRIX. */
-			    assememtxII(elem, estiff); /* ELASTIC MATRIX OF ELEMENT. */
-			    estiff = modifyhinge(elem, estiff); /* MODIFY MATRIX. */
-			    /* estiff=assempmtx(elem,estiff); */      /* ADD PLASTIC MATRIX. */
-			    transformationII(estiff, tmatrix, e, t); /* [K]=[Tt][k][T] */
-			    assemgstiffness(cmtx, estiff, &elem); /* ASSEMBLAGE. */
-		    }
+					transmatrixII(drccos, tmatrix); /* TRANSFORMATION MATRIX. */
+					assememtxII(elem, estiff); /* ELASTIC MATRIX OF ELEMENT. */
+					estiff = modifyhinge(elem, estiff); /* MODIFY MATRIX. */
+					/* estiff=assempmtx(elem,estiff); */      /* ADD PLASTIC MATRIX. */
+					transformationII(estiff, tmatrix, e, t); /* [K]=[Tt][k][T] */
+					assemgstiffness(cmtx, estiff, &elem); /* ASSEMBLAGE. */
+				}
 
 
-    		w1 = 2.0 * PI / T1;
-		    for (ii = 1; ii <= msize; ii++)
-            {
-			    for (jj = 1; jj <= ii; jj++)
-                {
-				    gread(cmtx, ii, jj, &data);
-				    data *= (2.0*h1 / w1);
-				    gwrite(cmtx, ii, jj, data);
-			    }
-		    }
-		    sprintf(string, "DAMPING MATRIX %ld COMPS ASSEMBLED.", comps);
-		    laptime(string, t0);
+				w1 = 2.0 * PI / T1;
+				for (ii = 1; ii <= msize; ii++)
+				{
+					for (jj = 1; jj <= ii; jj++)
+					{
+						gread(cmtx, ii, jj, &data);
+						data *= (2.0*h1 / w1);
+						gwrite(cmtx, ii, jj, data);
+					}
+				}
+				sprintf(string, "DAMPING MATRIX %ld COMPS ASSEMBLED.", comps);
+				laptime(string, t0);
             }
         }
 #endif
@@ -831,7 +849,8 @@ int gnshn101(struct arclmframe *af)
 		fprintf(fout, "%s\n", string);
 
 
-		if (determinant <= 0.0) {
+		if (determinant <= 0.0)
+		{
 			errormessage(" ");
 			errormessage("INSTABLE TERMINATION.");
 			if (fout != NULL)
@@ -867,7 +886,8 @@ int gnshn101(struct arclmframe *af)
 		outputdisp(du, fout, nnode, nodes); /* INCREMENTAL DISPLACEMENT. */
 
 
-		for (i = 0; i < nelem; i++) /* STRESS OUTPUT,UPDATE. */ {
+		for (i = 0; i < nelem; i++) /* STRESS OUTPUT,UPDATE. */
+		{
 			inputelem(elems, melem, i, &elem);
 
 			inputnode(ddisp, elem.node[0]);
@@ -890,8 +910,8 @@ int gnshn101(struct arclmframe *af)
               elemstressIIbc(estress, &elem, du, melem, fout, drccos, tmatrix,
 				estiff, gdisp, edisp, func,ftxt,0);
               /*
-                便宜上Ncr=0とし、この場合降伏曲面は修正しない。
-                (updatestressbc,coefficientsbcでの条件分岐による)
+				便宜上Ncr=0とし、この場合降伏曲面は修正しない。
+				(updatestressbc,coefficientsbcでの条件分岐による)
 			  */
             }
 
@@ -922,12 +942,12 @@ int gnshn101(struct arclmframe *af)
 
 
 
-			fprintf(fout, "\"REACTION\"\n");
+		fprintf(fout, "\"REACTION\"\n");
 		outputreaction(gmtx, du, nodes, confs, dreact, fout, nnode);
 
 		updateform(ddisp, du, nnode); /* FORMATION UPDATE. */
-		if (fout != NULL)
-			fprintf(fout, "\"CURRENT FORM\"\n\n");
+
+		if (fout != NULL)fprintf(fout, "\"CURRENT FORM\"\n\n");
 		for (ii = 0; ii < nnode; ii++) {
 
 
@@ -2397,8 +2417,7 @@ double accelerationincrement(struct accdata acc, double ddt, long int lap)
 	return dacc;
 } /* accelerationincrement */
 
-void assemaccel(double *gvct, double dacc[], long int nnode,
-	struct arclmframe *af)
+void assemaccel(double *gvct, double dacc[], long int nnode, struct arclmframe *af)
 	/* ASSEMBLAGE ACCELERATION INTO GLOBAL VECTOR. */ {
 	long int i, j, ii;
 
@@ -2458,8 +2477,8 @@ double newmarkbeta(struct gcomponent *gmtx, struct gcomponent *cmtx,
 
 					if (j <= i)
 					{
-						gdata += mdata / beta / (ddt * ddt) +
-							cdata / 2.0 / beta / ddt; /* [K']:(3.59) */
+						gdata += mdata / beta / (ddt * ddt)
+							   + cdata / 2.0 / beta / ddt; /* [K']:(3.59) */
 
 						gwrite(gmtx, (i + 1), (j + 1), gdata);
 					}
@@ -2474,8 +2493,10 @@ double newmarkbeta(struct gcomponent *gmtx, struct gcomponent *cmtx,
 		return sign;
 	}
 
-	for (i = 0; i < msize; i++) {
-		if ((confs + i)->iconf == 0) {
+	for (i = 0; i < msize; i++)
+	{
+		if ((confs + i)->iconf == 0)
+		{
 
 			*(dud + i) = (*(du + i)) / 2.0 / beta / ddt -
 				(*(ud + i)) / 2.0 / beta - (1.0 / 4.0 / beta - 1.0) *
@@ -2485,12 +2506,9 @@ double newmarkbeta(struct gcomponent *gmtx, struct gcomponent *cmtx,
 				(*(ud + i)) / beta / ddt - (*(udd + i)) / 2.0 / beta;
 			/* (3.62) */
 
-			//*(u + i) += *(du + i);
-			//*(ud + i) += *(dud + i);
-			//*(udd + i) += *(dudd + i);
-			updaterotation(u,du,nnode);
-			updaterotation(ud,dud,nnode);
-			updaterotation(udd,dudd,nnode);
+			*(u + i) += *(du + i);
+			*(ud + i) += *(dud + i);
+			*(udd + i) += *(dudd + i);
 		}
 	}
 

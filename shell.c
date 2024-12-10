@@ -1502,6 +1502,9 @@ void inputshell(struct oshell *shells,
 		  (shell->gp[i]).lambda[1]=((mshell+offset)->gp[i]).lambda[1];
 
 		  (shell->gp[i]).alpha=((mshell+offset)->gp[i]).alpha;
+
+		  (shell->gp[i]).Ee=((mshell+offset)->gp[i]).Ee;
+		  (shell->gp[i]).Ep=((mshell+offset)->gp[i]).Ep;
 	  }
   }
   else
@@ -1537,6 +1540,9 @@ void inputshell(struct oshell *shells,
 		  (shell->gp[i]).lambda[1]=((shells+offset)->gp[i]).lambda[1];
 
 		  (shell->gp[i]).alpha=((shells+offset)->gp[i]).alpha;
+
+		  (shell->gp[i]).Ee=((shells+offset)->gp[i]).Ee;
+		  (shell->gp[i]).Ep=((shells+offset)->gp[i]).Ep;
 
 	  }
   }
@@ -1582,6 +1588,9 @@ void outputshell(struct oshell *shells,
 
 	((shells+offset)->gp[i]).alpha=(shell->gp[i]).alpha;
 
+	((shells+offset)->gp[i]).Ee=(shell->gp[i]).Ee;
+	((shells+offset)->gp[i]).Ep=(shell->gp[i]).Ep;
+
   }
   return;
 }/*inputshell*/
@@ -1621,6 +1630,9 @@ void outputmemoryshell(struct oshell *shells,
 	((mshell+offset)->gp[i]).lambda[1]=((shells+offset)->gp[i]).lambda[1];
 
 	((mshell+offset)->gp[i]).alpha=((shells+offset)->gp[i]).alpha;
+
+	((mshell+offset)->gp[i]).Ee=((shells+offset)->gp[i]).Ee;
+	((mshell+offset)->gp[i]).Ep=((shells+offset)->gp[i]).Ep;
   }
   return;
 }/*inputmemoryshell*/
@@ -2414,6 +2426,8 @@ void assemshellestress(struct oshell* shell, double*** C)
   ngp = shell->ngp;
   nstress = shell->nstress;
 
+
+
   for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
   {
 	gp = &(shell->gp[ii]);
@@ -2438,7 +2452,21 @@ void assemshellestress(struct oshell* shell, double*** C)
 
 	/*RETURN-MAPPING & UPDATE*/
 	returnmapilyushin(shell, ii);
+
+	(shell->gp[ii]).Ee = 0.0;
+	for(i = 0; i < nstress; i++)
+	{
+	  (shell->gp[ii]).Ee += (shell->area) * (shell->w[ii]) * 0.5
+						   * (shell->gp[ii]). stress[i]
+						   * (shell->gp[ii]).estrain[i];
+	  (shell->gp[ii]).Ep += (shell->area) * (shell->w[ii]) * 0.5
+						   *((shell->gp[ii]). stress[i] + (shell->gp[ii]). stress[i] )
+						   *((shell->gp[ii]).pstrain[i] - (shell->gp[ii]).pstrain[i] );
+	}
   }
+
+
+
   return;
 }
 
