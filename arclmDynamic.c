@@ -310,8 +310,8 @@ int arclmDynamic(struct arclmframe* af)
 		//rho = 0.8;
 		alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
 		alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
-		xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
-		//xi = 0.056;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+		//xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
+		xi = 0.056;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
 		beta = 0.25*pow(1-alpham+alphaf,2);
 		gamma = 0.5-alpham+alphaf;
 	}
@@ -1118,7 +1118,7 @@ double loadfactormap(double time)
 {
 	double loadfactor;
 
-#if 0*FOR SHELL*/
+#if 0/*FOR SHELL*/
 
 	  loadfactor = 0.0 * time;
 
@@ -1135,16 +1135,16 @@ double loadfactormap(double time)
 #endif
 #if 1/*FOR HINGE*/
 /*0.1Mpa = 100000Pa*/
-	if(time<=1000)
+	if(time<=100)
 	{
-	  loadfactor = 10 * time;
+	  loadfactor = 100* time;
 	}
 	else
 	{
 	  loadfactor = 10000;
 	}
 #endif
-#if 0*FOR CYLINDER*/
+#if 0/*FOR CYLINDER*/
 	if(time<=0.5)
 	{
 	  loadfactor = 10.0 * time;
