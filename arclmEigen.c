@@ -51,10 +51,10 @@ void assemtriplet(std::vector<Triplet>& triplets,
 					triplets.emplace_back(ii, jj, edata);
 				}
 			}
-			else if(ii==jj)
+			/*else if(ii==jj)
 			{
 				triplets.emplace_back(ii, jj, 1.0);
-			}
+			}*/
 		  //}
 		}
 	  }
@@ -96,10 +96,10 @@ void assemtripletshell(std::vector<Triplet>& triplets,
 					triplets.emplace_back(ii, jj, edata);
 				}
 			}
-			else if(ii==jj)
+			/*else if(ii==jj)
 			{
 				triplets.emplace_back(ii, jj, 1.0);
-			}
+			}*/
 		  //}
 		}
 	  }
@@ -149,6 +149,23 @@ gmtx.prune([](int i, int j, double) { return i != j; });
 
 
 */
+
+
+
+
+void modifytriplet(std::vector<Triplet>& triplets,
+				   struct oconf *confs,long int msize)
+{
+  long int i;
+
+  for(i=0;i<msize;i++)
+  {
+	if((confs+i)->iconf==1)
+	{
+		triplets.emplace_back(i, i, 1.0);
+	}
+  }
+}
 
 
 

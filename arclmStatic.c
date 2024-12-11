@@ -78,6 +78,12 @@ int arclmStatic(struct arclmframe* af)
 	double lambda = 0.0;
 
 	double volume = 0.0;
+	double Wkt,Wet,Wpt,Wot; /* ENERGY */
+	Wkt = 0.0;
+	Wet = 0.0;
+	Wpt = 0.0;
+	Wot = 0.0;
+
 
 	/*ARC-LENGTH METHOD*/
 	double arclength;
@@ -515,6 +521,8 @@ int arclmStatic(struct arclmframe* af)
 	elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
 	shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
 
+	strainenergy(af, &Wet, &Wpt);
+	//kineticenergy(af, ud_m, &Wkt);
 
 	if(UNLOADFLAG==1)
 	{
@@ -568,6 +576,7 @@ int arclmStatic(struct arclmframe* af)
 		((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 		);
 	}
+	fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 
 	clearwindow(*(wdraw.childs+1));
 	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
@@ -1182,6 +1191,9 @@ int arclmStatic(struct arclmframe* af)
 		elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
 		shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
 
+		strainenergy(af, &Wet, &Wpt);
+		//kineticenergy(af, ud_m, &Wkt);
+
 
 		for (i = 0; i < msize; i++)
 		{
@@ -1244,6 +1256,7 @@ int arclmStatic(struct arclmframe* af)
 				((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 				);
 			}
+			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 		}
 
 		if(iteration==1)

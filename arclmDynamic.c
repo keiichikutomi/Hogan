@@ -88,7 +88,7 @@ int arclmDynamic(struct arclmframe* af)
 	double residual = 0.0;
 	double gvctlen = 0.0;
 
-	double ddt = 0.01;/*TIME INCREMENT[sec]*/
+	double ddt = 0.001;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
 	double initialloadfactor = 0.0;
@@ -574,6 +574,9 @@ int arclmDynamic(struct arclmframe* af)
 				   finertial, fdamping, finternal, fpressure,
 				   alpham, alphaf, xi);
 
+	strainenergy(af, &Wet, &Wpt);
+	kineticenergy(af, ud_m, &Wkt);
+
 
 	for (i = 0; i < msize; i++)
 	{
@@ -622,7 +625,7 @@ int arclmDynamic(struct arclmframe* af)
 		((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 		);
 	}
-
+	fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 	clearwindow(*(wdraw.childs+1));
 	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
 	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
@@ -679,6 +682,9 @@ int arclmDynamic(struct arclmframe* af)
 							 lastud_m, ud_m,
 							 finertial, fdamping, finternal, fpressure,
 							 alpham, alphaf, xi);
+
+			strainenergy(af, &Wet, &Wpt);
+			kineticenergy(af, ud_m, &Wkt);
 
 			for (i = 0; i < msize; i++)
 			{
@@ -742,6 +748,9 @@ int arclmDynamic(struct arclmframe* af)
 							   ud_m, udd_m,
 							   alpham, alphaf, xi, beta, ddt);
 		  /*GLOBAL MATRIX USING EIGEN*/
+		  modifytriplet(Ktriplet,confs,msize);
+		  modifytriplet(Ktriplet2,confs,msize);
+
 		  Kglobal.reserve(msize*msize);
 		  Kglobal.setFromTriplets(Ktriplet.begin(), Ktriplet.end());//SPARSE MATRIX FROM TRIPLET
 		  Kglobal2.reserve(msize*msize);
@@ -755,11 +764,6 @@ int arclmDynamic(struct arclmframe* af)
 						  ud_m, udd_m,
 						  alpham, alphaf, xi, beta, ddt);
 		}
-
-
-
-
-		solver.compute(Kglobal);
 
 		/*SOLVE [K]*/
 		if(USINGEIGENFLAG==1)
@@ -991,7 +995,7 @@ int arclmDynamic(struct arclmframe* af)
 		//MESSAGE FOR UPDATE UI
 		//AVOID FREEZE ON LONG RUNNING TASK
 		MSG msg;
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		if(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
@@ -1114,7 +1118,12 @@ double loadfactormap(double time)
 {
 	double loadfactor;
 
-#if 1/*FOR SHELL*/
+#if 0*FOR SHELL*/
+
+	  loadfactor = 0.0 * time;
+
+#endif
+#if 0/*FOR SHELL*/
 	if(time<=0.2)
 	{
 	  loadfactor = 2.5e+8 * time;
@@ -1124,18 +1133,18 @@ double loadfactormap(double time)
 	  loadfactor = 5.0e+7;
 	}
 #endif
-#if 0/*FOR HINGE*/
+#if 1/*FOR HINGE*/
 /*0.1Mpa = 100000Pa*/
-	if(time<=100.0)
+	if(time<=1000)
 	{
-	  loadfactor = 100 * time;
+	  loadfactor = 10 * time;
 	}
 	else
 	{
 	  loadfactor = 10000;
 	}
 #endif
-#if 0/*FOR CYLINDER*/
+#if 0*FOR CYLINDER*/
 	if(time<=0.5)
 	{
 	  loadfactor = 10.0 * time;

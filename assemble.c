@@ -1367,7 +1367,7 @@ void kineticenergy(struct arclmframe* af, double* ud_m, double* Wkt)
 		free(gmomentum_m);
 		freematrix(M,6*nnod);
 	}
-
+	/*
 	for (i = 0; i < af->nnode; i++)
 	{
 		for (j = 0; j < 3; j++)
@@ -1376,6 +1376,7 @@ void kineticenergy(struct arclmframe* af, double* ud_m, double* Wkt)
 			//Wot -= 0.5 * (*(nmass + ii)) * (2 * tacc[jj] - dacc[jj]) *(*(du + 6 * ii + jj));
 		}
 	}
+    */
 
 	return;
 }
