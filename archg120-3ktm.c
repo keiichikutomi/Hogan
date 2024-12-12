@@ -19872,7 +19872,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	if(((af->shells+i-1)->sect)->type==7)
 	{
 	  (af->shells+i-1)->nnod=3;
-	  (af->shells+i-1)->ngp=3;
+	  (af->shells+i-1)->ngp=4;
 	  //(af->shells+i-1)->ngp=7;
 	  (af->shells+i-1)->nstress=6;
 	  code1=strtol(*(data+2),NULL,10); /*HEAD NODE.*/
@@ -19981,9 +19981,10 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	(af->shells+i-1)->w[6]=(af->shells+i-1)->w[4];
 	*/
 
-	(af->shells+i-1)->w[0]=1.0/3.0;
-	(af->shells+i-1)->w[1]=(af->shells+i-1)->w[0];
-	(af->shells+i-1)->w[2]=(af->shells+i-1)->w[0];
+	(af->shells+i-1)->w[0]=0.0;
+	(af->shells+i-1)->w[1]=1.0/3.0;
+	(af->shells+i-1)->w[2]=(af->shells+i-1)->w[1];
+	(af->shells+i-1)->w[3]=(af->shells+i-1)->w[1];
 
 	if(k==n-2)
 	{
