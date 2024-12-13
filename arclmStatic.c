@@ -65,7 +65,8 @@ int arclmStatic(struct arclmframe* af)
 
 
 	///FOR ARC-LENGTH PARAMETER///
-	int nlap = 1;
+	int nlap;
+	int beginlap;
 	int laps;
 	int iteration;
 	int maxiteration = 20;
@@ -94,9 +95,9 @@ int arclmStatic(struct arclmframe* af)
 	int SCALINGARCFLAG = 0;/*ARCLENGTH CONTROL*/
 	double k1, k, scaledarclength;
 
-	int BIGININGARCFLAG = 0;/*BIGINING ARC-LENGTH*/
-	double biginingarcratio = 1.0;
-	int biginingarclap = 0;
+	int BEGININGARCFLAG = 0;/*BEGINING ARC-LENGTH*/
+	double beginingarcratio = 1.0;
+	int beginingarclap = 0;
 
 	double *weight;/*WEIGHT*/
 	int node;
@@ -110,7 +111,9 @@ int arclmStatic(struct arclmframe* af)
 
 	/*LAST LAP*/
 	double* lastddisp,* lastgvct,* lastpivot;
-	double lastloadfactor,lastlambda,lastsign;
+	double lastloadfactor,lastlambda;
+	double lastsign = 0;
+
 
 	/*INCREMENT OF CURRENT LAP*/
 	double* lapddisp;
@@ -245,13 +248,13 @@ int arclmStatic(struct arclmframe* af)
 						{
 							SCALINGARCFLAG = 1;
 						}
-						if (!strcmp(*(data + pstr), "BIGININGARC"))
+						if (!strcmp(*(data + pstr), "BEGININGARC"))
 						{
-							BIGININGARCFLAG=1;
+							BEGININGARCFLAG=1;
 							pstr++;
-							biginingarcratio = (double)strtod(*(data + pstr), NULL);
+							beginingarcratio = (double)strtod(*(data + pstr), NULL);
 							pstr++;
-							biginingarclap = (int)strtol(*(data + pstr), NULL, 10);
+							beginingarclap = (int)strtol(*(data + pstr), NULL, 10);
 						}
 						if (!strcmp(*(data + pstr), "WEIGHT"))
 						{
@@ -322,6 +325,7 @@ int arclmStatic(struct arclmframe* af)
 			}
 		}
 	}
+	fclose(fdata);
 
 	sprintf(string, "FILENAME : %s\n LAPS = %d\n MAX ITERATION= %d\n ARCLENGTH = %lf\n", filename, laps, maxiteration, arclength);
 	errormessage(string);
@@ -493,16 +497,22 @@ int arclmStatic(struct arclmframe* af)
 
 
 
+	nlap = 1;
+	if(af->nlaps != NULL)
+	{
+		nlap = af->nlaps;
+	}
+	beginlap = nlap;
+	iteration = 1;
+	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+
 	/*INITIAL*/
 	if(STATDYNAFLAG == 1)
 	{
-		if(af->nlaps != NULL)nlap = af->nlaps;
 		initialloadfactor = af->loadfactor;
+		loadfactor += initialloadfactor;
 	}
-	loadfactor = initialloadfactor;
-
-	iteration = 1;
-	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+	lastloadfactor = loadfactor;
 
 	for (i = 0; i < msize; i++)
 	{
@@ -741,13 +751,13 @@ int arclmStatic(struct arclmframe* af)
 		errormessage(string);
 
 
-		if(iteration == 1 && (sign - lastsign) != 0 && nlap != 1 && STATDYNAFLAG == 1)
+		if(iteration == 1 && (sign - lastsign) != 0 && nlap != beginlap && STATDYNAFLAG == 1)
 		{
-			sprintf(string,"BUCKLING DITECTED LAP: %4d ITER: %2d\n", sign);
+			sprintf(string,"BUCKLING DITECTED LAP: %4d ITER: %2d\n", nlap, iteration);
 			errormessage(string);
 			break;
 		}
-		if(iteration == 1 && (sign - lastsign) != 0 && nlap != 1 && pinpointmode == 1)/*BUCKLING DETECTED*/
+		if(iteration == 1 && (sign - lastsign) != 0 && nlap != beginlap && pinpointmode == 1)/*BUCKLING DETECTED*/
 		{
 			sprintf(string, "BUCKLING DITECTED LAP: %4d ITER: %2d\n", nlap, iteration);
 			fprintf(fbcl, "%s", string);
@@ -892,15 +902,15 @@ int arclmStatic(struct arclmframe* af)
 			}
 
 			/*ARCLENGTH CONTROL*/
-			if (nlap < biginingarclap+1)
+			if (nlap < beginlap + beginingarclap)
 			{
-				scaledarclength = biginingarcratio * arclength;
+				scaledarclength = beginingarcratio * arclength;
 			}
-			else if (nlap == biginingarclap+1)
+			else if (nlap == beginlap + beginingarclap)
 			{
 				scaledarclength = arclength;
 			}
-			else if (nlap == biginingarclap+2)
+			else if (nlap == beginlap + beginingarclap + 1)
 			{
 				if(SCALINGARCFLAG==1)
 				{
@@ -913,12 +923,12 @@ int arclmStatic(struct arclmframe* af)
 				{
 					k = equilibriumcurvature(weight, lapddisp, laploadfactor, dup, msize);
 					scaledarclength = arclength * sqrt(k1 / k);
-					if (scaledarclength > arclength)scaledarclength = arclength;
+					//if (scaledarclength > arclength)scaledarclength = arclength;
 				}
 			}
 
 			/*SIGN OF PREDICTOR VECTOR & ARC-LENGTH SCALING FACTOR*/
-			if(nlap == 1)
+			if(nlap == beginlap)
 			{
 				for (ii = 0; ii < msize; ii++)
 				{
@@ -933,7 +943,7 @@ int arclmStatic(struct arclmframe* af)
 				}
 			}
 
-			if (nlap==1)
+			if (nlap == beginlap || STATDYNAFLAG == 1)
 			{
 				predictorsign = 1.0;
 			}
@@ -984,7 +994,7 @@ int arclmStatic(struct arclmframe* af)
 
 
 			/*TWO-POINTS BUCKLING ANALYSIS.*/
-			if(neig!=0 && nlap%10==0)
+			if(neig!=0 && (nlap-beginlap)%10==0)
 			{
 				epsgmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
 				for (i = 0; i < msize; i++)
@@ -1217,8 +1227,18 @@ int arclmStatic(struct arclmframe* af)
 		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
 		if (residual < tolerance || iteration > maxiteration-1)
 		{
-		  nlap++;
-		  iteration = 0;
+			nlap++;
+			iteration = 0;
+
+			/*LOCAL INCREMENTAL IN THIS LAP.*/
+			for(i = 0; i < nshell; i++)
+			{
+			  outputmemoryshell(shells,mshell,i);
+			}
+
+			clearwindow(*(wdraw.childs+1));
+			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
 		}
 		iteration++;
 		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
@@ -1258,23 +1278,6 @@ int arclmStatic(struct arclmframe* af)
 			}
 			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 		}
-
-		if(iteration==1)
-		{
-			clearwindow(*(wdraw.childs+1));
-			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
-			/*LOCAL INCREMENTAL IN THIS LAP.*/
-			for(i = 0; i < nshell; i++)
-			{
-			  outputmemoryshell(shells,mshell,i);
-			}
-		}
-
-
-
-
-
 
 		/*TERMINATION FLAG*/
 		if (iteration == 1)
@@ -1486,9 +1489,6 @@ int arclmStatic(struct arclmframe* af)
 		}
 		else if (BCLFLAG == 1)/*BUCKLING DETECTED.PIN-POINTING EXCUTION.*/
 		{
-
-
-
 
 			if (pinpointmode == 2)/*PIN-POINTING BASED ON EXTENDED SYSTEM.*/
 			{

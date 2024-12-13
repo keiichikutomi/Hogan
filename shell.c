@@ -1139,6 +1139,39 @@ double **assemshellmmtx(struct oshell shell)
   double alpha=0.0;
   //double alpha=0.15;
 
+  /*
+
+	mvct = (double *)malloc(msize * sizeof(double));
+	for (i = 0; i < msize; i++)
+	{
+		*(mvct + i) = 0.0;
+	}
+
+	for (i = 1; i <= nshell; i++)
+	{
+		Me = transformationIII(Me, T, 6*nnod);
+
+		masstotal = 0.0;
+		massdiag = 0.0;
+		for (ii = 0; ii < 18; ii++)
+		{
+			for (jj = 0; jj < 18; jj++)
+			{
+				masstotal += Me[ii][jj];
+				if (ii == jj && ii % 6 < 3)massdiag += Me[ii][jj];
+			}
+		}
+		for (ii = 0; ii < nnod; ii++)
+		{
+			for (jj = 0; jj < 6; jj++)
+			{
+				*(mvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(*(Me + 6 * ii + jj) + 6 * ii + jj) * masstotal / massdiag;
+			}
+		}
+	}
+
+  */
+
   t=shell.sect->area;
   hiju=shell.sect->hiju[0];
 

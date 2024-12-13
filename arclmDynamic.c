@@ -80,7 +80,8 @@ int arclmDynamic(struct arclmframe* af)
 	double* mvct, * cvct;/*MASS & DAMPING VECTOR(DIAGONAL MATRIX)*/
 
 	///FOR ITERATIVE CALCULATION///
-	int nlap = 1;
+	int nlap;
+	int beginlap;
 	int laps;
 	int iteration;
 	int maxiteration = 20;
@@ -88,7 +89,7 @@ int arclmDynamic(struct arclmframe* af)
 	double residual = 0.0;
 	double gvctlen = 0.0;
 
-	double ddt = 0.001;/*TIME INCREMENT[sec]*/
+	double ddt = 0.002;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
 	double initialloadfactor = 0.0;
@@ -98,6 +99,7 @@ int arclmDynamic(struct arclmframe* af)
 
 	double volume = 0.0;
 	double Wkt,Wet,Wpt,Wot; /* ENERGY */
+	double lastWkt;
 	Wkt = 0.0;
 	Wet = 0.0;
 	Wpt = 0.0;
@@ -126,6 +128,8 @@ int arclmDynamic(struct arclmframe* af)
 
 	int STATDYNAFLAG = 0;
 	int UNLOADFLAG = 0;
+	int RELAXATION = 1;
+	int PEAKFLAG = 0;
 
 	/*ANALYSIS TERMINATION*/
 	int ENDFLAG = 0;
@@ -285,6 +289,7 @@ int arclmDynamic(struct arclmframe* af)
 			}
 		}
 	}
+    fclose(fdata);
 
 
 
@@ -520,16 +525,24 @@ int arclmDynamic(struct arclmframe* af)
 	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);  /*DRAW GLOBAL AXIS.*/
 	}
 
-	/*INITIAL*/
-	if(STATDYNAFLAG == 1)
+	nlap = 1;
+	if(af->nlaps != NULL)
 	{
-		if(af->nlaps != NULL)nlap = af->nlaps;
-		initialloadfactor = af->loadfactor;
+		nlap = af->nlaps;
 	}
-	loadfactor = initialloadfactor;
-
+	beginlap = nlap;
 	iteration = 1;
 	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
+
+	/*INITIAL*/
+	loadfactor = loadfactormap(time);
+	if(STATDYNAFLAG == 1)
+	{
+		initialloadfactor = af->loadfactor;
+		loadfactor += initialloadfactor;
+	}
+	lastloadfactor = loadfactor;
+	lastWkt = Wkt;
 
 
 	for(i = 0; i < msize; i++)
@@ -626,6 +639,7 @@ int arclmDynamic(struct arclmframe* af)
 		);
 	}
 	fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
+
 	clearwindow(*(wdraw.childs+1));
 	drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
 	overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
@@ -635,12 +649,15 @@ int arclmDynamic(struct arclmframe* af)
 	{
 		if(iteration==1)
 		{
-
 			time += ddt;
 			lastloadfactor = loadfactor;
+			lastWkt = Wkt;
 
-			if(STATDYNAFLAG == 1)loadfactor = initialloadfactor + loadfactormap(time);
-			else loadfactor = loadfactormap(time);
+			loadfactor = loadfactormap(time);
+			if(STATDYNAFLAG == 1)
+			{
+				loadfactor += initialloadfactor;
+			}
 
 
 			for (ii = 0; ii < msize; ii++)
@@ -658,6 +675,24 @@ int arclmDynamic(struct arclmframe* af)
 				*(udd_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
 							   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
 			}
+			if(PEAKFLAG == 1)
+			{
+				for (ii = 0; ii < msize; ii++)
+				{
+					*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+					*(lastddisp + ii) = *(ddisp + ii);
+
+					*(lastlastudd_m  + ii) = 0.0;
+
+					*(lastud_m  + ii) = 0.0;
+					*(lastudd_m + ii) = 0.0;
+
+					*(ud_m + ii)  = 0.0;
+					*(udd_m + ii) = 0.0;
+				}
+				PEAKFLAG = 0;
+				lastWkt = 0.0;
+			}
 
 			for(i = 0; i < msize; i++)
 			{
@@ -669,6 +704,10 @@ int arclmDynamic(struct arclmframe* af)
 				*(fbaseload  + i) = 0.0;
 				*(fpressure  + i) = 0.0;
 			}
+
+			//volume = 0.0;
+			//assemshellvolume(shells, nshell, ddisp, &volume);
+
 			/*STRESS*/
 			/*elemstress_DYNA(elems, melem, nelem, constraintmain,
 							  iform, lastddisp, ddisp,
@@ -683,8 +722,9 @@ int arclmDynamic(struct arclmframe* af)
 							 finertial, fdamping, finternal, fpressure,
 							 alpham, alphaf, xi);
 
-			strainenergy(af, &Wet, &Wpt);
-			kineticenergy(af, ud_m, &Wkt);
+
+			//strainenergy(af, &Wet, &Wpt);
+			//kineticenergy(af, ud_m, &Wkt);
 
 			for (i = 0; i < msize; i++)
 			{
@@ -701,6 +741,7 @@ int arclmDynamic(struct arclmframe* af)
 			}
 
 		}
+
 
 		/*MATRIX INITIALIZE*/
 		std::vector<Triplet> Ktriplet;
@@ -787,7 +828,7 @@ int arclmDynamic(struct arclmframe* af)
 			if (solver.info() != Eigen::Success)sign=-1;
 
 			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-					nlap, iteration, loadfactor,residual, NULL, NULL, 0, 0.0, volume, time);
+					nlap, iteration, loadfactor,residual, Wkt, NULL, 0, 0.0, volume, time);
 			fprintf(ffig, "%s", string);
 			errormessage(string);
 
@@ -849,16 +890,10 @@ int arclmDynamic(struct arclmframe* af)
 			nline = forwardbackward(gmtx, gvct, confs, msize, gcomp1);
         }
 
-
-
-
 		for (ii = 0; ii < msize; ii++)
 		{
 			*(gvct + ii) = *(gvct + *(constraintmain + ii));
 		}
-
-
-
 
 		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
@@ -927,13 +962,24 @@ int arclmDynamic(struct arclmframe* af)
 		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
 		if ((gvctlen < tolerance || iteration > maxiteration-1) && iteration!=1)
 		{
-		  nlap++;
-		  iteration = 0;
+			nlap++;
+			iteration = 0;
+			if(RELAXATION == 1 && lastWkt > Wkt)PEAKFLAG = 1;
+
+			/*LOCAL INCREMENTAL IN THIS LAP.*/
+			for(i = 0; i < nshell; i++)
+			{
+			  outputmemoryshell(shells,mshell,i);
+			}
+
+			clearwindow(*(wdraw.childs+1));
+			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
 		}
 		iteration++;
 		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
-		//if(iteration == 1 && nlap>3)ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
+		//if(iteration == 1 && nlap>beginlap + 2)ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
 		free(lapddisp_m);
 
 
@@ -974,22 +1020,14 @@ int arclmDynamic(struct arclmframe* af)
 			}
 			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 		}
-		if(iteration==1)
+
+
+		if(PEAKFLAG == 1 && STATDYNAFLAG == 1 && Wkt < 0.01)
 		{
-			clearwindow(*(wdraw.childs+1));
-			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
-			/*LOCAL INCREMENTAL IN THIS LAP.*/
-			for(i = 0; i < nshell; i++)
-			{
-			  outputmemoryshell(shells,mshell,i);
-			}
-
+			sprintf(string,"KINEMATIC ENERGY CONVERGED LAP: %4d ITER: %2d\n", nlap, iteration);
+			errormessage(string);
+			break;
 		}
-
-
-
-
 
 
 		//MESSAGE FOR UPDATE UI
@@ -1165,152 +1203,59 @@ double loadfactormap(double time)
 
 
 #if 0
+/*DYNAMIC RELAXATION.*/
 
-	double leftleftKE,leftKE,KE,rightKE;/*KINETIC ENERGY AT t-3*dt/2, t-dt/2, t, t+dt/2*/
-	int PEAKFLAG = 0;
+	double leftleftWkt,leftWkt,Wkt,rightWkt;/*KINETIC ENERGY AT t-3*dt/2, t-dt/2, t, t+dt/2*/
 	double q;
 
 	rightud_m = (double*)malloc(msize * sizeof(double));
 	leftud_m = (double*)malloc(msize * sizeof(double));
-	mvct = (double *)malloc(msize * sizeof(double));
-	cvct = (double *)malloc(msize * sizeof(double));
-
 	for (i = 0; i < msize; i++)
 	{
 		*(rightud_m + i) = 0.0;
 		*(leftud_m + i) = 0.0;
-		*(mvct + i) = 0.0;
-		*(cvct + i) = 0.0;
-	}
-
-
-
-	/*ELEMENTS ASSEMBLAGE.*/
-	for (i = 1; i <= nshell; i++)
-	{
-
-
-		Me = transformationIII(Me, T, 6*nnod);/*[Tt][M][T]*/
-
-		masstotal = 0.0;
-		massdiag = 0.0;
-		for (ii = 0; ii < 18; ii++)
-		{
-			for (jj = 0; jj < 18; jj++)
-			{
-				masstotal += Me[ii][jj];
-				if (ii == jj && ii % 6 < 3)massdiag += Me[ii][jj];
-			}
-		}
-		for (ii = 0; ii < nnod; ii++)
-		{
-			for (jj = 0; jj < 6; jj++)
-			{
-				*(mvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(*(Me + 6 * ii + jj) + 6 * ii + jj) * masstotal / massdiag;
-			}
-		}
-
-		gvel_m = extractshelldisplacement(shell, ud_m);
-		gmomentum_m = matrixvector(Me, gvel_m, 6 * nnod);
-
-		(mshell+i-1)->SE = 0.0;
-		(mshell+i-1)->SEp = 0.0;
-		(mshell+i-1)->SEb = 0.0;
-		for (ii = 0; ii < nnod; ii++)
-		{
-			for (jj = 0; jj < 2; jj++)
-			{
-				(mshell+i-1)->SEp += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
-			}
-			for (jj = 2; jj < 5; jj++)
-			{
-				(mshell+i-1)->SEb += 0.5 * *(edisp + 6 * ii + jj) * *(einternal + 6 * ii + jj);
-			}
-			(mshell+i-1)->SE += 0.5 * *(edisp + 6 * ii + 5) * *(einternal + 6 * ii + 5);
-		}
-		(mshell+i-1)->SE += (mshell+i-1)->SEp + (mshell+i-1)->SEb;
-
-		(mshell+i-1)->KE = 0.0;
-		(mshell+i-1)->KEt = 0.0;
-		(mshell+i-1)->KEr = 0.0;
-		for (ii = 0; ii < nnod; ii++)
-		{
-			for (jj = 0; jj < 3; jj++)
-			{
-				(mshell+i-1)->KEt += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
-			}
-			for (jj = 3; jj < 6; jj++)
-			{
-				(mshell+i-1)->KEr += 0.5 * *(gvel_m + 6 * ii + jj) * *(gmomentum_m + 6 * ii + jj);
-			}
-		}
-		(mshell+i-1)->KE = (mshell+i-1)->KEt + (mshell+i-1)->KEr;
-
-		free(gvel_m);
-		free(gmomentum_m);
 	}
 
 	for (i = 0; i < msize; i++)
 	{
-		*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
-		*(fexternal + i) = loadfactor * *(fbaseload + i);
-		*(funbalance + i) = *(fexternal + i) - *(finternal + i);
-		if ((confs + i)->iconf == 1)
-		{
-			*(freaction + i) = *(funbalance + i);
-			*(funbalance + i) = 0.0;
-			*(fbaseload + i) = 0.0;
-		}
-	}
-
-
-	leftleftKE = leftKE;
-	leftKE = rightKE;
-	KE = 0.0;
-	rightKE = 0.0;
-
-	//funbalance_m = pullback(ddisp,funbalance,nnode);
-	for (i = 0; i < msize; i++)
-	{
-
 		if (time == 0.0 || PEAKFLAG)
 		{
 			*(rightud_m + i) = *(funbalance + i) * ddt / (2.0 * *(mvct + i));
 			*(leftud_m  + i) = -*(rightud_m  + i);
+			leftleftWkt = 0.0;
+			leftWkt = 0.0;
 
-			*(ud_m  + i) = 0.0;
-			*(udd_m  + i) = 2.0 * *(rightud_m  + i) / ddt;
+			PEAKFLAG = 0;
 		}
 		else
 		{
 			*(leftud_m  + i) = *(rightud_m  + i);
 			*(rightud_m  + i) = (*(funbalance + i) * ddt / *(mvct + i)) + *(leftud_m  + i);
 			//*(rightud_m  + i) = ( *(funbalance_m + i) + (*(mvct + i) / ddt - *(cvct + i) / 2.0) * *(leftud_m  + i) ) / ( *(mvct + i) / ddt + *(cvct + i) / 2.0 );
-
-			*(ud_m  + i) = (*(rightud_m  + i) + *(leftud_m  + i)) / 2.0;
-			*(udd_m  + i) = (*(rightud_m  + i) - *(leftud_m  + i)) / ddt;
+			leftleftWkt = leftWkt;
+			leftWkt = rightWkt;
 		}
-		KE += 0.5 * *(mvct + i) * *(ud_m  + i) * *(ud_m  + i);
-		rightKE += 0.5 * *(mvct + i) * *(rightud_m  + i) * *(rightud_m  + i);
+		Wkt = 0.0;
+		rightWkt = 0.0;
 
+		*(ud_m  + i) = (*(rightud_m  + i) + *(leftud_m  + i)) / 2.0;
+		*(udd_m  + i) = (*(rightud_m  + i) - *(leftud_m  + i)) / ddt;
+
+		Wkt += 0.5 * *(mvct + i) * *(ud_m  + i) * *(ud_m  + i);
+		rightWkt += 0.5 * *(mvct + i) * *(rightud_m  + i) * *(rightud_m  + i);
 	}
-	sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-		nlap, 1, loadfactor,/*residual*/0, 0, 0, 0, 0.0, 0.0, time);
-	fprintf(ffig, "%s", string);
-	errormessage(string);
+
 
 
 	/*FOR DINAMIC RELAXATION*/
-	PEAKFLAG = 0;
-	if (method==2 && rightKE < leftKE)
+
+	if (Wkt < lastWkt)
 	{
-		q = (leftKE - rightKE) / (2 * leftKE - rightKE - leftleftKE);
+		q = (leftWkt - rightWkt) / (2 * leftWkt - rightWkt - leftleftWkt);
 		for (i = 0; i < msize; i++)
 		{
 			*(gvct + i) = -q * *(leftud_m  + i) * ddt;
 		}
-		leftKE = 0.0;
-		rightKE = 0.0;
 		PEAKFLAG = 1;
 	}
 	else
