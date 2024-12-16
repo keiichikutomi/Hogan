@@ -19709,7 +19709,8 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
   /*INODE CONFINEMENTTYPE... CONFINEMENTVALUE...*/
   /*INODE DIRECTION LONGREACTION*/
 
-  for(i=0;i<(af->nsect);i++)
+  for(i=0;i<(af
+  ->nsect);i++)
   {
 	(af->sects+i)->loff=i;
 	readsect(ftext,(af->sects+i));

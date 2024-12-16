@@ -89,7 +89,7 @@ int arclmDynamic(struct arclmframe* af)
 	double residual = 0.0;
 	double gvctlen = 0.0;
 
-	double ddt = 0.002;/*TIME INCREMENT[sec]*/
+	double ddt = 0.001;/*TIME INCREMENT[sec]*/
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
 	double initialloadfactor = 0.0;
