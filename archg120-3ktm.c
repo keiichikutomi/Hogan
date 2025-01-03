@@ -456,8 +456,9 @@ struct arclmframe{long int code,loff;
 				  struct owire *elems;
 				  struct oshell *shells;
 				  struct oconf *confs;
-				  double *constraintval,**constraintvec;
-				  long int *constraintmain;
+				  struct oconstraint * constraints;
+				  //double *constraintval,**constraintvec;
+				  //long int *constraintmain;
 
 				  double *nmass;/*NODE MASS FOR GNSHN.*/
 				  int nosect; 		/****SRCANMAX****/
