@@ -439,7 +439,7 @@ struct winparamsreg{
                     int code;
                     int nwin;
                     struct windowparams **wp;
-                   };                   /*REGISTRY OF WINDOWPARAMS.*/
+				   };                   /*REGISTRY OF WINDOWPARAMS.*/
 
 struct arclmframe{long int code,loff;
 				  char *appelation;
@@ -456,11 +456,12 @@ struct arclmframe{long int code,loff;
 				  struct owire *elems;
 				  struct oshell *shells;
 				  struct oconf *confs;
-				  struct oconstraint * constraints;
+				  struct oconstraint *constraints;
+				  long int *constraintmain;
 				  //double *constraintval,**constraintvec;
-				  //long int *constraintmain;
 
 				  double *nmass;/*NODE MASS FOR GNSHN.*/
+
 				  int nosect; 		/****SRCANMAX****/
 				  long int *iosect; /****SRCANMAX****/
 				  int *eosect;		/****SRCANMAX****/
@@ -17662,7 +17663,7 @@ int arclm101(struct arclmframe *af,int idinput)
 	free(af->ddisp);
 	free(af->melem);
 	free(af->mshell);
-	free(af->constraintmain);
+	free(af->constraints);
 
 	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
 	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));

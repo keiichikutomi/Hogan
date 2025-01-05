@@ -257,50 +257,54 @@ struct windowparams whorz={11,0,0,NEUTRAL,"CanHorizonWin",
 						NULL,NULL,NULL,
 						0,NULL,NULL,NULL};*/       /*NULL ARCLM FRAME. NO SHELL.*/
 
-struct arclmframe arci={0,0,
-						"\0",
-						0,0,0,0,0,0,0,
-						NULL,NULL,
-						NULL,NULL,
-						NULL,NULL,NULL,
-						NULL,NULL,NULL,NULL,
-						NULL,NULL,
-						NULL,NULL,NULL,
-						NULL,NULL,
-						0,NULL,NULL,NULL};       /*NULL ARCLM FRAME.*/
+struct arclmframe arci={0,0,//code,loff
+						"\0",//*appelation
+						0,0,0,0,0,0,0,0,//nnode,nelem,nshell,nsect,nreact,nlaps,neig,nconstraint
+						0.0,//loadfactor
+						NULL,NULL,//*eigenval,**eigenvec
+						NULL,NULL,//*iform,*ddisp
+						NULL,NULL,NULL,//*melem,*mshell,*dreact
+						NULL,//*fsurface
+						NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,//*nodes,*ninit,*sects,*elems,*shells,*confs,*constraints;
+						NULL,//*nmass
+						0,NULL,NULL,NULL//nosect,*iosect,*eosect,*dosect
+					   };/*NULL ARCLM FRAME.*/
 struct arclmframe arc ={0,0,
 						"\0",
-						0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,
+						0.0,
 						NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
-						NULL,NULL,NULL,NULL,
-						NULL,NULL,
-						NULL,NULL,NULL,
-						NULL,NULL,
-						0,NULL,NULL,NULL};     /*GLOBAL ARCLM FRAME.*/
+						NULL,
+						NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+						NULL,
+						0,NULL,NULL,NULL
+					   };/*GLOBAL ARCLM FRAME.*/
 struct arclmframe arcx={0,0,
 						"\0",
-						0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,
+						0.0,
 						NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
-						NULL,NULL,NULL,NULL,
-						NULL,NULL,
-						NULL,NULL,NULL,
-						NULL,NULL,
-						0,NULL,NULL,NULL}; /*ARCLM FRAME FOR X LOAD.*/
+						NULL,
+						NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+						NULL,
+						0,NULL,NULL,NULL
+					   };/*ARCLM FRAME FOR X LOAD.*/
 struct arclmframe arcy={0,0,
 						"\0",
-						0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,
+						0.0,
 						NULL,NULL,
 						NULL,NULL,
 						NULL,NULL,NULL,
-						NULL,NULL,NULL,NULL,
-						NULL,NULL,
-						NULL,NULL,NULL,
-						NULL,NULL,
-						0,NULL,NULL,NULL}; /*ARCLM FRAME FOR Y LOAD.*/
+						NULL,
+						NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+						NULL,
+						0,NULL,NULL,NULL
+					   };/*ARCLM FRAME FOR Y LOAD.*/
 
 struct biquadframe bqf={0,0,
 						"\0",
