@@ -34,7 +34,7 @@ int arclmStatic(struct arclmframe* af)
 	int i, ii, jj;
 
 	int nnode, nelem, nshell, nsect, nconstraint;
-	long int msize;
+	long int msize,csize;
 
 	/*ARCLMFRAME*/
 	struct osect* sects;
@@ -46,6 +46,7 @@ int arclmStatic(struct arclmframe* af)
 	struct memoryelem* melem;
 	struct memoryshell* mshell;
 	long int* constraintmain;
+    struct oconstraint* constraints;
 
 	/*GLOBAL MATRIX*/
 	struct gcomponent ginit = { 0,0,0.0,NULL };
@@ -170,12 +171,12 @@ int arclmStatic(struct arclmframe* af)
 
 	msize = 6 * nnode;                                      /*SIZE OF GLOBAL MATRIX.*/
 
-	weight = (double *)malloc((6*nnode + 1) * sizeof(double));
+	weight = (double *)malloc((msize + 1) * sizeof(double));
 	for (i=0;i<6*nnode;i++)
 	{
 		*(weight + i) = 0.0;
 	}
-	*(weight + 6*nnode) = 1.0;
+	*(weight + msize) = 1.0;
 
 	strcpy(filename, (wdraw.childs+1)->inpfile);
 	dot = strrchr(filename, '.');
@@ -262,7 +263,7 @@ int arclmStatic(struct arclmframe* af)
 							if (!strcmp(*(data + pstr), "LOAD"))
 							{
 								pstr++;
-								*(weight + 6 * nnode) = (double)strtod(*(data + pstr), NULL);
+								*(weight + 6*nnode) = (double)strtod(*(data + pstr), NULL);
 							}
 							if (!strcmp(*(data + pstr), "NODE"))
 							{
@@ -402,6 +403,7 @@ int arclmStatic(struct arclmframe* af)
 	free(af->melem);
 	free(af->mshell);
 	free(af->constraintmain);
+	free(af->constraints);
 
 	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
 	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
@@ -414,6 +416,7 @@ int arclmStatic(struct arclmframe* af)
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
+	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
 
 	af->sects = sects;
 	af->nodes = nodes;
@@ -426,6 +429,7 @@ int arclmStatic(struct arclmframe* af)
 	af->melem = melem;
 	af->mshell = mshell;
 	af->constraintmain = constraintmain;
+	af->constraints = constraints;
 
 	inputtexttomemory(fin, af);
 	fclose(fin);
@@ -443,20 +447,28 @@ int arclmStatic(struct arclmframe* af)
 	melem = af->melem;
 	mshell = af->mshell;
 	constraintmain = af->constraintmain;
+	constraints = af->constraints;
 #endif
 
-	/***GLOBAL MATRIX*/
-	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-	for (i = 0; i < msize; i++)
+
+	csize = 0;
+	for (i = 0; i < nconstraint; i++)
+	{
+		csize += (constraints+i)->neq;
+	}
+
+	/*GLOBAL MATRIX FOR SOLVER*/
+	gmtx = (struct gcomponent*)malloc((msize+csize) * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	for (i = 0; i < (msize+csize); i++)
 	{
 		(gmtx + i)->down = NULL;
 	}
 
-	/***GLOBAL VECTOR*/
-	gvct = (double *)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
-	due = (double*)malloc(msize * sizeof(double));
-	dup = (double*)malloc(msize * sizeof(double));
-	givendisp = (double*)malloc(msize * sizeof(double));
+	/*GLOBAL VECTOR FOR SOLVER*/
+	gvct = (double *)malloc((msize+csize) * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
+	due = (double*)malloc((msize+csize) * sizeof(double));
+	dup = (double*)malloc((msize+csize) * sizeof(double));
+
 
 	/*FORCE VECTOR INITIALIZATION*/
 	funbalance = (double*)malloc(msize * sizeof(double));          /*UNBALANCED INTERNAL FORCE VECTOR.*/
@@ -470,12 +482,11 @@ int arclmStatic(struct arclmframe* af)
 
 
 	/*POSITION VECTOR INITIALIZATION*/
+	givendisp = (double*)malloc(msize * sizeof(double));
 	lastddisp = (double*)malloc(msize * sizeof(double));
 	lapddisp = (double*)malloc(msize * sizeof(double));		/*INCREMENT IN THE LAP*/
 	lastgvct = (double*)malloc(msize * sizeof(double));
 	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
-
-
 
 
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
@@ -603,7 +614,7 @@ int arclmStatic(struct arclmframe* af)
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
 		Eigen::SimplicialLDLT<SparseMatrix> solver;
 
-		for (i = 1; i <= msize; i++)
+		for (i = 1; i <= (msize+csize); i++)
 		{
 			g = (gmtx + (i - 1))->down;
 			while (g != NULL)
@@ -625,7 +636,7 @@ int arclmStatic(struct arclmframe* af)
 		  //assemshellEx(shells, mshell, nshell, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
 
 		  /*GLOBAL MATRIX USING EIGEN*/
-		  Kglobal.reserve(msize*msize);
+		  Kglobal.reserve((msize+csize)*(msize+csize));
 		  Kglobal.setFromTriplets(Ktriplet.begin(), Ktriplet.end());//SPARSE MATRIX FROM TRIPLET
 		}
 		else
@@ -1098,16 +1109,16 @@ int arclmStatic(struct arclmframe* af)
 		{
 			if(USINGEIGENFLAG==1)
 			{
-				Vector P = Vector::Zero(msize);
+				Vector P = Vector::Zero((msize+csize));
 				for(i=0;i<msize;i++)P(i)=*(fbaseload+i);
 				Vector Up = solver.solve(P);
-				for(i=0;i<msize;i++)*(dup+i)=Up(i);
+				for(i=0;i<(msize+csize);i++)*(dup+i)=Up(i);
 				if (solver.info() != Eigen::Success)return -1;
 
-				Vector E = Vector::Zero(msize);
+				Vector E = Vector::Zero((msize+csize));
 				for(i=0;i<msize;i++)E(i)=*(funbalance+i);
 				Vector Ue = solver.solve(E);
-				for(i=0;i<msize;i++)*(due+i)=Ue(i);
+				for(i=0;i<(msize+csize);i++)*(due+i)=Ue(i);
 				if (solver.info() != Eigen::Success)return -1;
 			}
 			else

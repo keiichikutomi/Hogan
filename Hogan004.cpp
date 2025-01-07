@@ -35,10 +35,11 @@
 
 #include "canhead.h"                    /*DEFINITION OF COMMAND ID.*/
 #include "archg120-3ktm.c"       /*ANALYSIS NONLINEAR,MATH,VIEWING.*/
+#include "corotational.c"
 #include "elem.c"
 #include "shell.c"
 #include "constraint.c"
-#include "corotational.c"
+
 #include "arclmEigen.c"
 #include "assemble.c"
 #include "assembleEigen.c"

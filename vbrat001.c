@@ -1,5 +1,3 @@
-int vbrat001(struct arclmframe* af);
-
 int vbrat001(struct arclmframe* af)
 {
   DWORDLONG memory0,memory1;

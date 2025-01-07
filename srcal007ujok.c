@@ -456,7 +456,7 @@ double ultimateshearofpcgirder(struct element elem,
 FILE *fout0;
 char prj[20];
 double jis;                                        /*1.1=JIS STEEL.*/
-struct materials gmaterial = {0};
+struct materials gmaterial;
 extern int globalmessageflag;
 extern int globalstatus;
 

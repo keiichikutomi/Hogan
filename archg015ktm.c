@@ -114,9 +114,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   struct oconf *confs,*confs2;
   struct memoryelem *melem;
   struct memoryshell *mshell;
-  //double *constraintval,**constraintvec;
   long int mainoff,*constraintmain;
-
+  struct oconstraint *constraints;
 
 #if 0
 	//fin = fgetstofopenII(dir, "r", (wdraw.childs+1)->inpfile);
@@ -160,8 +159,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	free(af->melem);
 	free(af->mshell);
 	free(af->constraintmain);
-	//free(af->constraintval);
-	//free(af->constraintvec);
+	free(af->constraints);
 
 
 	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
@@ -175,14 +173,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
-	/*
-	constraintval=(double *)malloc(nconstraint*sizeof(double));
-	constraintvec=(double **)malloc(nconstraint*sizeof(double *));
-	for(ii=0;ii<nconstraint;ii++)
-	{
-	  *(constraintvec+ii)=(double *)malloc(msize*sizeof(double));
-	}
-	*/
+	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
+
 
 	af->sects = sects;
 	af->nodes = nodes;
@@ -195,8 +187,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	af->melem = melem;
 	af->mshell = mshell;
 	af->constraintmain = constraintmain;
-	//af->constraintval=constraintval;
-	//af->constraintvec=constraintvec;
+	af->constraints = constraints;
 
 	inputtexttomemory(fin, af);
 	fclose(fin);
@@ -214,6 +205,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	melem = af->melem;
 	mshell = af->mshell;
 	constraintmain = af->constraintmain;
+	constraints = af->constraints;
 #endif
 
   //gmtx=(struct gcomponent *)malloc((msize+nconstraint)*sizeof(struct gcomponent)); /*DIAGONALS OF GLOBAL MATRIX.*/
@@ -230,7 +222,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	*(gmtx+(i-1))=ginit;
 	(gmtx+(i-1))->down=NULL;
   }
-  comps=msize/*+nconstraint*/; /*INITIAL COMPONENTS=DIAGONALS.*/
+  comps=msize; /*INITIAL COMPONENTS=DIAGONALS.*/
 
 
   initialelem001(elems,melem,nelem);         /*ASSEMBLAGE ELEMENTS.*/
@@ -330,24 +322,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 #endif
 
 
-	  /*ASSEMBLAGE CONSTRAINT MATRIX.*/
-	  /*
-	  for(i=1;i<=nconstraint;i++)
-	  {
-		for (ii=1;ii<=msize;ii++)
-		{
-		  if(*(*(constraintvec+i-1)+ii-1) != 0 || *(*(constraintvec+i-1)+ii-1) != NULL)
-		  {
-			gdata=*(*(constraintvec+i-1)+ii-1);
-			gwrite(gmtx,msize+i,ii,gdata);
-			comps++;
-		  }
-		}
-		*(gvct+msize+i-1) = *(constraintval+i-1);
-		(confs+msize+i-1)->iconf = (signed char)0;
-		(confs+msize+i-1)->value = *(constraintval+i-1);
-	  }
-	  */
+
 
   sprintf(string,"GLOBAL MATRIX %ld COMPS ASSEMBLED.",comps);
   laptime(string,t0);

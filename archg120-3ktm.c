@@ -259,11 +259,11 @@ struct memoryshell{
 				  };                     /*SHELL ELEMENT MEMORY FOR ARCLM.*/
 
 struct oconstraint{long int code,loff;
+				   int nnod;
 				   int type;
-				   int nequation;
+				   int neq,leq;
 				   struct onode *(node[2]);
-				   double raxis[3][3];
-				   double taxis[3][3];
+				   double axis[3];
 				  };
 
 
@@ -536,6 +536,7 @@ void freematrix(double **mtx,int msize);
 
 /*FOR VECTOR CALCURATION*//*KUTOMI*/
 double dotproduct(double* vct1, double* vct2, int vsize);
+double* crossproduct(double* vct1, double* vct2);
 double vectorlength(double* vct, int vsize);
 void vectornormalize(double* vct, int vsize);
 
@@ -564,9 +565,9 @@ struct vector vectorsubtraction(struct vector vct1,
                                 struct vector vct2);
 double lengthvector(struct vector vct);
 double innerproduct(struct vector vct1,
-                    struct vector vct2);
+					struct vector vct2);
 struct vector outerproduct(struct vector vct1,
-                           struct vector vct2);
+						   struct vector vct2);
 
 double distancedotdot(struct onode n1,struct onode n2);
 double distancedotline(struct onode n,struct line l,
@@ -1054,6 +1055,8 @@ void assemgstiffnessIIwithDOFelimination(struct gcomponent *gmtx,
 					   double **estiff,
 					   struct oshell *shell,
 					   long int *constraintmain);
+
+
 void assemconf(struct oconf *confs,double *gvct,double dsafety,
 			   int nnode);
 void assemnodenorm(struct oshell shell,double *gvct);
@@ -1391,6 +1394,20 @@ double dotproduct(double* vct1, double* vct2, int vsize)
 	for (i = 0; i < vsize; i++) dot += (*(vct1 + i)) * (*(vct2 + i));
 	return dot;
 }/*dotproduct*/
+
+double* crossproduct(double* vct1, double* vct2)
+{
+	double* cross;
+	cross = (double *)malloc(3*sizeof(double));
+
+	*(cross + 0) =  *(vct1 + 1)**(vct2 + 2) - *(vct1 + 2)**(vct2 + 1);
+	*(cross + 1) =  *(vct1 + 2)**(vct2 + 0) - *(vct1 + 0)**(vct2 + 2);
+	*(cross + 2) =  *(vct1 + 0)**(vct2 + 1) - *(vct1 + 1)**(vct2 + 0);
+
+	return cross;
+}/*crossproduct*/
+
+
 
 double vectorlength(double* vct, int vsize)
 {
@@ -20040,10 +20057,11 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
   {
 	*((af->constraintmain) + i) = i;
   }
-
+  offset = 0;/*low offset of constraint equation matrix*/
   for(i=1;i<=(af->nconstraint);i++) /*CONF VECTOR:CONFINEMENT,VALUE.*/
   {
 	(af->constraints+i-1)->loff=i-1;
+	(af->constraints+i-1)->leq=offset;
 	data=fgetsbrk(ftext,&n);
 	(af->constraints+i-1)->code=strtol(*(data+0),NULL,10);
 	(af->constraints+i-1)->type=strtol(*(data+1),NULL,10);
@@ -20085,39 +20103,40 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	}
 	if((af->constraints+i-1)->type==1)/*REVOLUTE JOINT.*/
 	{
-		(af->constraints+i-1)->nequation=5;
+		(af->constraints+i-1)->neq=4;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
-
 		for(j=0;j<3;j++)
 		{
-			(af->constraints+i-1)->axis1[j]=strtod(*(data+4+j),NULL);
+			(af->constraints+i-1)->axis[j]=strtod(*(data+4+j),NULL);
 		}
 	}
 	if((af->constraints+i-1)->type==2)/*SPHERICAL JOINT.*/
 	{
-		(af->constraints+i-1)->nequation=3;
+		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
 	if((af->constraints+i-1)->type==3)/*PRISMATIC JOINT.*/
 	{
-		(af->constraints+i-1)->nequation=3;
+		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
 	if((af->constraints+i-1)->type==4)/*CYLINDRICAL JOINT.*/
 	{
-		(af->constraints+i-1)->nequation=3;
+		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
 	if((af->constraints+i-1)->type==5)/*UNIVERSAL JOINT.*/
 	{
-		(af->constraints+i-1)->nequation=3;
+		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
+
+	offset += (af->constraints+i-1)->neq;
 
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
