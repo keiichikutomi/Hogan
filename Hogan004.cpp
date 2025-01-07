@@ -37,6 +37,7 @@
 #include "archg120-3ktm.c"       /*ANALYSIS NONLINEAR,MATH,VIEWING.*/
 #include "elem.c"
 #include "shell.c"
+#include "constraint.c"
 #include "corotational.c"
 #include "arclmEigen.c"
 #include "assemble.c"
@@ -192,7 +193,7 @@ struct viewparam vpdefault={AXONOMETRIC,0,0,
                              {0,0,{ 30.0, -100.0, -100.0}}},
                             {7.0, 0.5,
                              100.0, 0.0, 0.01,
-                             0.5,
+							 0.5,
                              3},
                             {10000.0}}; /*HAKODATE KESANSHO*/
 # endif
@@ -3309,7 +3310,7 @@ MessageBox(NULL,str,"Preview",MB_OK);
 
             bclng002(&arc);
 
-            /*LOAD INCREMENTAL ANALYSIS(MATERIAL NONLINEAR)*/
+			/*LOAD INCREMENTAL ANALYSIS(MATERIAL NONLINEAR)*/
             strcpy((wdraw.childs+1)->otpfile,str);
             strcat((wdraw.childs+1)->otpfile,".otl2");
 //            strcat((wdraw.childs+1)->otpfile,".ohy2");
@@ -11351,6 +11352,8 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 
 			arc.iform=(double *)malloc(6*arc.nnode*sizeof(double));
 			arc.ddisp=(double *)malloc(6*arc.nnode*sizeof(double));
+			arc.constraints=(struct oconstraint *)malloc(arc.nconstraint*sizeof(struct oconstraint));
+			if(arc.nconstraint != 0 && arc.constraints==NULL) break;
 
 			/*arc.constraintval=(double *)malloc(arc.nconstraint*sizeof(double));*/        /*MULTI POINT CONSTRAINTS.*/
 			/*arc.constraintvec=(double **)malloc(arc.nconstraint*sizeof(double *));
@@ -17105,7 +17108,7 @@ void printarclmlastfiguresII(FILE *fin,struct viewparam *vp,
 */
     fout=fgetstofopen("\0","r",ID_OUTPUTFILE);  /*OPEN FILE.*/
     if(fout==NULL) return;
-    openarclmlastfileII(fout,af);
+	openarclmlastfileII(fout,af);
     fclose(fout);
     wparam = MAKEWPARAM(IDV_UNITNM,0);
     SendMessage((wmenu.childs+3)->hwnd,WM_COMMAND,wparam,0);

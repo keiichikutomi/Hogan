@@ -1,20 +1,12 @@
-struct oconstraint{long int code,loff;
-				   int type;
-				   int nequation;
-				   struct onode *(node[2]);
-				   double taxis1[3];
-				   double taxis2[3];
-				   double raxis1[3];
-				   double raxis2[3];
-				  };
 
 
-/*REVOLUTE JOINT    : 1 DIRECTION ROTATION, NO TRANSITION.          1 VECTOR INPUT.*/
-/*SPHERICAL JOINT   : FREE ROTATION, NO TRANSITION.      		    0 VECTOR INPUT.*/
-/*PRISMATIC JOINT   : 1 DIRECTION TRANSITION, NO ROTATION.		    1 VECTOR INPUT.*/
-/*CYLINDRICAL JOINT : 1 DIRECTION ROTATION, 1 DIRECTION TRANSITION. 2 VECTOR INPUT.*/
-/*UNIVERSAL JOINT   : 2 DIRECTION ROTATION, NO TRANSITION.          2 VECTOR INPUT.*/
 
+/*TYPE |      JOINT        : DESCRIPTION                                                  */
+/*  1  | REVOLUTE JOINT    : 1 DIRECTION ROTATION, NO TRANSITION.          1 VECTOR INPUT.*/
+/*  2  | SPHERICAL JOINT   : FREE ROTATION, NO TRANSITION.      		   0 VECTOR INPUT.*/
+/*  3  | PRISMATIC JOINT   : 1 DIRECTION TRANSITION, NO ROTATION.		   1 VECTOR INPUT.*/
+/*  4  | CYLINDRICAL JOINT : 1 DIRECTION ROTATION, 1 DIRECTION TRANSITION. 2 VECTOR INPUT.*/
+/*  5  | UNIVERSAL JOINT   : 2 DIRECTION ROTATION, NO TRANSITION.          2 VECTOR INPUT.*/
 
 
 void assemconstraint(struct oconstraint* constraints, int nconstraint, long int* constraintmain,
@@ -29,11 +21,8 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 	double* gforminit, * eforminit;
 	double* gform, * eform, * edisp;
 
-	double** drccosinit;
-	double** drccos,** T,** HPT;
-
-	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
-	double* gexternal, * eexternal;                        /*EXTERNAL FORCE OF ELEMENT*/
+	double* ginternal, * einternal;
+	double* gexternal, * eexternal;
 
 
 
@@ -47,61 +36,48 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 			{
 				for (jj = 0; jj < 6; jj++)
 				{
-					*(loffset + (6 * ii + jj)) = 6 * (constraint.node[ii]->loff) + jj;
+					*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
 				}
 			}
 
-			/*INITIAL CONFIGURATION*/
-			for (ii = 0; ii < 2; ii++)
+			rvct1 = (double*)malloc(3 * sizeof(double));
+			rvct2 = (double*)malloc(3 * sizeof(double));
+			for (ii = 0; ii < 3; ii++)
 			{
-				inputnode(iform, (constraints+i-1)->node[ii]);
+				*(rvct1 + ii) = *(ddisp + *(loffset + 3 + ii));
+				*(rvct2 + ii) = *(ddisp + *(loffset + 9 + ii));
+			}
+			rmtx1 = rotationmtx(rvct1);
+			rmtx2 = rotationmtx(rvct2);
+
+			rvct1 = (double*)malloc(3 * sizeof(double));
+			rvct2 = (double*)malloc(3 * sizeof(double));
+			for (ii = 0; ii < 3; ii++)
+			{
+				*(rvct1 + ii) = raxis[];
+				*(rvct2 + ii) = *(ddisp + *(loffset + 9 + ii));
 			}
 
+			axis1 = matrixvector(rmtx1,3);
+			axis2 = matrixvector(rmtx2,3);
+
+
+
+
 
 		}
 
 
 
 
-		drccosinit = shelldrccos(shell);
-		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
-		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
-
-
-
-		/*DEFORMED CONFIGFURATION*/
-		for (ii = 0; ii < nnod; ii++)
-		{
-			inputnode(ddisp, shell.node[ii]);
-		}
-		drccos = shelldrccos(shell);
-		gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
-		eform = extractlocalcoord(gform,drccos,nnod); 			       	    /*{Xe+Ue}*/
-
-		edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
-
-		T = transmatrixIII(drccos, nnod);         							/*[T].*/
-		HPT = transmatrixHPT(eform, edisp, T, nnod);
-
-
-
-		assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
-
-
-
-
+		assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain);
 
 		free(loffset);
-		free(eforminit);
-		free(gforminit);
-		free(eform);
-		free(gform);
-		free(edisp);
-		free(einternal);
-		freematrix(drccos, 3);
-		freematrix(drccosinit, 3);
-		freematrix(T, 6 * nnod);
-		freematrix(HPT, 6 * nnod);
+		free(rvct1);
+		free(rvct2);
+		freematrix(rmtx1, 3);
+		freematrix(rmtx2, 3);
 	}
 	return;
 }
+

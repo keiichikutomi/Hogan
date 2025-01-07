@@ -242,7 +242,6 @@ struct memoryelem{
 							  /*ELEMENT MEMORY FOR ARCLM.*/
 struct oshell{long int code,loff;
 			  int nnod,ngp,nstress;
-			  signed char iconf[4][6];
 			  struct onode *(node[4]);
 			  struct osect *sect;
 			  double stress[4][6];
@@ -258,6 +257,14 @@ struct memoryshell{
 					double stress[4][6];
 					struct gausspoint gp[9];/*INTEGRATION POINTS PARAMS*/
 				  };                     /*SHELL ELEMENT MEMORY FOR ARCLM.*/
+
+struct oconstraint{long int code,loff;
+				   int type;
+				   int nequation;
+				   struct onode *(node[2]);
+				   double raxis[3][3];
+				   double taxis[3][3];
+				  };
 
 
 struct ofilm{long int code,loff;
@@ -814,7 +821,7 @@ void drawglobalshell(HDC hdc,struct viewparam vp,
 					long int selectcode,
 					int mode);
 void drawwirestress(HDC hdc,struct viewparam vp,
-                    struct arclmframe af,
+					struct arclmframe af,
 					struct owire elem,int mode);
 void drawwireaxis(HDC hdc,
                   struct viewparam vp,
@@ -19711,8 +19718,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
   /*INODE CONFINEMENTTYPE... CONFINEMENTVALUE...*/
   /*INODE DIRECTION LONGREACTION*/
 
-  for(i=0;i<(af
-  ->nsect);i++)
+  for(i=0;i<(af->nsect);i++)
   {
 	(af->sects+i)->loff=i;
 	readsect(ftext,(af->sects+i));
@@ -20018,6 +20024,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  (af->confs+offset)->value =              strtod(*(data+j+6),NULL);
 
 	  if((af->confs+offset)->iconf==1) (af->nreact)++;
+
 	  if(n==19 && af->nmass!=NULL)
 	  {
 		*(af->nmass+offset) = strtod(*(data+j+12),NULL);
@@ -20028,49 +20035,93 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
   }
+
   for (i = 0; i < 6*(af->nnode); i++)
   {
 	*((af->constraintmain) + i) = i;
   }
+
   for(i=1;i<=(af->nconstraint);i++) /*CONF VECTOR:CONFINEMENT,VALUE.*/
   {
+	(af->constraints+i-1)->loff=i-1;
 	data=fgetsbrk(ftext,&n);
+	(af->constraints+i-1)->code=strtol(*(data+0),NULL,10);
+	(af->constraints+i-1)->type=strtol(*(data+1),NULL,10);
 
-	for(j=0;j<n/(int)3;j++)
+	if((af->constraints+i-1)->type==0)/*MPC.*/
 	{
-	  ncode=strtol(*(data+3*j+0),NULL,10);
-	  dcode=strtol(*(data+3*j+1),NULL,10);
-	  if(j==0)
-	  {
-		for(k=0;k<af->nnode;k++)
+		for(j=0;j<n/(int)3;j++)
 		{
-		  if((af->nodes+k)->code==ncode)
+		  ncode=strtol(*(data+3*j+2),NULL,10);
+		  dcode=strtol(*(data+3*j+3),NULL,10);
+		  if(j==0)
 		  {
-			mainoff=6*k+dcode;
-			/* *(*((af->constraintvec)+i-1)+mainoff)=strtod(*(data+3*j+2),NULL);*/
-			break;
+			for(k=0;k<af->nnode;k++)
+			{
+			  if((af->nodes+k)->code==ncode)
+			  {
+				mainoff=6*k+dcode;
+				/* *(*((af->constraintvec)+i-1)+mainoff)=strtod(*(data+3*j+2),NULL);*/
+				break;
+			  }
+			}
 		  }
-		}
-	  }
-	  else
-	  {
-		for(k=0;k<af->nnode;k++)
-		{
-		  if((af->nodes+k)->code==ncode)
+		  else
 		  {
-			suboff=6*k+dcode;
-			/* *(*((af->constraintvec)+i-1)+suboff)=strtod(*(data+3*j+2),NULL);*/
-			*((af->constraintmain)+suboff)=mainoff;
-			break;
+			for(k=0;k<af->nnode;k++)
+			{
+			  if((af->nodes+k)->code==ncode)
+			  {
+				suboff=6*k+dcode;
+				/* *(*((af->constraintvec)+i-1)+suboff)=strtod(*(data+3*j+2),NULL);*/
+				*((af->constraintmain)+suboff)=mainoff;
+				break;
+			  }
+			}
 		  }
-		}
-	  }
 
+		}
+		/* *((af->constraintval)+i-1)=strtod(*(data+n-1),NULL);*/
 	}
-	/* *((af->constraintval)+i-1)=strtod(*(data+n-1),NULL);*/
+	if((af->constraints+i-1)->type==1)/*REVOLUTE JOINT.*/
+	{
+		(af->constraints+i-1)->nequation=5;
+		code1=strtol(*(data+2),NULL,10);
+		code2=strtol(*(data+3),NULL,10);
+
+		for(j=0;j<3;j++)
+		{
+			(af->constraints+i-1)->axis1[j]=strtod(*(data+4+j),NULL);
+		}
+	}
+	if((af->constraints+i-1)->type==2)/*SPHERICAL JOINT.*/
+	{
+		(af->constraints+i-1)->nequation=3;
+		code1=strtol(*(data+2),NULL,10);
+		code2=strtol(*(data+3),NULL,10);
+	}
+	if((af->constraints+i-1)->type==3)/*PRISMATIC JOINT.*/
+	{
+		(af->constraints+i-1)->nequation=3;
+		code1=strtol(*(data+2),NULL,10);
+		code2=strtol(*(data+3),NULL,10);
+	}
+	if((af->constraints+i-1)->type==4)/*CYLINDRICAL JOINT.*/
+	{
+		(af->constraints+i-1)->nequation=3;
+		code1=strtol(*(data+2),NULL,10);
+		code2=strtol(*(data+3),NULL,10);
+	}
+	if((af->constraints+i-1)->type==5)/*UNIVERSAL JOINT.*/
+	{
+		(af->constraints+i-1)->nequation=3;
+		code1=strtol(*(data+2),NULL,10);
+		code2=strtol(*(data+3),NULL,10);
+	}
 
 	for(;n>0;n--) free(*(data+n-1));
 	free(data);
+
   }
   /*LONGREACTION:UNDER CONSTRUCTION.*/
   for (i = 0; i < 6*(af->nnode); i++)
