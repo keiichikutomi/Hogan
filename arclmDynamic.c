@@ -95,7 +95,7 @@ int arclmDynamic(struct arclmframe* af)
 	double initialloadfactor = 0.0;
 	double loadfactor = 0.0;
 	double lastloadfactor = 0.0;
-	double lambda = 0.0;
+	double loadlambda = 0.0;
 
 	double volume = 0.0;
 	double Wkt,Wet,Wpt,Wot; /* ENERGY */

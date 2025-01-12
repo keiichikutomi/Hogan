@@ -7,6 +7,7 @@ double equilibriumcurvature(double* weight, double* lapddisp, double laploadfact
 void dbgstr(const char* str);
 void dbgvct(double* vct, int size, int linesize, const char* str);
 void dbgmtx(double** mtx, int rows, int cols, const char* str);
+void dbggcomp(struct gcomponent* gmtx, int size, const char* str);
 
 extern struct gcomponent *copygcompmatrix(struct gcomponent *gmtx,long int msize);
 extern struct gcomponent *gcomponentadd3(struct gcomponent *mtx1,double factor1,
@@ -36,6 +37,8 @@ int arclmStatic(struct arclmframe* af)
 	int nnode, nelem, nshell, nsect, nconstraint;
 	long int msize,csize;
 
+	double residual2;
+
 	/*ARCLMFRAME*/
 	struct osect* sects;
 	struct onode* nodes;
@@ -46,7 +49,7 @@ int arclmStatic(struct arclmframe* af)
 	struct memoryelem* melem;
 	struct memoryshell* mshell;
 	long int* constraintmain;
-    struct oconstraint* constraints;
+	struct oconstraint* constraints;
 
 	/*GLOBAL MATRIX*/
 	struct gcomponent ginit = { 0,0,0.0,NULL };
@@ -57,12 +60,14 @@ int arclmStatic(struct arclmframe* af)
 
 	/*GLOBAL VECTOR*/
 	double* ddisp, * iform;
+	double* lambda;
 
 	double* givendisp;
 	double* gvct;
 
 	double* funbalance, * fexternal, * finternal, * freaction;
 	double* fbaseload, * fdeadload, * fpressure,* fgivendisp;
+	double* constraintvct;
 
 
 	///FOR ARC-LENGTH PARAMETER///
@@ -77,7 +82,7 @@ int arclmStatic(struct arclmframe* af)
 
 	double initialloadfactor = 0.0;
 	double loadfactor = 0.0;
-	double lambda = 0.0;
+	double loadlambda = 0.0;
 
 	double volume = 0.0;
 	double Wkt,Wet,Wpt,Wot; /* ENERGY */
@@ -112,7 +117,7 @@ int arclmStatic(struct arclmframe* af)
 
 	/*LAST LAP*/
 	double* lastddisp,* lastgvct,* lastpivot;
-	double lastloadfactor,lastlambda;
+	double lastloadfactor,lastloadlambda;
 	double lastsign = 0;
 
 
@@ -125,7 +130,7 @@ int arclmStatic(struct arclmframe* af)
 	double* bisecddisp;
 	double bisecloadfactor;
 	double biseceps = 1.0e-5;
-    double biseceigen;
+	double biseceigen;
 	double* bisecevct;
 	double evctdot;/*FOR BIFURCATION DETECTION*/
 
@@ -457,6 +462,29 @@ int arclmStatic(struct arclmframe* af)
 		csize += (constraints+i)->neq;
 	}
 
+	constraintvct = (double*)malloc(csize * sizeof(double));
+   /*	if(af->lambda==NULL)
+	{
+		lambda = (double*)malloc(csize * sizeof(double));
+		for (i = 0; i < csize; i++)
+		{
+			*(lambda + i) = 0.0;
+		}
+		af->lambda = lambda;
+	}
+	else
+	{
+		lambda = af->lambda;
+	}   */
+
+
+    		lambda = (double*)malloc(csize * sizeof(double));
+		for (i = 0; i < csize; i++)
+		{
+			*(lambda + i) = 0.0;
+		}
+		af->lambda = lambda;
+
 	/*GLOBAL MATRIX FOR SOLVER*/
 	gmtx = (struct gcomponent*)malloc((msize+csize) * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
 	for (i = 0; i < (msize+csize); i++)
@@ -534,6 +562,10 @@ int arclmStatic(struct arclmframe* af)
 		*(fbaseload + i) = 0.0;
 		*(fpressure + i) = 0.0;
 	}
+	for(i = 0; i < csize; i++)
+	{
+		*(constraintvct + i) = 0.0;
+	}
 
 	volume = 0.0;
 	assemshellvolume(shells, nshell, ddisp, &volume);
@@ -541,6 +573,7 @@ int arclmStatic(struct arclmframe* af)
 	/*POST PROCESS*/
 	elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
 	shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
+	constraintstress(constraints, nconstraint, constraintmain, iform, ddisp, lambda, finternal, constraintvct);
 
 	strainenergy(af, &Wet, &Wpt);
 	//kineticenergy(af, ud_m, &Wkt);
@@ -567,6 +600,11 @@ int arclmStatic(struct arclmframe* af)
 		}
 		*(dup + i) = *(fbaseload + i);
 		*(due + i) = *(funbalance + i);
+	}
+	for (i = 0; i < csize; i++)
+	{
+		*(dup + msize + i) = 0.0;//*(constraintvct + i);
+		*(due + msize + i) = *(constraintvct + i);
 	}
 
 	/*OUTPUT(INITIAL)*/
@@ -609,7 +647,7 @@ int arclmStatic(struct arclmframe* af)
 		std::vector<Triplet> Ktriplet;
 		std::vector<Triplet> Mtriplet;
 
-		SparseMatrix Kglobal(msize, msize);
+		SparseMatrix Kglobal((msize+csize), (msize+csize));
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
 		Eigen::SimplicialLDLT<SparseMatrix> solver;
@@ -643,8 +681,15 @@ int arclmStatic(struct arclmframe* af)
 		{
 		  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp);
 		  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp);
+		  assemconstraint(constraints, nconstraint, constraintmain, gmtx, iform, ddisp, lambda, msize);
 		}
 
+
+
+
+
+
+dbggcomp(gmtx,msize+csize,"GMTX");
 
 		if(iteration==1 && USINGEIGENFLAG==0)
 		{
@@ -669,7 +714,7 @@ int arclmStatic(struct arclmframe* af)
 			Eigen::VectorXd D = solver.vectorD();
 			determinant= 0.0;
 			sign = 0;
-			for (i = 0; i < msize; i++)
+			for (i = 0; i < msize + csize; i++)
 			{
 			  if((confs+i)->iconf!=1)
 			  {
@@ -682,23 +727,14 @@ int arclmStatic(struct arclmframe* af)
 		}
 		else
 		{
-			if(iteration==1 && neig!=0)gmtxcpy=copygcompmatrix(gmtx,msize);
+			if(iteration==1 && neig!=0)gmtxcpy=copygcompmatrix(gmtx,(msize+csize));
 
-			nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);
+			nline = croutluII(gmtx, confs, msize, csize, &determinant, &sign, gcomp1);
 			if (sign < 0.0)
 			{
-				for (ii = 1; ii <= msize; ii++)
-				{
-					gg = 0.0;
-					gread(gmtx, ii, ii, &gg);
-
-					if (gg < 0.0)
-					{
-						sprintf(string, "INSTABLE TERMINATION AT NODE %ld.\n",(nodes + int((ii - 1) / 6))->code);
-						fprintf(ffig, "%s", string);
-						errormessage(string);
-					}
-				}
+				sprintf(string, "INSTABLE TERMINATION AT NODE %ld.\n",nline);
+				fprintf(ffig, "%s", string);
+				errormessage(string);
 			}
 
 			//ldlneig = 0;
@@ -713,6 +749,8 @@ int arclmStatic(struct arclmframe* af)
 			//		errormessage("%d\n ", ii);
 			//	}
 			//}
+
+			dbggcomp(gmtx,msize+csize,"GMTX");
 		}
 
 		/*COULD NOT SOLVE*/
@@ -744,6 +782,7 @@ int arclmStatic(struct arclmframe* af)
 			free(fbaseload);
 			free(fdeadload);
 			free(fgivendisp);
+			free(constraintvct);
 
 			free(due);
 			free(dup);
@@ -812,7 +851,7 @@ int arclmStatic(struct arclmframe* af)
 				assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, bisecddisp);
 
 
-				nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
+				nline = croutluII(gmtx, confs, msize, csize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
 				sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
 					nlap, iteration, loadfactor, residual, determinant, sign, 0, 0.0, volume, time);
 				fprintf(ffig, "%s", string);
@@ -863,7 +902,7 @@ int arclmStatic(struct arclmframe* af)
 			vectornormalize(fexternal, msize);
 			evctdot = dotproduct(bisecevct, fexternal, msize);
 
-			fprintf(feig,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e LAMBDA = %e DOT = %e\n", nlap, 1, LM, biseceigen, loadfactor-lastloadfactor, evctdot);
+			fprintf(feig,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e LOADLAMBDA = %e DOT = %e\n", nlap, 1, LM, biseceigen, loadfactor-lastloadfactor, evctdot);
 			for (ii = 0; ii < msize; ii++)
 			{
 				*(bisecevct + ii) = *(bisecevct + *(constraintmain + ii));
@@ -901,15 +940,15 @@ int arclmStatic(struct arclmframe* af)
 		{
 			if(USINGEIGENFLAG==1)
 			{
-			  Vector P = Vector::Zero(msize);
-			  for(i=0;i<msize;i++)P(i)=*(fbaseload+i);
+			  Vector P = Vector::Zero((msize+csize));
+			  for(i=0;i<msize;i++)P(i)=*(dup+i);
 			  Vector Up = solver.solve(P);
-			  for(i=0;i<msize;i++)*(dup+i)=Up(i);
+			  for(i=0;i<(msize+csize);i++)*(dup+i)=Up(i);
 			  if (solver.info() != Eigen::Success)return -1;
 			}
 			else
 			{
-			  nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
+			  nline = forwardbackwardII(gmtx, dup, confs, msize, csize, gcomp1);
 			}
 
 			/*ARCLENGTH CONTROL*/
@@ -982,12 +1021,12 @@ int arclmStatic(struct arclmframe* af)
 			{
 				arcsum += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);/*SCALED DISPLACEMENT.*/
 			}
-			lambda = predictorsign * scaledarclength / sqrt(arcsum);/*INCREMANTAL LOAD FACTOR.*/
-			for (ii = 0; ii < msize; ii++)
+			loadlambda = predictorsign * scaledarclength / sqrt(arcsum);/*INCREMANTAL LOAD FACTOR.*/
+			for (ii = 0; ii < (msize+csize); ii++)
 			{
-				*(gvct + ii) = lambda * (*(dup + ii)+*(givendisp + ii));/*INCREMANTAL DISPLACEMENT.*/
+				*(gvct + ii) = loadlambda * (*(dup + ii)+*(givendisp + ii));/*INCREMANTAL DISPLACEMENT.*/
 			}
-			fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, scaledarclength, sqrt(arcsum));
+			fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, scaledarclength, sqrt(arcsum));
 
 
 			/*MEMORY OF PREDICTOR*/
@@ -999,7 +1038,7 @@ int arclmStatic(struct arclmframe* af)
 				*(lapddisp + ii) = 0.0;
 			}
 			lastloadfactor = loadfactor;/*LOAD FACTOR AT CONVERGED POINT*/
-			lastlambda = lambda;/*INCREMENTAL LOAD FACTOR OF PREDICTOR*/
+			lastloadlambda = loadlambda;/*INCREMENTAL LOAD FACTOR OF PREDICTOR*/
 			laploadfactor = 0.0;
 			lastsign = sign;/*SIGN AT CONVERGED POINT*/
 
@@ -1069,7 +1108,7 @@ int arclmStatic(struct arclmframe* af)
 						if (*(eigen + i) > 0.0)
 						{
 							*(eigen+i) = 1.0/(*(eigen + i));
-							fprintf(feig, "LAMBDA = %e BUCKLINGLOAD = %e\n",*(eigen+i),loadfactor+*(eigen+i));
+							fprintf(feig, "LOADLAMBDA = %e BUCKLINGLOAD = %e\n",*(eigen+i),loadfactor+*(eigen+i));
 						}
 						else
 						{
@@ -1110,21 +1149,21 @@ int arclmStatic(struct arclmframe* af)
 			if(USINGEIGENFLAG==1)
 			{
 				Vector P = Vector::Zero((msize+csize));
-				for(i=0;i<msize;i++)P(i)=*(fbaseload+i);
+				for(i=0;i<msize;i++)P(i)=*(dup+i);
 				Vector Up = solver.solve(P);
 				for(i=0;i<(msize+csize);i++)*(dup+i)=Up(i);
 				if (solver.info() != Eigen::Success)return -1;
 
 				Vector E = Vector::Zero((msize+csize));
-				for(i=0;i<msize;i++)E(i)=*(funbalance+i);
+				for(i=0;i<msize;i++)E(i)=*(due+i);
 				Vector Ue = solver.solve(E);
 				for(i=0;i<(msize+csize);i++)*(due+i)=Ue(i);
 				if (solver.info() != Eigen::Success)return -1;
 			}
 			else
 			{
-				nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
-				nline = forwardbackward(gmtx, due, confs, msize, gcomp1);
+				nline = forwardbackwardII(gmtx, dup, confs, msize, csize, gcomp1);
+				nline = forwardbackwardII(gmtx, due, confs, msize, csize, gcomp1);
 			}
 
 
@@ -1140,12 +1179,12 @@ int arclmStatic(struct arclmframe* af)
 				//dupdue += *(dup + ii) * *(due + ii);
 				//dupdup += *(dup + ii) * *(dup + ii);
 			}
-			lambda = -dupdue / dupdup;
-			for (ii = 0; ii < msize; ii++)
+			loadlambda = -dupdue / dupdup;
+			for (ii = 0; ii < (msize+csize); ii++)
 			{
-				*(gvct + ii) = lambda * *(dup + ii) + *(due + ii);
+				*(gvct + ii) = loadlambda * *(dup + ii) + *(due + ii);
 			}
-			fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, dupdue, dupdup);
+			fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, dupdue, dupdup);
 			#endif
 
 
@@ -1153,24 +1192,24 @@ int arclmStatic(struct arclmframe* af)
 			/*HYPERSPHERE CONSTRAINT WITH RADIAL RETURN*/
 			/*USING PREDICTOR DATA*/
 			dupdue = 0.0;
-			dupdup = *(weight + msize) * *(weight + msize) * lambda;
+			dupdup = *(weight + msize) * *(weight + msize) * loadlambda;
 			for (ii = 0; ii < msize; ii++)
 			{
 				dupdue += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(due + ii);
 				dupdup += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(dup + ii);
 			}
-			lambda += - dupdue / dupdup;
-			fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= %e {TOP}= %e {BOTTOM}= %e\n", nlap, iteration, lambda, dupdue, dupdup);
+			loadlambda += - dupdue / dupdup;
+			fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= %e {TOP}= %e {BOTTOM}= %e\n", nlap, iteration, loadlambda, dupdue, dupdup);
 			for (ii = 0; ii < msize; ii++)
 			{
 				*(gvct + ii) += -(dupdue / dupdup) * *(dup + ii) + *(due + ii);
 			}
-			arcsum = *(weight + msize) * *(weight + msize) * lambda * lambda;
+			arcsum = *(weight + msize) * *(weight + msize) * loadlambda * loadlambda;
 			for (ii = 0; ii < msize; ii++)
 			{
 				arcsum += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(gvct + ii);
 			}
-			lambda *= scaledarclength / sqrt(arcsum);
+			loadlambda *= scaledarclength / sqrt(arcsum);
 			loadfactor = lastloadfactor;
 			for (ii = 0; ii < msize; ii++)
 			{
@@ -1189,11 +1228,19 @@ int arclmStatic(struct arclmframe* af)
 			*(gvct + ii) = *(gvct + *(constraintmain + ii));
 		}
 
-		laploadfactor += lambda;
-		loadfactor += lambda;
+		laploadfactor += loadlambda;
+		loadfactor += loadlambda;
 
 		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
+
+		for (ii = 0; ii < csize; ii++)
+		{
+		  *(lambda+ii)+=*(gvct+msize+ii);
+		}
+
+	dbgvct(lambda,csize,5,NULL);
+
 
 		for (i = 0; i < msize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
 		{
@@ -1204,6 +1251,10 @@ int arclmStatic(struct arclmframe* af)
 			*(fbaseload  + i) = 0.0;
 			*(fpressure  + i) = 0.0;
 		}
+		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+		{
+			*(constraintvct  + i) = 0.0;
+		}
 
 		volume = 0.0;
 		assemshellvolume(shells, nshell, ddisp, &volume);
@@ -1211,6 +1262,7 @@ int arclmStatic(struct arclmframe* af)
 		/*POST PROCESS*/
 		elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
 		shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
+		constraintstress(constraints, nconstraint, constraintmain, iform, ddisp, lambda, finternal, constraintvct);
 
 		strainenergy(af, &Wet, &Wpt);
 		//kineticenergy(af, ud_m, &Wkt);
@@ -1230,13 +1282,18 @@ int arclmStatic(struct arclmframe* af)
 			*(dup + i) = *(fbaseload + i);
 			*(due + i) = *(funbalance + i);
 		}
+		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+		{
+			*(dup + msize + i) = 0.0;//*(constraintvct  + i);
+			*(due + msize + i) = *(constraintvct  + i);
+		}
 
 		/*CONVERGENCE JUDGEMENT.*/
 		residual = vectorlength(funbalance,msize);
-		gvctlen = vectorlength(gvct,msize);
+		residual2 = vectorlength(constraintvct,csize);
+		gvctlen = vectorlength(gvct,msize+csize);
 
-		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
-		if (residual < tolerance || iteration > maxiteration-1)
+		if ((residual < tolerance || iteration > maxiteration-1) && iteration != 1)
 		{
 			nlap++;
 			iteration = 0;
@@ -1311,7 +1368,7 @@ int arclmStatic(struct arclmframe* af)
 			if (sign > 20)
 			{
 				ENDFLAG = 1;
-				sprintf(string,"DIVERGENCE DITECTED(SIGN = %5ld). ANALYSIS TERMINATED.\n", sign);
+				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
 				errormessage(string);
 			}
 			if (0/*nlap>20 && loadfactor < 0.0*/)
@@ -1334,7 +1391,7 @@ int arclmStatic(struct arclmframe* af)
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-#if 0
+#if 1
 		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 		{
 		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
@@ -1490,13 +1547,13 @@ int arclmStatic(struct arclmframe* af)
 
 		else if (BCLFLAG == -2)/*CORRECTOR CALCULATION*/
 		{
-			nline = forwardbackward(gmtx, due, confs, msize, gcomp1);
-			lambda = 0.0;
+			nline = forwardbackwardII(gmtx, due, confs, msize, csize, gcomp1);
+			loadlambda = 0.0;
 			for (ii = 0; ii < msize; ii++)
 			{
 				*(gvct + ii) = *(due + ii);/*gvct:{ƒÂU_e+ƒÂƒ©U_p}*/
 			}
-			fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, 0.0, 0.0);
+			fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, 0.0, 0.0);
 		}
 		else if (BCLFLAG == 1)/*BUCKLING DETECTED.PIN-POINTING EXCUTION.*/
 		{
@@ -1548,8 +1605,8 @@ int arclmStatic(struct arclmframe* af)
 				}
 
 
-				nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
-				nline = forwardbackward(gmtx, due, confs, msize, gcomp1);
+				nline = forwardbackwardII(gmtx, dup, confs, msize, csize, gcomp1);
+				nline = forwardbackwardII(gmtx, due, confs, msize, csize, gcomp1);
 
 				/*FOR DIRECTIONAL DERIVATIVE OF TANGENTIAL STIFFNESS MATRIX*/
 				LDLmode(gmtx, confs, m, ldlneig, ldlevct, norm, dm, msize);
@@ -1693,14 +1750,14 @@ int arclmStatic(struct arclmframe* af)
 				fprintf(fonl, "dupdue=%12.15f dupdup=%12.15f\n", dupdue, dupdup);
 				dupdue += eps * *(dm + 0) / (*(norm + 0) * *(norm + 0));
 
-				lambda = -dupdue / dupdup;
-				fprintf(fonl, "LAMBDA=%12.9f\n", lambda);
+				loadlambda = -dupdue / dupdup;
+				fprintf(fonl, "LOADLAMBDA=%12.9f\n", loadlambda);
 
 				/*NEW TARGET*/
-				loadfactor += lambda;
+				loadfactor += loadlambda;
 				for (ii = 0; ii < msize; ii++)
 				{
-					*(gvct + ii) = *(dup + ii) * lambda + *(due + ii);/*gvct:{ƒÂU_e+ƒÂƒ©U_p}*/
+					*(gvct + ii) = *(dup + ii) * loadlambda + *(due + ii);/*gvct:{ƒÂU_e+ƒÂƒ©U_p}*/
 				}
 
 
@@ -1747,7 +1804,7 @@ int arclmStatic(struct arclmframe* af)
 
 
 			/*GLOBALLY CONVERGENT NONLINEAR SOLUTION METHOD*/
-			nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);
+			nline = croutluII(gmtx, confs, msize, csize, &determinant, &sign, gcomp1);
 
 			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
 				nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, gamma, volume);
@@ -1757,7 +1814,7 @@ int arclmStatic(struct arclmframe* af)
 
 			if (iteration == 1)/*PREDICTOR CALCULATION*/
 			{
-				nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
+				nline = forwardbackwardII(gmtx, dup, confs, msize, csize, gcomp1);
 				scaledarclength = 1e-3 * arclength;
 
 
@@ -1767,7 +1824,7 @@ int arclmStatic(struct arclmframe* af)
 				{
 					arcsum += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);/*SCALED DISPLACEMENT.*/
 				}
-				lambda = scaledarclength / sqrt(arcsum);/*INCREMANTAL LOAD FACTOR.*/
+				loadlambda = scaledarclength / sqrt(arcsum);/*INCREMANTAL LOAD FACTOR.*/
 				for (ii = 0; ii < msize; ii++)
 				{
 					if ((confs + ii)->iconf != 1)
@@ -1775,12 +1832,12 @@ int arclmStatic(struct arclmframe* af)
 						*(gvct + ii) = gamma * *(dup + ii);/*INCREMANTAL DISPLACEMENT.*/
 					}
 				}
-				fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, scaledarclength, sqrt(arcsum));
+				fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, scaledarclength, sqrt(arcsum));
 			}
 			else/*CORRECTOR CALCULATION*/
 			{
-				nline = forwardbackward(gmtx, dup, confs, msize, gcomp1);
-				nline = forwardbackward(gmtx, due, confs, msize, gcomp1);
+				nline = forwardbackwardII(gmtx, dup, confs, msize, csize, gcomp1);
+				nline = forwardbackwardII(gmtx, due, confs, msize, csize, gcomp1);
 				/*MINIMUM RESIDUAL QUANTITIES METHOD*/
 				dupdue = 0.0;
 				dupdup = *(weight + msize) * *(weight + msize);
@@ -1792,7 +1849,7 @@ int arclmStatic(struct arclmframe* af)
 						dupdup += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);
 					}
 				}
-				lambda = -dupdue / dupdup;
+				loadlambda = -dupdue / dupdup;
 				for (ii = 0; ii < msize; ii++)
 				{
 					if ((confs + ii)->iconf != 1)
@@ -1800,10 +1857,10 @@ int arclmStatic(struct arclmframe* af)
 						*(gvct + ii) = gamma * *(dup + ii) + *(due + ii);
 					}
 				}
-				fprintf(fonl, "LAP: %4d ITER: %2d {LAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, lambda, dupdue, dupdup);
+				fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, dupdue, dupdup);
 			}
 
-			gamma += lambda;
+			gamma += loadlambda;
 			for (ii = 0; ii < msize; ii++)
 			{
 				*(gvct + ii) = *(gvct + *(constraintmain + ii));
@@ -1999,6 +2056,33 @@ void dbgmtx(double** mtx, int rows, int cols, const char* str)
 		for (int j = 0; j < cols; j++)
 		{
 			fprintf(fout, "%e ", *(*(mtx+i)+j));
+		}
+		fprintf(fout, "\n");
+	}
+	fclose(fout);
+}
+
+
+
+void dbggcomp(struct gcomponent* gmtx, int size, const char* str)
+{
+	double gdata;
+	FILE *fout = fopen("hogan.dbg", "a");
+	if (fout == NULL)return;
+
+	if (str != NULL)
+	{
+		fprintf(fout, "%s\n", str);
+	}
+
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = 0; j < size; j++)
+		{
+			gread(gmtx,i+1,j+1,&gdata);
+
+			if(fabs(gdata)>1e-5)fprintf(fout, "1 ");
+			else fprintf(fout, "0 ");
 		}
 		fprintf(fout, "\n");
 	}

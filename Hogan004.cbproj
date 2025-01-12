@@ -90,6 +90,8 @@
         <UWP_CppLogo44>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_44.png</UWP_CppLogo44>
         <UWP_CppLogo150>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_150.png</UWP_CppLogo150>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
+        <BCC_DisableWarnings>true</BCC_DisableWarnings>
+        <BCC_SelectedWarnings>false</BCC_SelectedWarnings>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
@@ -101,6 +103,8 @@
         <BT_BuildType>Debug</BT_BuildType>
         <IncludePath>$(BDSINCLUDE)\windows\vcl;$(IncludePath)</IncludePath>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
+        <BCC_DisableWarnings>true</BCC_DisableWarnings>
+        <BCC_SelectedWarnings>false</BCC_SelectedWarnings>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <BCC_OptimizeForSpeed>false</BCC_OptimizeForSpeed>
@@ -139,6 +143,8 @@
         <IntermediateOutputDir>C:\Users\keiic\Desktop\Hogan\Data\</IntermediateOutputDir>
         <ILINK_LibraryPath>$(BDSLIB)\$(PLATFORM)$(CC_SUFFIX)\debug;$(ILINK_LibraryPath)</ILINK_LibraryPath>
         <FinalOutputDir>C:\Users\keiic\Desktop\Hogan\Debug\</FinalOutputDir>
+        <BCC_DisableWarnings>true</BCC_DisableWarnings>
+        <BCC_SelectedWarnings>false</BCC_SelectedWarnings>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <TASM_Debugging>None</TASM_Debugging>

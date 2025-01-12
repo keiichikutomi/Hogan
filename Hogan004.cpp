@@ -264,7 +264,7 @@ struct arclmframe arci={0,0,//code,loff
 						0,0,0,0,0,0,0,0,//nnode,nelem,nshell,nsect,nreact,nlaps,neig,nconstraint
 						0.0,//loadfactor
 						NULL,NULL,//*eigenval,**eigenvec
-						NULL,NULL,//*iform,*ddisp
+						NULL,NULL,NULL,//*iform,*ddisp,*lambda
 						NULL,NULL,NULL,//*melem,*mshell,*dreact
 						NULL,//*fsurface
 						NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,//*nodes,*ninit,*sects,*elems,*shells,*confs,*constraints;
@@ -276,7 +276,7 @@ struct arclmframe arc ={0,0,
 						0,0,0,0,0,0,0,0,
 						0.0,
 						NULL,NULL,
-						NULL,NULL,
+						NULL,NULL,NULL,
 						NULL,NULL,NULL,
 						NULL,
 						NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
@@ -288,7 +288,7 @@ struct arclmframe arcx={0,0,
 						0,0,0,0,0,0,0,0,
 						0.0,
 						NULL,NULL,
-						NULL,NULL,
+						NULL,NULL,NULL,
 						NULL,NULL,NULL,
 						NULL,
 						NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
@@ -300,7 +300,7 @@ struct arclmframe arcy={0,0,
 						0,0,0,0,0,0,0,0,
 						0.0,
 						NULL,NULL,
-						NULL,NULL,
+						NULL,NULL,NULL,
 						NULL,NULL,NULL,
 						NULL,
 						NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
@@ -11348,6 +11348,7 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			if(arc.nelem != 0 && arc.melem==NULL) break;
 			arc.mshell=(struct memoryshell *)malloc(arc.nshell*sizeof(struct memoryshell));
 			if(arc.nshell != 0 && arc.mshell==NULL) break;
+
 			arc.confs=(struct oconf *)malloc(6*arc.nnode*sizeof(struct oconf));
 			if(arc.confs==NULL) break;
 

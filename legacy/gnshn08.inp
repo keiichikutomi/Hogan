@@ -1,0 +1,142 @@
+"SAMPLE OF INPUTFILE FOR GNSHN.UNIT:[tf],[m]"
+NNODE 8
+NELEM 9
+NPROP 3
+NSECT 6
+
+BASE    0.300
+LOCATE  1.000
+TFACT   0.030
+GPERIOD 0.600
+
+GFACT 1.0
+FOCUS 0.0 0.0 0.0
+ANGLE 20.0 -50.0
+DISTS 50.0 1000.0
+
+PROP 101 PNAME       SN490B
+         HIJU         7.800
+         E     21000000.000
+         POI        0.33333
+         PCOLOR 150 150 255
+PROP 201 PNAME        Fc240
+         HIJU         2.400
+         E      2100000.000
+         POI        0.16667
+         PCOLOR 255 150   0
+PROP 401 PNAME OTHERS
+         HIJU         1.000
+         E            0.000
+         POI        0.10000
+         PCOLOR   0   0 255
+
+SECT 101 SNAME "Column:Box-200x200"
+         NFIG 1
+         FIG  1  FPROP 101
+                 AREA 0.0100
+                 IXX  0.00005000
+                 IYY  0.00005000
+                 VEN  0.00005000
+         EXP 1.500
+         NZMAX    150.0 NZMIN   -250.0
+         QXMAX     60.0 QXMIN    -60.0
+         QYMAX     60.0 QYMIN    -60.0
+         MZMAX     10.0 MZMIN    -10.0
+         MXMAX     30.0 MXMIN    -30.0
+         MYMAX     30.0 MYMIN    -30.0
+         COLOR 255 0 255
+SECT 201 SNAME "Girder:H-300x150"
+         NFIG 1
+         FIG  1  FPROP 101
+                 AREA 0.0050
+                 IXX  0.00007000
+                 IYY  0.00000500
+                 VEN  0.00000050
+         EXP 1.500
+         NZMAX    100.0 NZMIN   -150.0
+         QXMAX     40.0 QXMIN    -40.0
+         QYMAX     40.0 QYMIN    -40.0
+         MZMAX     10.0 MZMIN    -10.0
+         MXMAX     20.0 MXMIN    -20.0
+         MYMAX     10.0 MYMIN    -10.0
+         COLOR 0 255 0
+SECT 301 SNAME "Girder:H-400x200"
+         NFIG 1
+         FIG  1  FPROP 101
+                 AREA 0.0100
+                 IXX  0.00020000
+                 IYY  0.00002000
+                 VEN  0.00000100
+         EXP 1.500
+         NZMAX    100.0 NZMIN   -250.0
+         QXMAX     50.0 QXMIN    -50.0
+         QYMAX     50.0 QYMIN    -50.0
+         MZMAX     20.0 MZMIN    -20.0
+         MXMAX     50.0 MXMIN    -50.0
+         MYMAX     10.0 MYMIN    -10.0
+         COLOR 0 150 255
+SECT 401 SNAME "Wall:150mm"
+         NFIG 2
+         FIG  1  FPROP 201
+                 THICK 0.15
+         FIG  2  FPROP 201
+                 THICK 0.05
+         COLOR 0 255 255
+SECT 501 SNAME "DeckSlab:150mm"
+         NFIG 3
+         FIG  1  FPROP 201
+                 THICK 0.125
+         FIG  2  FPROP 101
+                 THICK 0.0032
+         FIG  3  FPROP 401
+                 THICK 0.1000
+         LLOAD 0.180 0.130 0.060
+         COLOR 150 150 255
+SECT 901 SNAME "HojoPlate"
+         SROLE HOJO
+         COLOR 0 0 255
+
+NODE 101  CORD  -5.000  -5.000   0.000  ICON 1 1 1 1 1 1  VCON  0.0  0.0  0.0  0.0  0.0  0.0
+NODE 102  CORD   5.000  -5.000   0.000  ICON 1 1 1 1 1 1  VCON  0.0  0.0  0.0  0.0  0.0  0.0
+NODE 103  CORD   5.000   5.000   0.000  ICON 1 1 1 1 1 1  VCON  0.0  0.0  0.0  0.0  0.0  0.0
+NODE 104  CORD  -5.000   5.000   0.000  ICON 1 1 1 1 1 1  VCON  0.0  0.0  0.0  0.0  0.0  0.0
+NODE 205  CORD  -5.000  -5.000   5.000  ICON 0 0 0 0 0 0  VCON  0.0  0.0  0.0  0.0  0.0  0.0
+NODE 206  CORD   5.000  -5.000   5.000  ICON 0 0 0 0 0 0  VCON  0.0  0.0  0.0  0.0  0.0  0.0
+NODE 207  CORD   5.000   5.000   5.000  ICON 0 0 0 0 0 0  VCON  0.0  0.0  0.0  0.0  0.0  0.0
+NODE 208  CORD  -5.000   5.000   5.000  ICON 0 0 0 0 0 0  VCON  0.0  0.0  0.0  0.0  0.0  0.0
+
+ELEM 101 ESECT 101 ENODS 2 ENOD 101 205 BONDS 0 0 0 0 0 0  0 0 0 0 0 0
+         CANG 0.00000
+         CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+         TYPE COLUMN
+ELEM 102 ESECT 101 ENODS 2 ENOD 102 206 BONDS 0 0 0 0 0 0  0 0 0 0 0 0
+         CANG 0.00000
+         CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+         TYPE COLUMN
+ELEM 103 ESECT 101 ENODS 2 ENOD 103 207 BONDS 0 0 0 0 0 0  0 0 0 0 0 0
+         CANG 0.00000
+         CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+         TYPE COLUMN
+ELEM 104 ESECT 101 ENODS 2 ENOD 104 208 BONDS 0 0 0 0 0 0  0 0 0 0 0 0
+         CANG 0.00000
+         CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+         TYPE COLUMN
+ELEM 205 ESECT 201 ENODS 2 ENOD 205 206 BONDS 0 0 0 0 0 0  0 0 0 0 0 0
+         CANG 0.00000
+         CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+         TYPE GIRDER
+ELEM 206 ESECT 201 ENODS 2 ENOD 206 207 BONDS 0 0 0 0 0 0  0 0 0 0 0 0
+         CANG 0.00000
+         CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+         TYPE GIRDER
+ELEM 207 ESECT 201 ENODS 2 ENOD 207 208 BONDS 0 0 0 0 0 0  0 0 0 0 0 0
+         CANG 0.00000
+         CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+         TYPE GIRDER
+ELEM 208 ESECT 201 ENODS 2 ENOD 208 205 BONDS 0 0 0 0 0 0  0 0 0 0 0 0
+         CANG 0.00000
+         CMQ  0.0 0.0 0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0 0.0 0.0
+         TYPE GIRDER
+ELEM 512 ESECT 501 ENODS 4 ENOD 205 206 207 208 BONDS  0 0 0 0 0 0  0 0 0 0 0 0  0 0 0 0 0 0  0 0 0 0 0 0
+                   EBANS 1 EBAN 1 BNODS 4 BNOD 205 206 207 208
+         TYPE SLAB

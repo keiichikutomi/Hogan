@@ -8,7 +8,7 @@
 /*TRANSLATION OF INPUTFILE ORGAN INTO ARCLM UNAVAILABLE.*/
 /*SLAB DIVISION FOR CMQ.....NOT YET.*/
 /*SORT COMPONENTS.....NOT YET.*/
-/*IMPROVE "CROUTLUDECOMPOSITION".....NOT YET.*/
+/*IMPROVE "CROUTL]UDECOMPOSITION".....NOT YET.*/
 
 /*COMPONENT CONSISTS OF LINE,ROW,VALUE,DOWN.*/
 
@@ -156,36 +156,36 @@ struct oprop{long int code,loff;
 			 double hiju,E,poi;
 			 double rfle[3],rfra[3];
 			 int r,g,b; /*R,G,B.*/
-             double F,fut,fuc;};                  /*ULTIMATE STRESS*/
+			 double F,fut,fuc;};                  /*ULTIMATE STRESS*/
 struct ofigs{long int code,loff;
 			 double area,Ixx,Iyy,Jzz; /*COEFFICIENTS.*/
 			 double thick;
 			 struct oprop *prop;}; /*SECTION FIGURES.*/
 
 struct curve{long int loff;
-             int type,hugo;
-             double radius[2],cangle;       /*RADIUSES,COORD ANGLE.*/
-             double angle[2];                      /*ANGLE OF ENDS.*/
-             struct onode *center;
+			 int type,hugo;
+			 double radius[2],cangle;       /*RADIUSES,COORD ANGLE.*/
+			 double angle[2];                      /*ANGLE OF ENDS.*/
+			 struct onode *center;
 			 struct onode *(dots[3]);
-             struct line *(tan[3]);
-            };
+			 struct line *(tan[3]);
+			};
 struct polycurve{long int loff;
-                 int ncurve,type;
-                 struct curve *curves;
-                 /*int r,g,b;*/
-                 struct oprop prop;};
+				 int ncurve,type;
+				 struct curve *curves;
+				 /*int r,g,b;*/
+				 struct oprop prop;};
 struct polypolycurve{int npcurve;
-                     struct polycurve *pcurves;
+					 struct polycurve *pcurves;
 					 char name[256];
 					 ICONINFO ici;
 					 HICON hico;
-                     HCURSOR hcur;};
+					 HCURSOR hcur;};
 struct features{double Ax,Ay,Sx,Sy,Ixx,Iyy,Igx,Igy,Zx[2],Zy[2],
 					   Hx,Hy,hx[2],hy[2],ix,iy;
-                double Jzz,hiju;
-                double E,poi;
-                struct onode Gx,Gy,Gg;};
+				double Jzz,hiju;
+				double E,poi;
+				struct onode Gx,Gy,Gg;};
 
 struct osect{long int code,loff;
 			 long int ocode;
@@ -262,8 +262,9 @@ struct oconstraint{long int code,loff;
 				   int nnod;
 				   int type;
 				   int neq,leq;
+				   //double *lambda;
 				   struct onode *(node[2]);
-				   double axis[3];
+				   double axis[3][3];
 				  };
 
 
@@ -450,10 +451,10 @@ struct winparamsreg{
 
 struct arclmframe{long int code,loff;
 				  char *appelation;
-				  int nnode,nelem,nshell,nsect,nreact,nlaps,neig,nconstraint;/*ADD neig 240926*/
-				  double loadfactor;/*ADDED 240926*/
+				  int nnode,nelem,nshell,nsect,nreact,nlaps,neig,nconstraint;
+				  double loadfactor;
 				  double *eigenval,**eigenvec;
-				  double *iform, *ddisp;
+				  double *iform, *ddisp, *lambda;
 				  struct memoryelem *melem;
 				  struct memoryshell *mshell;
 				  double *dreact;
@@ -944,14 +945,25 @@ int exchangelinesIIfloat(float **kmtx1,float **gmtx1,struct oconf *confs1,
 
 /* 150515 fukushima for all */
 int croutlu(struct gcomponent *gmtx,
-            struct oconf *confs,
-            long int msize,
-            double *det,double *sign,
-            struct gcomponent *gcomp1);
+			struct oconf *confs,
+			long int msize,
+			double *det,double *sign,
+			struct gcomponent *gcomp1);
 int forwardbackward(struct gcomponent *gmtx,
-                    double *gvct, struct oconf *confs,
-                    long int msize,
+					double *gvct, struct oconf *confs,
+					long int msize,
 					struct gcomponent *gcomp1);
+
+int croutluII(struct gcomponent *gmtx,
+			struct oconf *confs,
+			long int msize, long int csize,
+			double *det,double *sign,
+			struct gcomponent *gcomp1);
+int forwardbackwardII(struct gcomponent *gmtx,
+					double *gvct, struct oconf *confs,
+					long int msize, long int csize,
+					struct gcomponent *gcomp1);
+
 
 int croutludecomposition(struct gcomponent *gmtx,
 						 double *gvct,struct oconf *confs,
@@ -993,7 +1005,7 @@ int savebanddecreasedorgan(FILE *fout,
 void initialform(struct onode *nodes,double *ddisp,int nnode);
 
 int initialnode(struct onode *nodes,int nnode,int code,
-                struct onode *node);
+				struct onode *node);
 void initialelem(struct owire *elems,
 				 struct memoryelem *melem,int nelem);
 void initialshell(struct oshell *shells,
@@ -1427,7 +1439,7 @@ void vectornormalize(double* vct, int vsize)
 	if(len!=0.0)
 	{
 		for (i = 0; i < vsize; i++) *(vct + i)/=len;
-    }
+	}
 	return;
 }/*vectorlength*/
 
@@ -16916,8 +16928,8 @@ int croutlu(struct gcomponent *gmtx,
   for(j=1;j<=msize;j++)                             /*DECOMPOSITION.*/
   {
 	if((confs+j-1)->iconf==0) /*FREE*/
-    {
-      pivot=(gmtx+(j-1)); /*PIVOT.*/
+	{
+	  pivot=(gmtx+(j-1)); /*PIVOT.*/
 
 	  if((pivot->value) == 0.0){*sign = -1; return (j-1);}  /*INSTABLE.*/
 	  if((pivot->value) < 0.0) {*sign += 1; }
@@ -16926,7 +16938,7 @@ int croutlu(struct gcomponent *gmtx,
 	  //*sign*=pivot->value/fabs(pivot->value); /*SIGN OF DETERMINANT.*/
 
 	  gcomp1=pivot;
-      while(gcomp1->down!=NULL) /*DOWNWARD.*/
+	  while(gcomp1->down!=NULL) /*DOWNWARD.*/
       {
 		gcomp1=gcomp1->down;
 
@@ -16946,28 +16958,28 @@ int croutlu(struct gcomponent *gmtx,
         i=gcomp1->m; /*i:LINE CODE IN PIVOT ROW.*/
         if((confs+i-1)->iconf==0) /*FREE*/
         {
-          gcomp2=gcomp1; /*Akj*/
+		  gcomp2=gcomp1; /*Akj*/
 		  gcomp3=(gmtx+(i-1)); /*Aki*/
 
-          while(1)
-          {
-            k=gcomp2->m;
-            if((confs+k-1)->iconf==0) /*FREE*/
-            {
-              if((gcomp3->m)<k) /*ADD*/
+		  while(1)
+		  {
+			k=gcomp2->m;
+			if((confs+k-1)->iconf==0) /*FREE*/
+			{
+			  if((gcomp3->m)<k) /*ADD*/
 			  {
                 gcomp4=(struct gcomponent *)
                        malloc(sizeof(struct gcomponent));
-                if(gcomp4==NULL)
-                {
+				if(gcomp4==NULL)
+				{
 				  sprintf(str,"GCOMP4-1: %d", i);
 				  errormessage(str);
                   errormessage("CROUT:MEMORY INSUFFICIENT.");
 				  *sign=-999;
-                  return 0;
-                }
-                gcomp3->down=gcomp4;
-                gcomp4->m=(unsigned short int)k;
+				  return 0;
+				}
+				gcomp3->down=gcomp4;
+				gcomp4->m=(unsigned short int)k;
                 /*gcomp4->n=(unsigned short int)i;*/
                 gcomp4->down=NULL;
 				gcomp4->value=-pivotgcomp1
@@ -16986,7 +16998,7 @@ int croutlu(struct gcomponent *gmtx,
                 gcomp4=(struct gcomponent *)
                        malloc(sizeof(struct gcomponent));
 				if(gcomp4==NULL)
-                {
+				{
                   sprintf(str,"GCOMP4-2: %d", i);
                   errormessage(str);
                   errormessage("CROUT:MEMORY INSUFFICIENT.");
@@ -17006,7 +17018,7 @@ int croutlu(struct gcomponent *gmtx,
               }
             }
 
-            if(gcomp2->down==NULL) break;
+			if(gcomp2->down==NULL) break;
             else gcomp2=gcomp2->down;
 
             while((gcomp3->m)<(gcomp2->m) && gcomp3->down!=NULL)
@@ -17027,9 +17039,9 @@ int croutlu(struct gcomponent *gmtx,
 
 /* 150515 fukushima for all */
 int forwardbackward(struct gcomponent *gmtx,
-                    double *gvct, struct oconf *confs,
-                    long int msize,
-                    struct gcomponent *gcomp1)
+					double *gvct, struct oconf *confs,
+					long int msize,
+					struct gcomponent *gcomp1)
 {
   double data1;
   long int i,j,k;
@@ -17059,19 +17071,19 @@ int forwardbackward(struct gcomponent *gmtx,
   //errormessage("BACKWARD SUBSTITUTION.");
   for(j=msize;j>=1;j--)                                 /*BACKWARD.*/
   {
-    if((confs+j-1)->iconf==0) /*FREE*/
-    {
-      data1=*(gvct+j-1);
+	if((confs+j-1)->iconf==0) /*FREE*/
+	{
+	  data1=*(gvct+j-1);
 	  gcomp1=(gmtx+(j-1)); /*DIAGONAL.*/
-      data1/=gcomp1->value;
+	  data1/=gcomp1->value;
 
-      while(gcomp1->down!=NULL) /*DOWNWARD.*/
-      {
+	  while(gcomp1->down!=NULL) /*DOWNWARD.*/
+	  {
         gcomp1=gcomp1->down;
         i=gcomp1->m;
 
 		if((confs+i-1)->iconf==0) /*FREE*/
-        {
+		{
           data1-=gcomp1->value*(*(gvct+i-1));
         }
       }
@@ -17082,6 +17094,197 @@ int forwardbackward(struct gcomponent *gmtx,
 
   return 1;
 }/* forwardbackward */
+/***/
+
+
+
+/* 150515 fukushima for all */
+int croutluII(struct gcomponent *gmtx,
+			struct oconf *confs,
+			long int msize, long int csize,
+			double *det,double *sign,
+			struct gcomponent *gcomp1)
+{
+  /*char iconf;*/ /*0:FREE 1:FIXED*/
+  char str[256];
+  long int i,j,k;
+  /*double det=1.0;*/
+  double data1;
+  struct gcomponent *pivot,*pcomp;
+  struct gcomponent *gcomp2,*gcomp3,*gcomp4;
+  double pivotgcomp1;
+
+  *det=0.0;
+  *sign=0.0;
+
+  for(j=1;j<=msize+csize;j++)                             /*DECOMPOSITION.*/
+  {
+	if((j<=msize && (confs+j-1)->iconf==0) || j>msize) /*FREE*/
+	{
+	  pivot=(gmtx+(j-1)); /*PIVOT.*/
+
+	  if(fabs(pivot->value) == 0.0){*sign = -1; return (j-1);}  /*INSTABLE.*/
+	  if((pivot->value) < 0.0 && j<=msize) {*sign += 1; }
+	  /*det*=pivot->value;*/
+	  *det+=log10(fabs(pivot->value));   /*LOG BY 10 OF DETERMINANT.*/
+	  //*sign*=pivot->value/fabs(pivot->value); /*SIGN OF DETERMINANT.*/
+
+	  gcomp1=pivot;
+	  while(gcomp1->down!=NULL) /*DOWNWARD.*/
+	  {
+		gcomp1=gcomp1->down;
+
+		i=gcomp1->m; /*i:LINE CODE IN PIVOT ROW.*/
+		if((i<=msize && (confs+i-1)->iconf==0) || i>msize) /*FREE*/
+		{
+          gcomp1->value/=(pivot->value);
+		}
+	  }
+
+	  gcomp1=pivot;
+	  while(gcomp1->down!=NULL) /*DOWNWARD.*/
+	  {
+		gcomp1=gcomp1->down; /*Aij*/
+		pivotgcomp1=(pivot->value)*(gcomp1->value);
+
+		i=gcomp1->m; /*i:LINE CODE IN PIVOT ROW.*/
+		if((i<=msize && (confs+i-1)->iconf==0) || i>msize) /*FREE*/
+        {
+		  gcomp2=gcomp1; /*Akj*/
+		  gcomp3=(gmtx+(i-1)); /*Aki*/
+
+		  while(1)
+		  {
+			k=gcomp2->m;
+			if((k<=msize && (confs+k-1)->iconf==0) || k>msize) /*FREE*/
+			{
+			  if((gcomp3->m)<k) /*ADD*/
+			  {
+                gcomp4=(struct gcomponent *)
+                       malloc(sizeof(struct gcomponent));
+				if(gcomp4==NULL)
+				{
+				  sprintf(str,"GCOMP4-1: %d", i);
+				  errormessage(str);
+				  errormessage("CROUT:MEMORY INSUFFICIENT.");
+				  *sign=-999;
+				  return 0;
+				}
+				gcomp3->down=gcomp4;
+				gcomp4->m=(unsigned short int)k;
+				/*gcomp4->n=(unsigned short int)i;*/
+				gcomp4->down=NULL;
+				gcomp4->value=-pivotgcomp1
+							 *(gcomp2->value);
+				gcomp3=gcomp4;
+
+				comps++;
+			  }
+			  else if((gcomp3->m)==k)
+			  {
+				gcomp3->value-=pivotgcomp1
+							  *(gcomp2->value);
+			  }
+			  else if((gcomp3->m)>k) /*FILL*/
+              {
+                gcomp4=(struct gcomponent *)
+                       malloc(sizeof(struct gcomponent));
+				if(gcomp4==NULL)
+				{
+                  sprintf(str,"GCOMP4-2: %d", i);
+                  errormessage(str);
+                  errormessage("CROUT:MEMORY INSUFFICIENT.");
+				  *sign=-999;
+                  return 0;
+                }
+
+                pcomp->down=gcomp4;
+                gcomp4->m=(unsigned short int)k;
+                /*gcomp4->n=(unsigned short int)i;*/
+                gcomp4->down=gcomp3;
+				gcomp4->value=-pivotgcomp1
+                             *(gcomp2->value);
+				pcomp=gcomp4;
+
+                comps++;
+              }
+            }
+
+			if(gcomp2->down==NULL) break;
+            else gcomp2=gcomp2->down;
+
+            while((gcomp3->m)<(gcomp2->m) && gcomp3->down!=NULL)
+            {
+              pcomp=gcomp3;
+              gcomp3=gcomp3->down;
+            }
+		  }
+		}
+	  }
+	  //currentpivot(j,msize);
+	}
+  }
+  if(*sign<0.0) return 0;
+  else return 1;
+}/* croutluII */
+
+/* 150515 fukushima for all */
+int forwardbackwardII(struct gcomponent *gmtx,
+					double *gvct, struct oconf *confs,
+					long int msize, long int csize,
+					struct gcomponent *gcomp1)
+{
+  double data1;
+  long int i,j,k;
+
+  //errormessage("FORWARD ELIMINATION.");
+  for(j=1;j<=msize+csize;j++)                                  /*FORWARD.*/
+  {
+	if((j<=msize && (confs+j-1)->iconf==0) || j>msize) /*FREE*/
+	{
+	  data1=*(gvct+j-1);
+	  gcomp1=(gmtx+(j-1)); /*DIAGONAL.*/
+
+	  while(gcomp1->down!=NULL) /*DOWNWARD.*/
+	  {
+		gcomp1=gcomp1->down;
+		i=gcomp1->m;
+
+		if((i<=msize && (confs+i-1)->iconf==0) || i>msize) /*FREE*/
+		{
+		  *(gvct+i-1)-=gcomp1->value*data1;
+		}
+	  }
+	}
+	//currentpivot(j,msize);
+  }
+
+  //errormessage("BACKWARD SUBSTITUTION.");
+  for(j=msize+csize;j>=1;j--)                                 /*BACKWARD.*/
+  {
+	if((j<=msize && (confs+j-1)->iconf==0) || j>msize) /*FREE*/
+	{
+	  data1=*(gvct+j-1);
+	  gcomp1=(gmtx+(j-1)); /*DIAGONAL.*/
+	  data1/=gcomp1->value;
+
+	  while(gcomp1->down!=NULL) /*DOWNWARD.*/
+	  {
+        gcomp1=gcomp1->down;
+        i=gcomp1->m;
+
+		if((i<=msize && (confs+i-1)->iconf==0) || i>msize) /*FREE*/
+		{
+          data1-=gcomp1->value*(*(gvct+i-1));
+        }
+      }
+	  *(gvct+j-1)=data1;
+	}
+	//currentpivot((j-1),msize);
+  }
+
+  return 1;
+}/* forwardbackwardII */
 /***/
 
 int croutludecomposition(struct gcomponent *gmtx,
@@ -20068,6 +20271,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 
 	if((af->constraints+i-1)->type==0)/*MPC.*/
 	{
+		(af->constraints+i-1)->nnod=0;
 		for(j=0;j<n/(int)3;j++)
 		{
 		  ncode=strtol(*(data+3*j+2),NULL,10);
@@ -20101,36 +20305,98 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		}
 		/* *((af->constraintval)+i-1)=strtod(*(data+n-1),NULL);*/
 	}
+
+
+
 	if((af->constraints+i-1)->type==1)/*REVOLUTE JOINT.*/
 	{
-		(af->constraints+i-1)->neq=4;
+		(af->constraints+i-1)->nnod=2;
+		(af->constraints+i-1)->neq=5;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
+		j=0;
+		for(k=0;k<2;)
+		{
+			if((af->nodes+j)->code==code1)
+			{
+				(af->constraints+i-1)->node[0]=af->nodes+j;
+				k++;
+			}
+			if((af->nodes+j)->code==code2)
+			{
+				(af->constraints+i-1)->node[1]=af->nodes+j;
+				k++;
+			}
+			j++;
+		}
 		for(j=0;j<3;j++)
 		{
-			(af->constraints+i-1)->axis[j]=strtod(*(data+4+j),NULL);
+			(af->constraints+i-1)->axis[2][j]=strtod(*(data+4+j),NULL);
 		}
+		if((af->constraints+i-1)->axis[2][0] != 0.0 || (af->constraints+i-1)->axis[2][1] != 0.0)
+		{
+			(af->constraints+i-1)->axis[0][0] =  -(af->constraints+i-1)->axis[2][1];
+			(af->constraints+i-1)->axis[0][1] =   (af->constraints+i-1)->axis[2][0];
+			(af->constraints+i-1)->axis[0][2] =   0.0;
+		}
+		else
+		{
+			(af->constraints+i-1)->axis[0][0] =  1.0;
+			(af->constraints+i-1)->axis[0][1] =  0.0;
+			(af->constraints+i-1)->axis[0][2] =  0.0;
+		}
+		double* cross = crossproduct((af->constraints+i-1)->axis[2],(af->constraints+i-1)->axis[0]);
+		for(j=0;j<3;j++)
+		{
+			(af->constraints+i-1)->axis[1][j]=cross[j];
+		}
+		free(cross);
+		vectornormalize((af->constraints+i-1)->axis[0],3);
+		vectornormalize((af->constraints+i-1)->axis[1],3);
+		vectornormalize((af->constraints+i-1)->axis[2],3);
 	}
 	if((af->constraints+i-1)->type==2)/*SPHERICAL JOINT.*/
 	{
+		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
+        j=0;
+		for(k=0;k<2;)
+		{
+			if((af->nodes+j)->code==code1)
+			{
+				(af->constraints+i-1)->node[0]=af->nodes+j;
+				k++;
+			}
+			if((af->nodes+j)->code==code2)
+			{
+				(af->constraints+i-1)->node[1]=af->nodes+j;
+				k++;
+			}
+			j++;
+		}
 	}
+
+
+
 	if((af->constraints+i-1)->type==3)/*PRISMATIC JOINT.*/
 	{
+		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
 	if((af->constraints+i-1)->type==4)/*CYLINDRICAL JOINT.*/
 	{
+		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
 	if((af->constraints+i-1)->type==5)/*UNIVERSAL JOINT.*/
 	{
+		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
