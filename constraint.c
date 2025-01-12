@@ -31,6 +31,7 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 
 	double* cvct;
 	double** cmtx;
+    double** H;
 
 	for (i = 1; i <= nconstraint; i++)
 	{
@@ -71,6 +72,15 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 				for (jj = 0; jj < 6*nnod; jj++)
 				{
 					*(*(cmtx+ii)+jj) = 0.0;
+				}
+			}
+			H = (double**)malloc(6 * sizeof(double*));
+			for(ii = 0 ; ii < 6 ; ii++)/*HESSIAN OF CONSTRAINT*/
+			{
+				*(H+ii) = (double*)malloc(6 * sizeof(double));
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(*(H+ii)+jj) = 0.0;
 				}
 			}
 
@@ -122,6 +132,26 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 				*(*(cmtx+4)+9+ii) = -*(cross2+ii);
 			}
 
+			dot1 = dotproduct(axis1,axis3,3);
+			dot2 = dotproduct(axis2,axis3,3);
+
+			for (ii = 0; ii < 3; ii++)
+			{
+				for (ii = 0; ii < 3; ii++)
+				{
+					*(*(H+0+ii)+0+jj) +=   *(axis1+ii)**(axis3+jj)**(lambda+leq+3)+*(axis2+ii)**(axis3+jj)**(lambda+leq+4);
+					*(*(H+0+ii)+3+jj) +=  -*(axis3+ii)**(axis1+jj)**(lambda+leq+3)-*(axis3+ii)**(axis2+jj)**(lambda+leq+4);
+					*(*(H+3+ii)+0+jj) +=  -*(axis1+ii)**(axis3+jj)**(lambda+leq+3)-*(axis2+ii)**(axis3+jj)**(lambda+leq+4);
+					*(*(H+3+ii)+3+jj) +=   *(axis3+ii)**(axis1+jj)**(lambda+leq+3)+*(axis3+ii)**(axis2+jj)**(lambda+leq+4);
+					if(ii==jj)
+					{
+						*(*(H+0+ii)+0+jj) -= dot1**(lambda+leq+3)+dot2**(lambda+leq+4);
+						*(*(H+0+ii)+3+jj) += dot1**(lambda+leq+3)+dot2**(lambda+leq+4);
+						*(*(H+3+ii)+0+jj) += dot1**(lambda+leq+3)+dot2**(lambda+leq+4);
+						*(*(H+3+ii)+3+jj) -= dot1**(lambda+leq+3)+dot2**(lambda+leq+4);
+					}
+				}
+			}
 
 			for (ii = 0; ii < neq; ii++)
 			{
@@ -130,6 +160,19 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 					if(*(*(cmtx+ii)+jj) != 0)
 					{
 						gwrite(gmtx , msize+leq+ii+1, *(constraintmain + *(loffset + jj)) + 1, *(*(cmtx+ii)+jj));
+					}
+				}
+			}
+			for (ii = 0; ii < 3; ii++)
+			{
+				for (jj = 0; jj < 3; jj++)
+				{
+					if(*(*(H+ii)+jj) != 0)
+					{
+						gwrite(gmtx , *(constraintmain + *(loffset +     ii)) + 1, *(constraintmain + *(loffset +     jj)) + 1, *(*(H  +ii)  +jj));
+						gwrite(gmtx , *(constraintmain + *(loffset +     ii)) + 1, *(constraintmain + *(loffset + 6 + jj)) + 1, *(*(H  +ii)+3+jj));
+						gwrite(gmtx , *(constraintmain + *(loffset + 6 + ii)) + 1, *(constraintmain + *(loffset +     jj)) + 1, *(*(H+3+ii)  +jj));
+						gwrite(gmtx , *(constraintmain + *(loffset + 6 + ii)) + 1, *(constraintmain + *(loffset + 6 + jj)) + 1, *(*(H+3+ii)+3+jj));
 					}
 				}
 			}
@@ -148,6 +191,7 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 			free(cross1);
 			free(cross2);
 			freematrix(cmtx,neq);
+			freematrix(H,6);
 		}
 		if(type == 2)/*SPHERICAL*/
 		{
