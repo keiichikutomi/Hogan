@@ -19921,7 +19921,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 /*TRANSLATE ARCLM INPUTFILE TEXT INTO MEMORY.*/
 {
   char **data;
-  int i,j,ii,jj,k,n;
+  int i,j,ii,jj,k,l,m,n;
   long int offset,mainoff,suboff;
   long int scode,ncode,dcode,code1,code2,code3,code4;
   char str[50];/*for debug*/
@@ -20269,49 +20269,12 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	(af->constraints+i-1)->code=strtol(*(data+0),NULL,10);
 	(af->constraints+i-1)->type=strtol(*(data+1),NULL,10);
 
+
+
 	if((af->constraints+i-1)->type==0)/*MPC.*/
 	{
-		(af->constraints+i-1)->nnod=0;
-		for(j=0;j<n/(int)3;j++)
-		{
-		  ncode=strtol(*(data+3*j+2),NULL,10);
-		  dcode=strtol(*(data+3*j+3),NULL,10);
-		  if(j==0)
-		  {
-			for(k=0;k<af->nnode;k++)
-			{
-			  if((af->nodes+k)->code==ncode)
-			  {
-				mainoff=6*k+dcode;
-				/* *(*((af->constraintvec)+i-1)+mainoff)=strtod(*(data+3*j+2),NULL);*/
-				break;
-			  }
-			}
-		  }
-		  else
-		  {
-			for(k=0;k<af->nnode;k++)
-			{
-			  if((af->nodes+k)->code==ncode)
-			  {
-				suboff=6*k+dcode;
-				/* *(*((af->constraintvec)+i-1)+suboff)=strtod(*(data+3*j+2),NULL);*/
-				*((af->constraintmain)+suboff)=mainoff;
-				break;
-			  }
-			}
-		  }
-
-		}
-		/* *((af->constraintval)+i-1)=strtod(*(data+n-1),NULL);*/
-	}
-
-
-
-	if((af->constraints+i-1)->type==1)/*REVOLUTE JOINT.*/
-	{
 		(af->constraints+i-1)->nnod=2;
-		(af->constraints+i-1)->neq=5;
+		(af->constraints+i-1)->neq=0;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 		j=0;
@@ -20320,11 +20283,39 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			if((af->nodes+j)->code==code1)
 			{
 				(af->constraints+i-1)->node[0]=af->nodes+j;
+				mainoff = 6*j;
 				k++;
 			}
 			if((af->nodes+j)->code==code2)
 			{
 				(af->constraints+i-1)->node[1]=af->nodes+j;
+				suboff = 6*j;
+				for(l=0;l<6;l++)*((af->constraintmain)+suboff+l)=mainoff+l;
+				k++;
+			}
+			j++;
+		}
+	}
+	if((af->constraints+i-1)->type==1)/*REVOLUTE JOINT.*/
+	{
+		(af->constraints+i-1)->nnod=2;
+		(af->constraints+i-1)->neq=2;
+		code1=strtol(*(data+2),NULL,10);
+		code2=strtol(*(data+3),NULL,10);
+		j=0;
+		for(k=0;k<2;)
+		{
+			if((af->nodes+j)->code==code1)
+			{
+				(af->constraints+i-1)->node[0]=af->nodes+j;
+				mainoff = 6*j;
+				k++;
+			}
+			if((af->nodes+j)->code==code2)
+			{
+				(af->constraints+i-1)->node[1]=af->nodes+j;
+				suboff = 6*j;
+				for(l=0;l<3;l++)*((af->constraintmain)+suboff+l)=mainoff+l;
 				k++;
 			}
 			j++;
@@ -20358,7 +20349,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	if((af->constraints+i-1)->type==2)/*SPHERICAL JOINT.*/
 	{
 		(af->constraints+i-1)->nnod=2;
-		(af->constraints+i-1)->neq=3;
+		(af->constraints+i-1)->neq=0;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
         j=0;
@@ -20367,11 +20358,14 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			if((af->nodes+j)->code==code1)
 			{
 				(af->constraints+i-1)->node[0]=af->nodes+j;
+				mainoff = 6*j;
 				k++;
 			}
 			if((af->nodes+j)->code==code2)
 			{
 				(af->constraints+i-1)->node[1]=af->nodes+j;
+				suboff = 6*j;
+				for(l=0;l<3;l++)*((af->constraintmain)+suboff+l)=mainoff+l;
 				k++;
 			}
 			j++;
@@ -20400,6 +20394,43 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
+	}
+	else/*MPC.*/
+	{
+		(af->constraints+i-1)->nnod=0;
+		(af->constraints+i-1)->neq=0;
+		for(j=0;j<n/(int)3;j++)
+		{
+		  ncode=strtol(*(data+3*j+2),NULL,10);
+		  dcode=strtol(*(data+3*j+3),NULL,10);
+		  if(j==0)
+		  {
+			for(k=0;k<af->nnode;k++)
+			{
+			  if((af->nodes+k)->code==ncode)
+			  {
+				mainoff=6*k+dcode;
+				/* *(*((af->constraintvec)+i-1)+mainoff)=strtod(*(data+3*j+2),NULL);*/
+				break;
+			  }
+			}
+		  }
+		  else
+		  {
+			for(k=0;k<af->nnode;k++)
+			{
+			  if((af->nodes+k)->code==ncode)
+			  {
+				suboff=6*k+dcode;
+				/* *(*((af->constraintvec)+i-1)+suboff)=strtod(*(data+3*j+2),NULL);*/
+				*((af->constraintmain)+suboff)=mainoff;
+				break;
+			  }
+			}
+		  }
+
+		}
+		/* *((af->constraintval)+i-1)=strtod(*(data+n-1),NULL);*/
 	}
 
 	offset += (af->constraints+i-1)->neq;

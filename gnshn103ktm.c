@@ -2989,6 +2989,4 @@ void energyoutputtomemory(FILE *ftext,struct arclmframe *af)
   return;
 }
 
-
-
 

@@ -689,7 +689,7 @@ int arclmStatic(struct arclmframe* af)
 
 
 
-dbggcomp(gmtx,msize+csize,"GMTX");
+//dbggcomp(gmtx,msize+csize,"GMTX");
 
 		if(iteration==1 && USINGEIGENFLAG==0)
 		{
@@ -750,7 +750,7 @@ dbggcomp(gmtx,msize+csize,"GMTX");
 			//	}
 			//}
 
-			dbggcomp(gmtx,msize+csize,"GMTX");
+			//dbggcomp(gmtx,msize+csize,"GMTX");
 		}
 
 		/*COULD NOT SOLVE*/
@@ -1293,7 +1293,7 @@ dbggcomp(gmtx,msize+csize,"GMTX");
 		residual2 = vectorlength(constraintvct,csize);
 		gvctlen = vectorlength(gvct,msize+csize);
 
-		if ((residual < tolerance || iteration > maxiteration-1) && iteration != 1)
+		if ((gvctlen < tolerance || iteration > maxiteration-1) && iteration != 1)
 		{
 			nlap++;
 			iteration = 0;
