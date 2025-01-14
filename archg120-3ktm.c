@@ -19446,7 +19446,7 @@ for(ii=0;ii<12;ii++)
                 *(gvct2+(6*i+3)),*(gvct2+(6*i+4)),*(gvct2+(6*i+5)));
       }
     }
-    residual=0;  /***UJIOKA***/
+	residual=0;  /***UJIOKA***/
     for(i=0;i<msize;i++)
     {
 	  if((confs+i)->iconf==1) *(gvct2+i)=0.0;
@@ -19656,7 +19656,7 @@ for(ii=0;ii<12;ii++)
 
 
     /***UJIOKA FOR LOAD INCREMENTAL***/
-    if( (residual<tolerance || iteration>=maxiteration)&& iteration!=1)
+	if( (residual<tolerance || iteration>=maxiteration)&& iteration!=1)
     {
       nlap++;
       iteration=0;
@@ -20269,8 +20269,6 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	(af->constraints+i-1)->code=strtol(*(data+0),NULL,10);
 	(af->constraints+i-1)->type=strtol(*(data+1),NULL,10);
 
-
-
 	if((af->constraints+i-1)->type==0)/*MPC.*/
 	{
 		(af->constraints+i-1)->nnod=2;
@@ -20290,13 +20288,16 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			{
 				(af->constraints+i-1)->node[1]=af->nodes+j;
 				suboff = 6*j;
-				for(l=0;l<6;l++)*((af->constraintmain)+suboff+l)=mainoff+l;
+				for(l=0;l<6;l++)
+				{
+					*((af->constraintmain)+suboff+l)=mainoff+l;
+				}
 				k++;
 			}
 			j++;
 		}
 	}
-	if((af->constraints+i-1)->type==1)/*REVOLUTE JOINT.*/
+	else if((af->constraints+i-1)->type==1)/*REVOLUTE JOINT.*/
 	{
 		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=2;
@@ -20315,7 +20316,10 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			{
 				(af->constraints+i-1)->node[1]=af->nodes+j;
 				suboff = 6*j;
-				for(l=0;l<3;l++)*((af->constraintmain)+suboff+l)=mainoff+l;
+				for(l=0;l<3;l++)
+				{
+					*((af->constraintmain)+suboff+l)=mainoff+l;
+				}
 				k++;
 			}
 			j++;
@@ -20346,7 +20350,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		vectornormalize((af->constraints+i-1)->axis[1],3);
 		vectornormalize((af->constraints+i-1)->axis[2],3);
 	}
-	if((af->constraints+i-1)->type==2)/*SPHERICAL JOINT.*/
+	else if((af->constraints+i-1)->type==2)/*SPHERICAL JOINT.*/
 	{
 		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=0;
@@ -20365,30 +20369,30 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			{
 				(af->constraints+i-1)->node[1]=af->nodes+j;
 				suboff = 6*j;
-				for(l=0;l<3;l++)*((af->constraintmain)+suboff+l)=mainoff+l;
+				for(l=0;l<3;l++)
+				{
+					*((af->constraintmain)+suboff+l)=mainoff+l;
+				}
 				k++;
 			}
 			j++;
 		}
 	}
-
-
-
-	if((af->constraints+i-1)->type==3)/*PRISMATIC JOINT.*/
+	else if((af->constraints+i-1)->type==3)/*PRISMATIC JOINT.*/
 	{
 		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
-	if((af->constraints+i-1)->type==4)/*CYLINDRICAL JOINT.*/
+	else if((af->constraints+i-1)->type==4)/*CYLINDRICAL JOINT.*/
 	{
 		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
-	if((af->constraints+i-1)->type==5)/*UNIVERSAL JOINT.*/
+	else if((af->constraints+i-1)->type==5)/*UNIVERSAL JOINT.*/
 	{
 		(af->constraints+i-1)->nnod=2;
 		(af->constraints+i-1)->neq=3;

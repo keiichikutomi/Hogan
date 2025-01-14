@@ -233,6 +233,7 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 		type = (constraints+i-1)->type;
 		nnod = (constraints+i-1)->nnod;
 
+
 		if(type == 1)
 		{
 			cvct = (double*)malloc(neq * sizeof(double));

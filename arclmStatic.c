@@ -684,11 +684,6 @@ int arclmStatic(struct arclmframe* af)
 		  assemconstraint(constraints, nconstraint, constraintmain, gmtx, iform, ddisp, lambda, msize);
 		}
 
-
-
-
-
-
 //dbggcomp(gmtx,msize+csize,"GMTX");
 
 		if(iteration==1 && USINGEIGENFLAG==0)
@@ -956,11 +951,11 @@ int arclmStatic(struct arclmframe* af)
 			{
 				scaledarclength = beginingarcratio * arclength;
 			}
-			else if (nlap == beginlap + beginingarclap)
+			else if (nlap == beginlap + beginingarclap || nlap == beginlap + beginingarclap + 1)
 			{
 				scaledarclength = arclength;
 			}
-			else if (nlap == beginlap + beginingarclap + 1)
+			else if (nlap == beginlap + beginingarclap + 2)
 			{
 				if(SCALINGARCFLAG==1)
 				{
@@ -1293,7 +1288,7 @@ int arclmStatic(struct arclmframe* af)
 		residual2 = vectorlength(constraintvct,csize);
 		gvctlen = vectorlength(gvct,msize+csize);
 
-		if ((gvctlen < tolerance || iteration > maxiteration-1) && iteration != 1)
+		if ((residual < tolerance || iteration > maxiteration-1) && iteration != 1)
 		{
 			nlap++;
 			iteration = 0;
