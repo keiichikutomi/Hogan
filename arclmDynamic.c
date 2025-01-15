@@ -39,7 +39,7 @@ int arclmDynamic(struct arclmframe* af)
 
 	/*MODEL SIZE*/
 	int nnode, nelem, nshell, nsect, nconstraint;
-	long int msize;
+	long int msize,csize;
 
 	///ARCLMFRAME///
 	struct osect* sects;
@@ -51,6 +51,7 @@ int arclmDynamic(struct arclmframe* af)
 	struct memoryelem* melem;
 	struct memoryshell* mshell;
 	long int* constraintmain;
+	struct oconstraint* constraints;
     double *nmass;
 
 	/*GLOBAL MATRIX*/
@@ -69,8 +70,12 @@ int arclmDynamic(struct arclmframe* af)
 	double* funbalance, * fexternal, * finternal, * freaction;
 	double* fbaseload, * fdeadload, * fpressure,* finertial,* fdamping, * fgivendisp;
 	double* funbalance_m;
+
+
+	double* lambda, * lastlambda, * constraintvct;
+
 	double* gvct;
-	double* dup, * due;
+
 	double* lastlastudd_m;
 	double* lastud_m,* lastudd_m;
 	double* ud_m,* udd_m;
@@ -87,6 +92,7 @@ int arclmDynamic(struct arclmframe* af)
 	int maxiteration = 20;
 	double tolerance = 1.0E-4;
 	double residual = 0.0;
+    double constraintresidual = 0.0;
 	double gvctlen = 0.0;
 
 	double ddt = 0.001;/*TIME INCREMENT[sec]*/
@@ -432,6 +438,7 @@ int arclmDynamic(struct arclmframe* af)
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
+	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
 
 	af->sects = sects;
 	af->nodes = nodes;
@@ -444,6 +451,7 @@ int arclmDynamic(struct arclmframe* af)
 	af->melem = melem;
 	af->mshell = mshell;
 	af->constraintmain = constraintmain;
+	af->constraints = constraints;
 	af->nmass = nmass;
 
 	inputtexttomemory(fin, af);
@@ -462,22 +470,51 @@ int arclmDynamic(struct arclmframe* af)
 	melem = af->melem;
 	mshell = af->mshell;
 	constraintmain = af->constraintmain;
+	constraints = af->constraints;
 	nmass = af->nmass;
 #endif
 
+	csize = 0;
+	for (i = 0; i < nconstraint; i++)
+	{
+		csize += (constraints+i)->neq;
+	}
+
+	constraintvct = (double*)malloc(csize * sizeof(double));
+
+	if(af->lambda==NULL)
+	{
+		lambda = (double*)malloc(csize * sizeof(double));
+		for (i = 0; i < csize; i++)
+		{
+			*(lambda + i) = 0.0;
+		}
+		af->lambda = lambda;
+	}
+	else
+	{
+		lambda = af->lambda;
+	}
+	lastlambda = (double*)malloc(csize * sizeof(double));
+	for (i = 0; i < csize; i++)
+	{
+		*(lastlambda + i) = *(lambda + i);
+	}
+
+
+
 	/*GLOBAL MATRIX*/
-	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-	gmtx2 = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-	for (i = 0; i < msize; i++)
+	gmtx = (struct gcomponent*)malloc((msize+csize) * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	gmtx2 = (struct gcomponent*)malloc((msize+csize) * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
+	for (i = 0; i < (msize+csize); i++)
 	{
 		(gmtx + i)->down = NULL;
 		(gmtx2 + i)->down = NULL;
 	}
 
 	/*GLOBAL VECTOR*/
-	gvct = (double *)malloc(msize * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
-	due = (double*)malloc(msize * sizeof(double));
-	dup = (double*)malloc(msize * sizeof(double));
+	gvct = (double *)malloc((msize+csize) * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
+
 
 	/*FORCE VECTOR INITIALIZATION*/
 	funbalance = (double*)malloc(msize * sizeof(double));        /*UNBALANCED FORCE VECTOR.*/
@@ -525,6 +562,11 @@ int arclmDynamic(struct arclmframe* af)
 	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);  /*DRAW GLOBAL AXIS.*/
 	}
 
+
+
+
+
+
 	nlap = 1;
 	if(af->nlaps != NULL)
 	{
@@ -569,6 +611,10 @@ int arclmDynamic(struct arclmframe* af)
 		*(fbaseload  + i) = 0.0;
 		*(fpressure  + i) = 0.0;
 	}
+	for(i = 0; i < csize; i++)
+	{
+		*(constraintvct + i) = 0.0;
+	}
 
 	volume = 0.0;
 	assemshellvolume(shells, nshell, ddisp, &volume);
@@ -586,6 +632,9 @@ int arclmDynamic(struct arclmframe* af)
 				   lastud_m, ud_m,
 				   finertial, fdamping, finternal, fpressure,
 				   alpham, alphaf, xi);
+	/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
+						  iform, ddisp, lambda,
+						  finternal,constraintvct);*/
 
 	strainenergy(af, &Wet, &Wpt);
 	kineticenergy(af, ud_m, &Wkt);
@@ -603,6 +652,10 @@ int arclmDynamic(struct arclmframe* af)
 			*(fbaseload + i) = 0.0;
 		}
 		*(gvct + i) = *(funbalance + i);
+	}
+	for (i = 0; i < csize; i++)
+	{
+		*(gvct + msize + i) = *(constraintvct + i);
 	}
 
 	/*OUTPUT(INITIAL)*/
@@ -675,6 +728,11 @@ int arclmDynamic(struct arclmframe* af)
 				*(udd_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
 							   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
 			}
+			for (ii = 0; ii < csize; ii++)
+			{
+				*(lastlambda + ii) = *(lambda + ii);
+			}
+
 			if(PEAKFLAG == 1)
 			{
 				for (ii = 0; ii < msize; ii++)
@@ -690,6 +748,10 @@ int arclmDynamic(struct arclmframe* af)
 					*(ud_m + ii)  = 0.0;
 					*(udd_m + ii) = 0.0;
 				}
+				for (ii = 0; ii < csize; ii++)
+				{
+					*(lastlambda + ii) = *(lambda + ii);
+				}
 				PEAKFLAG = 0;
 				lastWkt = 0.0;
 			}
@@ -703,6 +765,10 @@ int arclmDynamic(struct arclmframe* af)
 				*(freaction  + i) = 0.0;
 				*(fbaseload  + i) = 0.0;
 				*(fpressure  + i) = 0.0;
+			}
+			for(i = 0; i < csize; i++)
+			{
+				*(constraintvct + i) = 0.0;
 			}
 
 			//volume = 0.0;
@@ -721,6 +787,9 @@ int arclmDynamic(struct arclmframe* af)
 							 lastud_m, ud_m,
 							 finertial, fdamping, finternal, fpressure,
 							 alpham, alphaf, xi);
+			/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
+								  iform, ddisp, lambda,
+								  finternal,constraintvct);*/
 
 
 			//strainenergy(af, &Wet, &Wpt);
@@ -739,22 +808,26 @@ int arclmDynamic(struct arclmframe* af)
 				}
 				*(gvct + i) = *(funbalance + i);
 			}
+			for (i = 0; i < csize; i++)
+			{
+				*(gvct + msize + i) = *(constraintvct + i);
+			}
 
 		}
 
 
 		/*MATRIX INITIALIZE*/
-		std::vector<Triplet> Ktriplet;
-		std::vector<Triplet> Ktriplet2;
+		std::vector<Triplet> Ktriplet;/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
+		std::vector<Triplet> Ktriplet2;/*FOR STATIC TANGENTIAL STIFFNESS*/
 
-		SparseMatrix Kglobal(msize, msize);
-		SparseMatrix Kglobal2(msize, msize);
+		SparseMatrix Kglobal((msize+csize), (msize+csize));
+		SparseMatrix Kglobal2((msize+csize), (msize+csize));
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
 		//Eigen::SimplicialLDLT<SparseMatrix> solver;
 		Eigen::SparseLU<SparseMatrix> solver;
 
-		for (i = 1; i <= msize; i++)
+		for (i = 1; i <= (msize+csize); i++)/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
 		{
 			g = (gmtx + (i - 1))->down;
 			while (g != NULL)
@@ -766,7 +839,7 @@ int arclmDynamic(struct arclmframe* af)
 			ginit.m = (unsigned short int)i;
 			*(gmtx + (i - 1)) = ginit;
 		}
-		for (i = 1; i <= msize; i++)
+		for (i = 1; i <= (msize+csize); i++)/*FOR STATIC TANGENTIAL STIFFNESS*/
 		{
 			g = (gmtx2 + (i - 1))->down;
 			while (g != NULL)
@@ -788,13 +861,14 @@ int arclmDynamic(struct arclmframe* af)
 							   iform, lastddisp, ddisp,
 							   ud_m, udd_m,
 							   alpham, alphaf, xi, beta, ddt);
+		  //assemconstraintEigen_DYNA;
 		  /*GLOBAL MATRIX USING EIGEN*/
 		  modifytriplet(Ktriplet,confs,msize);
 		  modifytriplet(Ktriplet2,confs,msize);
 
-		  Kglobal.reserve(msize*msize);
+		  Kglobal.reserve((msize+csize)*(msize+csize));
 		  Kglobal.setFromTriplets(Ktriplet.begin(), Ktriplet.end());//SPARSE MATRIX FROM TRIPLET
-		  Kglobal2.reserve(msize*msize);
+		  Kglobal2.reserve((msize+csize)*(msize+csize));
 		  Kglobal2.setFromTriplets(Ktriplet2.begin(), Ktriplet2.end());//SPARSE MATRIX FROM TRIPLET
 		}
 		else
@@ -804,6 +878,7 @@ int arclmDynamic(struct arclmframe* af)
 						  iform, lastddisp, ddisp,
 						  ud_m, udd_m,
 						  alpham, alphaf, xi, beta, ddt);
+		  //assemconstraint_DYNA;
 		}
 
 		/*SOLVE [K]*/
@@ -826,41 +901,47 @@ int arclmDynamic(struct arclmframe* af)
 			*/
 
 			if (solver.info() != Eigen::Success)sign=-1;
+			/*DECOMPOSITION FAILED*/
+			if (sign < 0.0)
+			{
+				fclose(fin);
+				fclose(fonl);
+				fclose(fdsp);
+				fclose(fexf);
+				fclose(finf);
+				fclose(fubf);
+				fclose(frct);
+				fclose(fstr);
+				fclose(fene);
+				fclose(ffig);
+				fclose(fbcl);
+				return 1;
+			}
 
 			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-					nlap, iteration, loadfactor,residual, Wkt, NULL, 0, 0.0, volume, time);
+					nlap, iteration, loadfactor,residual, Wkt, 0, 0, 0.0, volume, time);
 			fprintf(ffig, "%s", string);
 			errormessage(string);
 
-			Vector P = Vector::Zero(msize);
-			for(i=0;i<msize;i++)P(i)=*(gvct+i);
+			Vector P = Vector::Zero(msize + csize);
+			for(i=0;i<msize + csize;i++)P(i)=*(gvct+i);
 			Vector U = solver.solve(P);
-			for(i=0;i<msize;i++)*(gvct+i)=U(i);
+			for(i=0;i<msize + csize;i++)*(gvct+i)=U(i);
 			if (solver.info() != Eigen::Success)return -1;
 		}
 		else
 		{
 			/*CROUT LU DECOMPOSITION.*/
-			nline = croutlu(gmtx, confs, msize, &determinant, &sign, gcomp1);
-			nline2 = croutlu(gmtx2, confs, msize, &determinant2, &sign2, gcomp1);
+			nline = croutluII(gmtx, confs, msize, csize, &determinant, &sign, gcomp1);
+			nline2 = croutluII(gmtx2, confs, msize, csize, &determinant2, &sign2, gcomp1);
 
 			/*DECOMPOSITION FAILED*/
 			if (sign < 0.0)
 			{
-				for (ii = 1; ii <= msize; ii++)
-				{
-					gg = 0.0;
-					gread(gmtx, ii, ii, &gg);
 
-					if (gg < 0.0)
-					{
-						sprintf(string, "INSTABLE TERMINATION AT NODE %ld.",
-							(nodes + int((ii - 1) / 6))->code);
-						errormessage(" ");
-						errormessage(string);
-						if (fonl != NULL) fprintf(fonl, "%s\n", string);
-					}
-				}
+				sprintf(string, "INSTABLE TERMINATION AT NODE %ld.\n",nline);
+				fprintf(ffig, "%s", string);
+				errormessage(string);
 
 				fclose(fin);
 				fclose(fonl);
@@ -873,12 +954,6 @@ int arclmDynamic(struct arclmframe* af)
 				fclose(fene);
 				fclose(ffig);
 				fclose(fbcl);
-
-				gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
-				free(gvct);
-				free(funbalance);
-				free(finternal);
-				free(fexternal);
 				return 1;
 			}
 			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
@@ -887,7 +962,7 @@ int arclmDynamic(struct arclmframe* af)
 			errormessage(string);
 
 
-			nline = forwardbackward(gmtx, gvct, confs, msize, gcomp1);
+			nline = forwardbackwardII(gmtx, gvct, confs, msize, csize, gcomp1);
         }
 
 		for (ii = 0; ii < msize; ii++)
@@ -897,6 +972,11 @@ int arclmDynamic(struct arclmframe* af)
 
 		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
+
+		for (ii = 0; ii < csize; ii++)
+		{
+		  *(lambda+ii)+=*(gvct+msize+ii);
+		}
 
 		lapddisp_m = pullback(lastddisp,lapddisp,nnode);
 		for(ii = 0; ii < msize; ii++)
@@ -919,6 +999,10 @@ int arclmDynamic(struct arclmframe* af)
 			*(fbaseload  + ii) = 0.0;
 			*(fpressure  + ii) = 0.0;
 		}
+		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+		{
+			*(constraintvct  + i) = 0.0;
+		}
 
 		volume = 0.0;
 		assemshellvolume(shells, nshell, ddisp, &volume);
@@ -936,6 +1020,7 @@ int arclmDynamic(struct arclmframe* af)
 					   lastud_m, ud_m,
 					   finertial, fdamping, finternal, fpressure,
 					   alpham, alphaf, xi);
+		//constraintstress_DYNA(constraints, nconstraint, constraintmain, iform, ddisp, lambda, finternal, constraintvct);
 
 		strainenergy(af, &Wet, &Wpt);
 		kineticenergy(af, ud_m, &Wkt);
@@ -953,10 +1038,15 @@ int arclmDynamic(struct arclmframe* af)
 			}
 			*(gvct + i) = *(funbalance + i);
 		}
+		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+		{
+			*(gvct + msize + i) = *(constraintvct  + i);
+		}
 
 
 		/*CONVERGENCE JUDGEMENT.*/
 		residual = vectorlength(funbalance,msize);
+		constraintresidual = vectorlength(constraintvct,csize);
 		gvctlen = vectorlength(gvct,msize);
 
 		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)

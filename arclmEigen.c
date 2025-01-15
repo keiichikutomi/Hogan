@@ -18,7 +18,7 @@ using Triplet = Eigen::Triplet<double>;
 
 
 
-void assemtriplet(std::vector<Triplet>& triplets,
+void assemtripletelem(std::vector<Triplet>& triplets,
 				  double** estiff,
 				  struct owire *elem,
 				  long int *constraintmain,
@@ -41,8 +41,6 @@ void assemtriplet(std::vector<Triplet>& triplets,
 		  jj=6*(elem->node[n2]->loff)+j;
 		  if(constraintmain!=NULL)jj=*(constraintmain+jj);
 
-		  //if(ii>=jj)
-		  //{
 			if((confs+ii)->iconf!=1 && (confs+jj)->iconf!=1)
 			{
 				edata=*(*(estiff+6*n1+i)+6*n2+j);
@@ -51,11 +49,7 @@ void assemtriplet(std::vector<Triplet>& triplets,
 					triplets.emplace_back(ii, jj, edata);
 				}
 			}
-			/*else if(ii==jj)
-			{
-				triplets.emplace_back(ii, jj, 1.0);
-			}*/
-		  //}
+
 		}
 	  }
 	}
@@ -86,8 +80,7 @@ void assemtripletshell(std::vector<Triplet>& triplets,
 		  jj=6*(shell->node[n2]->loff)+j;
 		  if(constraintmain!=NULL)jj=*(constraintmain+jj);
 
-		  //if(ii>=jj)
-		  //{
+
 			if((confs+ii)->iconf!=1 && (confs+jj)->iconf!=1)
 			{
 				edata=*(*(estiff+6*n1+i)+6*n2+j);
@@ -96,11 +89,7 @@ void assemtripletshell(std::vector<Triplet>& triplets,
 					triplets.emplace_back(ii, jj, edata);
 				}
 			}
-			/*else if(ii==jj)
-			{
-				triplets.emplace_back(ii, jj, 1.0);
-			}*/
-		  //}
+
 		}
 	  }
 	}

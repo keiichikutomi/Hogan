@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BorlandProject>
 	<Transactions>
-    <Transaction>2013/10/15 18:17:44.000.454,C:\D\Cdocs\HoganTest\SDIPCH.h=</Transaction>
-    <Transaction>2013/10/15 18:17:44.000.444,C:\D\Cdocs\HoganTest\sdiapp.res=</Transaction>
     <Transaction>2013/10/15 18:17:44.000.413,C:\D\Cdocs\HoganTest\ABOUT.CPP=</Transaction>
+    <Transaction>2013/10/15 18:17:44.000.444,C:\D\Cdocs\HoganTest\sdiapp.res=</Transaction>
+    <Transaction>2013/10/15 18:17:44.000.454,C:\D\Cdocs\HoganTest\SDIPCH.h=</Transaction>
     <Transaction>2013/10/15 18:18:12.000.769,C:\D\Cdocs\HoganTest\SDIMAIN.CPP=</Transaction>
-    <Transaction>2013/10/15 18:19:54.000.145,C:\D\Cdocs\HoganTest\Hogan004.cbproj=C:\D\Cdocs\HoganTest\sdiapp.cbproj</Transaction>
+    <Transaction>2013/10/15 18:19:54.000.145,C:\D\Cdocs\HoganTest\sdiapp.cbproj=C:\D\Cdocs\HoganTest\Hogan004.cbproj</Transaction>
     <Transaction>2013/10/15 18:26:30.000.949,=C:\D\Cdocs\HoganTest\CanIco.rc</Transaction>
-    <Transaction>2013/10/15 18:26:30.000.941,=C:\D\Cdocs\HoganTest\CanMenu.rc</Transaction>
+    <Transaction>2013/10/15 18:26:30.000.946,=C:\D\Cdocs\HoganTest\CanCur.rc</Transaction>
     <Transaction>2013/10/15 18:26:30.000.934,=C:\D\Cdocs\HoganTest\CanDlg.rc</Transaction>
     <Transaction>2013/10/15 18:26:30.000.944,=C:\D\Cdocs\HoganTest\CANBMP.RC</Transaction>
-    <Transaction>2013/10/15 18:26:30.000.946,=C:\D\Cdocs\HoganTest\CanCur.rc</Transaction>
+    <Transaction>2013/10/15 18:26:30.000.941,=C:\D\Cdocs\HoganTest\CanMenu.rc</Transaction>
     <Transaction>2013/10/17 02:07:04.000.455,C:\D\Cdocs\HoganTest1\Hogan004.cbproj=C:\D\Cdocs\HoganTest1\Hogan004.cbproj</Transaction>
     <Transaction>2013/10/17 02:10:58.000.696,C:\D\Cdocs\HoganTest1\Hogan004.cbproj=C:\D\Cdocs\HoganTest1\Hogan004.cbproj</Transaction>
     <Transaction>2015/02/12 04:45:01.000.746,C:\D\Cdocs\HoganTest\Hogan004.cbproj=C:\D\Cdocs\HoganTest\Hogan004.cbproj</Transaction>

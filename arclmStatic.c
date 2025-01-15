@@ -37,7 +37,6 @@ int arclmStatic(struct arclmframe* af)
 	int nnode, nelem, nshell, nsect, nconstraint;
 	long int msize,csize;
 
-	double residual2;
 
 	/*ARCLMFRAME*/
 	struct osect* sects;
@@ -78,6 +77,7 @@ int arclmStatic(struct arclmframe* af)
 	int maxiteration = 20;
 	double tolerance = 1.0e-4;
 	double residual = 0.0;
+	double constraintresidual = 0.0;
 	double gvctlen = 0.0;
 
 	double initialloadfactor = 0.0;
@@ -461,9 +461,8 @@ int arclmStatic(struct arclmframe* af)
 	{
 		csize += (constraints+i)->neq;
 	}
-
 	constraintvct = (double*)malloc(csize * sizeof(double));
-   /*	if(af->lambda==NULL)
+	if(af->lambda==NULL)
 	{
 		lambda = (double*)malloc(csize * sizeof(double));
 		for (i = 0; i < csize; i++)
@@ -475,15 +474,9 @@ int arclmStatic(struct arclmframe* af)
 	else
 	{
 		lambda = af->lambda;
-	}   */
+	}
 
 
-    		lambda = (double*)malloc(csize * sizeof(double));
-		for (i = 0; i < csize; i++)
-		{
-			*(lambda + i) = 0.0;
-		}
-		af->lambda = lambda;
 
 	/*GLOBAL MATRIX FOR SOLVER*/
 	gmtx = (struct gcomponent*)malloc((msize+csize) * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
@@ -670,8 +663,11 @@ int arclmStatic(struct arclmframe* af)
 		/*STIFFNESS ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
 		{
-		  //assemelemEx(elems, melem, nelem, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
-		  //assemshellEx(shells, mshell, nshell, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
+		  assemelemEigen(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp);
+		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp);
+
+		  /*GLOBAL MATRIX USING EIGEN*/
+		  modifytriplet(Ktriplet,confs,msize);
 
 		  /*GLOBAL MATRIX USING EIGEN*/
 		  Kglobal.reserve((msize+csize)*(msize+csize));
@@ -709,7 +705,7 @@ int arclmStatic(struct arclmframe* af)
 			Eigen::VectorXd D = solver.vectorD();
 			determinant= 0.0;
 			sign = 0;
-			for (i = 0; i < msize + csize; i++)
+			for (i = 0; i < msize; i++)
 			{
 			  if((confs+i)->iconf!=1)
 			  {
@@ -723,7 +719,6 @@ int arclmStatic(struct arclmframe* af)
 		else
 		{
 			if(iteration==1 && neig!=0)gmtxcpy=copygcompmatrix(gmtx,(msize+csize));
-
 			nline = croutluII(gmtx, confs, msize, csize, &determinant, &sign, gcomp1);
 			if (sign < 0.0)
 			{
@@ -936,7 +931,7 @@ int arclmStatic(struct arclmframe* af)
 			if(USINGEIGENFLAG==1)
 			{
 			  Vector P = Vector::Zero((msize+csize));
-			  for(i=0;i<msize;i++)P(i)=*(dup+i);
+			  for(i=0;i<(msize+csize);i++)P(i)=*(dup+i);
 			  Vector Up = solver.solve(P);
 			  for(i=0;i<(msize+csize);i++)*(dup+i)=Up(i);
 			  if (solver.info() != Eigen::Success)return -1;
@@ -1234,7 +1229,7 @@ int arclmStatic(struct arclmframe* af)
 		  *(lambda+ii)+=*(gvct+msize+ii);
 		}
 
-	dbgvct(lambda,csize,5,NULL);
+	//dbgvct(lambda,csize,5,NULL);
 
 
 		for (i = 0; i < msize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
@@ -1285,7 +1280,7 @@ int arclmStatic(struct arclmframe* af)
 
 		/*CONVERGENCE JUDGEMENT.*/
 		residual = vectorlength(funbalance,msize);
-		residual2 = vectorlength(constraintvct,csize);
+		constraintresidual = vectorlength(constraintvct,csize);
 		gvctlen = vectorlength(gvct,msize+csize);
 
 		if ((residual < tolerance || iteration > maxiteration-1) && iteration != 1)
@@ -1386,7 +1381,7 @@ int arclmStatic(struct arclmframe* af)
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-#if 1
+#if 0
 		while(GetAsyncKeyState(VK_LBUTTON))  /*LEFT CLICK TO CONTINUE.*/
 		{
 		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/

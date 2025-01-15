@@ -88,7 +88,7 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
 		//symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		//assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
-		assemtriplet(Ktriplet, Kt, &elem, constraintmain, confs);
+		assemtripletelem(Ktriplet, Kt, &elem, constraintmain, confs);
 
 		free(loffset);
 		free(eforminit);
@@ -376,14 +376,14 @@ void assemelemEigen_DYNA(struct owire* elems, struct memoryelem* melem, int nele
 		Kint = assemtmtxCR_MID(Kp, eform, edisp, mideinternal, T, midTtPtHt, HPT, alphaf, xi, nnod);
 		//symmetricmtx(Kint, 6*nnod);
 		//if(gmtx2!=NULL)assemgstiffnesswithDOFelimination(gmtx2, Kint, &elem, constraintmain);
-		assemtriplet(Ktriplet2, Kint, &elem, constraintmain, confs);
+		assemtripletelem(Ktriplet2, Kint, &elem, constraintmain, confs);
 
 		Keff = assemtmtxCR_DYNA(Kint,
 								ginertial, M, R, lastRt, lapH,
 								alpham, beta, ddt, nnod);
 		//symmetricmtx(Keff, 6*nnod);
 		//assemgstiffnesswithDOFelimination(gmtx, Keff, &elem, constraintmain);
-		assemtriplet(Ktriplet, Keff, &elem, constraintmain, confs);
+		assemtripletelem(Ktriplet, Keff, &elem, constraintmain, confs);
 
 		//freematrix(M, 6 * nnod);
 		//freematrix(Kp, 6 * nnod);
