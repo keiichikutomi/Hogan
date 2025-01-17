@@ -67,12 +67,13 @@ int arclmDynamic(struct arclmframe* af)
 
 	/*GLOBAL VECTOR*/
 	double* iform,* ddisp,* lastddisp,* lapddisp,* lapddisp_m,*givendisp;
+	double* lambda, * lastlambda;
 	double* funbalance, * fexternal, * finternal, * freaction;
 	double* fbaseload, * fdeadload, * fpressure,* finertial,* fdamping, * fgivendisp;
+	double* fconstraint;
+	double* constraintvct;
+
 	double* funbalance_m;
-
-
-	double* lambda, * lastlambda, * constraintvct;
 
 	double* gvct;
 
@@ -496,10 +497,7 @@ int arclmDynamic(struct arclmframe* af)
 		lambda = af->lambda;
 	}
 	lastlambda = (double*)malloc(csize * sizeof(double));
-	for (i = 0; i < csize; i++)
-	{
-		*(lastlambda + i) = *(lambda + i);
-	}
+
 
 
 
@@ -527,6 +525,7 @@ int arclmDynamic(struct arclmframe* af)
 	fdeadload = (double*)malloc(msize * sizeof(double));           /*DEAD LOAD VECTOR.*/
 	fpressure = (double*)malloc(msize * sizeof(double));         /*BASE PRESSURE FORCE VECTOR.*/
 	fgivendisp = (double*)malloc(msize * sizeof(double));
+	fconstraint = (double*)malloc(msize * sizeof(double));
 
 	/*POSITION VECTOR INITIALIZATION*/
 	/*IN SPATIAL FORM*/
@@ -600,6 +599,10 @@ int arclmDynamic(struct arclmframe* af)
 		*(ud_m + i) = 0.0;
 		*(udd_m + i) = 0.0;
 	}
+	for (i = 0; i < csize; i++)
+	{
+		*(lastlambda + i) = *(lambda + i);
+	}
 
 	for(i = 0; i < msize; i++)
 	{
@@ -610,6 +613,7 @@ int arclmDynamic(struct arclmframe* af)
 		*(freaction  + i) = 0.0;
 		*(fbaseload  + i) = 0.0;
 		*(fpressure  + i) = 0.0;
+		*(fconstraint + i) = 0.0;
 	}
 	for(i = 0; i < csize; i++)
 	{
@@ -627,14 +631,16 @@ int arclmDynamic(struct arclmframe* af)
 					finertial, fdamping, finternal, fexternal,
 					alpham, alphaf, xi);*/
 	shellstress_DYNA(shells, mshell, nshell, constraintmain,
-				   iform, lastddisp, ddisp,
-				   lastudd_m, udd_m,
-				   lastud_m, ud_m,
-				   finertial, fdamping, finternal, fpressure,
-				   alpham, alphaf, xi);
-	/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
-						  iform, ddisp, lambda,
-						  finternal,constraintvct);*/
+					 iform, lastddisp, ddisp,
+					 lastudd_m, udd_m,
+					 lastud_m, ud_m,
+					 finertial, fdamping, finternal, fpressure,
+					 alpham, alphaf, xi);
+	constraintstress_DYNA(constraints, nconstraint, constraintmain,
+						  iform, lastddisp, ddisp, lastlambda, lambda,
+						  fconstraint,constraintvct,
+						  alphaf);
+
 
 	strainenergy(af, &Wet, &Wpt);
 	kineticenergy(af, ud_m, &Wkt);
@@ -644,7 +650,7 @@ int arclmDynamic(struct arclmframe* af)
 	{
 		*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
 		*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
-		*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
+		*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i) - *(fconstraint + i);
 		if ((confs + i)->iconf == 1)
 		{
 			*(freaction + i) = *(funbalance + i);
@@ -765,6 +771,7 @@ int arclmDynamic(struct arclmframe* af)
 				*(freaction  + i) = 0.0;
 				*(fbaseload  + i) = 0.0;
 				*(fpressure  + i) = 0.0;
+				*(fconstraint + i) = 0.0;
 			}
 			for(i = 0; i < csize; i++)
 			{
@@ -787,9 +794,10 @@ int arclmDynamic(struct arclmframe* af)
 							 lastud_m, ud_m,
 							 finertial, fdamping, finternal, fpressure,
 							 alpham, alphaf, xi);
-			/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
-								  iform, ddisp, lambda,
-								  finternal,constraintvct);*/
+			constraintstress_DYNA(constraints, nconstraint, constraintmain,
+								  iform, lastddisp, ddisp, lastlambda, lambda,
+								  fconstraint,constraintvct,
+								  alphaf);
 
 
 			//strainenergy(af, &Wet, &Wpt);
@@ -799,7 +807,7 @@ int arclmDynamic(struct arclmframe* af)
 			{
 				*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
 				*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
-				*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
+				*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i) - *(fconstraint + i);
 				if ((confs + i)->iconf == 1)
 				{
 					*(freaction + i) = *(funbalance + i);
@@ -878,7 +886,11 @@ int arclmDynamic(struct arclmframe* af)
 						  iform, lastddisp, ddisp,
 						  ud_m, udd_m,
 						  alpham, alphaf, xi, beta, ddt);
-		  //assemconstraint_DYNA;
+
+		  assemconstraint_DYNA(constraints, nconstraint, constraintmain,
+							   gmtx,
+							   iform, lastddisp, ddisp, lastlambda, lambda,
+							   alphaf, msize);
 		}
 
 		/*SOLVE [K]*/
@@ -998,6 +1010,7 @@ int arclmDynamic(struct arclmframe* af)
 			*(freaction  + ii) = 0.0;
 			*(fbaseload  + ii) = 0.0;
 			*(fpressure  + ii) = 0.0;
+			*(fconstraint + ii) = 0.0;
 		}
 		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
 		{
@@ -1015,12 +1028,15 @@ int arclmDynamic(struct arclmframe* af)
 						finertial, fdamping, finternal, fexternal,
 						alpham, alphaf, xi);*/
 		shellstress_DYNA(shells, mshell, nshell, constraintmain,
-					   iform, lastddisp, ddisp,
-					   lastudd_m, udd_m,
-					   lastud_m, ud_m,
-					   finertial, fdamping, finternal, fpressure,
-					   alpham, alphaf, xi);
-		//constraintstress_DYNA(constraints, nconstraint, constraintmain, iform, ddisp, lambda, finternal, constraintvct);
+						 iform, lastddisp, ddisp,
+						 lastudd_m, udd_m,
+						 lastud_m, ud_m,
+						 finertial, fdamping, finternal, fpressure,
+					     alpham, alphaf, xi);
+		constraintstress_DYNA(constraints, nconstraint, constraintmain,
+							  iform, lastddisp, ddisp, lastlambda, lambda,
+							  fconstraint,constraintvct,
+							  alphaf);
 
 		strainenergy(af, &Wet, &Wpt);
 		kineticenergy(af, ud_m, &Wkt);
@@ -1029,7 +1045,7 @@ int arclmDynamic(struct arclmframe* af)
 		{
 			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
 			*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
-			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i);
+			*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i) - *(fconstraint + i);
 			if ((confs + i)->iconf == 1)
 			{
 				*(freaction + i) = *(funbalance + i);

@@ -66,6 +66,7 @@ int arclmStatic(struct arclmframe* af)
 
 	double* funbalance, * fexternal, * finternal, * freaction;
 	double* fbaseload, * fdeadload, * fpressure,* fgivendisp;
+	double* fconstraint;
 	double* constraintvct;
 
 
@@ -75,7 +76,7 @@ int arclmStatic(struct arclmframe* af)
 	int laps;
 	int iteration;
 	int maxiteration = 20;
-	double tolerance = 1.0e-4;
+	double tolerance = 1.0e-8;
 	double residual = 0.0;
 	double constraintresidual = 0.0;
 	double gvctlen = 0.0;
@@ -500,6 +501,7 @@ int arclmStatic(struct arclmframe* af)
 	fdeadload = (double*)malloc(msize * sizeof(double));           /*DEAD LOAD VECTOR.*/
 	fpressure = (double*)malloc(msize * sizeof(double));           /*PRESSURE VECTOR.*/
 	fgivendisp = (double*)malloc(msize * sizeof(double));
+	fconstraint = (double*)malloc(msize * sizeof(double));
 
 
 	/*POSITION VECTOR INITIALIZATION*/
@@ -554,6 +556,7 @@ int arclmStatic(struct arclmframe* af)
 		*(freaction + i) = 0.0;
 		*(fbaseload + i) = 0.0;
 		*(fpressure + i) = 0.0;
+		*(fconstraint + i) = 0.0;
 	}
 	for(i = 0; i < csize; i++)
 	{
@@ -566,7 +569,7 @@ int arclmStatic(struct arclmframe* af)
 	/*POST PROCESS*/
 	elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
 	shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
-	constraintstress(constraints, nconstraint, constraintmain, iform, ddisp, lambda, finternal, constraintvct);
+	constraintstress(constraints, nconstraint, constraintmain, iform, ddisp, lambda, fconstraint, constraintvct);
 
 	strainenergy(af, &Wet, &Wpt);
 	//kineticenergy(af, ud_m, &Wkt);
@@ -584,7 +587,7 @@ int arclmStatic(struct arclmframe* af)
 	{
 		*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
 		*(fexternal + i) = loadfactor * *(fbaseload + i);
-		*(funbalance + i) = *(fexternal + i) - *(finternal + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
+		*(funbalance + i) = *(fexternal + i) - *(finternal + i) - *(fconstraint + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
 		if ((confs + i)->iconf == 1)
 		{
 			*(freaction + i) = *(funbalance + i);
@@ -596,7 +599,7 @@ int arclmStatic(struct arclmframe* af)
 	}
 	for (i = 0; i < csize; i++)
 	{
-		*(dup + msize + i) = 0.0;//*(constraintvct + i);
+		*(dup + msize + i) = 0.0;
 		*(due + msize + i) = *(constraintvct + i);
 	}
 
@@ -740,6 +743,21 @@ int arclmStatic(struct arclmframe* af)
 			//	}
 			//}
 
+			for (ii = 0; ii < msize+csize; ii++)
+			{
+				if (((confs + ii)->iconf == 0 && ii<msize) || ii >= msize)
+				{
+					if(fabs((gmtx + ii)->value)<1e-3)
+					{
+						sprintf(string,"%e ", (gmtx + ii)->value);
+						dbgstr(string);
+					}
+				}
+
+			}
+			dbgstr("\n");
+
+
 			//dbggcomp(gmtx,msize+csize,"GMTX");
 		}
 
@@ -772,6 +790,7 @@ int arclmStatic(struct arclmframe* af)
 			free(fbaseload);
 			free(fdeadload);
 			free(fgivendisp);
+            free(fconstraint);
 			free(constraintvct);
 
 			free(due);
@@ -822,6 +841,7 @@ int arclmStatic(struct arclmframe* af)
 				}
 				elemstress(elems, melem, nelem, constraintmain, iform, bisecddisp, finternal, fpressure);
 				shellstress(shells, mshell, nshell, constraintmain, iform, bisecddisp, finternal, fpressure);
+				constraintstress(constraints, nconstraint, constraintmain, iform, bisecddisp, lambda, fconstraint, constraintvct);
 
 
 				for (i = 1; i <= msize; i++)
@@ -839,7 +859,7 @@ int arclmStatic(struct arclmframe* af)
 
 				assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, bisecddisp);
 				assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, bisecddisp);
-
+				assemconstraint(constraints, nconstraint, constraintmain, gmtx, iform, bisecddisp, lambda, msize);
 
 				nline = croutluII(gmtx, confs, msize, csize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
 				sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
@@ -1240,6 +1260,7 @@ int arclmStatic(struct arclmframe* af)
 			*(freaction  + i) = 0.0;
 			*(fbaseload  + i) = 0.0;
 			*(fpressure  + i) = 0.0;
+			*(fconstraint + i) = 0.0;
 		}
 		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
 		{
@@ -1252,7 +1273,7 @@ int arclmStatic(struct arclmframe* af)
 		/*POST PROCESS*/
 		elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
 		shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
-		constraintstress(constraints, nconstraint, constraintmain, iform, ddisp, lambda, finternal, constraintvct);
+		constraintstress(constraints, nconstraint, constraintmain, iform, ddisp, lambda, fconstraint, constraintvct);
 
 		strainenergy(af, &Wet, &Wpt);
 		//kineticenergy(af, ud_m, &Wkt);
@@ -1262,7 +1283,7 @@ int arclmStatic(struct arclmframe* af)
 		{
 			*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
 			*(fexternal + i) = loadfactor * *(fbaseload + i);
-			*(funbalance + i) = *(fexternal + i) - *(finternal + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
+			*(funbalance + i) = *(fexternal + i) - *(finternal + i) - *(fconstraint + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
 			if ((confs + i)->iconf == 1)
 			{
 				*(freaction + i) = *(funbalance + i);
@@ -1274,7 +1295,7 @@ int arclmStatic(struct arclmframe* af)
 		}
 		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
 		{
-			*(dup + msize + i) = 0.0;//*(constraintvct  + i);
+			*(dup + msize + i) = 0.0;
 			*(due + msize + i) = *(constraintvct  + i);
 		}
 
@@ -1414,6 +1435,7 @@ int arclmStatic(struct arclmframe* af)
 			free(fbaseload);
 			free(fdeadload);
 			free(fgivendisp);
+            free(fconstraint);
 
 			free(due);
 			free(dup);
@@ -1482,6 +1504,7 @@ int arclmStatic(struct arclmframe* af)
 	free(fbaseload);
 	free(fdeadload);
 	free(fgivendisp);
+    free(fconstraint);
 
 	free(due);
 	free(dup);
