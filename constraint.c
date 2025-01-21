@@ -115,7 +115,7 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 
 			dot1 = dotproduct(axis1,axis3,3);
 			dot2 = dotproduct(axis2,axis3,3);
-
+			/*
 			for (ii = 0; ii < 3; ii++)
 			{
 				for (jj = 0; jj < 3; jj++)
@@ -133,6 +133,7 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 					}
 				}
 			}
+			*/
 			symmetricmtx(H, 6);
 
 			for (ii = 0; ii < neq; ii++)

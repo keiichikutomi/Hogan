@@ -636,10 +636,10 @@ int arclmDynamic(struct arclmframe* af)
 					 lastud_m, ud_m,
 					 finertial, fdamping, finternal, fpressure,
 					 alpham, alphaf, xi);
-	constraintstress_DYNA(constraints, nconstraint, constraintmain,
+	/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
 						  iform, lastddisp, ddisp, lastlambda, lambda,
 						  fconstraint,constraintvct,
-						  alphaf);
+						  alphaf);*/
 
 
 	strainenergy(af, &Wet, &Wpt);
@@ -794,10 +794,10 @@ int arclmDynamic(struct arclmframe* af)
 							 lastud_m, ud_m,
 							 finertial, fdamping, finternal, fpressure,
 							 alpham, alphaf, xi);
-			constraintstress_DYNA(constraints, nconstraint, constraintmain,
+			/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
 								  iform, lastddisp, ddisp, lastlambda, lambda,
 								  fconstraint,constraintvct,
-								  alphaf);
+								  alphaf);*/
 
 
 			//strainenergy(af, &Wet, &Wpt);
@@ -834,6 +834,7 @@ int arclmDynamic(struct arclmframe* af)
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
 		//Eigen::SimplicialLDLT<SparseMatrix> solver;
 		Eigen::SparseLU<SparseMatrix> solver;
+		//Eigen::BiCGSTAB<SparseMatrix> solver;
 
 		for (i = 1; i <= (msize+csize); i++)/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
 		{
@@ -938,6 +939,11 @@ int arclmDynamic(struct arclmframe* af)
 			Vector P = Vector::Zero(msize + csize);
 			for(i=0;i<msize + csize;i++)P(i)=*(gvct+i);
 			Vector U = solver.solve(P);
+
+			/*solver.iteration();
+			solver.error();*/
+
+
 			for(i=0;i<msize + csize;i++)*(gvct+i)=U(i);
 			if (solver.info() != Eigen::Success)return -1;
 		}
@@ -1033,10 +1039,10 @@ int arclmDynamic(struct arclmframe* af)
 						 lastud_m, ud_m,
 						 finertial, fdamping, finternal, fpressure,
 					     alpham, alphaf, xi);
-		constraintstress_DYNA(constraints, nconstraint, constraintmain,
+		/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
 							  iform, lastddisp, ddisp, lastlambda, lambda,
 							  fconstraint,constraintvct,
-							  alphaf);
+							  alphaf);*/
 
 		strainenergy(af, &Wet, &Wpt);
 		kineticenergy(af, ud_m, &Wkt);
@@ -1132,8 +1138,20 @@ int arclmDynamic(struct arclmframe* af)
 		{
 			sprintf(string,"KINEMATIC ENERGY CONVERGED LAP: %4d ITER: %2d\n", nlap, iteration);
 			errormessage(string);
-			break;
+            break;
 		}
+
+		/*TERMINATION FLAG*/
+		if (iteration == 1)
+		{
+			if (sign > 20)
+			{
+				ENDFLAG = 1;
+				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
+				errormessage(string);
+			}
+		}
+
 
 
 		//MESSAGE FOR UPDATE UI

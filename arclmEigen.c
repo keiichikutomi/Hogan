@@ -3,6 +3,7 @@
 #include <Eigen/Sparse>
 #include <Eigen/SparseLU>
 #include <Eigen/SparseCholesky>
+#include <Eigen/IterativeLinearSolvers>
 //#include <Eigen/Dense>
 #include <Spectra/SymGEigsSolver.h>
 #include <Spectra/MatOp/SparseGenMatProd.h>

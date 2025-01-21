@@ -76,7 +76,7 @@ int arclmStatic(struct arclmframe* af)
 	int laps;
 	int iteration;
 	int maxiteration = 20;
-	double tolerance = 1.0e-8;
+	double tolerance = 1.0e-3;
 	double residual = 0.0;
 	double constraintresidual = 0.0;
 	double gvctlen = 0.0;
@@ -992,9 +992,9 @@ int arclmStatic(struct arclmframe* af)
 			{
 				for (ii = 0; ii < msize; ii++)
 				{
-					if ((confs + ii)->iconf != 1 && *(weight + ii) != 0.0 && *(dup + ii)!=0.0)
+					if ((confs + ii)->iconf != 1 && *(weight + ii) != 0.0 && *(dup + ii) != 0.0)
 					{
-						*(weight + ii) = 1.0 / abs(*(dup + ii));
+						*(weight + ii) = 1.0 / abs(*(dup + ii));/*IF DUP OF THE TARGET DOF IS NEAR ZERO, WEIGHT IS INFINITE NUM & BAD FOR CONVERGENCE*/
 					}
 					else
 					{
@@ -1178,55 +1178,70 @@ int arclmStatic(struct arclmframe* af)
 
 
 
-			#if 1
-			/*MINIMUM RESIDUAL QUANTITIES METHOD*/
-			dupdue = 0.0;
-			dupdup = *(weight + msize) * *(weight + msize);
-			for (ii = 0; ii < msize; ii++)
+			if (nlap == beginlap && STATDYNAFLAG == 1)
 			{
-				dupdue += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(due + ii);
-				dupdup += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);
-				//dupdue += *(dup + ii) * *(due + ii);
-				//dupdup += *(dup + ii) * *(dup + ii);
+				/*LOAD INCREMENT*/
+				dupdue = 0.0;
+				dupdup = 0.0;
+				loadlambda = 0.0;
+				for (ii = 0; ii < (msize+csize); ii++)
+				{
+					*(gvct + ii) = *(due + ii);
+				}
+				fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, dupdue, dupdup);
 			}
-			loadlambda = -dupdue / dupdup;
-			for (ii = 0; ii < (msize+csize); ii++)
+			else
 			{
-				*(gvct + ii) = loadlambda * *(dup + ii) + *(due + ii);
-			}
-			fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, dupdue, dupdup);
-			#endif
+				#if 1
+				/*MINIMUM RESIDUAL QUANTITIES METHOD*/
+				dupdue = 0.0;
+				dupdup = *(weight + msize) * *(weight + msize);
+				for (ii = 0; ii < msize; ii++)
+				{
+					dupdue += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(due + ii);
+					dupdup += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);
+					//dupdue += *(dup + ii) * *(due + ii);
+					//dupdup += *(dup + ii) * *(dup + ii);
+				}
+				loadlambda = -dupdue / dupdup;
+				for (ii = 0; ii < (msize+csize); ii++)
+				{
+					*(gvct + ii) = loadlambda * *(dup + ii) + *(due + ii);
+				}
+				fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, dupdue, dupdup);
+				#endif
 
 
-			#if 0
-			/*HYPERSPHERE CONSTRAINT WITH RADIAL RETURN*/
-			/*USING PREDICTOR DATA*/
-			dupdue = 0.0;
-			dupdup = *(weight + msize) * *(weight + msize) * loadlambda;
-			for (ii = 0; ii < msize; ii++)
-			{
-				dupdue += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(due + ii);
-				dupdup += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(dup + ii);
+				#if 0
+				/*HYPERSPHERE CONSTRAINT WITH RADIAL RETURN*/
+				/*USING PREDICTOR DATA*/
+				dupdue = 0.0;
+				dupdup = *(weight + msize) * *(weight + msize) * loadlambda;
+				for (ii = 0; ii < msize; ii++)
+				{
+					dupdue += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(due + ii);
+					dupdup += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(dup + ii);
+				}
+				loadlambda += - dupdue / dupdup;
+				fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= %e {TOP}= %e {BOTTOM}= %e\n", nlap, iteration, loadlambda, dupdue, dupdup);
+				for (ii = 0; ii < msize; ii++)
+				{
+					*(gvct + ii) += -(dupdue / dupdup) * *(dup + ii) + *(due + ii);
+				}
+				arcsum = *(weight + msize) * *(weight + msize) * loadlambda * loadlambda;
+				for (ii = 0; ii < msize; ii++)
+				{
+					arcsum += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(gvct + ii);
+				}
+				loadlambda *= scaledarclength / sqrt(arcsum);
+				loadfactor = lastloadfactor;
+				for (ii = 0; ii < msize; ii++)
+				{
+					*(gvct + ii) *= scaledarclength / sqrt(arcsum);
+					*(ddisp + ii) = *(lastddisp + ii);
+				}
+				#endif
 			}
-			loadlambda += - dupdue / dupdup;
-			fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= %e {TOP}= %e {BOTTOM}= %e\n", nlap, iteration, loadlambda, dupdue, dupdup);
-			for (ii = 0; ii < msize; ii++)
-			{
-				*(gvct + ii) += -(dupdue / dupdup) * *(dup + ii) + *(due + ii);
-			}
-			arcsum = *(weight + msize) * *(weight + msize) * loadlambda * loadlambda;
-			for (ii = 0; ii < msize; ii++)
-			{
-				arcsum += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(gvct + ii);
-			}
-			loadlambda *= scaledarclength / sqrt(arcsum);
-			loadfactor = lastloadfactor;
-			for (ii = 0; ii < msize; ii++)
-			{
-				*(gvct + ii) *= scaledarclength / sqrt(arcsum);
-				*(ddisp + ii) = *(lastddisp + ii);
-			}
-			#endif
 		}
 
 
