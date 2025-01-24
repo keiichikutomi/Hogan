@@ -762,7 +762,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 		  SendMessage((wmenu.childs+2)->hwnd,WM_COMMAND,wparam,0);
 
 
-
+#if 1
 			/*ARCLM001_LXY AUTO EXECUTION*/
 			if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN && EXEMODE==1)
 			{
@@ -834,7 +834,7 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 				exit(1);
 			  }
 			}
-			/*BCLNG001 AUTO EXECUTION*/
+#endif
 			else if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN && EXEMODE==2)
 			{
 			  globalmessageflag=0;
@@ -11344,16 +11344,16 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 			if(arc.nelem != 0 && arc.elems==NULL) break;
 			arc.shells=(struct oshell *)malloc(arc.nshell*sizeof(struct oshell));
 			if(arc.nshell != 0 && arc.shells==NULL) break;
-			arc.melem=(struct memoryelem *)malloc(arc.nelem*sizeof(struct memoryelem));
-			if(arc.nelem != 0 && arc.melem==NULL) break;
-			arc.mshell=(struct memoryshell *)malloc(arc.nshell*sizeof(struct memoryshell));
-			if(arc.nshell != 0 && arc.mshell==NULL) break;
+			//arc.melem=(struct memoryelem *)malloc(arc.nelem*sizeof(struct memoryelem));
+			//if(arc.nelem != 0 && arc.melem==NULL) break;
+			//arc.mshell=(struct memoryshell *)malloc(arc.nshell*sizeof(struct memoryshell));
+			//if(arc.nshell != 0 && arc.mshell==NULL) break;
 
 			arc.confs=(struct oconf *)malloc(6*arc.nnode*sizeof(struct oconf));
 			if(arc.confs==NULL) break;
 
-			arc.iform=(double *)malloc(6*arc.nnode*sizeof(double));
-			arc.ddisp=(double *)malloc(6*arc.nnode*sizeof(double));
+			//arc.iform=(double *)malloc(6*arc.nnode*sizeof(double));
+			//arc.ddisp=(double *)malloc(6*arc.nnode*sizeof(double));
 			arc.constraints=(struct oconstraint *)malloc(arc.nconstraint*sizeof(struct oconstraint));
 			if(arc.nconstraint != 0 && arc.constraints==NULL) break;
 

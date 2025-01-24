@@ -387,7 +387,7 @@ double allowablecompressionofsteel(double E,double F,
                                    double lkxx,double lkyy,
                                    struct section sect);
 double allowablecompressionofalumi(double E,double F,double lkxx,double lkyy,
-                                   struct section sect,int axis);
+								   struct section sect,int axis);
 double allowablebendingofhstrong(int period,
                                  double Nd,
                                  double lb,
@@ -559,7 +559,7 @@ int srcan001(char fname[])
 
   FILE *fin,*fcmq=NULL,*flist,*fsafe,*frate;
   FILE *fz=NULL,*fx=NULL,*fy=NULL;
-  char txt[400],non[80],str[256];
+  char txt[800],non[400],str[256];
   char strhoko[2][10]={"X","Y"};
   /*char straxis[2][10]={"x","y"};*/
   /*char strend[2][10]={"i","j"};*/
@@ -634,27 +634,31 @@ int srcan001(char fname[])
   sprintf(non,"FILES  :%s.TST,RLT,RAT\n",fname);
   strcat(txt,non);
 
-  sprintf(non,"Continue or Cancel"); strcat(txt,non);
+  sprintf(non,"Continue or Cancel");
+  strcat(txt,non);
 
-  if(globalmessageflag==1 &&
-     MessageBox(NULL,txt,"SRCan",MB_OKCANCEL)==IDCANCEL)
+ /*
+  if(globalmessageflag==1 && MessageBox(NULL,txt,"SRCan",MB_OKCANCEL)==IDCANCEL)
   {
-    return 0;
+	return 0;
   }
+ */
 
   /*CALCULATION FLAG*/
   calc[PLONG]    =1;
   calc[PSHORT]   =1;
   calc[PULTIMATE]=0;
+  /*
   if(globalmessageflag==1 &&
-     MessageBox(NULL,"Calculate Ultimate.","SRCan",MB_YESNO)==IDYES)
+	 MessageBox(NULL,"Calculate Ultimate.","SRCan",MB_YESNO)==IDYES)
   {
-    calc[PULTIMATE]=1;
+	calc[PULTIMATE]=1;
   }
   else
   {
-    calc[PULTIMATE]=0;
+	calc[PULTIMATE]=0;
   }
+  */
 
   bclngcondensationflag=SRCANBCLNGCONDENSATION;
 
@@ -714,7 +718,7 @@ int srcan001(char fname[])
      !strcmp(prj,"huna") || !strcmp(prj,"aka") ||
      !strcmp(prj,"kyok") || !strcmp(prj,"mae") ||
      !strcmp(prj,"del")  || !strcmp(prj,"got") ||
-     !strcmp(prj,"zoo")  || !strcmp(prj,"yachi") ||
+	 !strcmp(prj,"zoo")  || !strcmp(prj,"yachi") ||
      !strcmp(prj,"huru") || !strcmp(prj,"waka") ||
      !strcmp(prj,"aii")  || !strcmp(prj,"noa") ||
      !strcmp(prj,"hira") || !strcmp(prj,"athens") ||
@@ -723,7 +727,7 @@ int srcan001(char fname[])
      !strcmp(prj,"naka") || !strcmp(prj,"tos") ||
      !strcmp(prj,"izu")  || !strcmp(prj,"kiku")  ||
      !strcmp(prj,"nade") || !strcmp(prj,"tohu") ||
-     !strcmp(prj,"yagi") || !strcmp(prj,"karu") ||
+	 !strcmp(prj,"yagi") || !strcmp(prj,"karu") ||
      !strcmp(prj,"ashi") || !strcmp(prj,"iwami") ||
      !strcmp(prj,"haya") || !strcmp(prj,"banga") ||
      !strcmp(prj,"kiyo") || !strcmp(prj,"tep") ||
@@ -739,7 +743,7 @@ int srcan001(char fname[])
      !strcmp(prj,"kirigami"))
 
   {
-    fgetinitial2(fin,&nnode,&nelem,&nsect);   /*INPUT ARCLM INITIAL.*/
+	fgetinitial2(fin,&nnode,&nelem,&nsect);   /*INPUT ARCLM INITIAL.*/
   }
   else
   {
@@ -759,7 +763,7 @@ int srcan001(char fname[])
      !strcmp(prj,"kyok") || !strcmp(prj,"mae") ||
      !strcmp(prj,"del")  || !strcmp(prj,"got") ||
      !strcmp(prj,"zoo")  || !strcmp(prj,"yachi") ||
-     !strcmp(prj,"huru") || !strcmp(prj,"waka") ||
+	 !strcmp(prj,"huru") || !strcmp(prj,"waka") ||
      !strcmp(prj,"aii")  || !strcmp(prj,"noa") ||
      !strcmp(prj,"hira") || !strcmp(prj,"athens") ||
      !strcmp(prj,"zooii")|| !strcmp(prj,"gyo") ||
@@ -768,7 +772,7 @@ int srcan001(char fname[])
      !strcmp(prj,"izu")  || !strcmp(prj,"kiku")  ||
      !strcmp(prj,"nade") || !strcmp(prj,"tohu") ||
      !strcmp(prj,"yagi") || !strcmp(prj,"karu") ||
-     !strcmp(prj,"ashi") || !strcmp(prj,"iwami") ||
+	 !strcmp(prj,"ashi") || !strcmp(prj,"iwami") ||
      !strcmp(prj,"haya") || !strcmp(prj,"banga") ||
      !strcmp(prj,"kiyo") || !strcmp(prj,"tep") ||
      !strcmp(prj,"mogi") || !strcmp(prj,"koshi") ||
@@ -778,21 +782,19 @@ int srcan001(char fname[])
 	 !strcmp(prj,"stainedmodel")|| !strcmp(prj,"sichi") ||
 	 !strcmp(prj,"ebis") || !strcmp(prj,"stick") ||
 	 !strcmp(prj,"sydney")||
-  	 !strcmp(prj,"ghouse")||
-     !strcmp(prj,"lunarbase")||!strcmp(prj,"plywood")||
-     !strcmp(prj,"kirigami"))
+	 !strcmp(prj,"ghouse")||
+	 !strcmp(prj,"lunarbase")||!strcmp(prj,"plywood")||
+	 !strcmp(prj,"kirigami"))
 
   {
-    inputfiletomemory2(fin,&nnode,&nelem,&nsect,sects,nodes,elems);
+	inputfiletomemory2(fin,&nnode,&nelem,&nsect,sects,nodes,elems);
   }
   else
   {
-    inputfiletomemory(fin,&nnode,&nelem,&nsect,sects,nodes,elems);
+	inputfiletomemory(fin,&nnode,&nelem,&nsect,sects,nodes,elems);
   }
 
   comments(fout0);
-  /*if(MessageBox(NULL,"Continue or Cancel","SRCan",
-                MB_OKCANCEL)==IDCANCEL) return 0;*/
 
   for(is=0;is<nsect;is++) /*SECTIONS INTO MEMORY.*/
   {
@@ -803,14 +805,13 @@ int srcan001(char fname[])
 	{
 	  getsectionform(flist,(sects+is)->ocode,(sects+is));
 	}
-    /***/
   }
   nsect=getcodelist(flist,codelist); /*nsect CHANGED.*/
 
   if(nsect>MAXSECT)
   {
     MessageBox(NULL,"MAIN:SECTIONS OVERFLOW.","SRCan",MB_OK);
-    return 0;
+	return 0;
   }
   for(is=0;is<nsect;is++)
   {
@@ -834,7 +835,7 @@ int srcan001(char fname[])
 
   if(bclngcondensationflag)
   {
-    definencr(&arc,&*cNcr);          /*Buckling Condensation Result*/
+	definencr(&arc,&*cNcr);          /*Buckling Condensation Result*/
   }
 /*
 if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
@@ -855,16 +856,16 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
     initializestress(&(elem.head.y));
     initializestress(&(elem.tail.y));
     initializestress(&(elem.head.z));
-    initializestress(&(elem.tail.z));
+	initializestress(&(elem.tail.z));
 
-    n1=fgetstress(fz,&ielem,&isect,&ni,&(elem.head.z));
+	n1=fgetstress(fz,&ielem,&isect,&ni,&(elem.head.z));
     n2=fgetstress(fx,&ielem,&isect,&ni,&(elem.head.x));
     n3=fgetstress(fy,&ielem,&isect,&ni,&(elem.head.y));
     if(n1==0 || n2==0 || n3==0) break; /*END OF FILE.*/
 
     if(n1==9 && n2==9 && n3==9)
     {
-      if(ielem)
+	  if(ielem)
       {
         n1=fgetstress(fz,&ielem,&isect,&nj,&(elem.tail.z));
         n2=fgetstress(fx,&ielem,&isect,&nj,&(elem.tail.x));
@@ -873,16 +874,16 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
         if(n1<7 || n2<7 || n3<7) break;
         else ie++; /*COUNT ELEMENTS.*/
 
-        rateqa=0.0;
+		rateqa=0.0;
         ratequ=0.0;
         ratema=0.0;
         ratemu=0.0;
 
-        /*fprintf(stderr,"ELEM:%d SECT:%d\r",ielem,isect);*/
+		/*fprintf(stderr,"ELEM:%d SECT:%d\r",ielem,isect);*/
 
-        /*soffset=getsectionform(flist,isect,&sect1);*/
+		/*soffset=getsectionform(flist,isect,&sect1);*/
         soffset=elem.sect->soff;
-        sect1=*(elem.sect);
+		sect1=*(elem.sect);
 
 		/* elem.sect->code=isect; */ // 150429 fukushima for original section
 
@@ -891,7 +892,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           for(ic=0;ic<ncmq;ic++)
           {
             if(elem.cmqcode==cmqcode[ic]) elem.Mo=Mo[ic];
-          }
+		  }
         }
 
         if(soffset && sect1.etype!=WALL
@@ -900,7 +901,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
         {
           h=100.0*elementlength(elem); /*[cm]*/
 
-          if(sect1.etype==COLUMN)
+		  if(sect1.etype==COLUMN)
           {
             h0[SX]=h-elem.sect->face[SX][HEAD]
                     -elem.sect->face[SX][TAIL]; /*INNER LENGTH.*/
@@ -909,7 +910,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           }
           else
           {
-            h0[SX]=h-elem.sect->face[SX][HEAD]
+			h0[SX]=h-elem.sect->face[SX][HEAD]
                     -elem.sect->face[SX][TAIL]; /*INNER LENGTH.*/
           }
 
@@ -918,7 +919,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
-          fprintf(fout0,"-----------------\n");
+		  fprintf(fout0,"-----------------\n");
           fprintf(fout0,"•”Þ:%4d ",ielem);
           fprintf(fout0,"Žn’[:%3d I’[:%3d ",ni,nj);
 
@@ -927,7 +928,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           else if(sect1.stype==STYPE_RC)   fprintf(fout0,"=‚q‚b");
           else if(sect1.stype==STYPE_SRC)  fprintf(fout0,"=‚r‚q‚b");
           else if(sect1.stype==STYPE_PC)   fprintf(fout0,"=‚o‚b");
-          else if(sect1.stype==STYPE_WOOD) fprintf(fout0,"=–Ø");
+		  else if(sect1.stype==STYPE_WOOD) fprintf(fout0,"=–Ø");
           else if(sect1.stype==STYPE_GLASS) fprintf(fout0,"=ƒKƒ‰ƒX");
           else if(sect1.stype==STYPE_ACRYL) fprintf(fout0,"=ƒAƒNƒŠƒ‹");
           else if(sect1.stype==STYPE_ALUMI) fprintf(fout0,"=ƒAƒ‹ƒ~");
@@ -936,7 +937,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           else if(sect1.etype==GIRDER) fprintf(fout0,"‘å—À ");
           else if(sect1.etype==BEAM)   fprintf(fout0,"¬—À ");
           else if(sect1.etype==BRACE)  fprintf(fout0,"‹Øˆá ");
-          else                         fprintf(fout0,"•s–¾ ");
+		  else                         fprintf(fout0,"•s–¾ ");
 
           fprintf(fout0,"Þ’·=%.1f[cm] Mx“à–@=%.1f[cm]",h,h0[SX]);
           if(sect1.etype==COLUMN)
@@ -945,7 +946,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           }
           else
           {
-            fprintf(fout0,"\n");
+			fprintf(fout0,"\n");
           }
 
           /*MATERIAL INDEPENDENT ON PERIOD.*/
@@ -954,7 +955,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           /*gmaterial.cE=210000.0;*/
           gmaterial.gE= 725000.0;
           gmaterial.aE=  32000.0; /*Acryl=15000, Metacryl=32000*/
-          gmaterial.cE=gmaterial.rE/15.0;
+		  gmaterial.cE=gmaterial.rE/15.0;
           gmaterial.alE=700000.0;                     /*ALUMI*/
 
           gmaterial.sF=2400.0*jis;                    /*STEEL SN400*/
@@ -972,7 +973,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
 
           translatesection(sect1,gmaterial,&As,&Ac,&Ar,&Yg,SX);
           /*fprintf(fout0,"As=%7.2f[cm2] ",As);
-          fprintf(fout0,"Ar=%7.2f[cm2] ",Ar);
+		  fprintf(fout0,"Ar=%7.2f[cm2] ",Ar);
           fprintf(fout0,"Ac=%7.2f[cm2]\n",Ac);*/
 
           fprintf(fout0,"‰ž—Í       :        N");
@@ -990,7 +991,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
                   elem.head.z.Q[1],si*elem.head.z.Q[1],
                   elem.tail.z.Q[1],si*elem.tail.z.Q[1]);
-          fprintf(fout0," %8.3f(%8.2f)",
+		  fprintf(fout0," %8.3f(%8.2f)",
                   elem.head.z.Mt,si*elem.head.z.Mt);
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
                   elem.head.z.M[0],si*elem.head.z.M[0],
@@ -999,7 +1000,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
                   elem.head.z.M[1],si*elem.head.z.M[1],
                   elem.tail.z.M[1],si*elem.tail.z.M[1]);
 
-          fprintf(fout0,"…•½ŽžX    : %8.3f(%8.2f)",
+		  fprintf(fout0,"…•½ŽžX    : %8.3f(%8.2f)",
                   elem.head.x.N,si*elem.head.x.N);
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
                   elem.head.x.Q[0],si*elem.head.x.Q[0],
@@ -1008,7 +1009,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
                   elem.head.x.Q[1],si*elem.head.x.Q[1],
                   elem.tail.x.Q[1],si*elem.tail.x.Q[1]);
           fprintf(fout0," %8.3f(%8.2f)",
-                  elem.head.x.Mt,si*elem.head.x.Mt);
+				  elem.head.x.Mt,si*elem.head.x.Mt);
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
                   elem.head.x.M[0],si*elem.head.x.M[0],
                   elem.tail.x.M[0],si*elem.tail.x.M[0]);
@@ -1017,7 +1018,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
                   elem.tail.x.M[1],si*elem.tail.x.M[1]);
 
           fprintf(fout0,"…•½ŽžY    : %8.3f(%8.2f)",
-                  elem.head.y.N,si*elem.head.y.N);
+				  elem.head.y.N,si*elem.head.y.N);
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
                   elem.head.y.Q[0],si*elem.head.y.Q[0],
                   elem.tail.y.Q[0],si*elem.tail.y.Q[0]);
@@ -1026,7 +1027,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
                   elem.tail.y.Q[1],si*elem.tail.y.Q[1]);
           fprintf(fout0," %8.3f(%8.2f)",
                   elem.head.y.Mt,si*elem.head.y.Mt);
-          fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
+		  fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
                   elem.head.y.M[0],si*elem.head.y.M[0],
                   elem.tail.y.M[0],si*elem.tail.y.M[0]);
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)\n",
@@ -1044,7 +1045,7 @@ else
 {
 
           /*LONG...................................................*/
-          /*MATERIAL FOR LONG*/
+		  /*MATERIAL FOR LONG*/
           gmaterial.sft=2400.0/1.5*jis;               /*STEEL SN400*/
           gmaterial.sfc=-gmaterial.sft; /*FOR SRC*/
           gmaterial.sfb=2400.0/1.5*jis; /*FOR SRC*/     /*b:BENDING*/
@@ -1062,7 +1063,7 @@ else
           gmaterial.pcfc=gmaterial.pcF/3.0;         /*+:COMPRESSION*/
           if(gmaterial.pcfc>210.0) gmaterial.pcfc=210.0;
           gmaterial.pcft=0.0;
-          gmaterial.pcfsu=7.5+1.5/100.0*gmaterial.pcF;
+		  gmaterial.pcfsu=7.5+1.5/100.0*gmaterial.pcF;
           if(gmaterial.pcfsu>16.5) gmaterial.pcfsu=16.5;
 
           gmaterial.pcfco=gmaterial.pcF*0.45;         /*+:COMPRESSION*/
@@ -1071,7 +1072,7 @@ else
           if(gmaterial.pcfto<-21.0) gmaterial.pcfto=-21.0;
 
           gmaterial.stfact=0.8; /*EFFECTIVE RATE OF PRESTRESS.*/
-          gmaterial.stft[STRNDA]=0.8* 8000.0; /*PC STRAND A [kgf/cm2]*/
+		  gmaterial.stft[STRNDA]=0.8* 8000.0; /*PC STRAND A [kgf/cm2]*/
           gmaterial.stft[STRNDB]=0.8* 9500.0; /*PC STRAND B*/
           gmaterial.stft[STRNDC]=0.8*11000.0; /*PC STRAND C No.2*/
           gmaterial.stft[STRNDW]=0.8*16000.0; /*PC STRAND WIRE SWPR7B*/
@@ -1080,7 +1081,7 @@ else
           gmaterial.stftu[STRNDC]=11000.0;
           gmaterial.stftu[STRNDW]=16000.0;
 
-          face[0][0]=1.0;
+		  face[0][0]=1.0;
           face[0][1]=1.0;
           face[1][0]=1.0;
           face[1][1]=1.0;
@@ -1089,7 +1090,7 @@ else
   {
     if(elem.sect->etype==COLUMN) na=1;
     else                         na=0;
-    for(ia=0;ia<=na;ia++) /*FOR AXIS*/
+	for(ia=0;ia<=na;ia++) /*FOR AXIS*/
     {
       if(elem.head.z.M[ia]==0.0) face[0][ia]=1.0;
       else
@@ -1098,7 +1099,7 @@ else
                     -elem.sect->face[ia][HEAD]/100.0)
                     /fabs(elem.head.z.M[ia]/elem.head.z.Q[1-ia]);
       }
-      if(elem.tail.z.M[ia]==0.0) face[1][ia]=1.0;
+	  if(elem.tail.z.M[ia]==0.0) face[1][ia]=1.0;
       else
       {
         face[1][ia]=(fabs(elem.tail.z.M[ia]/elem.tail.z.Q[1-ia])
@@ -1107,7 +1108,7 @@ else
       }
     }
   }
-          fprintf(fout0,"’·Šú       : %8.3f(%8.2f)",
+		  fprintf(fout0,"’·Šú       : %8.3f(%8.2f)",
                   elem.head.z.N,si*elem.head.z.N);
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
                   elem.head.z.Q[0],si*elem.head.z.Q[0],
@@ -1116,7 +1117,7 @@ else
                   elem.head.z.Q[1],si*elem.head.z.Q[1],
                   elem.tail.z.Q[1],si*elem.tail.z.Q[1]);
           fprintf(fout0," %8.3f(%8.2f)",
-                  elem.head.z.Mt,si*elem.head.z.Mt);
+				  elem.head.z.Mt,si*elem.head.z.Mt);
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)",
                      face[0][0]*elem.head.z.M[0],
                   si*face[0][0]*elem.head.z.M[0],
@@ -1125,7 +1126,7 @@ else
           fprintf(fout0," %8.3f(%8.2f) %8.3f(%8.2f)\n",
                      face[0][1]*elem.head.z.M[1],
                   si*face[0][1]*elem.head.z.M[1],
-                     face[1][1]*elem.tail.z.M[1],
+					 face[1][1]*elem.tail.z.M[1],
                   si*face[1][1]*elem.tail.z.M[1]);
 
           for(ii=0;ii<=4;ii++)
@@ -1134,7 +1135,7 @@ else
           }
           for(ii=0;ii<=2;ii++)
           {
-            for(jj=0;jj<=1;jj++) sprintf(strM[ii][jj],"\0");
+			for(jj=0;jj<=1;jj++) sprintf(strM[ii][jj],"\0");
           }
 
 
@@ -1143,7 +1144,7 @@ else
               sect1.stype==STYPE_ACRYL ||
               sect1.stype==STYPE_ALUMI)
              && sect1.sform.type==STEEL_PLATE) /*STEEL FB*/
-          {
+		  {
             pstress[0]=&(elem.head.z); pstress[1]=&(elem.tail.z);
 
             /*HEAD*/
@@ -1152,7 +1153,7 @@ else
               rate=allowablestressofflatbar(PLONG,sect1,gmaterial.sE,
                                             h,pstress[0],HEAD,
                                             &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
-            }
+			}
             if(sect1.stype==STYPE_S && bclngcondensationflag)
             {
               if(cNcr[ie-1]>0)
@@ -1161,7 +1162,7 @@ else
                                             h,pstress[0],HEAD,
                                             &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
               }
-              else
+			  else
               {
               rate=allowablestressofflatbar(PLONG,sect1,gmaterial.sE,
                                             h,pstress[0],HEAD,
@@ -1170,7 +1171,7 @@ else
             }
             if(sect1.stype==STYPE_GLASS)
             {
-              rate=allowablestressofflatbar(PLONG,sect1,gmaterial.gE,
+			  rate=allowablestressofflatbar(PLONG,sect1,gmaterial.gE,
                                             h,pstress[0],HEAD,
                                             &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
             }
@@ -1179,7 +1180,7 @@ else
               rate=allowablestressofflatbar(PLONG,sect1,gmaterial.aE,
                                             h,pstress[0],HEAD,
                                             &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
-            }
+			}
             if(sect1.stype==STYPE_ALUMI)
             {
               rate=allowablestressofflatbaralumi(PLONG,sect1,gmaterial.alE,
@@ -1188,7 +1189,7 @@ else
             }
 
 /*if(!strcmp(prj,"izu") && (sect1.code==901 ||
-                          sect1.code==904)) rate=0.0;*/ /*PASS LONG CALCULATION.*/
+						  sect1.code==904)) rate=0.0;*/ /*PASS LONG CALCULATION.*/
 
 if(!strcmp(prj,"vene")) rate=0.0; /*PASS LONG CALCULATION.*/
 if(!strcmp(prj,"machi")) rate=0.0; /*PASS LONG CALCULATION.*/
@@ -1197,7 +1198,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
             if(rate>ratema) ratema=rate;
             if(rate>marate[soffset-1]) marate[soffset-1]=rate;
 
-            sprintf(str," %8.3f(%8.2f)",Ncr, si*Ncr);
+			sprintf(str," %8.3f(%8.2f)",Ncr, si*Ncr);
             strcat(strQ[1][0],str);
             sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
             strcat(strQ[1][0],str);
@@ -1206,7 +1207,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
             sprintf(str," %8.3f(%8.2f)",Mcrx,si*Mcrx);
             strcat(strM[1][0],str);
             sprintf(str," %8.3f(%8.2f)",Mcry,si*Mcry);
-            strcat(strM[1][1],str);
+			strcat(strM[1][1],str);
 
 			if(Ncr!=0.0) sprintf(str," %8.3f",pstress[0]->N/Ncr);
 			else         sprintf(str,"   10.000");
@@ -1242,7 +1243,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
               {
               rate=allowablestressofflatbar_bc(PLONG,sect1,cNcr[ie-1],gmaterial.sE,
                                             h,pstress[1],TAIL,
-                                            &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
+											&Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
               }
               else
               {
@@ -1251,7 +1252,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
                                             &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
               }
             }
-            if(sect1.stype==STYPE_GLASS)
+			if(sect1.stype==STYPE_GLASS)
             {
               rate=allowablestressofflatbar(PLONG,sect1,gmaterial.gE,
                                             h,pstress[1],TAIL,
@@ -1260,7 +1261,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
             if(sect1.stype==STYPE_ACRYL)
             {
               rate=allowablestressofflatbar(PLONG,sect1,gmaterial.aE,
-                                            h,pstress[1],TAIL,
+											h,pstress[1],TAIL,
                                             &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
             }
             if(sect1.stype==STYPE_ALUMI)
@@ -1270,8 +1271,6 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
                                                  &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
             }
 
-/*if(!strcmp(prj,"izu") && (sect1.code==901 ||
-                          sect1.code==904)) rate=0.0;*/ /*PASS LONG CALCULATION.*/
 
 if(!strcmp(prj,"vene")) rate=0.0; /*PASS LONG CALCULATION.*/
 if(!strcmp(prj,"machi")) rate=0.0; /*PASS LONG CALCULATION.*/
@@ -1280,7 +1279,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
             if(rate>ratema) ratema=rate;
             if(rate>marate[soffset-1]) marate[soffset-1]=rate;
 
-            rateqa=ratema;
+			rateqa=ratema;
             qarate[soffset-1]=marate[soffset-1];
 
             sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
@@ -1289,7 +1288,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
             strcat(strQ[1][1],str);
             sprintf(str," %8.3f(%8.2f)",Mcrx,si*Mcrx);
             strcat(strM[1][0],str);
-            sprintf(str," %8.3f(%8.2f)",Mcry,si*Mcry);
+			sprintf(str," %8.3f(%8.2f)",Mcry,si*Mcry);
             strcat(strM[1][1],str);
 
             if(Qcrx!=0.0) sprintf(str,"           %8.3f",pstress[1]->Q[0]/Qcrx);
@@ -1307,7 +1306,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
             if(Mcry!=0.0) sprintf(str,"           %8.3f",pstress[1]->M[1]/Mcry);
             else          sprintf(str,"   10.000");
 if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
-            strcat(strM[2][1],str);
+			strcat(strM[2][1],str);
 
             /*OUTPUT*/
             fprintf(fout0,"     ‹–—e’l:%s%s",
@@ -1316,7 +1315,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
                     strM[1][0],strM[1][1]);
             fprintf(fout0,"     ˆÀ‘S—¦:%s%s",
                     strQ[2][0],strQ[2][1]);
-            fprintf(fout0,"                   %s%s\n",
+			fprintf(fout0,"                   %s%s\n",
                     strM[2][0],strM[2][1]);
           }
           else if(sect1.stype==STYPE_WOOD
@@ -1325,7 +1324,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
             pstress[0]=&(elem.head.z); pstress[1]=&(elem.tail.z);
 
             /*HEAD*/
-            rate=allowablestressofdabo(PLONG,sect1,pstress[0],HEAD,
+			rate=allowablestressofdabo(PLONG,sect1,pstress[0],HEAD,
                                        &Ncr,&Qcrx,&Mcrx);
 
             if(rate>ratema) ratema=rate;
@@ -1334,7 +1333,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
             sprintf(str," %8.3f(%8.2f)",Ncr, si*Ncr);
             strcat(strQ[1][0],str);
             sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
-            strcat(strQ[1][0],str);
+			strcat(strQ[1][0],str);
             sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
             strcat(strQ[1][1],str);
             sprintf(str," %8.3f(%8.2f)",Mcrx,si*Mcrx);
@@ -1343,7 +1342,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
             strcat(strM[1][1],str);
 
             if(Ncr!=0.0) sprintf(str," %8.3f",pstress[0]->N/Ncr);
-            else         sprintf(str,"   10.000");
+			else         sprintf(str,"   10.000");
             strcat(strQ[2][0],str);
             if(Qcrx!=0.0) sprintf(str,"           %8.3f",pstress[0]->Q[0]/Qcrx);
             else          sprintf(str,"   10.000");
@@ -1352,7 +1351,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
             else          sprintf(str,"   10.000");
             strcat(strQ[2][1],str);
             if(Mcrx!=0.0) sprintf(str,"           %8.3f",pstress[0]->M[0]/Mcrx);
-            else          sprintf(str,"   10.000");
+			else          sprintf(str,"   10.000");
             strcat(strM[2][0],str);
             if(Mcry!=0.0) sprintf(str,"           %8.3f",pstress[0]->M[1]/Mcrx);
             else          sprintf(str,"   10.000");
@@ -1370,7 +1369,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
 
             sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
             strcat(strQ[1][0],str);
-            sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
+			sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
             strcat(strQ[1][1],str);
             sprintf(str," %8.3f(%8.2f)",Mcrx,si*Mcrx);
             strcat(strM[1][0],str);
@@ -1379,7 +1378,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
 
             if(Qcrx!=0.0) sprintf(str,"           %8.3f",pstress[1]->Q[0]/Qcrx);
             else          sprintf(str,"   10.000");
-            strcat(strQ[2][0],str);
+			strcat(strQ[2][0],str);
             if(Qcry!=0.0) sprintf(str,"           %8.3f",pstress[1]->Q[1]/Qcrx);
             else          sprintf(str,"   10.000");
             strcat(strQ[2][1],str);
@@ -1388,7 +1387,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
             strcat(strM[2][0],str);
             if(Mcry!=0.0) sprintf(str,"           %8.3f",pstress[1]->M[1]/Mcrx);
             else          sprintf(str,"   10.000");
-            strcat(strM[2][1],str);
+			strcat(strM[2][1],str);
 
             /*OUTPUT*/
             fprintf(fout0,"     ‹–—e’l:%s%s",
@@ -1397,7 +1396,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
                     strM[1][0],strM[1][1]);
             fprintf(fout0,"     ˆÀ‘S—¦:%s%s",
                     strQ[2][0],strQ[2][1]);
-            fprintf(fout0,"                   %s%s\n",
+			fprintf(fout0,"                   %s%s\n",
                     strM[2][0],strM[2][1]);
           }
           else
@@ -1406,7 +1405,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
             else                         na=0;
             for(ia=0;ia<=na;ia++) /*FOR AXIS*/
             {
-              pstress[0]=&(elem.head.z); pstress[1]=&(elem.tail.z);
+			  pstress[0]=&(elem.head.z); pstress[1]=&(elem.tail.z);
 
               lN=1000.0*elem.head.z.N; /*LONG N[kgf].*/
 
@@ -1415,7 +1414,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
               if(sect1.stype==STYPE_S)                            /*S*/
               {
                 Ma=allowablebendingofsteel(PLONG,sect1,gmaterial.sE,
-                                           h,ia,(-lN));
+										   h,ia,(-lN));
               }
               else if(sect1.stype==STYPE_RC)                     /*RC*/
               {
@@ -1424,7 +1423,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
               else if(sect1.stype==STYPE_SRC)                   /*SRC*/
               {
                 if(sect1.sform.type==STEEL_RECTS)
-                {
+				{
                   Ma=allowablebendingofsrc(elem,gmaterial,ia,(-lN),PLONG);
                 }
               }
@@ -1433,16 +1432,16 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
                 if(sect1.etype==COLUMN)
                 {
                   Ma=allowablebendingofpccolumn(elem,gmaterial,ia,lN);
-                }
+				}
                 else if(sect1.etype==GIRDER || sect1.etype==BEAM)
                 {
                   Ma=allowablebendingofpcgirder(elem,gmaterial,ia);
                 }
               }
-              else if(sect1.stype==STYPE_WOOD)                 /*WOOD*/
+			  else if(sect1.stype==STYPE_WOOD)                 /*WOOD*/
               {
                 Ma=allowablebendingofwood(PLONG,sect1,h,h,ia,(-lN));
-              }
+			  }
               else if(sect1.stype==STYPE_ALUMI)               /*ALUMI*/
               {
 				Ma=allowablebendingofalumi(PLONG,sect1,gmaterial.alE,
@@ -1451,7 +1450,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
                 Mahead=allowablebendingofalumi(PLONG,sect1,gmaterial.alE,
 										   h,ia,(-lN));
 				Matail=Mahead;
-                */
+				*/
 			  }
               /*if(Ma<0.1) Ma=0.1;*/
 
@@ -1460,7 +1459,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
                       Ma/100000.0,si*Ma/100000.0);
               strcat(strM[1][ia],str);
               if(Ma>0.0)
-              {
+			  {
                 rate1=fabs(face[0][ia]*pstress[0]->M[ia]*100000.0/Ma);
                 rate2=fabs(face[1][ia]*pstress[1]->M[ia]*100000.0/Ma);
               }
@@ -1478,7 +1477,7 @@ if(!strcmp(prj,"stick")){rate1=0.0; rate2=0.0;} /*PASS LONG CALCULATION.*/
                       rate1,rate2);
               strcat(strM[2][ia],str);
 
-              /*
+			  /*
               fprintf(fout0,"Ma%s=%.3f[tfm] ",straxis[ia],Ma/100000.0);
               fprintf(fout0," Mi/Ma=%.3f Mj/Ma=%.3f\n",
                       fabs(pstress[0]->M[ia]*100000.0/Ma),
@@ -1487,7 +1486,7 @@ if(!strcmp(prj,"stick")){rate1=0.0; rate2=0.0;} /*PASS LONG CALCULATION.*/
 
               if(rate1>ratema) ratema=rate1;
               if(rate1>marate[soffset-1]) marate[soffset-1]=rate1;
-              if(rate2>ratema) ratema=rate2;
+			  if(rate2>ratema) ratema=rate2;
               if(rate2>marate[soffset-1]) marate[soffset-1]=rate2;
 
               for(in=HEAD;in<=TAIL;in++) /*FOR END*/
@@ -1496,7 +1495,7 @@ if(!strcmp(prj,"stick")){rate1=0.0; rate2=0.0;} /*PASS LONG CALCULATION.*/
                 if(sect1.stype==STYPE_S)                          /*S*/
                 {
                   Qa=allowultimshearofsteel(PLONG,gmaterial.sF,sect1,ia);
-                }
+				}
                 else if(sect1.stype==STYPE_RC)                   /*RC*/
                 {
                   Qa=allowableshearofrclong(elem,ia,
@@ -1505,7 +1504,7 @@ if(!strcmp(prj,"stick")){rate1=0.0; rate2=0.0;} /*PASS LONG CALCULATION.*/
                                             pstress[in]->M[ia]
                                             *100000.0);
                 }
-                else if(sect1.stype==STYPE_SRC)                 /*SRC*/
+				else if(sect1.stype==STYPE_SRC)                 /*SRC*/
                 {
                   if(sect1.sform.type==STEEL_RECTS && ia==SX)
                   {
@@ -1514,7 +1513,7 @@ if(!strcmp(prj,"stick")){rate1=0.0; rate2=0.0;} /*PASS LONG CALCULATION.*/
                                                *1000.0,
                                                pstress[in]->M[ia]
                                                *100000.0);
-                  }
+				  }
                   if(sect1.sform.type==STEEL_RECTS && ia==SY)
                   {
                     Qa=allowableshearofsrclong(elem,ia,HWEAK,
@@ -1523,7 +1522,7 @@ if(!strcmp(prj,"stick")){rate1=0.0; rate2=0.0;} /*PASS LONG CALCULATION.*/
                                                pstress[in]->M[ia]
                                                *100000.0);
                   }
-                }
+				}
                 else if(sect1.stype==STYPE_PC)                   /*PC*/
                 {
                   Qa=allowableshearofpccolumn(elem,gmaterial,ia,lN);
@@ -1532,7 +1531,7 @@ if(!strcmp(prj,"stick")){rate1=0.0; rate2=0.0;} /*PASS LONG CALCULATION.*/
                 {
                   Qa=allowableshearofwood(PLONG,sect1);
                 }
-                else if(sect1.stype==STYPE_ALUMI)             /*ALUMI*/
+				else if(sect1.stype==STYPE_ALUMI)             /*ALUMI*/
                 {
                   if(sect1.sform.type==STEEL_RECTS) gmaterial.alF=sect1.srect[0].F;
                   else                              gmaterial.alF=sect1.sform.F;
@@ -1541,7 +1540,7 @@ if(!strcmp(prj,"stick")){rate1=0.0; rate2=0.0;} /*PASS LONG CALCULATION.*/
 
                 sprintf(str," %8.3f(%8.2f)",
                         Qa/1000.0,si*Qa/1000.0);
-                strcat(strQ[1][1-ia],str);
+				strcat(strQ[1][1-ia],str);
 
                 /*fprintf(fout0,"Qa%s=%.3f[tf]",straxis[1-ia],Qa/1000.0);*/
 
@@ -1568,7 +1567,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
               sprintf(strQ[1][0],"                                      ");
               sprintf(strQ[2][0],"                                      ");
               sprintf(strM[1][1],"                              ");
-              sprintf(strM[2][1],"                              ");
+			  sprintf(strM[2][1],"                              ");
             }
 
             fprintf(fout0,"     ‹–—e’l:                   %s%s",
@@ -1577,7 +1576,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
                     strM[1][0],strM[1][1]);
             fprintf(fout0,"     ˆÀ‘S—¦:         %s%s",
                     strQ[2][0],strQ[2][1]);
-            fprintf(fout0,"                   %s%s\n",
+			fprintf(fout0,"                   %s%s\n",
                     strM[2][0],strM[2][1]);
 
             /*FOR MIDPOINT BENDING Mm.*/
@@ -1586,7 +1585,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
                elem.cmqcode!=0)
             {
               Mm=elem.Mo-0.5*(elem.tail.z.M[0]-elem.head.z.M[0]);
-              fprintf(fout0,"        ’†‰›:Mo=%8.3f Mm=%8.3f",
+			  fprintf(fout0,"        ’†‰›:Mo=%8.3f Mm=%8.3f",
                       elem.Mo,Mm);
 
               if(Mm<=0.0)
@@ -1595,7 +1594,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
               }
               else
               {
-                Ma=allowablebendingofpcgirderonmid(elem,gmaterial,
+				Ma=allowablebendingofpcgirderonmid(elem,gmaterial,
                                                    h0[SX],0);
                 /*if(Ma<0.1) Ma=0.1;*/
 
@@ -1613,7 +1612,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
               }
             }
             else if(elem.sect->etype==GIRDER)
-            {
+			{
               /*fprintf(fout0,"\n\n\n");*/
             }
           }
@@ -1622,7 +1621,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
           /*if(check){gets(non); if(non[0]!='\0') return 0;}*/
 }    /*default*/
 
-          /*SHORT..................................................*/
+		  /*SHORT..................................................*/
           /*MATERIAL FOR SHORT*/
           gmaterial.sft=2400.0*jis;                   /*STEEL SN400*/
           gmaterial.sfc=-gmaterial.sft;
@@ -1631,7 +1630,7 @@ if(!strcmp(prj,"stick")) rate=0.0; /*PASS LONG CALCULATION.*/
           gmaterial.rft=3500.0*jis;           /*REINFORCEMENT SD345*/
           gmaterial.wft=3000.0;               /*REINFORCEMENT SD295*/
 
-          gmaterial.rfc=-gmaterial.rft;
+		  gmaterial.rfc=-gmaterial.rft;
 
           /*n=15.0;*/                                  /*RATE Er/Ec*/
           gmaterial.cfc=-160.0;                          /*CONCRETE*/
@@ -1757,7 +1756,7 @@ if(!strcmp(prj,"maebasi"))
 
             if(hoko==0)
             {
-              pstress[0]=&(elem.head.x); pstress[1]=&(elem.tail.x);
+			  pstress[0]=&(elem.head.x); pstress[1]=&(elem.tail.x);
             }
             if(hoko==1)
             {
@@ -1766,7 +1765,7 @@ if(!strcmp(prj,"maebasi"))
 
             for(sign=0;sign<=1;sign++) /*LOAD POSITIVE,NEGATIVE.*/
 //            for(sign=1;sign<=1;sign++) /*LOAD ONLY POSITIVE/NEGATIVE.*/ //UJIOKA for wakka
-            {
+			{
               for(ii=0;ii<=4;ii++)
               {
                 for(jj=0;jj<=1;jj++) sprintf(strQ[ii][jj],"\0");
@@ -1784,7 +1783,7 @@ if(!strcmp(prj,"maebasi"))
                   sect1.stype==STYPE_ACRYL ||
                   sect1.stype==STYPE_ALUMI)
                  && sect1.sform.type==STEEL_PLATE) /*FB*/
-              {
+			  {
                 if(sign==0) dsign=1.0; /*POSITIVE*/
                 if(sign==1) dsign=-1.0;/*NEGATIVE*/
 
@@ -1802,7 +1801,7 @@ if(!strcmp(prj,"vene") &&
                 /*HEAD*/
                 estress.N   =elem.head.z.N
                              +dsign*nfact*(pstress[HEAD]->N);
-                estress.Q[0]=elem.head.z.Q[0]
+				estress.Q[0]=elem.head.z.Q[0]
                              +dsign*qfact*(pstress[HEAD]->Q[0]);
                 estress.Q[1]=elem.head.z.Q[1]
                              +dsign*qfact*(pstress[HEAD]->Q[1]);
@@ -1811,7 +1810,7 @@ if(!strcmp(prj,"vene") &&
                 estress.M[0]=elem.head.z.M[0]
                              +dsign*mfact*(pstress[HEAD]->M[0]);
                 estress.M[1]=elem.head.z.M[1]
-                             +dsign*mfact*(pstress[HEAD]->M[1]);
+							 +dsign*mfact*(pstress[HEAD]->M[1]);
 
                 sprintf(str," %8.3f(%8.2f)",estress.N,si*estress.N);
                 strcat(strQ[0][0],str);
@@ -1820,7 +1819,7 @@ if(!strcmp(prj,"vene") &&
                 sprintf(str," %8.3f(%8.2f)",estress.Q[1],si*estress.Q[1]);
                 strcat(strQ[0][1],str);
                 sprintf(str," %8.3f(%8.2f)",estress.Mt,si*estress.Mt);
-                strcat(strM[0][0],str);
+				strcat(strM[0][0],str);
                 sprintf(str," %8.3f(%8.2f)",estress.M[0],si*estress.M[0]);
                 strcat(strM[0][0],str);
                 sprintf(str," %8.3f(%8.2f)",estress.M[1],si*estress.M[1]);
@@ -1829,7 +1828,7 @@ if(!strcmp(prj,"vene") &&
                 if(sect1.stype==STYPE_S && !bclngcondensationflag)
                 {
                   rate=allowablestressofflatbar(PSHORT,sect1,gmaterial.sE,
-                                                h,&estress,HEAD,
+												h,&estress,HEAD,
                                                 &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
                 }
                 if(sect1.stype==STYPE_S && bclngcondensationflag)
@@ -1838,7 +1837,7 @@ if(!strcmp(prj,"vene") &&
                   {
                   rate=allowablestressofflatbar_bc(PSHORT,sect1,cNcr[ie-1],gmaterial.sE,
                                                 h,&estress,HEAD,
-                                                &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
+												&Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
                   }
                   else
                   {
@@ -1847,7 +1846,7 @@ if(!strcmp(prj,"vene") &&
                                                 &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
                   }
                 }
-                if(sect1.stype==STYPE_GLASS)
+				if(sect1.stype==STYPE_GLASS)
                 {
                   rate=allowablestressofflatbar(PSHORT,sect1,gmaterial.gE,
                                                 h,&estress,HEAD,
@@ -1856,7 +1855,7 @@ if(!strcmp(prj,"vene") &&
                 if(sect1.stype==STYPE_ACRYL)
                 {
                   rate=allowablestressofflatbar(PSHORT,sect1,gmaterial.aE,
-                                                h,&estress,HEAD,
+												h,&estress,HEAD,
                                                 &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
                 }
                 if(sect1.stype==STYPE_ALUMI)
@@ -1874,7 +1873,7 @@ if(!strcmp(prj,"vene") &&
                 strcat(strQ[1][0],str);
                 sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
                 strcat(strQ[1][0],str);
-                sprintf(str," %8.3f(%8.2f)",Qcry,si*Qcry);
+				sprintf(str," %8.3f(%8.2f)",Qcry,si*Qcry);
                 strcat(strQ[1][1],str);
                 sprintf(str," %8.3f(%8.2f)",Mcrx,si*Mcrx);
                 strcat(strM[1][0],str);
@@ -1883,7 +1882,7 @@ if(!strcmp(prj,"vene") &&
 
                 if(Ncr!=0.0) sprintf(str," %8.3f",estress.N/Ncr);
                 else         sprintf(str,"   10.000");
-                strcat(strQ[2][0],str);
+				strcat(strQ[2][0],str);
                 if(Qcrx!=0.0) sprintf(str,"           %8.3f",estress.Q[0]/Qcrx);
                 else          sprintf(str,"   10.000");
                 strcat(strQ[2][0],str);
@@ -1892,7 +1891,7 @@ if(!strcmp(prj,"vene") &&
                 strcat(strQ[2][1],str);
                 if(Mcrx!=0.0) sprintf(str,"           %8.3f",estress.M[0]/Mcrx);
                 else          sprintf(str,"   10.000");
-                strcat(strM[2][0],str);
+				strcat(strM[2][0],str);
                 if(Mcry!=0.0) sprintf(str,"           %8.3f",estress.M[1]/Mcry);
                 else          sprintf(str,"   10.000");
                 strcat(strM[2][1],str);
@@ -1901,7 +1900,7 @@ if(!strcmp(prj,"vene") &&
                 estress.N   =elem.tail.z.N
                              +dsign*nfact*(pstress[TAIL]->N);
                 estress.Q[0]=elem.tail.z.Q[0]
-                             +dsign*qfact*(pstress[TAIL]->Q[0]);
+							 +dsign*qfact*(pstress[TAIL]->Q[0]);
                 estress.Q[1]=elem.tail.z.Q[1]
                              +dsign*qfact*(pstress[TAIL]->Q[1]);
                 estress.Mt  =elem.tail.z.Mt
@@ -1928,7 +1927,7 @@ if(!strcmp(prj,"vene") &&
                 }
                 if(sect1.stype==STYPE_S && bclngcondensationflag)
                 {
-                  if(cNcr[ie-1]>0)
+				  if(cNcr[ie-1]>0)
                   {
                   rate=allowablestressofflatbar_bc(PSHORT,sect1,cNcr[ie-1],gmaterial.sE,
                                                 h,&estress,TAIL,
@@ -1937,7 +1936,7 @@ if(!strcmp(prj,"vene") &&
                   else
                   {
                   rate=allowablestressofflatbar(PLONG,sect1,gmaterial.sE,
-                                                h,pstress[0],HEAD,
+												h,pstress[0],HEAD,
                                                 &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
                   }
                 }
@@ -1946,7 +1945,7 @@ if(!strcmp(prj,"vene") &&
                   rate=allowablestressofflatbar(PSHORT,sect1,gmaterial.gE,
                                                 h,&estress,TAIL,
                                                 &Ncr,&Qcrx,&Qcry,&Mcrx,&Mcry);
-                }
+				}
                 if(sect1.stype==STYPE_ACRYL)
                 {
                   rate=allowablestressofflatbar(PSHORT,sect1,gmaterial.aE,
@@ -1964,7 +1963,7 @@ if(!strcmp(prj,"vene") &&
                 }
 
 
-                if(rate>ratema) ratema=rate;
+				if(rate>ratema) ratema=rate;
                 if(rate>marate[soffset-1]) marate[soffset-1]=rate;
 
                 rateqa=ratema;
@@ -1973,7 +1972,7 @@ if(!strcmp(prj,"vene") &&
                 sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
                 strcat(strQ[1][0],str);
                 sprintf(str," %8.3f(%8.2f)",Qcry,si*Qcry);
-                strcat(strQ[1][1],str);
+				strcat(strQ[1][1],str);
                 sprintf(str," %8.3f(%8.2f)",Mcrx,si*Mcrx);
                 strcat(strM[1][0],str);
                 sprintf(str," %8.3f(%8.2f)",Mcry,si*Mcry);
@@ -1982,7 +1981,7 @@ if(!strcmp(prj,"vene") &&
                 if(Qcrx!=0.0) sprintf(str,"           %8.3f",estress.Q[0]/Qcrx);
                 else          sprintf(str,"   10.000");
                 strcat(strQ[2][0],str);
-                if(Qcry!=0.0) sprintf(str,"           %8.3f",estress.Q[1]/Qcry);
+				if(Qcry!=0.0) sprintf(str,"           %8.3f",estress.Q[1]/Qcry);
                 else          sprintf(str,"   10.000");
                 strcat(strQ[2][1],str);
                 if(Mcrx!=0.0) sprintf(str,"           %8.3f",estress.M[0]/Mcrx);
@@ -2000,7 +1999,7 @@ if(!strcmp(prj,"vene") &&
                         strQ[1][0],strQ[1][1]);
                 fprintf(fout0,"                   %s%s\n",
                         strM[1][0],strM[1][1]);
-                fprintf(fout0,"     ˆÀ‘S—¦:%s%s",
+				fprintf(fout0,"     ˆÀ‘S—¦:%s%s",
                         strQ[2][0],strQ[2][1]);
                 fprintf(fout0,"                   %s%s\n",
                         strM[2][0],strM[2][1]);
@@ -2009,7 +2008,7 @@ if(!strcmp(prj,"vene") &&
                       && sect1.sform.type==DABO) /*WOOD DABO*/
               {
                 if(sign==0) dsign=1.0; /*POSITIVE*/
-                if(sign==1) dsign=-1.0;/*NEGATIVE*/
+				if(sign==1) dsign=-1.0;/*NEGATIVE*/
 
                 /*HEAD*/
                 estress.N   =elem.head.z.N
@@ -2018,7 +2017,7 @@ if(!strcmp(prj,"vene") &&
                              +dsign*qfact*(pstress[HEAD]->Q[0]);
                 estress.Q[1]=elem.head.z.Q[1]
                              +dsign*qfact*(pstress[HEAD]->Q[1]);
-                estress.Mt  =elem.head.z.Mt
+				estress.Mt  =elem.head.z.Mt
                              +dsign*mfact*(pstress[HEAD]->Mt);
                 estress.M[0]=elem.head.z.M[0]
                              +dsign*mfact*(pstress[HEAD]->M[0]);
@@ -2027,7 +2026,7 @@ if(!strcmp(prj,"vene") &&
 
                 sprintf(str," %8.3f(%8.2f)",estress.N,si*estress.N);
                 strcat(strQ[0][0],str);
-                sprintf(str," %8.3f(%8.2f)",estress.Q[0],si*estress.Q[0]);
+				sprintf(str," %8.3f(%8.2f)",estress.Q[0],si*estress.Q[0]);
                 strcat(strQ[0][0],str);
                 sprintf(str," %8.3f(%8.2f)",estress.Q[1],si*estress.Q[1]);
                 strcat(strQ[0][1],str);
@@ -2036,7 +2035,7 @@ if(!strcmp(prj,"vene") &&
                 sprintf(str," %8.3f(%8.2f)",estress.M[0],si*estress.M[0]);
                 strcat(strM[0][0],str);
                 sprintf(str," %8.3f(%8.2f)",estress.M[1],si*estress.M[1]);
-                strcat(strM[0][1],str);
+				strcat(strM[0][1],str);
 
                 rate=allowablestressofdabo(PSHORT,sect1,&estress,HEAD,
                                            &Ncr,&Qcrx,&Mcrx);
@@ -2045,7 +2044,7 @@ if(!strcmp(prj,"vene") &&
                 if(rate>marate[soffset-1]) marate[soffset-1]=rate;
 
                 sprintf(str," %8.3f(%8.2f)",Ncr, si*Ncr);
-                strcat(strQ[1][0],str);
+				strcat(strQ[1][0],str);
                 sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
                 strcat(strQ[1][0],str);
                 sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
@@ -2063,7 +2062,7 @@ if(!strcmp(prj,"vene") &&
                 strcat(strQ[2][0],str);
                 if(Qcry!=0.0) sprintf(str,"           %8.3f",estress.Q[1]/Qcrx);
                 else          sprintf(str,"   10.000");
-                strcat(strQ[2][1],str);
+				strcat(strQ[2][1],str);
                 if(Mcrx!=0.0) sprintf(str,"           %8.3f",estress.M[0]/Mcrx);
                 else          sprintf(str,"   10.000");
                 strcat(strM[2][0],str);
@@ -2072,7 +2071,7 @@ if(!strcmp(prj,"vene") &&
                 strcat(strM[2][1],str);
 
                 /*TAIL*/
-                estress.N   =elem.tail.z.N
+				estress.N   =elem.tail.z.N
                              +dsign*nfact*(pstress[TAIL]->N);
                 estress.Q[0]=elem.tail.z.Q[0]
                              +dsign*qfact*(pstress[TAIL]->Q[0]);
@@ -2081,7 +2080,7 @@ if(!strcmp(prj,"vene") &&
                 estress.Mt  =elem.tail.z.Mt
                              +dsign*mfact*(pstress[TAIL]->Mt);
                 estress.M[0]=elem.tail.z.M[0]
-                             +dsign*mfact*(pstress[TAIL]->M[0]);
+							 +dsign*mfact*(pstress[TAIL]->M[0]);
                 estress.M[1]=elem.tail.z.M[1]
                              +dsign*mfact*(pstress[TAIL]->M[1]);
 
@@ -2090,7 +2089,7 @@ if(!strcmp(prj,"vene") &&
                 sprintf(str," %8.3f(%8.2f)",estress.Q[1],si*estress.Q[1]);
                 strcat(strQ[0][1],str);
                 sprintf(str," %8.3f(%8.2f)",estress.M[0],si*estress.M[0]);
-                strcat(strM[0][0],str);
+				strcat(strM[0][0],str);
                 sprintf(str," %8.3f(%8.2f)",estress.M[1],si*estress.M[1]);
                 strcat(strM[0][1],str);
 
@@ -2108,7 +2107,7 @@ if(!strcmp(prj,"vene") &&
                 sprintf(str," %8.3f(%8.2f)",Qcrx,si*Qcrx);
                 strcat(strQ[1][1],str);
                 sprintf(str," %8.3f(%8.2f)",Mcrx,si*Mcrx);
-                strcat(strM[1][0],str);
+				strcat(strM[1][0],str);
                 sprintf(str," %8.3f(%8.2f)",Mcrx,si*Mcrx);
                 strcat(strM[1][1],str);
 
@@ -2117,7 +2116,7 @@ if(!strcmp(prj,"vene") &&
                 strcat(strQ[2][0],str);
                 if(Qcry!=0.0) sprintf(str,"           %8.3f",estress.Q[1]/Qcrx);
                 else          sprintf(str,"   10.000");
-                strcat(strQ[2][1],str);
+				strcat(strQ[2][1],str);
                 if(Mcrx!=0.0) sprintf(str,"           %8.3f",estress.M[0]/Mcrx);
                 else          sprintf(str,"   10.000");
                 strcat(strM[2][0],str);
@@ -2126,7 +2125,7 @@ if(!strcmp(prj,"vene") &&
                 strcat(strM[2][1],str);
 
                 /*OUTPUT*/
-                fprintf(fout0,"%s%s%s%s\n",
+				fprintf(fout0,"%s%s%s%s\n",
                         strQ[0][0],strQ[0][1],strM[0][0],strM[0][1]);
 
                 fprintf(fout0,"     ‹–—e’l:%s%s",
@@ -2135,7 +2134,7 @@ if(!strcmp(prj,"vene") &&
                         strM[1][0],strM[1][1]);
                 fprintf(fout0,"     ˆÀ‘S—¦:%s%s",
                         strQ[2][0],strQ[2][1]);
-                fprintf(fout0,"                   %s%s\n",
+				fprintf(fout0,"                   %s%s\n",
                         strM[2][0],strM[2][1]);
               }
               else
@@ -2144,7 +2143,7 @@ if(!strcmp(prj,"vene") &&
                 else                         na=0;
                 for(ia=0;ia<=na;ia++) /*FOR AXIS*/
                 {
-                  if(pstress[0]->M[ia]==0.0) facei=1.0;       /*RATE.*/
+				  if(pstress[0]->M[ia]==0.0) facei=1.0;       /*RATE.*/
                   else if(pstress[0]->Q[1-ia]==0.0) facei=1.0;
                   else
                   {
@@ -2153,7 +2152,7 @@ if(!strcmp(prj,"vene") &&
                           /fabs(pstress[0]->M[ia]/pstress[0]->Q[1-ia]);
                   }
                   if(pstress[1]->M[ia]==0.0) facej=1.0;
-                  else if(pstress[1]->Q[1-ia]==0.0) facei=1.0;
+				  else if(pstress[1]->Q[1-ia]==0.0) facei=1.0;
                   else
                   {
                     facej=(fabs(pstress[1]->M[ia]/pstress[1]->Q[1-ia])
@@ -2162,7 +2161,7 @@ if(!strcmp(prj,"vene") &&
                   }
 
                   if(sign==0) dsign=1.0; /*POSITIVE*/
-                  if(sign==1) dsign=-1.0;/*NEGATIVE*/
+				  if(sign==1) dsign=-1.0;/*NEGATIVE*/
 
                   sN=1000.0*(elem.head.z.N
                              +dsign*nfact*(pstress[HEAD]->N));
@@ -2171,7 +2170,7 @@ if(!strcmp(prj,"vene") &&
                                   *qfact*(pstress[HEAD]->Q[1-ia]))
                                  *1000.0;
                   sQ[TAIL][1-ia]=(elem.tail.z.Q[1-ia]
-                                  +dsign
+								  +dsign
                                  *qfact*(pstress[TAIL]->Q[1-ia]))
                                  *1000.0;
                   sMt=(elem.head.z.Mt+dsign*mfact*(pstress[HEAD]->Mt))
@@ -2180,7 +2179,7 @@ if(!strcmp(prj,"vene") &&
                                 +dsign*facei
                                 *mfact*(pstress[HEAD]->M[ia]))
                                *100000.0;
-                  sM[TAIL][ia]=(elem.tail.z.M[ia]
+				  sM[TAIL][ia]=(elem.tail.z.M[ia]
                                 +dsign*facej
                                 *mfact*(pstress[TAIL]->M[ia]))
                                *100000.0;
@@ -2189,7 +2188,7 @@ if(!strcmp(prj,"vene") &&
                   {
                     sprintf(str," %8.3f(%8.2f)",sN/1000.0,si*sN/1000.0);
                     strcat(strQ[0][0],str);
-                  }
+				  }
                   if(sect1.etype==GIRDER || sect1.etype==BEAM)
                   {
                     strcat(strQ[0][0],"                                      ");
@@ -2198,7 +2197,7 @@ if(!strcmp(prj,"vene") &&
                              sQ[HEAD][1-ia]/1000.0,
                           si*sQ[HEAD][1-ia]/1000.0,
                              sQ[TAIL][1-ia]/1000.0,
-                          si*sQ[TAIL][1-ia]/1000.0);
+						  si*sQ[TAIL][1-ia]/1000.0);
                   strcat(strQ[0][1-ia],str);
 
                   if(ia==0) sprintf(strM[0][0]," %8.3f(%8.2f)",
@@ -2207,7 +2206,7 @@ if(!strcmp(prj,"vene") &&
                              sM[HEAD][ia]/100000.0,
                           si*sM[HEAD][ia]/100000.0,
                              sM[TAIL][ia]/100000.0,
-                          si*sM[TAIL][ia]/100000.0);
+						  si*sM[TAIL][ia]/100000.0);
                   strcat(strM[0][ia],str);
 
                   Ma=0.0;
@@ -2216,7 +2215,7 @@ if(!strcmp(prj,"vene") &&
                   {
                     Ma=allowablebendingofsteel(PSHORT,sect1,gmaterial.sE,
                                                h,ia,(-sN));
-                  }
+				  }
                   else if(sect1.stype==STYPE_RC)                 /*RC*/
                   {
                     Ma=allowablebendingofrc(elem,gmaterial,ia,(-sN),PSHORT);
@@ -2225,7 +2224,7 @@ if(!strcmp(prj,"vene") &&
                   {
                     if(sect1.sform.type==STEEL_RECTS)
                     {
-                      Ma=allowablebendingofsrc(elem,gmaterial,ia,(-sN),PSHORT);
+					  Ma=allowablebendingofsrc(elem,gmaterial,ia,(-sN),PSHORT);
                     }
                   }
                   else if(sect1.stype==STYPE_WOOD)             /*WOOD*/
@@ -2252,7 +2251,7 @@ if(!strcmp(prj,"vene") &&
                   if(Ma>0.0)
                   {
                     rate1=fabs(sM[HEAD][ia]/Ma);
-                    rate2=fabs(sM[TAIL][ia]/Ma);
+					rate2=fabs(sM[TAIL][ia]/Ma);
                   }
                   else
                   {
@@ -2261,7 +2260,7 @@ if(!strcmp(prj,"vene") &&
                   }
 
                   sprintf(str,"           %8.3f           %8.3f",
-                          rate1,rate2);
+						  rate1,rate2);
                   strcat(strM[2][ia],str);
                   /*
                   fprintf(fout0,"Ma%s=%.3f[tfm]",
@@ -2270,7 +2269,7 @@ if(!strcmp(prj,"vene") &&
                           fabs(sM[HEAD][ia]/Ma),
                           fabs(sM[TAIL][ia]/Ma));
                   */
-                  if(rate1>ratema) ratema=rate1;
+				  if(rate1>ratema) ratema=rate1;
                   if(rate1>marate[soffset-1]) marate[soffset-1]=rate1;
                   if(rate2>ratema) ratema=rate2;
                   if(rate2>marate[soffset-1]) marate[soffset-1]=rate2;
@@ -2279,7 +2278,7 @@ if(!strcmp(prj,"vene") &&
                   {
                     Qa=0.0;
 
-                    if(sect1.stype==STYPE_S)                      /*S*/
+					if(sect1.stype==STYPE_S)                      /*S*/
                     {
                       Qa=allowultimshearofsteel(PSHORT,gmaterial.sF,
                                                 sect1,ia);
@@ -2288,7 +2287,7 @@ if(!strcmp(prj,"vene") &&
                     {
                       Qa=allowableshearofrcshort(elem,ia,
                                                  sQ[in][1-ia],
-                                                 sM[in][ia]);
+												 sM[in][ia]);
                     }
                     else if(sect1.stype==STYPE_SRC)             /*SRC*/
                     {
@@ -2297,7 +2296,7 @@ if(!strcmp(prj,"vene") &&
                         Qa=allowableshearofsrcshort(elem,ia,HSTRONG,
                                                     sQ[in][1-ia],
                                                     sM[in][ia]);
-                      }
+					  }
                       if(sect1.sform.type==STEEL_RECTS && ia==SY)
                       {
                         Qa=allowableshearofsrcshort(elem,ia,HWEAK,
@@ -2306,7 +2305,7 @@ if(!strcmp(prj,"vene") &&
                       }
                     }
                     else if(sect1.stype==STYPE_WOOD)           /*WOOD*/
-                    {
+					{
                       Qa=allowableshearofwood(PSHORT,sect1);
                     }
                     else if(sect1.stype==STYPE_ALUMI)          /*ALUMI*/
@@ -2315,7 +2314,7 @@ if(!strcmp(prj,"vene") &&
                       else                              gmaterial.alF=sect1.sform.F;
                       Qa=allowultimshearofalumi(PSHORT,gmaterial.alF,
                                                 sect1,ia);
-                    }
+					}
                     sprintf(str," %8.3f(%8.2f)",
                             Qa/1000.0,si*Qa/1000.0);
                     strcat(strQ[1][1-ia],str);
@@ -2324,7 +2323,7 @@ if(!strcmp(prj,"vene") &&
                             straxis[1-ia],Qa/1000.0);*/
                     /*if(Qa<0.1) Qa=0.1;*/
 
-                    if(Qa>0.0) rate=fabs(sQ[in][1-ia]/Qa);
+					if(Qa>0.0) rate=fabs(sQ[in][1-ia]/Qa);
                     else       rate=10.0;
 
                     if(rate>rateqa) rateqa=rate;
@@ -2333,7 +2332,7 @@ if(!strcmp(prj,"vene") &&
                       qarate[soffset-1]=rate;
                     }
                     sprintf(str,"           %8.3f",rate);
-                    strcat(strQ[2][1-ia],str);
+					strcat(strQ[2][1-ia],str);
 
                     /*
                     fprintf(fout0," Q%s/Qa=%.3f\n",strend[in],rate);
@@ -2342,7 +2341,7 @@ if(!strcmp(prj,"vene") &&
                 }
 
                 if(sect1.etype==GIRDER || sect1.etype==BEAM)
-                {
+				{
                   sprintf(strQ[1][0],"                                      ");
                   sprintf(strQ[2][0],"                                      ");
                   sprintf(strM[1][1],"                              ");
@@ -2351,7 +2350,7 @@ if(!strcmp(prj,"vene") &&
                 fprintf(fout0,"%s%s%s%s\n",
                         strQ[0][0],strQ[0][1],strM[0][0],strM[0][1]);
                 fprintf(fout0,"     ‹–—e’l:                   %s%s",
-                        strQ[1][0],strQ[1][1]);
+						strQ[1][0],strQ[1][1]);
                 fprintf(fout0,"                   %s%s\n",
                         strM[1][0],strM[1][1]);
                 fprintf(fout0,"     ˆÀ‘S—¦:         %s%s",
@@ -2360,7 +2359,7 @@ if(!strcmp(prj,"vene") &&
                         strM[2][0],strM[2][1]);
               }
             }
-            fprintf(fout0,"\n");
+			fprintf(fout0,"\n");
             /*if(check){gets(non); if(non[0]!='\0') return 0;}*/
           }
 /*MessageBox(NULL,"Pass 1","SRCan",MB_OK);*/
@@ -2378,7 +2377,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           gmaterial.wfp=3000.0*jis;           /*REINFORCEMENT SD295*/
 
           for(hoko=0;hoko<=1;hoko++) /*LOAD DIRECTION X,Y.*/
-          {
+		  {
             if(hoko==0)
             {
               Fes=1.0+(HENSHINX-0.15)/0.15*0.5;
@@ -2387,7 +2386,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
             if(hoko==1)
             {
               Fes=1.0+(HENSHINY-0.15)/0.15*0.5;
-              pstress[0]=&(elem.head.y); pstress[1]=&(elem.tail.y);
+			  pstress[0]=&(elem.head.y); pstress[1]=&(elem.tail.y);
             }
 
             for(sign=0;sign<=1;sign++) /*LOAD POSITIVE,NEGATIVE.*/
@@ -2396,7 +2395,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
               {
                 for(jj=0;jj<=1;jj++) sprintf(strQ[ii][jj],"\0");
               }
-              for(ii=0;ii<=2;ii++)
+			  for(ii=0;ii<=2;ii++)
               {
                 for(jj=0;jj<=1;jj++) sprintf(strM[ii][jj],"\0");
               }
@@ -2405,7 +2404,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                       strhoko[hoko],strhugo[sign]);
 
               if(elem.sect->etype==COLUMN) na=1;
-              else                         na=0;
+			  else                         na=0;
               for(ia=0;ia<=na;ia++) /*FOR AXIS*/
               {
                 if(pstress[0]->M[ia]==0.0) facei=1.0;       /*RATE.*/
@@ -2414,7 +2413,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                 {
                   facei=(fabs(pstress[0]->M[ia]/pstress[0]->Q[1-ia])
                          -elem.sect->face[ia][HEAD]/100.0)
-                        /fabs(pstress[0]->M[ia]/pstress[0]->Q[1-ia]);
+						/fabs(pstress[0]->M[ia]/pstress[0]->Q[1-ia]);
                 }
                 if(pstress[1]->M[ia]==0.0) facej=1.0;
                 else if(pstress[0]->Q[1-ia]==0.0) facej=1.0;
@@ -2423,7 +2422,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   facej=(fabs(pstress[1]->M[ia]/pstress[1]->Q[1-ia])
                          -elem.sect->face[ia][TAIL]/100.0)
                         /fabs(pstress[1]->M[ia]/pstress[1]->Q[1-ia]);
-                }
+				}
 
                 if(sign==0) dsign=1.0; /*POSITIVE*/
                 if(sign==1) dsign=-1.0;/*NEGATIVE*/
@@ -2432,7 +2431,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                            +dsign*(Fes*Ds/Co)*(pstress[HEAD]->N));
                 uQ[HEAD][1-ia]=(elem.head.z.Q[1-ia]
                                 +dsign
-                                *(Fes*Ds/Co)*(pstress[HEAD]->Q[1-ia]))
+								*(Fes*Ds/Co)*(pstress[HEAD]->Q[1-ia]))
                                *1000.0;
                 uQ[TAIL][1-ia]=(elem.tail.z.Q[1-ia]
                                 +dsign
@@ -2441,7 +2440,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                 uMt=100000.0*(elem.head.z.Mt
                               +dsign*(Fes*Ds/Co)*(pstress[HEAD]->Mt));
                 uM[HEAD][ia]=(elem.head.z.M[ia]
-                              +dsign*facei
+							  +dsign*facei
                               *(Fes*Ds/Co)*(pstress[HEAD]->M[ia]))
                              *100000.0;
                 uM[TAIL][ia]=(elem.tail.z.M[ia]
@@ -2450,7 +2449,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                              *100000.0;
 
                 if(ia==0)
-                {
+				{
                   sprintf(str," %8.3f(%8.2f)",uN/1000.0,si*uN/1000.0);
                   strcat(strQ[0][0],str);
                 }
@@ -2459,7 +2458,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   strcat(strQ[0][0],"                                      ");
                 }
                 sprintf(str," %8.3f(%8.2f) %8.3f(%8.2f)",
-                        uQ[HEAD][1-ia]/1000.0,si*uQ[HEAD][1-ia]/1000.0,
+						uQ[HEAD][1-ia]/1000.0,si*uQ[HEAD][1-ia]/1000.0,
                         uQ[TAIL][1-ia]/1000.0,si*uQ[TAIL][1-ia]/1000.0);
                 strcat(strQ[0][1-ia],str);
 
@@ -2477,7 +2476,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                 {
                   Mu=ultimatebendingofsteel(sect1,gmaterial.sE,
                                                   gmaterial.sF,
-                                                  h,h,ia,(-uN));
+												  h,h,ia,(-uN));
                 }
                 else if(sect1.stype==STYPE_RC)                 /*RC*/
                 {
@@ -2504,7 +2503,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   Mu=ultimatebendingofsrc(elem,ia,(-uN),
                                           &Ns,&Ms,&Nr,&Mr,&Nc,&Mc);
                 }
-                else if(sect1.stype==STYPE_PC)                 /*PC*/
+				else if(sect1.stype==STYPE_PC)                 /*PC*/
                 {
                   if(sect1.etype==COLUMN)
                   {
@@ -2513,7 +2512,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   if(sect1.etype==GIRDER)
                   {
                     if(uM[HEAD][ia]>=0)     tensedside=LOWER;
-                    else if(uM[HEAD][ia]<0) tensedside=UPPER;
+					else if(uM[HEAD][ia]<0) tensedside=UPPER;
                     Muhead=ultimatebendingofpcgirder(elem,gmaterial,ia,
                                                      tensedside);
 
@@ -2522,7 +2521,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                     Mutail=ultimatebendingofpcgirder(elem,gmaterial,ia,
                                                      tensedside);
                   }
-                }
+				}
 
                 if(sect1.stype==STYPE_PC && sect1.etype==GIRDER)
                 {
@@ -2540,7 +2539,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
 
                   sprintf(str," %8.3f(%8.2f) %8.3f(%8.2f)",
                           Muhead/100000.0,si*Muhead/100000.0,
-                          Mutail/100000.0,si*Mutail/100000.0);
+						  Mutail/100000.0,si*Mutail/100000.0);
                   strcat(strM[1][ia],str);
                   sprintf(str,"           %8.3f           %8.3f",
                           fabs(uM[HEAD][ia]/Muhead),fabs(uM[TAIL][ia]/Mutail));
@@ -2549,7 +2548,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   rate=fabs(uM[HEAD][ia]/Muhead);
                   if(rate>ratemu) ratemu=rate;
                   if(rate>murate[soffset-1]) murate[soffset-1]=rate;
-                  rate=fabs(uM[TAIL][ia]/Mutail);
+				  rate=fabs(uM[TAIL][ia]/Mutail);
                   if(rate>ratemu) ratemu=rate;
                   if(rate>murate[soffset-1]) murate[soffset-1]=rate;
                 }
@@ -2558,7 +2557,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   Qp[HEAD]=2.0*fabs(Mu)/h0[ia];
                   Qp[TAIL]=2.0*fabs(Mu)/h0[ia];
 
-                  if(Mu<0.1) Mu=0.1;
+				  if(Mu<0.1) Mu=0.1;
 
                   sprintf(str," %8.3f(%8.2f) %8.3f(%8.2f)",
                           Mu/100000.0,si*Mu/100000.0,
@@ -2567,7 +2566,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   sprintf(str,"           %8.3f           %8.3f",
                           fabs(uM[HEAD][ia]/Mu),fabs(uM[TAIL][ia]/Mu));
                   strcat(strM[2][ia],str);
-                  /*
+				  /*
                   fprintf(fout0,"Mu%s=%.3f[tfm]",
                           straxis[ia],Mu/100000.0);
                   fprintf(fout0," Mi/Mu=%.3f Mj/Mu=%.3f\n",
@@ -2576,7 +2575,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   */
                   rate=fabs(uM[HEAD][ia]/Mu);
                   if(rate>ratemu) ratemu=rate;
-                  if(rate>murate[soffset-1]) murate[soffset-1]=rate;
+				  if(rate>murate[soffset-1]) murate[soffset-1]=rate;
                   rate=fabs(uM[TAIL][ia]/Mu);
                   if(rate>ratemu) ratemu=rate;
                   if(rate>murate[soffset-1]) murate[soffset-1]=rate;
@@ -2594,7 +2593,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   else if(sect1.stype==STYPE_RC)               /*RC*/
                   {
                     Qu=ultimateshearofrc(elem,gmaterial,ia,
-                                         (-uN),
+										 (-uN),
                                          uQ[in][1-ia],
                                          uM[in][ia]);
                   }
@@ -2603,7 +2602,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                     if(sect1.sform.type==STEEL_RECTS && ia==SX)
                     {
                       Qu=ultimateshearofsrc(elem,ia,HSTRONG,
-                                            uQ[in][1-ia],
+											uQ[in][1-ia],
                                             uM[in][ia]);
                       /*APPROXIMATION.Q,M MUST BE OF RC.*/
                     }
@@ -2612,7 +2611,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                       Qu=ultimateshearofsrc(elem,ia,HWEAK,
                                             uQ[in][1-ia],
                                             uM[in][ia]);
-                      /*APPROXIMATION.Q,M MUST BE OF RC.*/
+					  /*APPROXIMATION.Q,M MUST BE OF RC.*/
                     }
                   }
                   else if(sect1.stype==STYPE_PC)               /*PC*/
@@ -2621,7 +2620,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                     {
                       Qu=ultimateshearofpccolumn(elem,gmaterial,ia,
                                                  uN,
-                                                 uQ[in][1-ia],
+												 uQ[in][1-ia],
                                                  uM[in][ia]);
                     }
                     if(sect1.etype==GIRDER)
@@ -2630,7 +2629,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                       {
                         if(uM[HEAD][ia]>=0)     tensedside=LOWER;
                         else if(uM[HEAD][ia]<0) tensedside=UPPER;
-                      }
+					  }
                       else if(in==TAIL)
                       {
                         if(uM[TAIL][ia]>=0)     tensedside=UPPER;
@@ -2639,7 +2638,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                       Qu=ultimateshearofpcgirder(elem,gmaterial,ia,
                                                  tensedside,
                                                  uN,
-                                                 uQ[in][1-ia],
+												 uQ[in][1-ia],
                                                  uM[in][ia]);
                     }
                   }
@@ -2648,7 +2647,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   strcat(strQ[1][1-ia],str);
 
                   /*fprintf(fout0,"Qu%s=%8.3f[tf]",
-                          straxis[1-ia],Qu/1000.0);*/
+						  straxis[1-ia],Qu/1000.0);*/
                   if(Qu<0.1) Qu=0.1;
 
                   rate=fabs(uQ[in][1-ia]/Qu);
@@ -2657,7 +2656,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   {
                     qurate[soffset-1]=rate;
                   }
-                  sprintf(str,"           %8.3f",rate);
+				  sprintf(str,"           %8.3f",rate);
                   strcat(strQ[2][1-ia],str);
 
                   /*
@@ -2666,7 +2665,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
 
                   if(sect1.stype==STYPE_RC)
                   {
-                    Qp[in]*=1.1; /*"CENTER STANDARD" P.288*/
+					Qp[in]*=1.1; /*"CENTER STANDARD" P.288*/
                   }
 
                   if(in==HEAD)
@@ -2675,7 +2674,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   }
                   if(in==TAIL)
                   {
-                    Qp[in]+=1000.0*fabs(elem.tail.z.Q[1-ia]);
+					Qp[in]+=1000.0*fabs(elem.tail.z.Q[1-ia]);
                   }
 
                   if(sect1.stype==STYPE_PC || sect1.stype==STYPE_RC)
@@ -2684,7 +2683,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                     {
                       uQe[HEAD][1-ia]=(elem.head.z.Q[1-ia]
                                        +dsign
-                                       *(Fes*2.0)*(pstress[HEAD]->Q[1-ia]))
+									   *(Fes*2.0)*(pstress[HEAD]->Q[1-ia]))
                                       *1000.0;
                     }
                     if(in==TAIL)
@@ -2693,7 +2692,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                                        +dsign
                                        *(Fes*2.0)*(pstress[TAIL]->Q[1-ia]))
                                       *1000.0;
-                    }
+					}
 
                     if(Qp[in]>fabs(uQe[in][1-ia])) Qp[in]=uQe[in][1-ia];
                   }
@@ -2702,7 +2701,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
                   strcat(strQ[3][1-ia],str);
 
                   rate=fabs(Qp[in]/Qu);
-                  if(rate>ratequ) ratequ=rate;
+				  if(rate>ratequ) ratequ=rate;
                   if(rate>qurate[soffset-1]) qurate[soffset-1]=rate;
                   sprintf(str,"           %8.3f",rate);
                   strcat(strQ[4][1-ia],str);
@@ -2711,7 +2710,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
 
               if(sect1.etype==GIRDER || sect1.etype==BEAM)
               {
-                sprintf(strQ[1][0],"                                      ");
+				sprintf(strQ[1][0],"                                      ");
                 sprintf(strQ[2][0],"                                      ");
                 sprintf(strQ[3][0],"                                      ");
                 sprintf(strQ[4][0],"                                      ");
@@ -2720,7 +2719,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
               }
               fprintf(fout0,"%s%s%s%s\n",
                       strQ[0][0],strQ[0][1],strM[0][0],strM[0][1]);
-              fprintf(fout0,"      I‹Ç’l:                  %s%s",
+			  fprintf(fout0,"      I‹Ç’l:                  %s%s",
                       strQ[1][0],strQ[1][1]);
               fprintf(fout0,"                   %s%s\n",
                       strM[1][0],strM[1][1]);
@@ -2729,7 +2728,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
               fprintf(fout0,"                   %s%s\n",
                       strM[2][0],strM[2][1]);
               fprintf(fout0,"  ‹@\Œ`¬Žž:                  %s%s\n",
-                      strQ[3][0],strQ[3][1]);
+					  strQ[3][0],strQ[3][1]);
               fprintf(fout0,"      ˆÀ‘S—¦:        %s%s\n",
                       strQ[4][0],strQ[4][1]);
             }
@@ -2738,7 +2737,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           }
 }/*CALCULATE ULTIMATE*/
 
-          fprintf(fout0,"MAX:Q/Qa=%.5f",rateqa);
+		  fprintf(fout0,"MAX:Q/Qa=%.5f",rateqa);
           if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC)
           {
             fprintf(fout0," Q/Qu=%.5f",ratequ);
@@ -2747,7 +2746,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC)
           {
             fprintf(fout0," M/Mu=%.5f",ratemu);
-          }
+		  }
           fprintf(fout0,"\n");
 
           if(rateqa>1.0 || ratequ>1.0 ||
@@ -2756,7 +2755,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
             fprintf(fsafe,"NG ELEM:%4d SECT:%4d ",ielem,isect);
             fprintf(fsafe,"MAX:Q/Qa=%.5f Q/Qu=%.5f ",rateqa,ratequ);
             fprintf(fsafe,"M/Ma=%.5f M/Mu=%.5f\n",ratema,ratemu);
-          }
+		  }
           /*if(rateqa<=1.0 && ratequ<=1.0 &&
              ratema<=1.0 && ratemu<=1.0)
           {
@@ -2765,7 +2764,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
             fprintf(fsafe,"M/Ma=%.5f M/Mu=%.5f\n",ratema,ratemu);
           }*/
 
-          if(frate!=NULL)
+		  if(frate!=NULL)
           {
 /*
             fprintf(frate,"ELEM: %5d SECT: %5d  %.5f %.5f %.5f %.5f\n",
@@ -2783,7 +2782,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
         if(soffset && sect1.etype==WALL)/*...........SHEAR OF WALL.*/
         {
           Qa=0.0;
-          Qu=0.0;
+		  Qu=0.0;
 
           /*fprintf(stderr,"ELEM:%d SECT:%d\n",ielem,isect);*/
 
@@ -2792,7 +2791,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
-          fprintf(fout0,"-----------------\n");
+		  fprintf(fout0,"-----------------\n");
           fprintf(fout0,"•”Þ:%4d ",ielem);
           fprintf(fout0,"Žn’[:%3d I’[:%3d ",ni,nj);
 
@@ -2810,7 +2809,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
 		  /***/
           if(sect1.stype==STYPE_RC)        fprintf(fout0,"=‚q‚b•Ç ");
           else if(sect1.stype==STYPE_WOOD) fprintf(fout0,"=–Ø•Ç ");
-          else if(sect1.stype==STYPE_GLASS) fprintf(fout0,"=ƒKƒ‰ƒX•Ç ");
+		  else if(sect1.stype==STYPE_GLASS) fprintf(fout0,"=ƒKƒ‰ƒX•Ç ");
           else if(sect1.stype==STYPE_ACRYL) fprintf(fout0,"=ƒAƒNƒŠƒ‹•Ç ");
           else                             fprintf(fout0,"=•s–¾•Ç ");
 
@@ -2819,7 +2818,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           h=100.0*wallheight(elem); /*[cm]*/
           h0[1]=h-elem.sect->face[1][HEAD]-elem.sect->face[1][TAIL];
           if(h0[1]<0.0) h0[1]=0.0;
-          l=100.0*walllength(elem); /*[cm]*/
+		  l=100.0*walllength(elem); /*[cm]*/
           l0=l-elem.sect->face[0][HEAD]-elem.sect->face[0][TAIL];
           if(l0<0.0) l0=0.0;
           fprintf(fout0,"“à–@:L=%.1f[cm] H=%.1f[cm] ",l0,h0[1]);
@@ -2828,7 +2827,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           {
             wrate1=0.0;
             wrate2=0.0;
-          }
+		  }
           else
           {
             wrate1=(elem.sect->wlength)/l0; /*RATE OF WINDOW.*/
@@ -2837,7 +2836,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           }
           if(wrate1>=wrate2) elem.sect->windowrate=wrate1;
           else               elem.sect->windowrate=wrate2;
-          fprintf(fout0,"ŠJŒû—¦:1-r=%.3f\n",elem.sect->windowrate);
+		  fprintf(fout0,"ŠJŒû—¦:1-r=%.3f\n",elem.sect->windowrate);
 
           l0/=2.0; /*1 OF 2 BRACES.*/
 
@@ -2846,7 +2845,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           {
             Qa=allowultimshearofrcwall(elem,l0,PLONG);
           }
-          if(sect1.stype==STYPE_WOOD)
+		  if(sect1.stype==STYPE_WOOD)
           {
             fprintf(fout0,"’·Šú   :");
             Qa=allowableshearofwoodwall(elem,l0,PLONG);
@@ -2855,7 +2854,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
           lN=elem.head.z.N;
           lQ=lN*l/sqrt(l*l+h*h)*1000.0;
 
-          fprintf(fout0,"’·Šú   :");
+		  fprintf(fout0,"’·Šú   :");
           fprintf(fout0,"N=%7.3f[tf](%7.2f[kN])",lN,si*lN);
           fprintf(fout0," …•½¬•ª:Qh=%7.3f[tf](%7.2f[kN]) ",
                   lQ/1000.0,si*lQ/1000.0);
@@ -2873,7 +2872,7 @@ if(Qa==0.0)
           /*MATERIAL SHORT*/
           /*gmaterial.Fc=240.0;*/                  /*CONCRETE Fc240*/
           /*gmaterial.wft=3000.0;*/
-          /*gmaterial.wfp=3300.0;*/
+		  /*gmaterial.wfp=3300.0;*/
           /*gmaterial.cfs=11.1;*/
 
           if(sect1.stype==STYPE_RC)
@@ -2882,7 +2881,7 @@ if(Qa==0.0)
             Qu=allowultimshearofrcwall(elem,l0,PULTIMATE);
           }
           if(sect1.stype==STYPE_WOOD)
-          {
+		  {
             fprintf(fout0,"’ZŠú   :");
             Qa=allowableshearofwoodwall(elem,l0,PSHORT);
           }
@@ -2909,7 +2908,7 @@ if(!strcmp(prj,"maebasi")) wafact=1.0;
 
             sQ[0][0]=eN*l/sqrt(l*l+h*h)*1000.0;
             fprintf(fout0,"…•½Žž%s:",strhoko[hoko]);
-            fprintf(fout0,"N=%7.3f[tf](%7.2f[kN])",eN,si*eN);
+			fprintf(fout0,"N=%7.3f[tf](%7.2f[kN])",eN,si*eN);
             fprintf(fout0," …•½¬•ª:Qh=%7.3f[tf](%7.2f[kN]) ",
                     sQ[0][0]/1000.0,si*sQ[0][0]/1000.0);
 
@@ -2927,7 +2926,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
 }
 
             rate=fabs((fabs(lQ)+fabs(wafact*sQ[0][0]))/Qa);
-            if(rate>rateqa) rateqa=rate;
+			if(rate>rateqa) rateqa=rate;
             if(rate>qarate[soffset-1]) qarate[soffset-1]=rate;
             fprintf(fout0," Qs/Qa=%7.5f",rate);
 
@@ -2936,7 +2935,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
             rate=fabs((fabs(lQ)+fabs(wufact*sQ[0][0]))/Qu);
             if(rate>ratequ) ratequ=rate;
             if(rate>qurate[soffset-1]) qurate[soffset-1]=rate;
-            fprintf(fout0," Qs/Qu=%7.5f",rate);
+			fprintf(fout0," Qs/Qu=%7.5f",rate);
 }
 
             fprintf(fout0,"\n");
@@ -2945,7 +2944,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           if(rateqa>1.0 || ratequ>1.0)
           {
             fprintf(fsafe,"NG ELEM:%4d SECT:%4d ",ielem,isect);
-            fprintf(fsafe,"MAX:Q/Qa=%.5f Q/Qu=%.5f\n",rateqa,ratequ);
+			fprintf(fsafe,"MAX:Q/Qa=%.5f Q/Qu=%.5f\n",rateqa,ratequ);
           }
           /*if(rateqa<=1.0 && ratequ<=1.0)
           {
@@ -2954,7 +2953,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           }*/
 
           if(frate!=NULL)
-          {
+		  {
 /*
             fprintf(frate,"ELEM: %5d SECT: %5d  %.5f %.5f\n",
                     ielem,isect,rateqa,ratequ);
@@ -2972,7 +2971,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
 
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
-          fprintf(fout0,"-------------------------------------");
+		  fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-----------------\n");
@@ -2990,7 +2989,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           Qa=sect1.thick*gmaterial.sft/1000.0; /*[tf]*/
           fprintf(fout0,"’·Šú‹–—e:Nal=%7.3f[tf](%7.2f[kN])\n",Qa,si*Qa);
 
-          lN=elem.head.z.N;
+		  lN=elem.head.z.N;
 
           fprintf(fout0,"‰”’¼Žž  :");
           fprintf(fout0,"Nl =%7.3f[tf](%7.2f[kN]) ",lN,si*lN);
@@ -2999,7 +2998,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           if(rate>rateqa) rateqa=rate;
           if(rate>qarate[soffset-1]) qarate[soffset-1]=rate;
           fprintf(fout0," Nl/Na=%7.5f",rate);
-          fprintf(fout0,"\n");
+		  fprintf(fout0,"\n");
 
           /*MATERIAL SHORT*/
           gmaterial.sft=sect1.cF*jis; /*STEEL F*/
@@ -3008,7 +3007,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           if(!strcmp(prj,"kirigami"))      /*kirigami  : SKIP SHORT.*/
           {}
           else
-          {
+		  {
             fprintf(fout0,"’ZŠú‹–—e:Nas=%7.3f[tf](%7.2f[kN])\n",Qa,si*Qa);
 
             for(hoko=0;hoko<=1;hoko++)
@@ -3017,7 +3016,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
               if(hoko==1) eN=elem.head.y.N;
 
               fprintf(fout0,"…•½Žž%s :",strhoko[hoko]);
-              fprintf(fout0,"Ns =%7.3f[tf](%7.2f[kN]) ",eN,si*eN);
+			  fprintf(fout0,"Ns =%7.3f[tf](%7.2f[kN]) ",eN,si*eN);
 
               /*fprintf(fout0,"\n");*/
 
@@ -3026,7 +3025,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
               if(rate>qarate[soffset-1]) qarate[soffset-1]=rate;
               fprintf(fout0," Ns/Na=%7.5f",rate);
 
-              fprintf(fout0,"\n");
+			  fprintf(fout0,"\n");
             }
           }
           if(rateqa>1.0 || ratequ>1.0)
@@ -3035,7 +3034,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
             fprintf(fsafe,"MAX:N/Na=%.5f N/Nu=%.5f\n",rateqa,ratequ);
           }
           /*if(rateqa<=1.0 && ratequ<=1.0)
-          {
+		  {
             fprintf(fsafe,"ELEM:%4d SECT:%4d ",ielem,isect);
             fprintf(fsafe,"MAX:Q/Qa=%.5f Q/Qu=%.5f\n",rateqa,ratequ);
           }*/
@@ -3044,7 +3043,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           {
 /*
             fprintf(frate,"ELEM: %5d SECT: %5d  %.5f %.5f\n",
-                    ielem,isect,rateqa,ratequ);
+					ielem,isect,rateqa,ratequ);
 */			fprintf(frate,"ELEM: %5d SECT: %5d  %.5f %.5f 0.0 0.0 OCODE: %5d\n",
 					ielem,isect,rateqa,ratequ,sect1.ocode); /****SRCANMAX****/
           }
@@ -3053,7 +3052,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
         if(soffset && sect1.etype==SLAB)/*...........SHEAR OF SLAB.*/
         {
           if(slabcount==0)      slabcount=1;
-          else if(slabcount==1) slabcount=0;
+		  else if(slabcount==1) slabcount=0;
 
           Qa=0.0;
           Qu=0.0;
@@ -3062,7 +3061,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
 
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
-          fprintf(fout0,"-------------------------------------");
+		  fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-------------------------------------");
           fprintf(fout0,"-----------------\n");
@@ -3080,7 +3079,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
 		  {
 			fprintf(fout0,"’f–Ê:@%3d/ü%3d",sect1.ocode,isect);
 		  }
-          /***/
+		  /***/
           if(sect1.stype==STYPE_RC)        fprintf(fout0,"=‚q‚b° ");
           else if(sect1.stype==STYPE_WOOD) fprintf(fout0,"=–Ø° ");
           else                             fprintf(fout0,"=•s–¾° ");
@@ -3089,7 +3088,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
 
           h=100.0*slablength(elem,pair); /*[cm]*/
           h0[1]=h-elem.sect->face[1][HEAD]-elem.sect->face[1][TAIL];
-          if(h0[1]<0.0) h0[1]=0.0;
+		  if(h0[1]<0.0) h0[1]=0.0;
           l=100.0*slabwidth(elem,pair); /*[cm]*/
           l0=l-elem.sect->face[0][HEAD]-elem.sect->face[0][TAIL];
           if(l0<0.0) l0=0.0;
@@ -3098,7 +3097,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           wrate1=(elem.sect->wlength)/l0; /*RATE OF WINDOW.*/
           wrate2=sqrt((elem.sect->wlength)*(elem.sect->wheight)
                       /(l0*h0[1]));
-          if(wrate1>=wrate2) elem.sect->windowrate=wrate1;
+		  if(wrate1>=wrate2) elem.sect->windowrate=wrate1;
           else               elem.sect->windowrate=wrate2;
           fprintf(fout0,"ŠJŒû—¦:1-r=%.3f\n",elem.sect->windowrate);
 
@@ -3107,7 +3106,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           /*LONG*/
           if(sect1.stype==STYPE_RC)
           {
-            Qa=allowultimshearofrcwall(elem,l0,PLONG);
+			Qa=allowultimshearofrcwall(elem,l0,PLONG);
           }
           if(sect1.stype==STYPE_WOOD)
           {
@@ -3116,7 +3115,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           }
 
           lN=elem.head.z.N;
-          lQ=lN*l/sqrt(l*l+h*h)*1000.0;
+		  lQ=lN*l/sqrt(l*l+h*h)*1000.0;
 
           fprintf(fout0,"’·Šú   :");
           fprintf(fout0,"N=%7.3f[tf](%7.2f[kN])",lN,si*lN);
@@ -3125,7 +3124,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
 
           rate=fabs(lQ/Qa);
           if(rate>rateqa) rateqa=rate;
-          if(rate>qarate[soffset-1]) qarate[soffset-1]=rate;
+		  if(rate>qarate[soffset-1]) qarate[soffset-1]=rate;
           fprintf(fout0," Qs/Qa=%7.5f\n",rate);
 
           /*MATERIAL SHORT*/
@@ -3134,7 +3133,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           /*gmaterial.wfp=3300.0;*/
           /*gmaterial.cfs=11.1;*/
 
-          if(sect1.stype==STYPE_RC)
+		  if(sect1.stype==STYPE_RC)
           {
             Qa=allowultimshearofrcwall(elem,l0,PSHORT);
             /*Qu=allowultimshearofrcwall(elem,l0,PULTIMATE);*/
@@ -3143,7 +3142,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           {
             fprintf(fout0,"’ZŠú   :");
             Qa=allowableshearofwoodwall(elem,l0,PSHORT);
-          }
+		  }
 
 if(!strcmp(prj,"aki")) wafact=1.0;
 
@@ -3152,7 +3151,7 @@ if(!strcmp(prj,"aki")) wafact=1.0;
             if(hoko==0) eN=elem.head.x.N;
             if(hoko==1) eN=elem.head.y.N;
 
-            sQ[0][0]=eN*l/sqrt(l*l+h*h)*1000.0;
+			sQ[0][0]=eN*l/sqrt(l*l+h*h)*1000.0;
             fprintf(fout0,"…•½Žž%s:",strhoko[hoko]);
             fprintf(fout0,"N=%7.3f[tf](%7.2f[kN])",eN,si*eN);
             fprintf(fout0," …•½¬•ª:Qh=%7.3f[tf](%7.2f[kN]) ",
@@ -3161,7 +3160,7 @@ if(!strcmp(prj,"aki")) wafact=1.0;
             fprintf(fout0,"’ZŠú=’·Šú{%.1f~…•½:",wafact);
             fprintf(fout0,"Qs=%7.3f[tf](%7.2f[kN])",
                        (lQ+wafact*sQ[0][0])/1000.0,
-                    si*(lQ+wafact*sQ[0][0])/1000.0);
+					si*(lQ+wafact*sQ[0][0])/1000.0);
 
 if(calc[PULTIMATE]==1)
 {
@@ -3179,7 +3178,7 @@ if(calc[PULTIMATE]==1)
 if(calc[PULTIMATE]==1)
 {
             rate=fabs((lQ+wufact*sQ[0][0])/Qu);
-            if(rate>ratequ) ratequ=rate;
+			if(rate>ratequ) ratequ=rate;
             if(rate>qurate[soffset-1]) qurate[soffset-1]=rate;
             fprintf(fout0," Qs/Qu=%7.5f",rate);
 }
@@ -3188,7 +3187,7 @@ if(calc[PULTIMATE]==1)
           }
 
           if(rateqa>1.0 || ratequ>1.0)
-          {
+		  {
             fprintf(fsafe,"NG ELEM:%4d SECT:%4d ",ielem,isect);
             fprintf(fsafe,"MAX:Q/Qa=%.5f Q/Qu=%.5f\n",rateqa,ratequ);
           }
@@ -3206,7 +3205,7 @@ if(calc[PULTIMATE]==1)
 */
 			fprintf(frate,"ELEM: %5d SECT: %5d  %.5f %.5f 0.0 0.0 OCODE: %5d\n",
 					ielem,isect,rateqa,ratequ,sect1.ocode); /****SRCANMAX****/
-          }
+		  }
         }
       }
     }
@@ -3224,7 +3223,7 @@ if(calc[PULTIMATE]==1)
 
   for(is=1;is<=nsect;is++)
   {
-    soffset=getsectionform(flist,codelist[is-1],&sect1);
+	soffset=getsectionform(flist,codelist[is-1],&sect1);
     if(soffset)
     {
       fprintf(fout0,"’f–Ê‹L†:%4d",sect1.code);
@@ -3233,7 +3232,7 @@ if(calc[PULTIMATE]==1)
       else if(sect1.stype==STYPE_RC)    fprintf(fout0," ‚q‚b");
       else if(sect1.stype==STYPE_SRC)   fprintf(fout0," ‚r‚q‚b");
       else if(sect1.stype==STYPE_PC)    fprintf(fout0," ‚o‚b");
-      else if(sect1.stype==STYPE_WOOD)  fprintf(fout0," –Ø  ");
+	  else if(sect1.stype==STYPE_WOOD)  fprintf(fout0," –Ø  ");
       else if(sect1.stype==STYPE_GLASS) fprintf(fout0," ƒKƒ‰ƒX");
       else if(sect1.stype==STYPE_ACRYL) fprintf(fout0," ƒAƒNƒŠƒ‹");
       else if(sect1.stype==STYPE_ALUMI) fprintf(fout0," ƒAƒ‹ƒ~");
@@ -3242,7 +3241,7 @@ if(calc[PULTIMATE]==1)
       else if(sect1.etype==GIRDER) fprintf(fout0,"‘å—À");
       else if(sect1.etype==BEAM)   fprintf(fout0,"¬—À");
       else if(sect1.etype==BRACE)  fprintf(fout0,"‹Øˆá");
-      else if(sect1.etype==WALL)   fprintf(fout0,"•Ç  ");
+	  else if(sect1.etype==WALL)   fprintf(fout0,"•Ç  ");
       else if(sect1.etype==SLAB)   fprintf(fout0,"°  ");
       else                         fprintf(fout0,"•s–¾");
 
@@ -3251,7 +3250,7 @@ if(calc[PULTIMATE]==1)
          sect1.etype!=BRACE)
       {
         translatesection(sect1,gmaterial,&As,&Ac,&Ar,&Yg,SX);
-        fprintf(fout0," As=%7.2f[cm2]",As);
+		fprintf(fout0," As=%7.2f[cm2]",As);
         fprintf(fout0," Ar=%7.2f[cm2]",Ar);
         fprintf(fout0," Ac=%8.2f[cm2]",Ac);
 
@@ -3260,7 +3259,7 @@ if(calc[PULTIMATE]==1)
         {
           fprintf(fout0," Q/Qu=%7.5f",qurate[soffset-1]);
         }
-        fprintf(fout0," M/Ma=%7.5f",marate[soffset-1]);
+		fprintf(fout0," M/Ma=%7.5f",marate[soffset-1]);
         if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC)
         {
           fprintf(fout0," M/Mu=%7.5f",murate[soffset-1]);
@@ -3269,7 +3268,7 @@ if(calc[PULTIMATE]==1)
       }
       if(sect1.etype==BRACE)
       {
-        fprintf(fout0," As=%7.2f[cm2]",sect1.thick);
+		fprintf(fout0," As=%7.2f[cm2]",sect1.thick);
 
         fprintf(fout0,"                                 ");
         fprintf(fout0," MAX:N/Na=%7.5f",qarate[soffset-1]);
@@ -3278,7 +3277,7 @@ if(calc[PULTIMATE]==1)
       }
       if(sect1.etype==WALL)
       {
-        fprintf(fout0," t=%4.1f[cm]",sect1.thick);
+		fprintf(fout0," t=%4.1f[cm]",sect1.thick);
 
         if(sect1.stype==STYPE_RC)
         {
@@ -3287,7 +3286,7 @@ if(calc[PULTIMATE]==1)
         if(sect1.stype==STYPE_WOOD)
         {
           fprintf(fout0,"           ");
-        }
+		}
 
         fprintf(fout0,"                           ");
         fprintf(fout0," MAX:Q/Qa=%7.5f",qarate[soffset-1]);
@@ -3296,7 +3295,7 @@ if(calc[PULTIMATE]==1)
           fprintf(fout0," Q/Qu=%7.5f",qurate[soffset-1]);
         }
         fprintf(fout0,"\n");
-      }
+	  }
       if(sect1.etype==SLAB)
       {
         fprintf(fout0," t=%4.1f[cm]",sect1.thick);
@@ -3305,7 +3304,7 @@ if(calc[PULTIMATE]==1)
         {
           fprintf(fout0," ps=%7.5f",sect1.shearrein[0]);
         }
-        if(sect1.stype==STYPE_WOOD)
+		if(sect1.stype==STYPE_WOOD)
         {
           fprintf(fout0,"           ");
         }
@@ -3315,10 +3314,10 @@ if(calc[PULTIMATE]==1)
         if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC)
         {
           fprintf(fout0," Q/Qu=%7.5f",qurate[soffset-1]);
-        }
+		}
         fprintf(fout0,"\n");
       }
-      if(qarate[soffset-1]>rateqa) rateqa=qarate[soffset-1];
+	  if(qarate[soffset-1]>rateqa) rateqa=qarate[soffset-1];
       if(qurate[soffset-1]>ratequ) ratequ=qurate[soffset-1];
       if(marate[soffset-1]>ratema) ratema=marate[soffset-1];
       if(murate[soffset-1]>ratemu) ratemu=murate[soffset-1];
@@ -3349,11 +3348,16 @@ if(calc[PULTIMATE]==1)
 
   if(globalmessageflag==1)
   {
-    sprintf(non,"\nCompleted."); strcat(txt,non);
+	sprintf(non,"\nCompleted."); strcat(txt,non);
     MessageBox(NULL,txt,"SRCan",MB_OK);
   }
   return 1;
 }/*srcan001*/
+
+
+
+
+
 
 int createyieldsurface(struct arclmframe *af)
 {
@@ -3406,7 +3410,7 @@ int createyieldsurface(struct arclmframe *af)
   if(nsects>MAXSECT)
   {
     MessageBox(NULL,"MAIN:SECTIONS OVERFLOW.","SRCan",MB_OK);
-    return 0;
+	return 0;
   }
 
   for(is=0;is<nsect;is++)
@@ -3484,7 +3488,7 @@ int createyieldsurface(struct arclmframe *af)
       gmaterial.sF=3300.0*jis;                       /*STEEL SN490B*/
       gmaterial.Fc=240.0;                          /*CONCRETE Fc240*/
 
-          /*MATERIAL FOR SHORT*/
+		  /*MATERIAL FOR SHORT*/
           gmaterial.sft=3300.0;                       /*STEEL SM490*/
           gmaterial.sfc=-gmaterial.sft;
           gmaterial.sfb=3300.0; /*FOR SRC*/             /*b:BENDING*/
@@ -4338,23 +4342,23 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               {
                 sect->crect[nconc].F=500.0;
               }
-              /***********************************/
-              else if(n>=6 && !strncmp(*(data+5),"AS175",5))   /*Alumi*/
-              {
+			  /***********************************/
+			  else if(n>=6 && !strncmp(*(data+5),"AS175",5))   /*Alumi*/
+			  {
                 sect->sform.F=1750.0;
               }
               else if(n>=6 && !strncmp(*(data+5),"A7178",5))   /*Alumi*/
               {
-                sect->sform.F=4400.0;
+				sect->sform.F=4400.0;
               }
-              else sect->crect[nconc].F=240.0;
+			  else sect->crect[nconc].F=240.0;
 
               nconc++;
             }
             if(!strncmp(*(data+0),"REINS",5))
-            {
+			{
               sect->rein[nrein].area=strtod(*(data+1),NULL);
-              sect->rein[nrein].x=strtod(*(data+2),NULL);
+			  sect->rein[nrein].x=strtod(*(data+2),NULL);
               sect->rein[nrein].y=strtod(*(data+3),NULL);
 
               if(n>=5 && !strncmp(*(data+4),"SD295",5))
@@ -4363,7 +4367,7 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               }
               else if(n>=5 && !strncmp(*(data+4),"SD345",5))
               {
-                sect->rein[nrein].F=3500.0*jis;
+				sect->rein[nrein].F=3500.0*jis;
               }
               else sect->rein[nrein].F=3000.0*jis;
 
@@ -4533,7 +4537,7 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               {
                 sect->cF=1750.0;
               }
-              else if(n>=3 && !strncmp(*(data+2),"A7178",5))
+			  else if(n>=3 && !strncmp(*(data+2),"A7178",5))
               {
                 sect->cF=4400.0;
               }
@@ -5377,7 +5381,6 @@ void inputfiletomemory(FILE *ftext,
 	{
 	  (sects+i)->ocode=(sects+i)->code;
 	}
-	/***/
 
     freestr(data,n);
   }
@@ -7959,7 +7962,7 @@ if(!strcmp(prj,"Alumi") && sect.code==502) lk=455.0;
   Cb=1.75+1.05*M2M1+0.3*(M2M1)*(M2M1);
   eramda=1/sqrt(0.5);
   pramda=0.6+0.3*M2M1;
-  if(sect.sform.type==STEEL_HKYOU || sect.sform.type==STEEL_TWEAK ||
+  if(sect.sform.type==STEEL_HKYOU || sect.sform.type==STEEL_HWEAK ||
      sect.sform.type==STEEL_TKYOU || sect.sform.type==STEEL_TWEAK ||
      sect.sform.type==STEEL_CKYOU || sect.sform.type==STEEL_CWEAK ||
      sect.sform.type==STEEL_ANGLE)
@@ -11705,7 +11708,7 @@ double allowablecompressionofalumi(double E,double F,
 {
   double A,Ixx,Iyy,Jz,Cw,Zxx,Zyy,ixx,iyy,i;
   double lk,ramda,pramda,eramda,nyu,lam;
-  double Ny,Ne;
+  double Ny,Ne,Nex,Ney;
   double alfca,alNca;             /*al:ALUMI c:COMPRESSION a:ALLOWABLE*/
 
   alumicoefficients(sect,&A,&Ixx,&Iyy,&Jz,&Cw,&Zxx,&Zyy,&ixx,&iyy);     /*[cm]*/
@@ -11725,12 +11728,25 @@ double allowablecompressionofalumi(double E,double F,
   }
 
   Ny=F*A;  /*kgf*/
-  if(Ixx>Iyy) Ne=PI*PI*E*Iyy/lk/lk;
-  else        Ne=PI*PI*E*Ixx/lk/lk;
+
+  if(axis==SX)
+  {
+  Ne=PI*PI*E*Ixx/lk/lk;
+  }
+
+  if(axis==SY)
+  {
+  Ne=PI*PI*E*Iyy/lk/lk;
+  }
+
+  //if(Ixx>Iyy) Ne=PI*PI*E*Iyy/lk/lk;
+  //else        Ne=PI*PI*E*Ixx/lk/lk;
 
   ramda=sqrt(Ny/Ne);                          /*ALUMI STANDARD (4.2.1)*/
   pramda=0.2;
   eramda=1/sqrt(0.5);
+
+  //fprintf(fout0,"Ne=%.3f[kgf] Ny=%.3f[kgf] ramda=%.3f eramda=%.3f\n",Ne,Ny,ramda,eramda);
 
   if(ixx<=iyy) i=ixx;
   else         i=iyy;
@@ -11749,7 +11765,7 @@ double allowablecompressionofalumi(double E,double F,
 
   if(ramda<=pramda)
   {
-    alfca=F/nyu;
+	alfca=F/nyu;
 
   }
   else if(pramda<ramda && ramda<=eramda)
@@ -13821,6 +13837,8 @@ double ultimateshearofpcgirder(struct element elem,
   */
   return Qu;
 }
+
+
 
 
 

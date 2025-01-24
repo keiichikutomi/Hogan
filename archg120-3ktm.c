@@ -12201,21 +12201,21 @@ int inputorganization(FILE *fin,
           pstr++;
           ident++;
 */
-          pstr++;                                           //ujioka for BASE
+		  pstr++;
+
           org->ai.Cox=strtod(*(data+pstr),NULL);
-          pstr++;
-          if (*(data+pstr)!=NULL)
-          {
-          org->ai.Coy=strtod(*(data+pstr),NULL);
-          }
+		  pstr++;
+
+		  if (*(data+pstr)!=NULL)org->ai.Coy=strtod(*(data+pstr),NULL);
           else org->ai.Coy=org->ai.Cox;
-          pstr++;
-          ident++;
+		  pstr++;
+
+		  ident++;
 
         }
-        if(nstr-pstr>=2 && !strcmp(*(data+pstr),"LOCATE"))
+		if(nstr-pstr>=2 && !strcmp(*(data+pstr),"LOCATE"))
         {
-          pstr++;
+		  pstr++;
           org->ai.Z=strtod(*(data+pstr),NULL);
           pstr++;
           ident++;
@@ -14737,7 +14737,10 @@ MessageBox(NULL,str,"STACK",MB_OK);
 }
 #endif
 
+
+
   /*MASS, AI EARTHQUAKE, CMQ*/
+  /*荷重集計*/
   fout=fopen("hogtxt.wgt","w");
   weightdistribution(NULL,fout,NULL,org);
   fclose(fout);
@@ -14745,13 +14748,14 @@ MessageBox(NULL,str,"STACK",MB_OK);
   /* 150428 fukushima for original section */
   for(i=0;i<(org->nsect);i++)
   {
-    (org->sects+i)->ocode=(org->sects+i)->code;
+	(org->sects+i)->ocode=(org->sects+i)->code;
   }
-  /***/
+
 
   /*WALL,SLAB INTO BRACE*/
   nelem=org->nelem;
   count=0;
+#if 0
   for(i=0;i<nelem;i++)
   {
     if((org->elems+i)->type==WALL || (org->elems+i)->type==SLAB)
@@ -14759,6 +14763,7 @@ MessageBox(NULL,str,"STACK",MB_OK);
 	  if((org->elems+i)->nnod==4 && (((org->elems+i)->sect->figs+0)->prop->E)>0.0) count++;  /*UJIOKA FOR OPTIMIZATION*/
     }
   }
+#endif
 
   elems=(struct oelem *)malloc((nelem+2*count)*sizeof(struct oelem));
   if(elems==NULL)
@@ -14778,22 +14783,30 @@ MessageBox(NULL,str,"STACK",MB_OK);
 
 /*globalfile=fopen("hogtxt.brc","w");*/
 
+#if 0
   j=0;
   for(i=0;i<nelem;i++)
   {
     if((org->elems+i)->type==WALL || (org->elems+i)->type==SLAB)
     {
-      if((org->elems+i)->nnod==4
-        && (((org->elems+i)->sect->figs+0)->prop->E)>0.0)      /*UJIOKA FOR OPTIMIZATION*/
+	  if((org->elems+i)->nnod==4 && (((org->elems+i)->sect->figs+0)->prop->E)>0.0)      /*UJIOKA FOR OPTIMIZATION*/
 	  {
-        recttobrace((org->elems+i),org,(nelem+2*j),2,1.0);
+		recttobrace((org->elems+i),org,(nelem+2*j),2,1.0);
 		j++;
-      }
-    }
+	  }
+	}
   }
+#endif
+
   org->nelem=nelem+2*count;
 
 /*fclose(globalfile);*/
+
+
+
+
+
+
 
   /*SECTIONS*/
   nsect=0;
@@ -14996,6 +15009,11 @@ MessageBox(NULL,str,"STACK",MB_OK);
     }
   }
 
+  az->nshell=0;
+  ax->nshell=0;
+  ay->nshell=0;
+
+
   /*NODE COORDINATES,LOADS*/
   nnode=0;
   for(i=0;i<(org->nnode);i++)
@@ -15052,15 +15070,15 @@ MessageBox(NULL,str,"STACK",MB_OK);
 
           (az->nodes+k)->loff=k;
           (ax->nodes+k)->loff=k;
-          (ay->nodes+k)->loff=k;
+		  (ay->nodes+k)->loff=k;
 
           *(az->ninit+k)=*(az->nodes+k);
-          *(ax->ninit+k)=*(ax->nodes+k);
+		  *(ax->ninit+k)=*(ax->nodes+k);
           *(ay->ninit+k)=*(ay->nodes+k);
 
-          (az->elems+j)->node[m]=(az->nodes+k); /*SET ELEMENT NODE*/
-          (ax->elems+j)->node[m]=(ax->nodes+k); /*SET ELEMENT NODE*/
-          (ay->elems+j)->node[m]=(ay->nodes+k); /*SET ELEMENT NODE*/
+		  (az->elems+j)->node[m]=(az->nodes+k); /*SET ELEMENT NODE*/
+		  (ax->elems+j)->node[m]=(ax->nodes+k); /*SET ELEMENT NODE*/
+		  (ay->elems+j)->node[m]=(ay->nodes+k); /*SET ELEMENT NODE*/
 
           /*DIRECTLY INPUT LOAD.*/
           for(n=0;n<6;n++)
@@ -15095,12 +15113,12 @@ if(!strncmp(prj,"vene",4))
               (ax->confs+aloff)->value=(org->confs+oloff)->value;
               (ay->confs+aloff)->value=(org->confs+oloff)->value;
             }
-            if(!strncmp(prj,"lunarbase",9))
+			/*if(!strncmp(prj,"lunarbase",9))
             {
-              if(((az->confs+aloff)->iconf))    (az->confs+aloff)->value=0.0;
-              if(((ax->confs+aloff)->iconf))    (ax->confs+aloff)->value=0.0;
-              if(((ay->confs+aloff)->iconf))    (ay->confs+aloff)->value=0.0;
-            }
+			  if(((az->confs+aloff)->iconf))    (az->confs+aloff)->value=0.0;
+			  if(((ax->confs+aloff)->iconf))    (ax->confs+aloff)->value=0.0;
+			  if(((ay->confs+aloff)->iconf))    (ay->confs+aloff)->value=0.0;
+			}*/
 #if 1
 if(!strncmp(prj,"vene",4))
 {
@@ -15145,8 +15163,7 @@ if(!strncmp(prj,"vene",4)) (ax->confs+aloff)->value=0.0;
           else *(ay->nmass+k)=0.0;
 
 		  /*VERTICAL Z LOAD:FOR LONG PERIOD*/
-          /*NODE MASS FOR DYNAMIC ANALYSIS.*/
-          aloff=6*k+2;
+		  aloff=6*k+2;
           if((az->confs+aloff)->iconf==0)
           {
             (az->confs+aloff)->value-=(org->loads+i)->w[WEIGHTFRAME];
@@ -15157,11 +15174,28 @@ if(!strncmp(prj,"vene",4)) (ax->confs+aloff)->value=0.0;
           k++;
           count++;
           break;
-        }
+		}
       }
-      if(count>0) break;
+	  if(count>0) break;
     }
   }
+
+
+  az->nconstraint=0;
+  ax->nconstraint=0;
+  ay->nconstraint=0;
+
+  az->constraintmain=(long int *)malloc(6*nnode*sizeof(long int));
+  ax->constraintmain=(long int *)malloc(6*nnode*sizeof(long int));
+  ay->constraintmain=(long int *)malloc(6*nnode*sizeof(long int));
+
+  for (i = 0; i < 6*nnode; i++)
+  {
+	*((az->constraintmain) + i) = i;
+	*((ax->constraintmain) + i) = i;
+	*((ay->constraintmain) + i) = i;
+  }
+
   az->nreact=nreact;
   ax->nreact=nreact;
   ay->nreact=nreact;
@@ -17311,7 +17345,6 @@ int croutludecomposition(struct gcomponent *gmtx,
 	  pivot=(gmtx+(j-1)); /*PIVOT.*/
 	  if((pivot->value)==0.0){*sign=-1; return (j-1);}  /*INSTABLE.*/
 	  if((pivot->value)<0.0){*sign+=1;}
-	  /*det*=pivot->value;*/
 	  *det+=log10(fabs(pivot->value));   /*LOG BY 10 OF DETERMINANT.*/
 	  /**sign*=pivot->value/fabs(pivot->value);*/ /*SIGN OF DETERMINANT.*/
 
@@ -19780,7 +19813,7 @@ for(ii=0;ii<12;ii++)
   {
     for(i=1;i<=nelem;i++)
     {
-      inputelem(elems,melem,i-1,&elem);
+	  inputelem(elems,melem,i-1,&elem);
       for(ii=0;ii<=1;ii++) /*COPY HINGE DATA.*/
       {
         for(jj=0;jj<=5;jj++)
@@ -19790,7 +19823,7 @@ for(ii=0;ii<12;ii++)
       }
 
       inputnode(ddisp,elem.node[0]);
-      inputnode(ddisp,elem.node[1]);
+	  inputnode(ddisp,elem.node[1]);
 
 	  drawglobalwire((wdraw.childs+1)->hdcC,
                      (wdraw.childs+1)->vparam,
@@ -19803,16 +19836,11 @@ for(ii=0;ii<12;ii++)
   fclose(fin);
   fclose(fout);
   fclose(ffig);
-  /*fclose(felem);*/
-  /*fclose(fdisp);*/
-  /*fclose(freact);*/
 
-  /*gfree(kmtx,nnode);*/  /*FREE ELASTIC MATRIX.*/
+
   gfree(gemtx,nnode); /*FREE GEOMETRIC MATRIX.*/
   gfree(gmtx,nnode);  /*FREE GLOBAL MATRIX.*/
-  /*free(gvct);*/
-  /*free(confs);*/
-  /*free(estress2);*/
+
 
   af->eigenvec=(double **)malloc(1*sizeof(double *));
   *((af->eigenvec)+0)=gvct;
@@ -20013,8 +20041,8 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	free(data);
   }
 
-  initialform(af->ninit, af->iform, af->nnode);           /*ASSEMBLAGE FORMATION.*/
-  initialform(af->nodes, af->ddisp, af->nnode);           /*ASSEMBLAGE FORMATION.*/
+  //initialform(af->ninit, af->iform, af->nnode);           /*ASSEMBLAGE FORMATION.*/
+  //initialform(af->nodes, af->ddisp, af->nnode);           /*ASSEMBLAGE FORMATION.*/
 
   for(i=1;i<=(af->nelem);i++)
   {
@@ -20443,6 +20471,8 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	free(data);
 
   }
+
+
   /*LONGREACTION:UNDER CONSTRUCTION.*/
   for (i = 0; i < 6*(af->nnode); i++)
   {
@@ -21381,6 +21411,9 @@ int initialnode(struct onode *nodes,int nnode,int code,
   return i;
 }/*initialnode*/
 
+
+
+
 void initialelem(struct owire *elems,
 				 struct memoryelem *melem,int nelem)
 /*ASSEMBLAGE LONG STRESS.*/
@@ -21406,27 +21439,9 @@ void initialelem(struct owire *elems,
   return;
 }/*initialelem*/
 
-void initialshell(struct oshell *shells,
-				 struct memoryshell *mshell,int nshell)
-/*ASSEMBLAGE LONG STRESS.*/
-{
-  int i,j,k;
 
-  for(i=0;i<nshell;i++)
-  {
-	(mshell+i)->code=(shells+i)->code;                       /*CODE.*/
 
-	for(j=0;j<(shells+i)->nnod;j++)
-	{
-	  for(k=0;k<6;k++)
-	  {
-		(mshell+i)->stress[j][k]=(shells+i)->stress[j][k];
-	  }
-	}
-  }
 
-  return;
-}/*initialshell*/
 
 void initialreact(FILE *fin,double *dreact,int nreact)
 /*ASSEMBLAGE LONG REACTIONS.*/

@@ -316,7 +316,6 @@ int arclmStatic(struct arclmframe* af)
 						}
 						if (!strcmp(*(data + pstr), "STATDYNA"))
 						{
-
 							STATDYNAFLAG = 1;
 						}
 						if (!strcmp(*(data + pstr), "UNLOAD"))
@@ -417,10 +416,10 @@ int arclmStatic(struct arclmframe* af)
 	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
 	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
 	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
-	iform = (double*)malloc(msize * sizeof(double));
-	ddisp = (double*)malloc(msize * sizeof(double));
-	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
-	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
+	//iform = (double*)malloc(msize * sizeof(double));
+	//ddisp = (double*)malloc(msize * sizeof(double));
+	//melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	//mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
 	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
 
@@ -430,10 +429,10 @@ int arclmStatic(struct arclmframe* af)
 	af->elems = elems;
 	af->shells = shells;
 	af->confs = confs;
-	af->iform = iform;
-	af->ddisp = ddisp;
-	af->melem = melem;
-	af->mshell = mshell;
+	//af->iform = iform;
+	//af->ddisp = ddisp;
+	//af->melem = melem;
+	//af->mshell = mshell;
 	af->constraintmain = constraintmain;
 	af->constraints = constraints;
 
@@ -448,13 +447,18 @@ int arclmStatic(struct arclmframe* af)
 	elems = af->elems;
 	shells = af->shells;
 	confs = af->confs;
-	iform = af->iform;
-	ddisp = af->ddisp;
-	melem = af->melem;
-	mshell = af->mshell;
+	//iform = af->iform;
+	//ddisp = af->ddisp;
+	//melem = af->melem;
+	//mshell = af->mshell;
 	constraintmain = af->constraintmain;
 	constraints = af->constraints;
 #endif
+
+	iform = (double*)malloc(msize * sizeof(double));
+	ddisp = (double*)malloc(msize * sizeof(double));
+	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 
 
 	csize = 0;
@@ -512,8 +516,11 @@ int arclmStatic(struct arclmframe* af)
 	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
 
 
+	initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
+	initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
 	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
+
 
 	assemconf(confs,fdeadload,1.0,nnode);
 	assemgivend(confs,givendisp,1.0,nnode);
@@ -541,10 +548,15 @@ int arclmStatic(struct arclmframe* af)
 	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
 	/*INITIAL*/
-	if(STATDYNAFLAG == 1)
+	if(nlap==1)
 	{
+		loadfactor = initialloadfactor;
+	}
+	if(STATDYNAFLAG == 1 && nlap!=1)
+	{
+
 		initialloadfactor = af->loadfactor;
-		loadfactor += initialloadfactor;
+		loadfactor = initialloadfactor;
 	}
 	lastloadfactor = loadfactor;
 
@@ -1324,11 +1336,8 @@ int arclmStatic(struct arclmframe* af)
 			nlap++;
 			iteration = 0;
 
-			/*LOCAL INCREMENTAL IN THIS LAP.*/
-			for(i = 0; i < nshell; i++)
-			{
-			  outputmemoryshell(shells,mshell,i);
-			}
+			initialelem(elems,melem,nelem);
+			initialshell(shells,mshell,nshell);
 
 			clearwindow(*(wdraw.childs+1));
 			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
@@ -1450,7 +1459,7 @@ int arclmStatic(struct arclmframe* af)
 			free(fbaseload);
 			free(fdeadload);
 			free(fgivendisp);
-            free(fconstraint);
+			free(fconstraint);
 
 			free(due);
 			free(dup);

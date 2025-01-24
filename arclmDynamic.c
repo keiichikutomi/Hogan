@@ -422,10 +422,10 @@ int arclmDynamic(struct arclmframe* af)
 	free(af->elems);
 	free(af->shells);
 	free(af->confs);
-	free(af->iform);
-	free(af->ddisp);
-	free(af->melem);
-	free(af->mshell);
+	//free(af->iform);
+	//free(af->ddisp);
+	//free(af->melem);
+	//free(af->mshell);
 	free(af->constraintmain);
 
 	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
@@ -434,10 +434,10 @@ int arclmDynamic(struct arclmframe* af)
 	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
 	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
 	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
-	iform = (double*)malloc(msize * sizeof(double));		/*INITIAL*/
-	ddisp = (double*)malloc(msize * sizeof(double));		/*LATEST ITERATION*/
-	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
-	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
+	//iform = (double*)malloc(msize * sizeof(double));		/*INITIAL*/
+	//ddisp = (double*)malloc(msize * sizeof(double));		/*LATEST ITERATION*/
+	//melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	//mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
 	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
 
@@ -447,10 +447,10 @@ int arclmDynamic(struct arclmframe* af)
 	af->elems = elems;
 	af->shells = shells;
 	af->confs = confs;
-	af->iform = iform;
-	af->ddisp = ddisp;
-	af->melem = melem;
-	af->mshell = mshell;
+	//af->iform = iform;
+	//af->ddisp = ddisp;
+	//af->melem = melem;
+	//af->mshell = mshell;
 	af->constraintmain = constraintmain;
 	af->constraints = constraints;
 	af->nmass = nmass;
@@ -466,14 +466,20 @@ int arclmDynamic(struct arclmframe* af)
 	elems = af->elems;
 	shells = af->shells;
 	confs = af->confs;
-	iform = af->iform;
-	ddisp = af->ddisp;
-	melem = af->melem;
-	mshell = af->mshell;
+	//iform = af->iform;
+	//ddisp = af->ddisp;
+	//melem = af->melem;
+	//mshell = af->mshell;
 	constraintmain = af->constraintmain;
 	constraints = af->constraints;
 	nmass = af->nmass;
 #endif
+
+	iform = (double*)malloc(msize * sizeof(double));
+	ddisp = (double*)malloc(msize * sizeof(double));
+	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
+
 
 	csize = 0;
 	for (i = 0; i < nconstraint; i++)
@@ -545,6 +551,8 @@ int arclmDynamic(struct arclmframe* af)
 
 
 
+	initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
+	initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
 	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
@@ -576,13 +584,18 @@ int arclmDynamic(struct arclmframe* af)
 	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
 	/*INITIAL*/
-	loadfactor = loadfactormap(time);
-	if(STATDYNAFLAG == 1)
+	if(nlap==1)
+	{
+		loadfactor = initialloadfactor;
+	}
+	if(STATDYNAFLAG == 1 && nlap!=1)
 	{
 		initialloadfactor = af->loadfactor;
-		loadfactor += initialloadfactor;
+		loadfactor = initialloadfactor;
 	}
+	loadfactor += loadfactormap(time);
 	lastloadfactor = loadfactor;
+
 	lastWkt = Wkt;
 
 
@@ -1078,11 +1091,8 @@ int arclmDynamic(struct arclmframe* af)
 			iteration = 0;
 			if(RELAXATION == 1 && lastWkt > Wkt)PEAKFLAG = 1;
 
-			/*LOCAL INCREMENTAL IN THIS LAP.*/
-			for(i = 0; i < nshell; i++)
-			{
-			  outputmemoryshell(shells,mshell,i);
-			}
+			initialelem(elems,melem,nelem);
+			initialshell(shells,mshell,nshell);
 
 			clearwindow(*(wdraw.childs+1));
 			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);

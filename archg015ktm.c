@@ -132,7 +132,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	nelem=af->nelem;
 	nshell=af->nshell;
 	nsect=af->nsect;
-	//nreact=af->nreact;
+	nreact=af->nreact;
 	nconstraint=af->nconstraint;
 #endif
 
@@ -154,10 +154,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	free(af->elems);
 	free(af->shells);
 	free(af->confs);
-	free(af->iform);
-	free(af->ddisp);
-	free(af->melem);
-	free(af->mshell);
 	free(af->constraintmain);
 	free(af->constraints);
 
@@ -168,10 +164,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
 	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
 	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
-	iform = (double*)malloc(msize * sizeof(double));		/*INITIAL*/
-	ddisp = (double*)malloc(msize * sizeof(double));		/*LATEST ITERATION*/
-	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
-	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
 	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
 
@@ -182,10 +174,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	af->elems = elems;
 	af->shells = shells;
 	af->confs = confs;
-	af->iform = iform;
-	af->ddisp = ddisp;
-	af->melem = melem;
-	af->mshell = mshell;
 	af->constraintmain = constraintmain;
 	af->constraints = constraints;
 
@@ -198,23 +186,23 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	nodes = af->nodes;
 	ninit = af->ninit;
 	elems = af->elems;
-	shells = af->shells;
+	//shells = af->shells;
 	confs = af->confs;
-	iform = af->iform;
-	ddisp = af->ddisp;
-	melem = af->melem;
-	mshell = af->mshell;
 	constraintmain = af->constraintmain;
-	constraints = af->constraints;
+	//constraints = af->constraints;
 #endif
 
-  //gmtx=(struct gcomponent *)malloc((msize+nconstraint)*sizeof(struct gcomponent)); /*DIAGONALS OF GLOBAL MATRIX.*/
-  //gvct=(double *)malloc((msize+nconstraint)*sizeof(double)); /*GLOBAL VECTOR*/
+	iform = (double*)malloc(msize * sizeof(double));
+	ddisp = (double*)malloc(msize * sizeof(double));
+	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
+
+
 
   gmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent)); /*DIAGONALS OF GLOBAL MATRIX.*/
   gvct=(double *)malloc(msize*sizeof(double)); /*GLOBAL VECTOR*/
 
-  //for(i=1;i<=msize+nconstraint;i++)             /*GLOBAL MATRIX & VECTOR INITIALIZATION.*/
+
   for(i=1;i<=msize;i++)
   {
 	ginit.m=(unsigned short int)i;
@@ -225,6 +213,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   comps=msize; /*INITIAL COMPONENTS=DIAGONALS.*/
 
 
+  initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
+  initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
   initialelem001(elems,melem,nelem);         /*ASSEMBLAGE ELEMENTS.*/
   initialshell(shells,mshell,nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
@@ -250,9 +240,9 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	laptime("ASSEMBLING GLOBAL MATRIX.",t0);
 
 	//assemelem(elems, NULL, nelem, constraintmain, NULL, gmtx, iform, ddisp);
-	assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx, iform, ddisp);
+	//assemshell(shells, NULL, nshell, constraintmain, NULL, gmtx, iform, ddisp);
 
-#if 0
+#if 1
 	  for(i=1;i<=nelem;i++)               /*ASSEMBLAGE GLOBAL MATRIX.*/
 	  {
 		elem=*(elems+i-1);                       /*READ ELEMENT DATA.*/
@@ -276,7 +266,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		estiff=modifyhinge(elem,estiff);             /*MODIFY MATRIX.*/
 		estiff=transformation(estiff,tmatrix);       /*[K]=[Tt][k][T]*/
 
-		//assemgstiffness(gmtx,estiff,&elem);             /*ASSEMBLAGE.*/
 		assemgstiffnesswithDOFelimination(gmtx,estiff,&elem,constraintmain);
 
 		modifycmq(melem,&elem);
@@ -289,36 +278,6 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 		for(ii=0;ii<12;ii++) free(*(estiff+ii));
 		free(estiff);
 	  }
-
-	  for(i=1;i<=nshell;i++)               /*ASSEMBLAGE GLOBAL MATRIX.*/
-	  {
-		shell=*(shells+i-1);                       /*READ ELEMENT DATA.*/
-		for(ii=0;ii<shell.nnod;ii++)
-		{
-		  inputnode(ddisp,shell.node[ii]);
-		}
-		shell.sect=(shells+i-1)->sect;             /*READ SECTION DATA.*/
-
-
-
-		drccos=shelldrccos(shell,NULL);
-
-		tmatrix=transmatrixIII(drccos,shell.nnod);         /*TRANSFORMATION MATRIX.*/
-
-
-		estiff=assemshellemtx(shell,drccos,NULL);    /*ELASTIC MATRIX OF SHELL.*/
-		estiff=transformationIII(estiff,tmatrix,6*shell.nnod);       /*[K]=[Tt][k][T]*/
-
-		assemgstiffnessIIwithDOFelimination(gmtx,estiff,&shell,constraintmain);             /*ASSEMBLAGE.*/
-
-		for(ii=0;ii<3;ii++) free(*(drccos+ii));
-		free(drccos);
-		for(ii=0;ii<6*shell.nnod;ii++) free(*(tmatrix+ii));
-		free(tmatrix);
-		for(ii=0;ii<6*shell.nnod;ii++) free(*(estiff+ii));
-		free(estiff);
-	  }
-
 #endif
 
 
@@ -529,6 +488,8 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory1-memory2));
   errormessage(string);
 
+
+
   if((wdraw.childs+1)->hdcC!=NULL &&
 	 melem!=NULL && ddisp!=NULL)               /*DRAW LAST FRAME.*/
   {
@@ -564,14 +525,21 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	}
 
 	if(globaldrawflag==1) overlayhdc(*(wdraw.childs+1),SRCPAINT);     /*UPDATE DISPLAY.*/
+
   }
 
 
+  af->iform=iform;
+  af->ddisp=ddisp;
+
+  clearwindow(*(wdraw.childs+1));
+  drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+  overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
 
 
   if(gmtx2==gmtx)
   {
-    gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
+	gfree(gmtx,nnode); /*FREE GLOBAL MATRIX.*/
 	/*free(gvct);*/
 	/*free(confs);*/
   }
@@ -1524,13 +1492,13 @@ int arclmtest(struct arclmframe *af,int idinput,int idoutput)
 void initialelem001(struct owire *elems,
                     struct memoryelem *melem,int nelem)
 /*ASSEMBLAGE CONFINEMENT OF ELEMENT*/
-/*CLEAR STRESS.*/
+/*difference from initialelem : CLEAR STRESS.*/
 {
   int i,j;
 
   for(i=0;i<nelem;i++)
   {
-    (melem+i)->code=(elems+i)->code;                        /*CODE.*/
+	(melem+i)->code=(elems+i)->code;                        /*CODE.*/
 
     for(j=0;j<6;j++)                                 /*ICONF[2][6].*/
     {
@@ -1538,14 +1506,19 @@ void initialelem001(struct owire *elems,
       (melem+i)->bond[1][j]=(elems+i)->iconf[1][j];
     }
     for(j=0;j<6;j++)                           /*LONG STRESS[2][6].*/
-    {
-      (melem+i)->stress[0][j]=0.0;
-      (melem+i)->stress[1][j]=0.0;
+	{
+	  (melem+i)->stress[0][j]=0.0; //(elems+i)->stress[0][j];
+	  (melem+i)->stress[1][j]=0.0; //(elems+i)->stress[1][j];
 	}
+
   }
 
   return;
 }/*initialelem001*/
+
+
+
+
 
 
 

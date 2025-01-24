@@ -25,8 +25,7 @@ void assemshellvolume(struct oshell* shells, int nshell, double* ddisp, double* 
 /*INPUT & OUTPUT SHELL DATA*/
 void inputshell(struct oshell *shells,struct memoryshell *mshell,int offset,struct oshell *shell);
 void outputshell(struct oshell *shells,int offset,struct oshell *shell);
-void outputmemoryshell(struct oshell *shells,struct memoryshell *mshell,int offset);
-
+void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell);/*copy data from shells to mshell*/
 /*FOR PLASTIC (ILYUSHIN'S STRESS RESULTANT)*/
 
 double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy);
@@ -1655,47 +1654,52 @@ void outputshell(struct oshell *shells,
   return;
 }/*inputshell*/
 
-void outputmemoryshell(struct oshell *shells,
-					   struct memoryshell *mshell,int offset)
+void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell)
 {
-  int i,j;
+  int i,j,k;
 
-  for(i=0;i<(shells+offset)->nnod;i++)
+  for(i = 0; i < nshell; i++)
   {
-	for(j=0;j<6;j++)                                      /*STRESS.*/
-	{
-	  (mshell+offset)->stress[i][j]=(shells+offset)->stress[i][j];
-	}
-  }
-  for(i=0;i<(shells+offset)->ngp;i++)
-  {
-	for(j=0;j<(shells+offset)->nstress;j++)                                      /*STRESS.*/
-	{
-	  ((mshell+offset)->gp[i]).estrain[j]=((shells+offset)->gp[i]).estrain[j];
-	  ((mshell+offset)->gp[i]).pstrain[j]=((shells+offset)->gp[i]).pstrain[j];
-	  ((mshell+offset)->gp[i]).stress[j]=((shells+offset)->gp[i]).stress[j];
-	  ((mshell+offset)->gp[i]).backstress[j]=((shells+offset)->gp[i]).backstress[j];
-	}
-	((mshell+offset)->gp[i]).qn=((shells+offset)->gp[i]).qn;
-	((mshell+offset)->gp[i]).qm=((shells+offset)->gp[i]).qm;
-	((mshell+offset)->gp[i]).qnm=((shells+offset)->gp[i]).qnm;
+	  (mshell+i)->code=(shells+i)->code;
 
-	((mshell+offset)->gp[i]).yinit=((shells+offset)->gp[i]).yinit;
-	((mshell+offset)->gp[i]).y=((shells+offset)->gp[i]).y;
+	  for(j=0;j<(shells+i)->nnod;j++)
+	  {
+		for(k=0;k<6;k++)                                      /*STRESS.*/
+		{
+		  (mshell+i)->stress[j][k]=(shells+i)->stress[j][k];
+		}
+	  }
 
-	((mshell+offset)->gp[i]).f[0]=((shells+offset)->gp[i]).f[0];
-	((mshell+offset)->gp[i]).f[1]=((shells+offset)->gp[i]).f[1];
+	  for(j=0;j<(shells+i)->ngp;j++)
+	  {
+		for(k=0;k<(shells+i)->nstress;k++)                                      /*STRESS.*/
+		{
+		  ((mshell+i)->gp[j]).estrain[k]=((shells+i)->gp[j]).estrain[k];
+		  ((mshell+i)->gp[j]).pstrain[k]=((shells+i)->gp[j]).pstrain[k];
+		  ((mshell+i)->gp[j]).stress[k]=((shells+i)->gp[j]).stress[k];
+		  ((mshell+i)->gp[j]).backstress[k]=((shells+i)->gp[j]).backstress[k];
+		}
+		((mshell+i)->gp[j]).qn=((shells+i)->gp[j]).qn;
+		((mshell+i)->gp[j]).qm=((shells+i)->gp[j]).qm;
+		((mshell+i)->gp[j]).qnm=((shells+i)->gp[j]).qnm;
 
-	((mshell+offset)->gp[i]).lambda[0]=((shells+offset)->gp[i]).lambda[0];
-	((mshell+offset)->gp[i]).lambda[1]=((shells+offset)->gp[i]).lambda[1];
+		((mshell+i)->gp[j]).yinit=((shells+i)->gp[j]).yinit;
+		((mshell+i)->gp[j]).y=((shells+i)->gp[j]).y;
 
-	((mshell+offset)->gp[i]).alpha=((shells+offset)->gp[i]).alpha;
+		((mshell+i)->gp[j]).f[0]=((shells+i)->gp[j]).f[0];
+		((mshell+i)->gp[j]).f[1]=((shells+i)->gp[j]).f[1];
 
-	((mshell+offset)->gp[i]).Ee=((shells+offset)->gp[i]).Ee;
-	((mshell+offset)->gp[i]).Ep=((shells+offset)->gp[i]).Ep;
+		((mshell+i)->gp[j]).lambda[0]=((shells+i)->gp[j]).lambda[0];
+		((mshell+i)->gp[j]).lambda[1]=((shells+i)->gp[j]).lambda[1];
+
+		((mshell+i)->gp[j]).alpha=((shells+i)->gp[j]).alpha;
+
+		((mshell+i)->gp[j]).Ee=((shells+i)->gp[j]).Ee;
+		((mshell+i)->gp[j]).Ep=((shells+i)->gp[j]).Ep;
+	  }
   }
   return;
-}/*inputmemoryshell*/
+}/*initialshell*/
 
 
 
