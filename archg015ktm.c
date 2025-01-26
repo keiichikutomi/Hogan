@@ -218,11 +218,11 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
   initialelem001(elems,melem,nelem);         /*ASSEMBLAGE ELEMENTS.*/
   initialshell(shells,mshell,nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
-#if 0
+
   dreact=(double *)malloc(nreact*sizeof(double));       /*REACTION.*/
   af->dreact=dreact;
   initialreact(fin,dreact,nreact);     /*ASSEMBLAGE LONG REACTIONS.*/
-#endif
+
 
 
   	setviewpoint((wdraw.childs+0)->hwnd,*af,&((wdraw.childs+1)->vparam));
@@ -473,7 +473,7 @@ int arclm001(struct arclmframe *af,int idinput,int idoutput)
 	fprintf(fout,"  NO  DIRECTION              R    NC\n\n");
   }
   /*outputreaction001(gmtx,gvct,nodes,confs,dreact,fout,nnode);*/
-  //outputreaction002(gmtx2,gvct2,nodes,confs2,dreact,fout,nnode,moff); /*TAKES TOO MUCH TIME.*/
+  outputreaction002(gmtx2,gvct2,nodes,confs2,dreact,fout,nnode,moff); /*TAKES TOO MUCH TIME.*/
 
   fclose(fin);
   fclose(fout);
@@ -690,7 +690,7 @@ int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
 
     initialelem001(elems,melem,nelem);         /*ASSEMBLAGE ELEMENTS.*/
 
-    dreact=(double *)malloc(nreact*sizeof(double));       /*REACTION.*/
+	dreact=(double *)malloc(nreact*sizeof(double));       /*REACTION.*/
     afs[lxy]->dreact=dreact;
     initialreact(fin,dreact,nreact);     /*ASSEMBLAGE LONG REACTIONS.*/
 
@@ -2140,7 +2140,7 @@ void frameoutputtomemory(FILE *ftext,struct arclmframe *af)
     for(j=1;j<=3;j++)
     {
       ddata=strtod(*(data+j),NULL);
-      ddata+=(af->ninit+i-1)->d[j-1];
+	  ddata+=(af->ninit+i-1)->d[j-1];
       (af->nodes+i-1)->d[j-1]=ddata;
       *(af->ddisp+6*(i-1)+(j-1))=ddata;
     }
@@ -2290,7 +2290,7 @@ void openarclmlastfile(FILE *ftext,struct arclmframe *af)
     if(n!=4) return;
 
     ddata=strtod(*(data+4),NULL);
-    *(af->dreact+i)=ddata;
+	*(af->dreact+i)=ddata;
 
     for(;n>0;n--) free(*(data+n-1));
     free(data);

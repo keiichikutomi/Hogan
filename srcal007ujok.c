@@ -91,7 +91,7 @@ struct reinshear{int n;                            /*NUMBER OF REIN*/
 struct pcstrand{
                 int type;                  /*STRAND TYPE:A,B,C,WIRE*/
                 double area[2],x[2],y[2];       /*REIN AREA,X,Y[mm]*/
-                double Ni[2];                 /*INITIAL TENSION[tf]*/
+				double Ni[2];                 /*INITIAL TENSION[tf]*/
                };
 struct steelform{
                  int type;
@@ -105,31 +105,31 @@ struct woodform{
                };                                       /*WOOD FORM*/
 
 struct section{
-               long int code;                     /*CODE OF SECTION*/
-               int soff;                        /*OFFSET OF SECTION*/
+			   long int code;                     /*CODE OF SECTION*/
+			   int soff;                        /*OFFSET OF SECTION*/
 			   long int ocode;           /*ORIGINAL CODE OF SECTION*/ // 150429 fukushima for original section
-               int stype,etype;         /*SECTION TYPE,ELEMENT TYPE*/
-               int nsteel,nrein,nconc;     /*STEELS,REINS,CONCRETES*/
-               int nstrnd;                             /*PC STRANDS*/
-               struct materialrect srect[MAXSRECT];   /*STEEL RECTS*/
-               struct reinforcement rein[MAXREINS];         /*REINS*/
-               struct materialrect crect[MAXCRECT]; /*CONCRETE RECT*/
-               struct pcstrand strnd[MAXSTRND];        /*PC STRANDS*/
-               double shearrein[2],wF;     /*RATE OF REIN FOR SHEAR*/
-               double thick,wlength,wheight,windowrate,cF,fsl;
-               double face[2][2];          /*FACE LENGTH[AXIS][END]*/
-               double safetya;       /*MAX RATE OF SAFETY ALLOWABLE*/
-               double safetyu;        /*MAX RATE OF SAFETY ULTIMATE*/
+			   int stype,etype;         /*SECTION TYPE,ELEMENT TYPE*/
+			   int nsteel,nrein,nconc;     /*STEELS,REINS,CONCRETES*/
+			   int nstrnd;                             /*PC STRANDS*/
+			   struct materialrect srect[MAXSRECT];   /*STEEL RECTS*/
+			   struct reinforcement rein[MAXREINS];         /*REINS*/
+			   struct materialrect crect[MAXCRECT]; /*CONCRETE RECT*/
+			   struct pcstrand strnd[MAXSTRND];        /*PC STRANDS*/
+			   double shearrein[2],wF;     /*RATE OF REIN FOR SHEAR*/
+			   double thick,wlength,wheight,windowrate,cF,fsl;
+			   double face[2][2];          /*FACE LENGTH[AXIS][END]*/
+			   double safetya;       /*MAX RATE OF SAFETY ALLOWABLE*/
+			   double safetyu;        /*MAX RATE OF SAFETY ULTIMATE*/
 
-               int ncomment;
-               char comment[MAXCOMMENT][80];
-               struct reinshear srein[2];      /*SHEAR REIN BY AREA*/
-               struct steelform sform;        /*INPUT BY STEEL FORM*/
-               struct woodform wform;          /*INPUT BY WOOD FORM*/
+			   int ncomment;
+			   char comment[MAXCOMMENT][80];
+			   struct reinshear srein[2];      /*SHEAR REIN BY AREA*/
+			   struct steelform sform;        /*INPUT BY STEEL FORM*/
+			   struct woodform wform;          /*INPUT BY WOOD FORM*/
 
                double bblength[2],bbfact[2];     /*BUCKLING BENDING*/
                double btlength[2],btfact[2];     /*BUCKLING TORTION*/
-              };
+			  };
 
 struct structnode{
                   long int code;
@@ -143,9 +143,9 @@ struct element{
                struct section *sect;                      /*SECTION*/
                struct structnode *node[2];             /*NODES[END]*/
                struct estress head,tail;                 /*STRESSES*/
-               int cmqcode;
+			   int cmqcode;
                double Mo;                                     /*CMQ*/
-              };
+			  };
 
 /*SUBROUTINES*/
 int srcan001(char fname[]);
@@ -382,7 +382,7 @@ double allowablecompressionofs(double E,double F,
                                double lk,
                                struct section sect,int axis);
 /*double allowablecompressionofsteel(double E,double F,double lk,
-                                   struct section sect);*/
+								   struct section sect);*/
 double allowablecompressionofsteel(double E,double F,
                                    double lkxx,double lkyy,
                                    struct section sect);
@@ -976,7 +976,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
 		  fprintf(fout0,"Ar=%7.2f[cm2] ",Ar);
           fprintf(fout0,"Ac=%7.2f[cm2]\n",Ac);*/
 
-          fprintf(fout0,"‰ž—Í       :        N");
+		  fprintf(fout0,"‰ž—Í       :        N");
           fprintf(fout0,"                Qxi                Qxj");
           fprintf(fout0,"                Qyi                Qyj");
           fprintf(fout0,"                 Mt");
@@ -1046,7 +1046,7 @@ else
 
           /*LONG...................................................*/
 		  /*MATERIAL FOR LONG*/
-          gmaterial.sft=2400.0/1.5*jis;               /*STEEL SN400*/
+		  gmaterial.sft=2400.0/1.5*jis;               /*STEEL SN400*/
           gmaterial.sfc=-gmaterial.sft; /*FOR SRC*/
           gmaterial.sfb=2400.0/1.5*jis; /*FOR SRC*/     /*b:BENDING*/
           gmaterial.sfs=2400.0/1.5/sqrt(3.0)*jis;         /*s:SHEAR*/
@@ -1401,8 +1401,8 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
           }
           else
           {
-            if(elem.sect->etype==COLUMN) na=1;
-            else                         na=0;
+			if(elem.sect->etype==COLUMN) na=1;
+			else                         na=0;
             for(ia=0;ia<=na;ia++) /*FOR AXIS*/
             {
 			  pstress[0]=&(elem.head.z); pstress[1]=&(elem.tail.z);
@@ -1430,7 +1430,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
               else if(sect1.stype==STYPE_PC)                     /*PC*/
               {
                 if(sect1.etype==COLUMN)
-                {
+				{
                   Ma=allowablebendingofpccolumn(elem,gmaterial,ia,lN);
 				}
                 else if(sect1.etype==GIRDER || sect1.etype==BEAM)
@@ -1442,12 +1442,12 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
               {
                 Ma=allowablebendingofwood(PLONG,sect1,h,h,ia,(-lN));
 			  }
-              else if(sect1.stype==STYPE_ALUMI)               /*ALUMI*/
-              {
+			  else if(sect1.stype==STYPE_ALUMI)               /*ALUMI*/
+			  {
 				Ma=allowablebendingofalumi(PLONG,sect1,gmaterial.alE,
 										   h,ia,(-lN));
 				/*
-                Mahead=allowablebendingofalumi(PLONG,sect1,gmaterial.alE,
+				Mahead=allowablebendingofalumi(PLONG,sect1,gmaterial.alE,
 										   h,ia,(-lN));
 				Matail=Mahead;
 				*/
@@ -1455,7 +1455,7 @@ if(!strcmp(prj,"vene")) sprintf(str,"    0.000"); /*PASS LONG CALCULATION.*/
               /*if(Ma<0.1) Ma=0.1;*/
 
               sprintf(str," %8.3f(%8.2f) %8.3f(%8.2f)",
-                      Ma/100000.0,si*Ma/100000.0,
+					  Ma/100000.0,si*Ma/100000.0,
                       Ma/100000.0,si*Ma/100000.0);
               strcat(strM[1][ia],str);
               if(Ma>0.0)
@@ -2380,7 +2380,7 @@ if(calc[PULTIMATE]==1 || sect1.stype==STYPE_PC){
 		  {
             if(hoko==0)
             {
-              Fes=1.0+(HENSHINX-0.15)/0.15*0.5;
+			  Fes=1.0+(HENSHINX-0.15)/0.15*0.5;
               pstress[0]=&(elem.head.x); pstress[1]=&(elem.tail.x);
             }
             if(hoko==1)
@@ -2981,29 +2981,29 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
           fprintf(fout0,"’f–Ê:%3d",isect);
           fprintf(fout0,"=“Sœ‹Øˆá ");
 
-          fprintf(fout0,"’f–ÊÏ:%.3f[cm2]\n",sect1.thick);
+		  fprintf(fout0,"’f–ÊÏ:%.3f[cm2]\n",sect1.thick);
 
           /*MATERIAL LONG*/
-          gmaterial.sft=sect1.cF*jis/1.5; /*STEEL F*/
+		  gmaterial.sft=sect1.cF*jis/1.5; /*STEEL F*/
 
           Qa=sect1.thick*gmaterial.sft/1000.0; /*[tf]*/
-          fprintf(fout0,"’·Šú‹–—e:Nal=%7.3f[tf](%7.2f[kN])\n",Qa,si*Qa);
+		  fprintf(fout0,"’·Šú‹–—e:Nal=%7.3f[tf](%7.2f[kN])\n",Qa,si*Qa);
 
 		  lN=elem.head.z.N;
 
           fprintf(fout0,"‰”’¼Žž  :");
           fprintf(fout0,"Nl =%7.3f[tf](%7.2f[kN]) ",lN,si*lN);
 
-          rate=fabs(lN/Qa);
-          if(rate>rateqa) rateqa=rate;
+		  rate=fabs(lN/Qa);
+		  if(rate>rateqa) rateqa=rate;
           if(rate>qarate[soffset-1]) qarate[soffset-1]=rate;
           fprintf(fout0," Nl/Na=%7.5f",rate);
 		  fprintf(fout0,"\n");
 
           /*MATERIAL SHORT*/
-          gmaterial.sft=sect1.cF*jis; /*STEEL F*/
+		  gmaterial.sft=sect1.cF*jis; /*STEEL F*/
 
-          Qa=sect1.thick*gmaterial.sft/1000.0; /*[tf]*/
+		  Qa=sect1.thick*gmaterial.sft/1000.0; /*[tf]*/
           if(!strcmp(prj,"kirigami"))      /*kirigami  : SKIP SHORT.*/
           {}
           else
@@ -3509,7 +3509,7 @@ int createyieldsurface(struct arclmframe *af)
       if(sect1.stype==STYPE_S)
       {
         if(sect1.sform.type==STEEL_RECTS) gmaterial.sF=sect1.srect[0].F;
-        else                              gmaterial.sF=sect1.sform.F;
+		else                              gmaterial.sF=sect1.sform.F;
       }
 
       ys.exp=1.5; /*1.0<exp<2.0*/
@@ -3649,7 +3649,7 @@ int createyieldsurface(struct arclmframe *af)
       MessageBox(NULL,txt,"Surface",MB_OK);
     }
 
-    if(soffset && sect1.etype==WALL)/*...........SHEAR OF WALL.*/
+	if(soffset && sect1.etype==WALL)/*...........SHEAR OF WALL.*/
     {
       /*Qu=0.0;*/
 
@@ -3853,7 +3853,7 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               {
                 sect->srect[nsteel].F=8000.0;
               }
-              else if(n>=6 && !strncmp(*(data+5),"HT950",5))
+			  else if(n>=6 && !strncmp(*(data+5),"HT950",5))
               {
                 sect->srect[nsteel].F=9000.0;
               }
@@ -3910,7 +3910,7 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               }
               else if(n>=6 && !strncmp(*(data+5),"A7178",5))   /*Alumi*/
               {
-                sect->sform.F=4400.0;
+				sect->sform.F=4400.0;
               }
 
               else sect->sform.F=2400.0*jis;
@@ -4217,7 +4217,7 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               {
                 sect->sform.F=8000.0;
               }
-              else if(n>=6 && !strncmp(*(data+5),"HT950",5))
+			  else if(n>=6 && !strncmp(*(data+5),"HT950",5))
               {
                 sect->sform.F=9000.0;
               }
@@ -4529,20 +4529,21 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               {
                 sect->cF=8000.0;
               }
-              else if(n>=3 && !strncmp(*(data+2),"HT950",5))
+			  else if(n>=3 && !strncmp(*(data+2),"HT950",5))
               {
-                sect->sform.F=9000.0;
-              }
+				//sect->sform.F=9000.0;
+				sect->cF=9000.0;
+			  }
               else if(n>=3 && !strncmp(*(data+2),"AS175",5))
               {
-                sect->cF=1750.0;
+				sect->cF=1750.0;
               }
 			  else if(n>=3 && !strncmp(*(data+2),"A7178",5))
               {
                 sect->cF=4400.0;
               }
 
-              else sect->cF=2400.0*jis;
+			  else sect->cF=2400.0*jis;
             }
 
             for(i=0;i<n;i++)
@@ -5492,21 +5493,21 @@ void inputfiletomemory2(FILE *ftext,
   {
     data=fgetsbrk(ftext,&n);
 
-    (elems+i)->code=strtol(*(data+0),NULL,10);
+	(elems+i)->code=strtol(*(data+0),NULL,10);
 
     hcode=strtol(*(data+2),NULL,10); /*HEAD*/
     tcode=strtol(*(data+3),NULL,10); /*TAIL*/
 
     scode=strtol(*(data+1),NULL,10); /*SECTION*/
 
-    /*(elems+i)->cmqcode=strtol(*(data+13),NULL,10);*/ /*CMQ*/
+	/*(elems+i)->cmqcode=strtol(*(data+13),NULL,10);*/ /*CMQ*/
 
     freestr(data,n);
 
     count=0;
     for(ii=0;(ii<(*nnode) && count<2);ii++)
     {
-      if((nodes+ii)->code==hcode)
+	  if((nodes+ii)->code==hcode)
       {
         (elems+i)->node[0]=(nodes+ii); /*POINT HEAD.*/
         count++;
@@ -6545,7 +6546,7 @@ double allowablebendingofsrc(struct element elem,
 
   if(elem.sect->stype==STYPE_RC)
   {
-    cfc=/*m.cfc*/-elem.sect->crect[0].F/3.0;
+	cfc=/*m.cfc*/-elem.sect->crect[0].F/3.0;
   }
   else if(elem.sect->stype==STYPE_SRC)
   {
@@ -7741,7 +7742,7 @@ double ultimatebendingofsteel(struct section sect,
 
 double allowablebendingofsteel(int period,
                                struct section sect,
-                               double E,
+							   double E,
                                double lk,      /*BUCKLING LENGTH[cm]*/
                                int axis,                   /*0:x 1:y*/
                                double Nd)                    /*[kgf]*/
@@ -7880,7 +7881,7 @@ if(!strcmp(prj,"tep") && sect.code==204) lk=220.0;
      (axis==SX && sect.sform.type==STEEL_CPIPE) ||
      (axis==SX && sect.sform.type==STEEL_TWEAK))
   {
-    Ma=(1.0-Nd/Na)*sfta*Zxx;                                /*[kgfcm]*/
+	Ma=(1.0-Nd/Na)*sfta*Zxx;                                /*[kgfcm]*/
   }
 
   /*fprintf(fout0,"Ma=%.3f\n",Ma);*/
@@ -7898,13 +7899,16 @@ double allowablebendingofalumi(int period,
 /*N=+:TENSION -:COMPRESSION*/
 /*STEEL TYPE:HKYOU BY RECTS,HKYOU,HWEAK*/
 {
-  double A,Af,Ixx,Iyy,Jz,Cw,Zxx,Zyy,ixx,iyy,G;
+
+  double A,Af,Ixx,Iyy,Jz;
+  double Cw,Zxx,Zyy,ixx,iyy,G;
   double H,B,tw,tf;
   double alfta,alfba,alF;
   double fb1,fb2,fb3;
   double Me,My,M2M1,Cb;
   double ramda,pramda,eramda,nyu;
-  double Na=0.0,Ma=0.0;
+  double Na=0.0;
+  double Ma=0.0;
 
   /*ALLOWABLE AXIAL FORCE*/
   alF=sect.sform.F;
@@ -11422,7 +11426,7 @@ double allowultimshearofrcwall(struct element elem,
   else if(period==PLONG || period==PSHORT)
   {
     f1=elem.sect->cF/30.0;
-    f2=5.0+elem.sect->cF/100.0;
+	f2=5.0+elem.sect->cF/100.0;
 
     if(period==PLONG)
     {
@@ -11435,7 +11439,7 @@ double allowultimshearofrcwall(struct element elem,
     else if(period==PSHORT)
     {
       if(f1<=f2) cfs=/*fabs(m.cfs)*/1.5*f1;
-      else       cfs=/*fabs(m.cfs)*/1.5*f2;
+	  else       cfs=/*fabs(m.cfs)*/1.5*f2;
 
       if(elem.sect->wF==3000.0) wft=/*fabs(m.wft)*/3000.0;
       if(elem.sect->wF==3500.0) wft=/*fabs(m.wft)*/3500.0;
@@ -12661,7 +12665,7 @@ int alumicoefficients(struct section sect,
   else if(sect.sform.type==STEEL_CWEAK)
   {
     *Jz=(2.0*(B-tw)*tf*tf*tf+H*tw*tw*tw)/3;
-    *Cw=(H*H*B*B*B*tf*(3.0*B*tf+2.0*H*tw))/(12.0*(6.0*B*tf+H*tw));
+	*Cw=(H*H*B*B*B*tf*(3.0*B*tf+2.0*H*tw))/(12.0*(6.0*B*tf+H*tw));
   }
   return 1;
 }/*alumicoefficients*/

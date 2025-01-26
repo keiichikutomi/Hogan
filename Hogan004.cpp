@@ -14,8 +14,7 @@
 /*HOGAN001:CODED BY JUN SATO.*/
 /*SRCAL MDIFIED TO RC STANDARD 2010.*/
 
-//#include <vcl.h>
-//#pragma hdrstop
+
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -47,10 +46,11 @@
 #include "arclmStatic.c"              /*ANALYSIS STATIC NON-LINEAR.*/
 #include "arclmDynamic.c"
 #include "bclng021ujok.c"                       /*ELASTIC BUCKLING.*/
+#include "vbrat001.c"
 #include "qadhg001.c"               /*ANALYSIS BIQUADRATIC ELEMENT.*/
 #include "srcal007ujok.c"                     /*DRAW SECTIONS LIST.*/
 #include "gnshn103ktm.c"                        /*DYNAMIC ANALYSIS.*/
-#include "vbrat001.c"
+
 #include "optimization.c"                 			 /*OPTIMIZATION*/
 #include "model001.c"                      /*INP-TO-DXF CONVERSION.*/
 #include "arclm002.c"                     /*FOR GREEN-HOUSE PROJECT*/
@@ -12510,7 +12510,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->nv.react[2]));
             flagswitch(&(gv->nv.react[3]));
             flagswitch(&(gv->nv.react[4]));
-            flagswitch(&(gv->nv.react[5]));
+			flagswitch(&(gv->nv.react[5]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;

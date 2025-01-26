@@ -2575,6 +2575,7 @@ struct line setlineends(double x1,double y1,double z1,
   return l;
 }/*setlineends*/
 
+
 void errormessage(char *str)
 /*OUTPUT ERROR MESSAGE.*/
 {
@@ -2587,72 +2588,61 @@ void errormessage(char *str)
   {
     GetAsyncKeyState(VK_RBUTTON);                /*CLEAR KEY RIGHT.*/
 
-	tx=(wmesg.childs+1)->tx;
-	ty=(wmesg.childs+1)->ty;
+    tx=(wmesg.childs+1)->tx;
+    ty=(wmesg.childs+1)->ty;
 
-	GetTextExtentPoint32((wmesg.childs+1)->hdcC,
-						 str,strlen(str),&size);
+    GetTextExtentPoint32((wmesg.childs+1)->hdcC,
+                         str,strlen(str),&size);
 
-	pc.x=0;
-	pc.y=0;
-	ClientToScreen((wmesg.childs+1)->hwnd,&pc); /*TOPLEFT OF CHILD.*/
+    pc.x=0;
+    pc.y=0;
+    ClientToScreen((wmesg.childs+1)->hwnd,&pc); /*TOPLEFT OF CHILD.*/
 
-	hoya=GetParent((wmesg.childs+1)->hwnd);
-	pp.x=0;
-	pp.y=0;
-	ClientToScreen(hoya,&pp); /*TOPLEFT OF PARENT.*/
+    hoya=GetParent((wmesg.childs+1)->hwnd);
+    pp.x=0;
+    pp.y=0;
+    ClientToScreen(hoya,&pp); /*TOPLEFT OF PARENT.*/
 
-	x=pp.x-pc.x;
-	y=pp.y-pc.y;
+    x=pp.x-pc.x;
+    y=pp.y-pc.y;
 
-	getclientsize(hoya,&pw,&ph);
-	getclientsize((wmesg.childs+1)->hwnd,&cw,&ch);
+    getclientsize(hoya,&pw,&ph);
+    getclientsize((wmesg.childs+1)->hwnd,&cw,&ch);
 
-	if(ch<(ty+size.cy-2)) /*EXTEND HEIGHT IF FILLED UP.*/
-	{
-	  ch=ty+size.cy-2;
-	  extendhdc((wmesg.childs+1)->hdcC,cw,ch);
-	  extendhdc((wmesg.childs+1)->hdcB,cw,ch);
-	  MoveWindow((wmesg.childs+1)->hwnd,-x,-y,cw,ch,TRUE);
-	}
-	if(cw<size.cx) /*EXTEND WIDTH FOR LONG TEXT.*/
-	{
-	  cw=size.cx;
-	  extendhdc((wmesg.childs+1)->hdcC,cw,ch);
-	  extendhdc((wmesg.childs+1)->hdcB,cw,ch);
+    if(ch<(ty+size.cy-2)) /*EXTEND HEIGHT IF FILLED UP.*/
+    {
+      ch=ty+size.cy-2;
+      extendhdc((wmesg.childs+1)->hdcC,cw,ch);
+      extendhdc((wmesg.childs+1)->hdcB,cw,ch);
       MoveWindow((wmesg.childs+1)->hwnd,-x,-y,cw,ch,TRUE);
-	}
-
-
-
+    }
+    if(cw<size.cx) /*EXTEND WIDTH FOR LONG TEXT.*/
+    {
+      cw=size.cx;
+      extendhdc((wmesg.childs+1)->hdcC,cw,ch);
+      extendhdc((wmesg.childs+1)->hdcB,cw,ch);
+      MoveWindow((wmesg.childs+1)->hwnd,-x,-y,cw,ch,TRUE);
+    }
     if((y+ph)<(ty+size.cy-2)) /*SCROLL IF OVERFLOW FROM PARENT.*/
-	{
-	  MoveWindow((wmesg.childs+1)->hwnd,
-				 (-x),(ph-(ty+size.cy-2)),cw,ch,TRUE);
-	}
+    {
+      MoveWindow((wmesg.childs+1)->hwnd,
+                 (-x),(ph-(ty+size.cy-2)),cw,ch,TRUE);
+    }
+    SendMessage(wmesg.hwnd,WM_PAINT,0,0);
 
-	/*
-	if (ty + size.cy > ch)
-	{
-		ScrollWindow((wmesg.childs + 1)->hwnd, 0, -(size.cy), NULL, NULL);
-		ty -= size.cy;
-	}*/
+    SetTextColor((wmesg.childs+1)->hdcC,RGB(255,255,255));
+    TextOut((wmesg.childs+1)->hdcC,tx,ty,str,strlen(str));
 
-	SendMessage(wmesg.hwnd,WM_PAINT,0,0);
+    overlayhdc(*(wmesg.childs+1),SRCPAINT);
 
-	SetTextColor((wmesg.childs+1)->hdcC,RGB(255,255,255));
-	TextOut((wmesg.childs+1)->hdcC,tx,ty,str,strlen(str));
+    (wmesg.childs+1)->ty+=size.cy-2;
 
-	overlayhdc(*(wmesg.childs+1),SRCPAINT);
-
-	(wmesg.childs+1)->ty+=size.cy-2;
-
-
-	/*while(!GetAsyncKeyState(VK_RBUTTON))
-	;*/                               /*RIGHT CLICK TO CONTINUE.*/
+    /*while(!GetAsyncKeyState(VK_RBUTTON))
+    ;*/                               /*RIGHT CLICK TO CONTINUE.*/
   }
   return;
 }/*errormessage*/
+
 
 void setfontformat(HDC hdc,int h,int w,
 				   char *fontname,int r,int g,int b)
@@ -7094,7 +7084,7 @@ void drawarclmnodes(HDC hdc,struct viewparam vp,
 
   for(i=0;i<af.nnode;i++)
   {
-    loff=6*((af.ninit+i)->loff);
+	loff=6*((af.ninit+i)->loff);
 
     if(insiderange(*(af.ninit+i),vp.range))
     {
@@ -7153,7 +7143,7 @@ void drawarclmnodes(HDC hdc,struct viewparam vp,
            (!(af.confs+loff+j)->iconf) &&
            af.ddisp!=NULL)
         {
-          value=*(af.ddisp+loff+j);
+		  value=*(af.ddisp+loff+j);
           value-=(af.ninit+i)->d[j];
 
           /*sprintf(str,"%s %.5f",dlabel[j],value);*/ /*[m]*/
@@ -7172,19 +7162,19 @@ void drawarclmnodes(HDC hdc,struct viewparam vp,
       {
         tn=*(af.ninit+i);
         for(j=0;j<=5;j++) /*REACTIONS.*/
-        {
-          if((af.confs+loff+j)->iconf==1)
-          {
-            value=*(af.dreact+nreact);
-            nreact++;
+		{
+		  if((af.confs+loff+j)->iconf==1)
+		  {
+			value=*(af.dreact+nreact);
+			nreact++;
 
-            if(vp.vflag.nv.react[j])
-            {
-              sprintf(str,"%s %.5f",rlabel[j],value);
+			if(vp.vflag.nv.react[j])
+			{
+			  sprintf(str,"%s %.5f",rlabel[j],value);
 
-              tn.d[GZ]-=pitch;
+			  tn.d[GZ]-=pitch;
 			  if(mode==ONPRINTER)      SetTextColor(hdc,
-                                                    RGB(  0,  0,  0));
+													RGB(  0,  0,  0));
               else if(mode==ONPRINTER) SetTextColor(hdc,
                                                     RGB(  0,  0,  0));
               else                     SetTextColor(hdc,
@@ -7193,7 +7183,7 @@ void drawarclmnodes(HDC hdc,struct viewparam vp,
             }
           }
         }
-      }
+	  }
 
       /*MASS CIRCLE*/
       if(af.nmass!=NULL) /*DRAW WEIGHT*/
@@ -10505,8 +10495,8 @@ if(vp.vflag.nv.conffig)
   if(vp.vflag.axis==1) /*DRAW GLOBAL AXIS.*/
   {
     /*if(mode==ONPREVIEW) drawglobalaxis(hdc,vp,255,255,0);*//*REVERSE*/
-    if(mode==ONPREVIEW) drawglobalaxis(hdc,vp,0,0,255);/*BLUE*/
-    else                drawglobalaxis(hdc,vp,0,0,255);
+	if(mode==ONPREVIEW) drawglobalaxis(hdc,vp,0,0,255);/*BLUE*/
+	else                drawglobalaxis(hdc,vp,0,0,255);
   }
 
   drawarclmnodes(hdc,vp,af,code,mode);
@@ -15068,13 +15058,14 @@ MessageBox(NULL,str,"STACK",MB_OK);
           *(ax->nodes+k)=*(org->nodes+i);
           *(ay->nodes+k)=*(org->nodes+i);
 
-          (az->nodes+k)->loff=k;
-          (ax->nodes+k)->loff=k;
+		  (az->nodes+k)->loff=k;
+		  (ax->nodes+k)->loff=k;
 		  (ay->nodes+k)->loff=k;
 
-          *(az->ninit+k)=*(az->nodes+k);
+		  *(az->ninit+k)=*(az->nodes+k);
 		  *(ax->ninit+k)=*(ax->nodes+k);
-          *(ay->ninit+k)=*(ay->nodes+k);
+		  *(ay->ninit+k)=*(ay->nodes+k);
+
 
 		  (az->elems+j)->node[m]=(az->nodes+k); /*SET ELEMENT NODE*/
 		  (ax->elems+j)->node[m]=(ax->nodes+k); /*SET ELEMENT NODE*/
@@ -20001,6 +19992,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
   for(i=0;i<(af->nnode);i++)
   {
 	(af->nodes+i)->loff=i;
+	(af->ninit+i)->loff=i;
 
 	data=fgetsbrk(ftext,&n);
 	(af->nodes + i)->code = strtol(*(data + 0), NULL, 10);
@@ -32924,7 +32916,7 @@ MessageBox(NULL,str,"CADRE",MB_OK);
     for(j=0;j<=2;j++)
     {
       ddata=strtod(*(data+j+1),NULL);
-      ddata+=(af->ninit+i)->d[j];
+	  ddata+=(af->ninit+i)->d[j];
       (af->nodes+i)->d[j]=ddata;
       *(af->ddisp+6*i+j)=ddata;
     }
