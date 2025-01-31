@@ -3004,7 +3004,7 @@ if(calc[PULTIMATE]==1 || !strcmp(prj,"tohu"))
 		  gmaterial.sft=sect1.cF*jis; /*STEEL F*/
 
 		  Qa=sect1.thick*gmaterial.sft/1000.0; /*[tf]*/
-          if(!strcmp(prj,"kirigami"))      /*kirigami  : SKIP SHORT.*/
+		  if(!strcmp(prj,"kirigami"))      /*kirigami  : SKIP SHORT.*/
           {}
           else
 		  {
@@ -4464,7 +4464,7 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               sect->bblength[0]=strtod(*(data+1),NULL);
               sect->bblength[1]=strtod(*(data+2),NULL);
             }
-            if(!strncmp(*(data+0),"BBFAC",5))
+			if(!strncmp(*(data+0),"BBFAC",5))
             {
               sect->bbfact[0]=strtod(*(data+1),NULL);
               sect->bbfact[1]=strtod(*(data+2),NULL);

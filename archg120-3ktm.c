@@ -10166,9 +10166,9 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     TextOut(hdc,3500,imax[1]+3*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.9～1.0");
     TextOut(hdc,3500,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.71428～0.9");
+	sprintf(str,"　 : 0.8～0.9");
     TextOut(hdc,3500,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.7～0.71428");
+	sprintf(str,"　 : 0.7～0.8");
     TextOut(hdc,3500,imax[1]+6*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.6～0.7");
     TextOut(hdc,3500,imax[1]+7*size.cy,str,strlen(str));
@@ -10226,9 +10226,9 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     TextOut(hdc,imin[0]+1000,imax[1]+3*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.9～1.0");
     TextOut(hdc,imin[0]+1000,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.71428～0.9");
+	sprintf(str,"　 : 0.8～0.9");
     TextOut(hdc,imin[0]+1000,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.7～0.71428");
+	sprintf(str,"　 : 0.7～0.8");
     TextOut(hdc,imin[0]+1000,imax[1]+6*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.6～0.7");
     TextOut(hdc,imin[0]+1000,imax[1]+7*size.cy,str,strlen(str));
@@ -10288,16 +10288,16 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.9～1.0");
     TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.71428～0.9");
-    TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.7～0.71428");
+	sprintf(str,"　 : 0.8～0.9");
+	TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.7～0.8");
     TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.6～0.7");
-    TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
+	TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.5～0.6");
     TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
     sprintf(str,"　 : ＜0.5");
-    TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
+	TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
 #endif
 #if 0
 /*******FOR BUCKLING SAFETY******/
@@ -10548,8 +10548,8 @@ if(vp.vflag.nv.conffig)
                                                255,150,50,code,mode);
       }
       else if(vp.vflag.ev.srcancolor &&
-              ((af.elems+i)->srate[0]>0.2 || /*0.71428*/
-               (af.elems+i)->srate[1]>0.2 ||
+			  ((af.elems+i)->srate[0]>0.2 ||
+			   (af.elems+i)->srate[1]>0.2 ||
                (af.elems+i)->srate[2]>0.2 ||
                (af.elems+i)->srate[3]>0.2))
       {
@@ -10609,15 +10609,15 @@ if(vp.vflag.nv.conffig)
                                                255,150,50,code,mode);
       }
       else if(vp.vflag.ev.srcancolor &&
-              ((af.elems+i)->srate[0]>0.71428 || /*0.71428*/
-               (af.elems+i)->srate[1]>0.71428 ||
-               (af.elems+i)->srate[2]>0.71428 ||
-               (af.elems+i)->srate[3]>0.71428))
-      {
+			  ((af.elems+i)->srate[0]>0.8 || /*0.8*/
+			   (af.elems+i)->srate[1]>0.8 ||
+			   (af.elems+i)->srate[2]>0.8 ||
+			   (af.elems+i)->srate[3]>0.8))
+	  {
         if(mode==ONPRINTER)
         {
           drawglobalwire(hdc,vp,af,*(af.elems+i),150,150,0,
-                                                 150,150,0,code,mode);
+												 150,150,0,code,mode);
         }
         else
         {
