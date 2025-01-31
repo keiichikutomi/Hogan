@@ -392,7 +392,7 @@ struct drawparam{double gaxis,
                         qfact,
                         mfact,
                         pitch,
-                        hsize,
+						hsize,
 						csize;
                 }; /*PARAMETERS OF DRAWING FRAME.*/
 
@@ -403,14 +403,14 @@ struct viewparam{int type;           /*0:AXONOMETRICS 1:PERSPECTIVE*/
                  double gfactor;                  /*FACTOR OF SIZE.*/
                  struct onode focus;                 /*FOCUS POINT.*/
                  struct viewrange range;           /*RANGE VISIBLE.*/
-                 struct drawparam dparam;        /*DRAW PARAMETERS.*/
+				 struct drawparam dparam;        /*DRAW PARAMETERS.*/
                  double odv,vr,ov[3],axono[3][3];     /*PROJECTION.*/
                  struct globvisible vflag;         /*VISIBLE FLAGS.*/
                 };                /*PARAMETERS OF PERSPECTIVE VIEW.*/
 
 struct hoganparam{double arrowsize,notchsize;
                   char title[3][80];
-                  char unit[3][80];
+				  char unit[3][80];
                   double scale[3];
                   double max[3];
                   double min[3];
@@ -9256,7 +9256,7 @@ void drawglobalwireII(HDC hdc,struct viewparam vp,
       }
       Ellipse(hdc,                                  /*FILLED CIRCLE*/
               (hingeX-vp.dparam.hsize),(hingeY-vp.dparam.hsize),
-              (hingeX+vp.dparam.hsize),(hingeY+vp.dparam.hsize));
+			  (hingeX+vp.dparam.hsize),(hingeY+vp.dparam.hsize));
 
     }
     if(elem.iconf[1][0]<0)                  /*PLASTIC HINGE ON TAIL*/
@@ -10159,27 +10159,44 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
 
 	if(mode==ONPRINTER)
 	{
-	sprintf(str,"安全率の凡例");
+	sprintf(str,"安全率の凡例");/*SRC COLOR MAP*/
+#if 0
+	TextOut(hdc,3500,imax[1]+size.cy,str,strlen(str));
+	sprintf(str,"　 : ≧1.0");
+	TextOut(hdc,3500,imax[1]+3*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.9～1.0");
+	TextOut(hdc,3500,imax[1]+4*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.8～0.9");
+	TextOut(hdc,3500,imax[1]+5*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.7～0.8");
+	TextOut(hdc,3500,imax[1]+6*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.6～0.7");
+	TextOut(hdc,3500,imax[1]+7*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.5～0.6");
+	TextOut(hdc,3500,imax[1]+8*size.cy,str,strlen(str));
+	sprintf(str,"　 : ＜0.5");
+	TextOut(hdc,3500,imax[1]+9*size.cy,str,strlen(str));
+#endif
 #if 1
 	TextOut(hdc,3500,imax[1]+size.cy,str,strlen(str));
-    sprintf(str,"　 : ≧1.0");
-    TextOut(hdc,3500,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.9～1.0");
-    TextOut(hdc,3500,imax[1]+4*size.cy,str,strlen(str));
-	sprintf(str,"　 : 0.8～0.9");
-    TextOut(hdc,3500,imax[1]+5*size.cy,str,strlen(str));
-	sprintf(str,"　 : 0.7～0.8");
-    TextOut(hdc,3500,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.6～0.7");
-    TextOut(hdc,3500,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.5～0.6");
-    TextOut(hdc,3500,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"　 : ＜0.5");
-    TextOut(hdc,3500,imax[1]+9*size.cy,str,strlen(str));
+	sprintf(str,"　 : ≧1.0");
+	TextOut(hdc,3500,imax[1]+3*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.8～1.0");
+	TextOut(hdc,3500,imax[1]+4*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.6～0.8");
+	TextOut(hdc,3500,imax[1]+5*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.4～0.6");
+	TextOut(hdc,3500,imax[1]+6*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.2～0.4");
+	TextOut(hdc,3500,imax[1]+7*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.1～0.2");
+	TextOut(hdc,3500,imax[1]+8*size.cy,str,strlen(str));
+	sprintf(str,"　 : ＜0.1");
+	TextOut(hdc,3500,imax[1]+9*size.cy,str,strlen(str));
 #endif
 #if 0
 /*******FOR BUCKLING SAFETY******/
-    sprintf(str,"　 : ≧1.0");
+	sprintf(str,"　 : ≧1.0");
     TextOut(hdc,3500,imax[1]+3*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.5～1.0");
     TextOut(hdc,3500,imax[1]+4*size.cy,str,strlen(str));
@@ -10221,21 +10238,37 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     {
         sprintf(str,"安全率の凡例");
     TextOut(hdc,imin[0]+1000,imax[1]+size.cy,str,strlen(str));
-#if 1
-    sprintf(str,"　 : ≧1.0");
-    TextOut(hdc,imin[0]+1000,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.9～1.0");
-    TextOut(hdc,imin[0]+1000,imax[1]+4*size.cy,str,strlen(str));
+#if 0
+	sprintf(str,"　 : ≧1.0");
+	TextOut(hdc,imin[0]+1000,imax[1]+3*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.9～1.0");
+	TextOut(hdc,imin[0]+1000,imax[1]+4*size.cy,str,strlen(str));
 	sprintf(str,"　 : 0.8～0.9");
-    TextOut(hdc,imin[0]+1000,imax[1]+5*size.cy,str,strlen(str));
+	TextOut(hdc,imin[0]+1000,imax[1]+5*size.cy,str,strlen(str));
 	sprintf(str,"　 : 0.7～0.8");
-    TextOut(hdc,imin[0]+1000,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.6～0.7");
-    TextOut(hdc,imin[0]+1000,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.5～0.6");
-    TextOut(hdc,imin[0]+1000,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"　 : ＜0.5");
-    TextOut(hdc,imin[0]+1000,imax[1]+9*size.cy,str,strlen(str));
+	TextOut(hdc,imin[0]+1000,imax[1]+6*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.6～0.7");
+	TextOut(hdc,imin[0]+1000,imax[1]+7*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.5～0.6");
+	TextOut(hdc,imin[0]+1000,imax[1]+8*size.cy,str,strlen(str));
+	sprintf(str,"　 : ＜0.5");
+	TextOut(hdc,imin[0]+1000,imax[1]+9*size.cy,str,strlen(str));
+#endif
+#if 1
+	sprintf(str,"　 : ≧1.0");
+	TextOut(hdc,imin[0]+1000,imax[1]+3*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.8～1.0");
+	TextOut(hdc,imin[0]+1000,imax[1]+4*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.6～0.8");
+	TextOut(hdc,imin[0]+1000,imax[1]+5*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.4～0.6");
+	TextOut(hdc,imin[0]+1000,imax[1]+6*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.2～0.4");
+	TextOut(hdc,imin[0]+1000,imax[1]+7*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.1～0.2");
+	TextOut(hdc,imin[0]+1000,imax[1]+8*size.cy,str,strlen(str));
+	sprintf(str,"　 : ＜0.1");
+	TextOut(hdc,imin[0]+1000,imax[1]+9*size.cy,str,strlen(str));
 #endif
 #if 0
 /*******FOR BUCKLING SAFETY******/
@@ -10280,29 +10313,46 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     
     else
     {
-    sprintf(str,"安全率の凡例");
+	sprintf(str,"安全率の凡例");
 //    TextOut(hdc,imin[0]+250,imax[1]+size.cy,str,strlen(str));        //ujioka
     TextOut(hdc,imin[0]+500,imax[1]+size.cy,str,strlen(str));
-#if 1
-    sprintf(str,"　 : ≧1.0");
-    TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.9～1.0");
-    TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
+#if 0
+	sprintf(str,"　 : ≧1.0");
+	TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.9～1.0");
+	TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
 	sprintf(str,"　 : 0.8～0.9");
 	TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
 	sprintf(str,"　 : 0.7～0.8");
-    TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.6～0.7");
+	TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.6～0.7");
 	TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
-    sprintf(str,"　 : 0.5～0.6");
-    TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
-    sprintf(str,"　 : ＜0.5");
+	sprintf(str,"　 : 0.5～0.6");
+	TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
+	sprintf(str,"　 : ＜0.5");
 	TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
 #endif
+#if 1
+	sprintf(str,"　 : ≧1.0");
+	TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.8～1.0");
+	TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.6～0.8");
+	TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.4～0.6");
+	TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.2～0.4");
+	TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
+	sprintf(str,"　 : 0.1～0.2");
+	TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
+	sprintf(str,"　 : ＜0.1");
+	TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
+#endif
+
 #if 0
 /*******FOR BUCKLING SAFETY******/
     sprintf(str,"　 : ≧1.0");
-    TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
+	TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.5～1.0");
     TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
     sprintf(str,"　 : 0.2～0.5");
@@ -10510,15 +10560,17 @@ if(vp.vflag.nv.conffig)
     if((af.elems+i)->sect->dflag==1 &&
        vp.vflag.ev.etype[(af.elems+i)->sect->type]==1)
 */
+
+/*SRC COLOR MAP*/
     if(!globalcondensationflag && ((af.elems+i)->sect->dflag==1 &&
        vp.vflag.ev.etype[(af.elems+i)->sect->type]==1))
     {
-      if(globalstatus==SELECTELEMENT && (af.elems+i)->code==code)
+	  if(globalstatus==SELECTELEMENT && (af.elems+i)->code==code)
       {
         drawglobalwire(hdc,vp,af,*(af.elems+i),255,0,255,
                                                255,0,255,code,mode);
       }
-      else if(globalstatus==SELECTSECTION &&
+	  else if(globalstatus==SELECTSECTION &&
               (af.elems+i)->sect->code==code)
       {
         drawglobalwire(hdc,vp,af,*(af.elems+i),255,0,255,
@@ -10539,7 +10591,7 @@ if(vp.vflag.nv.conffig)
 #if 0
 /*******FOR BUCKLING SAFETY******/
       else if(vp.vflag.ev.srcancolor &&
-              ((af.elems+i)->srate[0]>0.5 || /*0.9*//*0.8*//*1.3*/
+			  ((af.elems+i)->srate[0]>0.5 || /*0.9*//*0.8*//*1.3*/
                (af.elems+i)->srate[1]>0.5 ||
                (af.elems+i)->srate[2]>0.5 ||
                (af.elems+i)->srate[3]>0.5))
@@ -10594,70 +10646,131 @@ if(vp.vflag.nv.conffig)
       else if(vp.vflag.ev.srcancolor)
       {
         drawglobalwire(hdc,vp,af,*(af.elems+i),80,50,200,
-                                               80,50,200,code,mode);
+											   80,50,200,code,mode);
       }
 #endif
 
-#if 1
-      else if(vp.vflag.ev.srcancolor &&
-              ((af.elems+i)->srate[0]>0.9 || /*0.9*//*0.8*//*1.3*/
+#if 0
+	  else if(vp.vflag.ev.srcancolor &&
+			  ((af.elems+i)->srate[0]>0.9 || /*0.9*//*0.8*//*1.3*/
                (af.elems+i)->srate[1]>0.9 ||
-               (af.elems+i)->srate[2]>0.9 ||
-               (af.elems+i)->srate[3]>0.9))
-      {
-        drawglobalwire(hdc,vp,af,*(af.elems+i),255,150,50,
-                                               255,150,50,code,mode);
-      }
-      else if(vp.vflag.ev.srcancolor &&
+			   (af.elems+i)->srate[2]>0.9 ||
+			   (af.elems+i)->srate[3]>0.9))
+	  {
+		drawglobalwire(hdc,vp,af,*(af.elems+i),255,150,50,
+											   255,150,50,code,mode);
+	  }
+	  else if(vp.vflag.ev.srcancolor &&
 			  ((af.elems+i)->srate[0]>0.8 || /*0.8*/
 			   (af.elems+i)->srate[1]>0.8 ||
 			   (af.elems+i)->srate[2]>0.8 ||
 			   (af.elems+i)->srate[3]>0.8))
 	  {
-        if(mode==ONPRINTER)
-        {
-          drawglobalwire(hdc,vp,af,*(af.elems+i),150,150,0,
+		if(mode==ONPRINTER)
+		{
+		  drawglobalwire(hdc,vp,af,*(af.elems+i),150,150,0,
 												 150,150,0,code,mode);
-        }
+		}
         else
-        {
-          drawglobalwire(hdc,vp,af,*(af.elems+i),255,255,0,
-                                                 255,255,0,code,mode);
+		{
+		  drawglobalwire(hdc,vp,af,*(af.elems+i),255,255,0,
+												 255,255,0,code,mode);
         }
       }
-      else if(vp.vflag.ev.srcancolor &&
+	  else if(vp.vflag.ev.srcancolor &&
               ((af.elems+i)->srate[0]>0.7 || /*0.7*//*0.6*//*0.5*/
-               (af.elems+i)->srate[1]>0.7 ||
+			   (af.elems+i)->srate[1]>0.7 ||
                (af.elems+i)->srate[2]>0.7 ||
                (af.elems+i)->srate[3]>0.7))
-      {
+	  {
         drawglobalwire(hdc,vp,af,*(af.elems+i),150,255,0,
                                                150,255,0,code,mode);
-      }
+	  }
       else if(vp.vflag.ev.srcancolor &&
               ((af.elems+i)->srate[0]>0.6 || /*0.6*//*0.5*//*0.3*/
-               (af.elems+i)->srate[1]>0.6 ||
+			   (af.elems+i)->srate[1]>0.6 ||
                (af.elems+i)->srate[2]>0.6 ||
                (af.elems+i)->srate[3]>0.6))
-      {
+	  {
         drawglobalwire(hdc,vp,af,*(af.elems+i),0,255,0,
                                                0,255,0,code,mode);
-      }
+	  }
       else if(vp.vflag.ev.srcancolor &&
               ((af.elems+i)->srate[0]>0.5 || /*0.5*//*0.4*//*0.2*/
-               (af.elems+i)->srate[1]>0.5 ||
+			   (af.elems+i)->srate[1]>0.5 ||
                (af.elems+i)->srate[2]>0.5 ||
                (af.elems+i)->srate[3]>0.5))
       {
         drawglobalwire(hdc,vp,af,*(af.elems+i),0,255,150,
-                                               0,255,150,code,mode);
+											   0,255,150,code,mode);
       }
       else if(vp.vflag.ev.srcancolor)
-      {
+	  {
         drawglobalwire(hdc,vp,af,*(af.elems+i),80,50,200,
-                                               80,50,200,code,mode);
-      }
+											   80,50,200,code,mode);
+	  }
 #endif
+#if 1
+	  else if(vp.vflag.ev.srcancolor &&
+			  ((af.elems+i)->srate[0]>0.8 ||
+			   (af.elems+i)->srate[1]>0.8 ||
+			   (af.elems+i)->srate[2]>0.8 ||
+			   (af.elems+i)->srate[3]>0.8))
+	  {
+		drawglobalwire(hdc,vp,af,*(af.elems+i),255,150,50,
+											   255,150,50,code,mode);
+	  }
+	  else if(vp.vflag.ev.srcancolor &&
+			  ((af.elems+i)->srate[0]>0.6 ||
+			   (af.elems+i)->srate[1]>0.6 ||
+			   (af.elems+i)->srate[2]>0.6 ||
+			   (af.elems+i)->srate[3]>0.6))
+	  {
+		if(mode==ONPRINTER)
+		{
+		  drawglobalwire(hdc,vp,af,*(af.elems+i),150,150,0,
+												 150,150,0,code,mode);
+		}
+		else
+		{
+		  drawglobalwire(hdc,vp,af,*(af.elems+i),255,255,0,
+												 255,255,0,code,mode);
+		}
+	  }
+	  else if(vp.vflag.ev.srcancolor &&
+			  ((af.elems+i)->srate[0]>0.4 ||
+			   (af.elems+i)->srate[1]>0.4 ||
+			   (af.elems+i)->srate[2]>0.4 ||
+			   (af.elems+i)->srate[3]>0.4))
+	  {
+		drawglobalwire(hdc,vp,af,*(af.elems+i),150,255,0,
+											   150,255,0,code,mode);
+	  }
+	  else if(vp.vflag.ev.srcancolor &&
+			  ((af.elems+i)->srate[0]>0.2 ||
+			   (af.elems+i)->srate[1]>0.2 ||
+			   (af.elems+i)->srate[2]>0.2 ||
+			   (af.elems+i)->srate[3]>0.2))
+	  {
+		drawglobalwire(hdc,vp,af,*(af.elems+i),0,255,0,
+											   0,255,0,code,mode);
+	  }
+	  else if(vp.vflag.ev.srcancolor &&
+			  ((af.elems+i)->srate[0]>0.1 ||
+			   (af.elems+i)->srate[1]>0.1 ||
+			   (af.elems+i)->srate[2]>0.1 ||
+			   (af.elems+i)->srate[3]>0.1))
+	  {
+		drawglobalwire(hdc,vp,af,*(af.elems+i),0,255,150,
+											   0,255,150,code,mode);
+	  }
+	  else if(vp.vflag.ev.srcancolor)
+	  {
+		drawglobalwire(hdc,vp,af,*(af.elems+i),80,50,200,
+											   80,50,200,code,mode);
+	  }
+#endif
+
 #if 1
 	  /****SRCANMAX****/
 	  /*else if(vp.vflag.ev.srcanmax &&
@@ -18293,7 +18406,7 @@ int arclm101(struct arclmframe *af,int idinput)
 	  inputnode(ddisp,elem.node[1]);
 
 	  drawglobalwire((wdraw.childs+1)->hdcC,
-                     (wdraw.childs+1)->vparam,
+					 (wdraw.childs+1)->vparam,
                      *af,elem,255,255,255,
                               255,255,255,0,ONSCREEN);
 	}
@@ -22291,6 +22404,7 @@ double **assemgmtx(struct owire elem,double *estress)
   *(*(g+ 8)+ 9)=-*(*(g+2)+9);  *(*(g+ 9)+8)=*(*(g+8)+ 9);
   *(*(g+ 8)+10)= *(*(g+1)+5);  *(*(g+10)+8)=*(*(g+8)+10);
 
+
   *(*(g+ 9)+ 9)= *(*(g+3)+3);
   *(*(g+ 9)+10)= *(*(g+3)+4);  *(*(g+10)+9)=*(*(g+9)+10);
   *(*(g+ 9)+11)= *(*(g+3)+5);  *(*(g+11)+9)=*(*(g+9)+11);
@@ -25059,7 +25173,7 @@ void drawhoganaxis(HDC hdc,
     pos=i*(hp.pitch[1]);
     sprintf(str,"%.3f",pos);
 
-    hn=setcoord(-hp.notchsize,(hp.scale[1])*pos,0.0);
+	hn=setcoord(-hp.notchsize,(hp.scale[1])*pos,0.0);
     tn=setcoord( hp.notchsize,(hp.scale[1])*pos,0.0);
 
     drawglobaltextaligned(hdc,vp,hn,str,TEXT_RIGHT,TEXT_CENTER);
@@ -31362,7 +31476,7 @@ MessageBox(NULL,non,"Distribute",MB_OK);
     *(ai.lbound+ 0)= -0.5;
     *(ai.lbound+ 1)=  0.1;
     *(ai.lbound+ 2)=  0.4;
-    *(ai.lbound+ 3)=  0.8;
+	*(ai.lbound+ 3)=  0.8;
     *(ai.lbound+ 4)=  1.1;
     *(ai.lbound+ 5)=  1.5;
     *(ai.lbound+ 6)=  1.8;

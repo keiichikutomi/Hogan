@@ -847,7 +847,7 @@ int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
 
           *(gvct2+i)=0.0;
 
-          (confs2+i)->iconf=0;
+		  (confs2+i)->iconf=0;
           (confs2+i)->value=0.0;
         }
 
@@ -905,13 +905,13 @@ int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
         /*if(fout!=NULL)
               fprintf(fout,"NODE %ld. DIAGNAL %20.5f\n",
                       (af->nodes+int((m-1)/6))->code,data);*/
-        if(data<=0.0)
-        {
+		if(data<=0.0 && (confs2+m-1)->iconf==0)
+		{
           sprintf(string,"INSTABLE TERMINATION AT NODE %ld.\n",
                   (afs[lxy]->nodes+int((m-1)/6))->code);
-          errormessage(string);
+		  errormessage(string);
         }
-      }
+	  }
 	/************************************************************************/
 
 	if(sign<0.0)
