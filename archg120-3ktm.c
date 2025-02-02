@@ -10189,10 +10189,8 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
 	TextOut(hdc,3500,imax[1]+6*size.cy,str,strlen(str));
 	sprintf(str,"　 : 0.2～0.4");
 	TextOut(hdc,3500,imax[1]+7*size.cy,str,strlen(str));
-	sprintf(str,"　 : 0.1～0.2");
+	sprintf(str,"　 : < 0.2");
 	TextOut(hdc,3500,imax[1]+8*size.cy,str,strlen(str));
-	sprintf(str,"　 : ＜0.1");
-	TextOut(hdc,3500,imax[1]+9*size.cy,str,strlen(str));
 #endif
 #if 0
 /*******FOR BUCKLING SAFETY******/
@@ -10265,10 +10263,8 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
 	TextOut(hdc,imin[0]+1000,imax[1]+6*size.cy,str,strlen(str));
 	sprintf(str,"　 : 0.2～0.4");
 	TextOut(hdc,imin[0]+1000,imax[1]+7*size.cy,str,strlen(str));
-	sprintf(str,"　 : 0.1～0.2");
+	sprintf(str,"　 : < 0.2");
 	TextOut(hdc,imin[0]+1000,imax[1]+8*size.cy,str,strlen(str));
-	sprintf(str,"　 : ＜0.1");
-	TextOut(hdc,imin[0]+1000,imax[1]+9*size.cy,str,strlen(str));
 #endif
 #if 0
 /*******FOR BUCKLING SAFETY******/
@@ -10312,7 +10308,7 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     }
     
     else
-    {
+	{
 	sprintf(str,"安全率の凡例");
 //    TextOut(hdc,imin[0]+250,imax[1]+size.cy,str,strlen(str));        //ujioka
     TextOut(hdc,imin[0]+500,imax[1]+size.cy,str,strlen(str));
@@ -10343,10 +10339,8 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
 	TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
 	sprintf(str,"　 : 0.2～0.4");
 	TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
-	sprintf(str,"　 : 0.1～0.2");
+	sprintf(str,"　 : < 0.2");
 	TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
-	sprintf(str,"　 : ＜0.1");
-	TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
 #endif
 
 #if 0
@@ -10367,28 +10361,55 @@ void drawarclmframe(HDC hdc,struct viewparam vp,
     TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
 #endif
 
-    SetTextColor(hdc,RGB(255,0,150));
-    sprintf(str,"■");
-    TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
+#if 0
+	SetTextColor(hdc,RGB(255,0,150));
+	sprintf(str,"■");
+	TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(255,150,50));
     sprintf(str,"■");
-    TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
+	TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(255,255,0));
-    sprintf(str,"■");
+	sprintf(str,"■");
     TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(150,255,0));
-    sprintf(str,"■");
+	sprintf(str,"■");
     TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
     SetTextColor(hdc,RGB(0,255,0));
     sprintf(str,"■");
-    TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
-    SetTextColor(hdc,RGB(0,255,150));
+	TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
+	SetTextColor(hdc,RGB(0,255,150));
     sprintf(str,"■");
-    TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
-    SetTextColor(hdc,RGB(0,150,255));
+	TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
+	SetTextColor(hdc,RGB(0,150,255));
+	sprintf(str,"■");
+	TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
+#endif
+#if 1
+	SetTextColor(hdc,RGB(255,0,150));
+	sprintf(str,"■");
+	TextOut(hdc,imin[0]+500,imax[1]+3*size.cy,str,strlen(str));
+
+    SetTextColor(hdc,RGB(255,150,50));
     sprintf(str,"■");
-    TextOut(hdc,imin[0]+500,imax[1]+9*size.cy,str,strlen(str));
-    }
+	TextOut(hdc,imin[0]+500,imax[1]+4*size.cy,str,strlen(str));
+
+    SetTextColor(hdc,RGB(255,255,0));
+	sprintf(str,"■");
+	TextOut(hdc,imin[0]+500,imax[1]+5*size.cy,str,strlen(str));
+
+	SetTextColor(hdc,RGB(0,255,0));
+	sprintf(str,"■");
+	TextOut(hdc,imin[0]+500,imax[1]+6*size.cy,str,strlen(str));
+
+	SetTextColor(hdc,RGB(0,255,150));
+	sprintf(str,"■");
+	TextOut(hdc,imin[0]+500,imax[1]+7*size.cy,str,strlen(str));
+
+	SetTextColor(hdc,RGB(0,150,255));
+	sprintf(str,"■");
+	TextOut(hdc,imin[0]+500,imax[1]+8*size.cy,str,strlen(str));
+#endif
+	}
 
     if(mode==ONPRINTER)      SetTextColor(hdc,RGB(0,0,0));
     else if(mode==ONPREVIEW) SetTextColor(hdc,RGB(0,0,0));
