@@ -460,6 +460,11 @@ int arclmStatic(struct arclmframe* af)
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 
+	af->iform = iform;
+	af->ddisp = ddisp;
+	af->melem = melem;
+	af->mshell = mshell;
+
 
 	csize = 0;
 	for (i = 0; i < nconstraint; i++)
@@ -1270,6 +1275,10 @@ int arclmStatic(struct arclmframe* af)
 
 		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
+		for(ii = 0; ii < nnode;ii++)
+		{
+			inputnode(ddisp,nodes+i);
+		}
 
 		for (ii = 0; ii < csize; ii++)
 		{
@@ -1515,10 +1524,14 @@ int arclmStatic(struct arclmframe* af)
 	fclose(fout);
 	fclose(feig);
 
+
+
 	gfree(gmtx,nnode);
 
 	free(weight);
 	free(gvct);
+	free(due);
+	free(dup);
 
 	free(funbalance);
 	free(freaction);
@@ -1528,16 +1541,20 @@ int arclmStatic(struct arclmframe* af)
 	free(fbaseload);
 	free(fdeadload);
 	free(fgivendisp);
-    free(fconstraint);
+	free(fconstraint);
 
-	free(due);
-	free(dup);
-
+	free(givendisp);
 	free(lastddisp);
 	free(lastgvct);
 	free(lastpivot);
 	free(lapddisp);
 
+	free(iform);
+	free(ddisp);
+	free(melem);
+	free(mshell);
+
+	free(constraintvct);
 
 
 

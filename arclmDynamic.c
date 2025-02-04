@@ -480,6 +480,11 @@ int arclmDynamic(struct arclmframe* af)
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 
+	af->iform = iform;
+	af->ddisp = ddisp;
+	af->melem = melem;
+	af->mshell = mshell;
+
 
 	csize = 0;
 	for (i = 0; i < nconstraint; i++)
@@ -1003,6 +1008,10 @@ int arclmDynamic(struct arclmframe* af)
 
 		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
+		for(ii = 0; ii < nnode;ii++)
+		{
+			inputnode(ddisp,nodes+i);
+		}
 
 		for (ii = 0; ii < csize; ii++)
 		{
@@ -1222,15 +1231,50 @@ int arclmDynamic(struct arclmframe* af)
 	fclose(finf);
 	fclose(fubf);
 	fclose(frct);
+	fclose(finr);
 	fclose(fstr);
 	fclose(fene);
 	fclose(ffig);
 	fclose(fbcl);
+	fclose(feig);
 	fclose(fout);
+    fclose(fvel);
+	fclose(facc);
 
 	gfree(gmtx, nnode);  	/*FREE GLOBAL MATRIX.*/
-	free(fexternal);		/*FREE VECTOR*/
+	gfree(gmtx2, nnode);
+
+
+	free(gvct);
+
+	free(lastlambda);
+	free(lastddisp);
+	free(lapddisp);
+	free(givendisp);
+
+	free(lastlastudd_m);
+	free(lastud_m);
+	free(lastudd_m);
+	free(ud_m);
+	free(udd_m);
+
+	free(funbalance);
+	free(freaction);
+	free(fexternal);
 	free(finternal);
+	free(finertial);
+	free(fdamping);
+	free(fbaseload);
+	free(fdeadload);
+	free(fpressure);
+	free(fgivendisp);
+	free(fconstraint);
+
+	free(iform);
+	free(ddisp);
+	free(melem);
+	free(mshell);
+	free(constraintvct);
 
 	errormessage(" ");
 	errormessage("COMPLETED.");

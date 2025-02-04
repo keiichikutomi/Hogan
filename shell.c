@@ -1713,12 +1713,15 @@ double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy)
 	c = sect->yieldcoefficient;
 	n = sect->yieldpower;
 
+	double sa,sc,sn;/*SWIFT'S PARAMS*/
+
 	if(n==0.0)
 	{
 	  y = yinit;
 	  if(dy!=NULL)*dy = 0.0;
 	  if(ddy!=NULL)*ddy = 0.0;
 	}
+	/*
 	else
 	{
 	  y = yinit + c * pow(alpha,n);
@@ -1733,6 +1736,28 @@ double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy)
 		if(ddy!=NULL)*ddy = c*n*n*pow(alpha,n-2);
 	  }
 	}
+	*/
+	else/*SWIFT'S HARDNING LAW : É–=sc*(sa+É√_p)^sn*/
+	{
+	  sa = pow(yinit/c,n);
+	  sc = c;
+	  sn = 1/n;
+
+	  y = sc * pow(sa+alpha,sn);
+	  if(sn==1.0)
+	  {
+		if(dy!=NULL)*dy = sc;
+		if(ddy!=NULL)*ddy = 0.0;
+	  }
+	  else
+	  {
+		if(dy!=NULL)*dy = sc*sn*pow(sa+alpha,n-1);
+		if(ddy!=NULL)*ddy = sc*sn*sn*pow(sa+alpha,n-2);
+	  }
+	}
+
+
+
 
 	return y;
 }

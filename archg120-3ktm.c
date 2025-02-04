@@ -18228,8 +18228,8 @@ int arclm101(struct arclmframe *af,int idinput)
           (elems+i-1)->iconf[ii][jj]=elem.iconf[ii][jj];
 		}
       }
-      inputnode(ddisp,elem.node[0]);                         /*HEAD*/
-      inputnode(ddisp,elem.node[1]);                         /*TAIL*/
+	  inputnode(ddisp,elem.node[0]);                         /*HEAD*/
+	  inputnode(ddisp,elem.node[1]);                         /*TAIL*/
 
 	  elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
@@ -18328,7 +18328,7 @@ int arclm101(struct arclmframe *af,int idinput)
 	{
 	  inputelem(elems,melem,i-1,&elem);
 
-      inputnode(ddisp,elem.node[0]);
+	  inputnode(ddisp,elem.node[0]);
       inputnode(ddisp,elem.node[1]);
 
       elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/

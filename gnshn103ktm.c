@@ -2980,7 +2980,7 @@ void energyoutputtomemory(FILE *ftext,struct arclmframe *af)
     ddata=strtod(*(data+17),NULL);
     (af->elems+i)->Ep[1]=ddata;
 
-    for(;n>0;n--) free(*(data+n-1));
+	for(;n>0;n--) free(*(data+n-1));
 	free(data);
 
 
@@ -2988,6 +2988,7 @@ void energyoutputtomemory(FILE *ftext,struct arclmframe *af)
   }
   return;
 }
+
 
 
 
