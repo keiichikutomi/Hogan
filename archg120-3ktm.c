@@ -20442,13 +20442,13 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			{
 				(af->constraints+i-1)->node[1]=af->nodes+j;
 				suboff = 6*j;
-				for(l=0;l<6;l++)
-				{
-					*((af->constraintmain)+suboff+l)=mainoff+l;
-				}
 				k++;
 			}
 			j++;
+		}
+		for(j=0;j<6;j++)
+		{
+			*((af->constraintmain)+suboff+j)=mainoff+j;
 		}
 	}
 	else if((af->constraints+i-1)->type==1)/*REVOLUTE JOINT.*/
@@ -20470,14 +20470,16 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			{
 				(af->constraints+i-1)->node[1]=af->nodes+j;
 				suboff = 6*j;
-				for(l=0;l<3;l++)
-				{
-					*((af->constraintmain)+suboff+l)=mainoff+l;
-				}
 				k++;
 			}
 			j++;
 		}
+		for(j=0;j<3;j++)
+		{
+			*((af->constraintmain)+suboff+j)=mainoff+j;
+		}
+
+
 		for(j=0;j<3;j++)
 		{
 			(af->constraints+i-1)->axis[2][j]=strtod(*(data+4+j),NULL);
@@ -20523,13 +20525,13 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			{
 				(af->constraints+i-1)->node[1]=af->nodes+j;
 				suboff = 6*j;
-				for(l=0;l<3;l++)
-				{
-					*((af->constraintmain)+suboff+l)=mainoff+l;
-				}
 				k++;
 			}
 			j++;
+		}
+		for(j=0;j<3;j++)
+		{
+			*((af->constraintmain)+suboff+j)=mainoff+j;
 		}
 	}
 	else if((af->constraints+i-1)->type==3)/*PRISMATIC JOINT.*/
@@ -20599,7 +20601,6 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
   }
 
 
-  /*LONGREACTION:UNDER CONSTRUCTION.*/
   for (i = 0; i < 6*(af->nnode); i++)
   {
 	if (*((af->constraintmain) + i) != i)
@@ -21759,6 +21760,9 @@ void readsect(FILE *fin,struct osect *sect)
 	  sect->dcolor.g = 255;
 	  sect->dcolor.b = 255;
 	  sect->type=strtol(*(data+19),NULL,10);   /*SECTION TYPE.*/
+	  sect->yieldinit = 0.0;
+	  sect->yieldcoefficient = 0.0;
+	  sect->yieldpower = 0.0;
   }
   else if(n==32)
   {
@@ -21775,6 +21779,9 @@ void readsect(FILE *fin,struct osect *sect)
 	  sect->dcolor.g = strtol(*(data+29),NULL,10);
 	  sect->dcolor.b = strtol(*(data+30),NULL,10);
 	  sect->type=strtol(*(data+31),NULL,10);   /*SECTION TYPE.*/
+	  sect->yieldinit = 0.0;
+	  sect->yieldcoefficient = 0.0;
+	  sect->yieldpower = 0.0;
   }
   else if(n==35)
   {
@@ -21810,6 +21817,9 @@ void readsect(FILE *fin,struct osect *sect)
 	  sect->dcolor.g = 255;
 	  sect->dcolor.b = 255;
 	  sect->type=TYPENULL;
+	  sect->yieldinit = 0.0;
+	  sect->yieldcoefficient = 0.0;
+	  sect->yieldpower = 0.0;
   }
   //sprintf(str,"%d",n);
   //errormessage(str);

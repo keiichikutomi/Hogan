@@ -886,7 +886,7 @@ int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
                     lu);
 
     //nline=croutludecomposition(gmtx2,
-    //                           gvct2,confs2,
+	//                           gvct2,confs2,
     //                           6*nnode,
     //                           &determinant,&sign);  /*[K]{dU}={dF}*/
 
@@ -901,10 +901,8 @@ int arclm001_lxy(struct arclmframe *afs[],int idinputs[],int idoutputs[])
     /*** 10.11.26 araki for instable termination ****************************/
       for(m=1;m<=msize;m++)
       {
-        gread(gmtx2,m,m,&data);
-        /*if(fout!=NULL)
-              fprintf(fout,"NODE %ld. DIAGNAL %20.5f\n",
-                      (af->nodes+int((m-1)/6))->code,data);*/
+		gread(gmtx2,m,m,&data);
+
 		if(data<=0.0 && (confs2+m-1)->iconf==0)
 		{
           sprintf(string,"INSTABLE TERMINATION AT NODE %ld.\n",

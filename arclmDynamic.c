@@ -13,14 +13,14 @@ double loadfactormap(double time);
 int arclmStatDyna(struct arclmframe* af)
 {
 	double targetload;
-	//targetload = 100000;
+	double ENDFLAG = 0;
 	targetload = 1e+10;
 	while(1)
 	{
-		arclmStatic(af);
-		if(af->loadfactor > targetload)break;
-		arclmDynamic(af);
-		if(af->loadfactor > targetload)break;
+		ENDFLAG = arclmStatic(af);
+		if(af->loadfactor > targetload || ENDFLAG == 1)break;
+		ENDFLAG = arclmDynamic(af);
+		if(af->loadfactor > targetload || ENDFLAG == 1)break;
 	}
 	return 0;
 }
@@ -1163,14 +1163,13 @@ int arclmDynamic(struct arclmframe* af)
 		/*TERMINATION FLAG*/
 		if (iteration == 1)
 		{
-			if (sign > 20)
+			if (sign > 20 || residual > 1e+10)
 			{
 				ENDFLAG = 1;
 				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
 				errormessage(string);
 			}
 		}
-
 
 
 		//MESSAGE FOR UPDATE UI
@@ -1283,7 +1282,8 @@ int arclmDynamic(struct arclmframe* af)
 	sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory1));
 	errormessage(string);
 
-	return 0;
+	if(ENDFLAG==1)return 1;
+	else return 0;
 }
 
 

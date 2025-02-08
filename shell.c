@@ -57,6 +57,9 @@ double*** shellC(struct oshell shell)
 	double E = shell.sect->E;
 	double t = shell.sect->area;
 	double poi = shell.sect->poi;
+	double prate = shell.prate;
+	double brate = shell.brate;
+
 
 	C = (double***)malloc(shell.ngp * sizeof(double**));
 	for (ii = 0; ii < shell.ngp; ii++)
@@ -70,6 +73,7 @@ double*** shellC(struct oshell shell)
 				*(*(*(C+ii) + i) + j) = 0.0;
 			}
 		}
+		/*
 		*(*(*(C+ii)+0)+0)=E*t/(1-poi*poi);
 		*(*(*(C+ii)+0)+1)=poi**(*(*(C+ii)+0)+0);
 		*(*(*(C+ii)+1)+0)=*(*(*(C+ii)+0)+1);
@@ -81,6 +85,19 @@ double*** shellC(struct oshell shell)
 		*(*(*(C+ii)+4)+3)=*(*(*(C+ii)+3)+4);
 		*(*(*(C+ii)+4)+4)=*(*(*(C+ii)+3)+3);
 		*(*(*(C+ii)+5)+5)=0.5*E*pow(t,3)/(12.0*(1+poi));
+		*/
+		*(*(*(C+ii)+0)+0)=E*t/(1-poi*poi)*prate;
+		*(*(*(C+ii)+0)+1)=poi**(*(*(C+ii)+0)+0);
+		*(*(*(C+ii)+1)+0)=*(*(*(C+ii)+0)+1);
+		*(*(*(C+ii)+1)+1)=*(*(*(C+ii)+0)+0);
+		*(*(*(C+ii)+2)+2)=0.5*E*t/(1+poi)*prate;
+
+		*(*(*(C+ii)+3)+3)=E*pow(t,3)/(12.0*(1-poi*poi))*brate;
+		*(*(*(C+ii)+3)+4)=poi**(*(*(C+ii)+3)+3);
+		*(*(*(C+ii)+4)+3)=*(*(*(C+ii)+3)+4);
+		*(*(*(C+ii)+4)+4)=*(*(*(C+ii)+3)+3);
+		*(*(*(C+ii)+5)+5)=0.5*E*pow(t,3)/(12.0*(1+poi))*brate;
+
 	}
 	return C;
 }
@@ -1800,7 +1817,7 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG)
 
   /*[Q]diag[a,b,c][Q]^T  */
   /*    | a+b a-b   0 |  */
-  /*=1/2| a+b a-b   0 |  */
+  /*=1/2| a-b a+b   0 |  */
   /*    |   0   0  2c |  */
 
   /*{ƒÐtry-ƒ¿try}=([I]+2ƒ¢ƒÉ[C][A]){ƒÐ-ƒ¿}=[W]^-1{ƒÐ-ƒ¿} */
@@ -2535,11 +2552,11 @@ double* mises(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG)
   yinit=shell->sect->yieldinit;
 
   fn=shell->sect->fmax[0] /*yinit*t*/;
-  fm=shell->sect->fmax[3] /*yinit*pow(t,2)/4.0*/;
+  //fm=shell->sect->fmax[3] /*yinit*pow(t,2)/4.0*/;
 
   fn2=pow(fn,2);
-  fm2=pow(fm,2);
-  fnfm=fn*fm;
+  //fm2=pow(fm,2);
+  //fnfm=fn*fm;
 
 
   v[0]=1/(1-poi);
@@ -2736,8 +2753,6 @@ void assemshellestress(struct oshell* shell, double*** C)
   ngp = shell->ngp;
   nstress = shell->nstress;
 
-
-
   for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
   {
 	gp = &(shell->gp[ii]);
@@ -2761,7 +2776,7 @@ void assemshellestress(struct oshell* shell, double*** C)
 	free(gpstrain);
 
 	/*RETURN-MAPPING & UPDATE*/
-	returnmapilyushin(shell, ii);
+	if(shell->sect->yieldinit != 0.0)returnmapilyushin(shell, ii);
 
 	(shell->gp[ii]).Ee = 0.0;
 	for(i = 0; i < nstress; i++)
@@ -2774,9 +2789,6 @@ void assemshellestress(struct oshell* shell, double*** C)
 						   *((shell->gp[ii]).pstrain[i] - (shell->gp[ii]).pstrain[i] );
 	}
   }
-
-
-
   return;
 }
 
