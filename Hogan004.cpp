@@ -799,6 +799,8 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			  idoutputs[1]=ID_OUTPUTFILEX;
 			  idoutputs[2]=ID_OUTPUTFILEY;
 
+			  //arclm001(&arc ,ID_INPUTFILEZ,ID_OUTPUTFILEZ);
+
 			  arclm001_lxy(arcs,idinputs,idoutputs);
 
 			  /*SRCAN*/
