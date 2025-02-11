@@ -1277,7 +1277,7 @@ int arclmStatic(struct arclmframe* af)
 		updaterotation(ddisp, gvct, nnode);
 		for(ii = 0; ii < nnode;ii++)
 		{
-			inputnode(ddisp,nodes+i);
+			inputnode(ddisp,nodes+ii);
 		}
 
 		for (ii = 0; ii < csize; ii++)

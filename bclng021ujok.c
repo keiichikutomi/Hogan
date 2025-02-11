@@ -315,10 +315,10 @@ int bclng001(struct arclmframe *af)
 	free(af->elems);
 	free(af->shells);
 	free(af->confs);
-	free(af->iform);
-	free(af->ddisp);
-	free(af->melem);
-	free(af->mshell);
+	//free(af->iform);
+	//free(af->ddisp);
+	//free(af->melem);
+	//free(af->mshell);
 	free(af->constraintmain);
 
 	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
@@ -327,10 +327,10 @@ int bclng001(struct arclmframe *af)
 	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
 	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
 	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
-	iform = (double*)malloc(msize * sizeof(double));
-	ddisp = (double*)malloc(msize * sizeof(double));
-	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
-	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
+	//iform = (double*)malloc(msize * sizeof(double));
+	//ddisp = (double*)malloc(msize * sizeof(double));
+	//melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	//mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
 
 	af->sects = sects;
@@ -339,10 +339,10 @@ int bclng001(struct arclmframe *af)
 	af->elems = elems;
 	af->shells = shells;
 	af->confs = confs;
-	af->iform = iform;
-	af->ddisp = ddisp;
-	af->melem = melem;
-	af->mshell = mshell;
+	//af->iform = iform;
+	//af->ddisp = ddisp;
+	//af->melem = melem;
+	//af->mshell = mshell;
 	af->constraintmain = constraintmain;
 
 	inputtexttomemory(fin, af);
@@ -356,31 +356,48 @@ int bclng001(struct arclmframe *af)
 	elems = af->elems;
 	shells = af->shells;
 	confs = af->confs;
-	iform = af->iform;
-	ddisp = af->ddisp;
-	melem = af->melem;
-	mshell = af->mshell;
+	//iform = af->iform;
+	//ddisp = af->ddisp;
+	//melem = af->melem;
+	//mshell = af->mshell;
 	constraintmain = af->constraintmain;
 #endif
 
-  /*DIAGONALS OF GLOBAL MATRIX.*/
-  gmtx1=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
-  gmtx2=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
-  if(gmtx1==NULL || gmtx2==NULL) return 0;
-  for(i=0;i<msize;i++)
-  {
-	(gmtx1+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
-	(gmtx2+i)->down=NULL;
-  }
+	iform = (double*)malloc(msize * sizeof(double));
+	ddisp = (double*)malloc(msize * sizeof(double));
+	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 
-  for(i=1;i<=msize;i++)             /*GLOBAL MATRIX INITIALIZATION.*/
-  {
-	ginit.m=(unsigned int)i;
-	/*ginit.n=(unsigned int)i;*/
-	*(gmtx1+(i-1))=ginit;
-	*(gmtx2+(i-1))=ginit;
-  }
-  comps=msize; /*INITIAL COMPONENTS=DIAGONALS.*/
+	af->iform = iform;
+	af->ddisp = ddisp;
+	af->melem = melem;
+	af->mshell = mshell;
+
+
+	/*DIAGONALS OF GLOBAL MATRIX.*/
+	gmtx1=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
+	gmtx2=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
+	if(gmtx1==NULL || gmtx2==NULL) return 0;
+	for(i=0;i<msize;i++)
+	{
+	  (gmtx1+i)->down=NULL;            /*GLOBAL MATRIX INITIALIZATION.*/
+	  (gmtx2+i)->down=NULL;
+	}
+
+	for(i=1;i<=msize;i++)             /*GLOBAL MATRIX INITIALIZATION.*/
+	{
+	  ginit.m=(unsigned int)i;
+	  /*ginit.n=(unsigned int)i;*/
+	  *(gmtx1+(i-1))=ginit;
+	  *(gmtx2+(i-1))=ginit;
+	}
+	comps=msize; /*INITIAL COMPONENTS=DIAGONALS.*/
+
+
+	initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
+	initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
+	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
+	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
   GetAsyncKeyState(VK_LBUTTON);                  /*CLEAR KEY LEFT.*/
   GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/

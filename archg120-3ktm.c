@@ -208,14 +208,18 @@ struct obans{long int code,loff;
              struct onode **nods;}; /*PLANE OF ELEMENT.*/
 struct surface{double exp,fmax[6],fmin[6];};
 
-struct gausspoint{double estrain[7];
-				  double pstrain[7];
-				  double stress[7];
-				  double backstress[7];
+struct gausspoint{double estrain[6];
+				  double pstrain[6];
+				  double stress[6];
+				  double backstress[6];
+				  double z;/*THICKNESS DIRECTION*/
+
+				  /*FOR ILYUSHIN*/
 				  double qn,qm,qnm;
 				  double yinit,y,alpha;
 				  double f[2];
 				  double lambda[2];
+
 				  double Ee,Ep;
 				  };
 

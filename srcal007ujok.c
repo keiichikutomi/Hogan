@@ -950,7 +950,7 @@ if(MessageBox(NULL,"Pass 1","SRCan",MB_OKCANCEL)==IDCANCEL) return 0;
           }
 
           /*MATERIAL INDEPENDENT ON PERIOD.*/
-          gmaterial.sE=2100000.0; /*[kgf/cm2]*/
+		  gmaterial.sE=2100000.0; /*[kgf/cm2]*/
           gmaterial.rE=2100000.0;
           /*gmaterial.cE=210000.0;*/
           gmaterial.gE= 725000.0;
@@ -3855,10 +3855,10 @@ int getsectionform(FILE *flist,int code,struct section *sect)
               }
 			  else if(n>=6 && !strncmp(*(data+5),"HT950",5))
               {
-                sect->srect[nsteel].F=9000.0;
+				sect->srect[nsteel].F=9000.0;
               }
               /***********************************/
-              else if(n>=6 && !strncmp(*(data+5),"AS175",5))   /*Alumi*/
+			  else if(n>=6 && !strncmp(*(data+5),"AS175",5))   /*Alumi*/
               {
                 sect->srect[nsteel].F=1750.0;
               }
@@ -13841,6 +13841,8 @@ double ultimateshearofpcgirder(struct element elem,
   */
   return Qu;
 }
+
+
 
 
 
