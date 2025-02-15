@@ -853,6 +853,8 @@ int arclmDynamic(struct arclmframe* af)
 		//Eigen::SimplicialLDLT<SparseMatrix> solver;
 		Eigen::SparseLU<SparseMatrix> solver;
 		//Eigen::BiCGSTAB<SparseMatrix> solver;
+		//solver.setTolerance(1e-9); // 許容誤差の設定
+		//solver.setMaxIterations(10000); // 最大反復回数
 
 		for (i = 1; i <= (msize+csize); i++)/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
 		{

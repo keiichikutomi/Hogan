@@ -1,4 +1,4 @@
-int arclmStatic(struct arclmframe* af);
+﻿int arclmStatic(struct arclmframe* af);
 
 void LDLmode(struct gcomponent* gmtx, struct oconf* confs, int* m, int nmode, double** mode, double* norm, double* dm, long int msize);
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);
@@ -664,6 +664,9 @@ int arclmStatic(struct arclmframe* af)
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
 		Eigen::SimplicialLDLT<SparseMatrix> solver;
+		//Eigen::BiCGSTAB<SparseMatrix> solver;
+		//solver.setTolerance(1e-9); // 許容誤差の設定
+		//solver.setMaxIterations(10000); // 最大反復回数
 
 		for (i = 1; i <= (msize+csize); i++)
 		{
@@ -962,7 +965,6 @@ int arclmStatic(struct arclmframe* af)
 
 		}
 		/*NORMAL CALCULATION IN CASE OF REGULAR*/
-
 		if (iteration == 1)/*PREDICTOR CALCULATION*/
 		{
 			if(USINGEIGENFLAG==1)
@@ -999,8 +1001,14 @@ int arclmStatic(struct arclmframe* af)
 				if(SCALINGARCFLAG==1)
 				{
 					k = equilibriumcurvature(weight, lapddisp, laploadfactor, dup, msize);
-					scaledarclength = arclength * sqrt(k1 / k);
-					//if (scaledarclength > arclength)scaledarclength = arclength;
+					if(k == 0 || k1 > k)
+					{
+					  scaledarclength = arclength;
+					}
+					else
+					{
+					  scaledarclength = arclength * sqrt(k1 / k);
+					}
 				}
 			}
 
@@ -1285,8 +1293,6 @@ int arclmStatic(struct arclmframe* af)
 		  *(lambda+ii)+=*(gvct+msize+ii);
 		}
 
-	//dbgvct(lambda,csize,5,NULL);
-
 
 		for (i = 0; i < msize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
 		{
@@ -1352,6 +1358,79 @@ int arclmStatic(struct arclmframe* af)
 			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
 			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
 		}
+		if (iteration > maxiteration-1 && iteration != 1)
+		{
+			/*本来ここで座屈解析？*/
+			nlap++;
+			iteration = 0;
+
+			laploadfactor = 0.0;
+			loadfactor = lastloadfactor + 0.0;
+			for (ii = 0; ii < msize; ii++)
+			{
+				*(lapddisp + ii) = 0.0;
+				*(ddisp + ii) = *(lastddisp + ii);
+			}
+			for(ii = 0; ii < nnode;ii++)
+			{
+				inputnode(ddisp,nodes+ii);
+			}
+
+			for (ii = 0; ii < csize; ii++)
+			{
+			  *(lambda+ii) = *(lastlambda+ii) ;
+			}
+
+
+			for (i = 0; i < msize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+			{
+				*(finternal  + i) = 0.0;
+				*(fexternal  + i) = 0.0;
+				*(funbalance + i) = 0.0;
+				*(freaction  + i) = 0.0;
+				*(fbaseload  + i) = 0.0;
+				*(fpressure  + i) = 0.0;
+				*(fconstraint + i) = 0.0;
+			}
+			for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+			{
+				*(constraintvct  + i) = 0.0;
+			}
+
+			volume = 0.0;
+			assemshellvolume(shells, nshell, ddisp, &volume);
+
+			/*POST PROCESS*/
+			elemstress(elems, melem, nelem, constraintmain, iform, ddisp, finternal, fpressure);
+			shellstress(shells, mshell, nshell, constraintmain, iform, ddisp, finternal, fpressure);
+			constraintstress(constraints, nconstraint, constraintmain, iform, ddisp, lambda, fconstraint, constraintvct);
+
+			strainenergy(af, &Wet, &Wpt);
+			//kineticenergy(af, ud_m, &Wkt);
+
+
+			for (i = 0; i < msize; i++)
+			{
+				*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
+				*(fexternal + i) = loadfactor * *(fbaseload + i);
+				*(funbalance + i) = *(fexternal + i) - *(finternal + i) - *(fconstraint + i);            /*funbalance:UNBALANCED FORCE -{E}.*/
+				if ((confs + i)->iconf == 1)
+				{
+					*(freaction + i) = *(funbalance + i);
+					*(funbalance + i) = 0.0;
+					*(fbaseload + i) = 0.0;
+				}
+				*(dup + i) = *(fbaseload + i);
+				*(due + i) = *(funbalance + i);
+			}
+			for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+			{
+				*(dup + msize + i) = 0.0;
+				*(due + msize + i) = *(constraintvct  + i);
+			}
+
+		}
+
 		iteration++;
 		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
@@ -1606,7 +1685,7 @@ int arclmStatic(struct arclmframe* af)
 			loadlambda = 0.0;
 			for (ii = 0; ii < msize; ii++)
 			{
-				*(gvct + ii) = *(due + ii);/*gvct:{��U_e+��U_p}*/
+				*(gvct + ii) = *(due + ii);/*gvct:{��U_e+��U_p}*/
 			}
 			fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, 0.0, 0.0);
 		}
@@ -1812,7 +1891,7 @@ int arclmStatic(struct arclmframe* af)
 				loadfactor += loadlambda;
 				for (ii = 0; ii < msize; ii++)
 				{
-					*(gvct + ii) = *(dup + ii) * loadlambda + *(due + ii);/*gvct:{��U_e+��U_p}*/
+					*(gvct + ii) = *(dup + ii) * loadlambda + *(due + ii);/*gvct:{��U_e+��U_p}*/
 				}
 
 
