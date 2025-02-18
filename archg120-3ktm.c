@@ -212,16 +212,33 @@ struct gausspoint{double estrain[6];
 				  double pstrain[6];
 				  double stress[6];
 				  double backstress[6];
-				  double z;/*THICKNESS DIRECTION*/
+				  double w;
 
 				  /*FOR ILYUSHIN*/
-				  double qn,qm,qnm;
+				  //double qn,qm,qnm;
 				  double yinit,y,alpha;
 				  double f[2];
 				  double lambda[2];
 
 				  double Ee,Ep;
+
+				  struct gausspoint2 gp2[5];
 				  };
+
+struct gausspoint2{double estrain[3];
+				   double pstrain[3];
+				   double stress[3];
+				   double backstress[3];
+				   double w;
+				   double z;
+
+				   /*FOR MISES*/
+				   double yinit,y,alpha;
+				   double f;
+				   double lambda;
+
+				   double Ee,Ep;
+				   };
 
 struct owire{long int code,loff;
 			 int nnod;
@@ -238,10 +255,9 @@ struct owire{long int code,loff;
 			 double Ee[2],Ep[2]; /*STRAIN ENERGY.*/
 			}; /*WIRE ELEM FOR ARCLM001,101.*/
 
-struct memoryelem{
-				   long int code;
-				   signed char bond[2][6];
-				   double stress[2][6];
+struct memoryelem{long int code;
+				  signed char bond[2][6];
+				  double stress[2][6];
 				 };
 							  /*ELEMENT MEMORY FOR ARCLM.*/
 struct oshell{long int code,loff;
@@ -249,8 +265,8 @@ struct oshell{long int code,loff;
 			  struct onode *(node[4]);
 			  struct osect *sect;
 			  double stress[4][6];
-			  double area,w[9];
-			  struct gausspoint gp[9];/*INTEGRATION POINTS PARAMS*/
+			  double area;
+			  struct gausspoint gp[7];/*INTEGRATION POINTS PARAMS*/
 
 			  double prate;/*IN-PLANE STIFFNESS RATIO*/
 			  double brate;/*BENDING STIFFNESS RATIO*/
@@ -20343,9 +20359,9 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		((af->shells+i-1)->gp[ii]).stress[jj]=0.0;
 		((af->shells+i-1)->gp[ii]).backstress[jj]=0.0;
 	  }
-	  ((af->shells+i-1)->gp[ii]).qn=0.0;
-	  ((af->shells+i-1)->gp[ii]).qm=0.0;
-	  ((af->shells+i-1)->gp[ii]).qnm=0.0;
+	  //((af->shells+i-1)->gp[ii]).qn=0.0;
+	  //((af->shells+i-1)->gp[ii]).qm=0.0;
+	  //((af->shells+i-1)->gp[ii]).qnm=0.0;
 
 	  ((af->shells+i-1)->gp[ii]).yinit=0.0;
 	  ((af->shells+i-1)->gp[ii]).y=0.0;
@@ -20373,19 +20389,19 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 
 	/*WEIGHT OF GAUSS INTEGRATION POINT*/
 	/*
-	(af->shells+i-1)->w[0]=27.0/60.0;
-	(af->shells+i-1)->w[1]=8.0/60.0;
-	(af->shells+i-1)->w[2]=(af->shells+i-1)->w[1];
-	(af->shells+i-1)->w[3]=(af->shells+i-1)->w[1];
-	(af->shells+i-1)->w[4]=3.0/60.0;
-	(af->shells+i-1)->w[5]=(af->shells+i-1)->w[4];
-	(af->shells+i-1)->w[6]=(af->shells+i-1)->w[4];
+	((af->shells+i-1)->gp[0]).w=27.0/60.0;
+	((af->shells+i-1)->gp[1]).w=8.0/60.0;
+	((af->shells+i-1)->gp[2]).w=((af->shells+i-1)->gp[1]).w;
+	((af->shells+i-1)->gp[3]).w=((af->shells+i-1)->gp[1]).w;
+	((af->shells+i-1)->gp[4]).w=3.0/60.0;
+	((af->shells+i-1)->gp[5]).w=((af->shells+i-1)->gp[4]).w;
+	((af->shells+i-1)->gp[6]).w=((af->shells+i-1)->gp[4]).w;
 	*/
 
-	(af->shells+i-1)->w[0]=0.0;
-	(af->shells+i-1)->w[1]=1.0/3.0;
-	(af->shells+i-1)->w[2]=(af->shells+i-1)->w[1];
-	(af->shells+i-1)->w[3]=(af->shells+i-1)->w[1];
+	((af->shells+i-1)->gp[0]).w=0.0;
+	((af->shells+i-1)->gp[1]).w=1.0/3.0;
+	((af->shells+i-1)->gp[2]).w=1.0/3.0;
+	((af->shells+i-1)->gp[3]).w=1.0/3.0;
 
 	if(k==n-2)
 	{

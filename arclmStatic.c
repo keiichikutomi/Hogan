@@ -118,7 +118,7 @@ int arclmStatic(struct arclmframe* af)
 	int USINGEIGENFLAG = 0;
 
 	/*LAST LAP*/
-	double* lastddisp,* lastpivot;
+	double* lastddisp,* lastlambda,* lastpivot;
 	double lastloadfactor,lastloadlambda;
 	double lastsign = 0;
 
@@ -138,7 +138,7 @@ int arclmStatic(struct arclmframe* af)
 
 	/*TWO-POINT BUCKLING ANALYSIS*/
 	int neig = 0;
-	struct gcomponent *epsgmtx, *gmtxcpy, *dgmtx;
+	struct gcomponent *epsgmtx, *gmtxcpy, *dgmtx, *bisecgmtx;
 	double* epsddisp, * epsgvct;
 	double **evct, *eigen;
 	double eps;
@@ -472,7 +472,9 @@ int arclmStatic(struct arclmframe* af)
 	{
 		csize += (constraints+i)->neq;
 	}
+
 	constraintvct = (double*)malloc(csize * sizeof(double));
+
 	if(af->lambda==NULL)
 	{
 		lambda = (double*)malloc(csize * sizeof(double));
@@ -486,6 +488,7 @@ int arclmStatic(struct arclmframe* af)
 	{
 		lambda = af->lambda;
 	}
+	lastlambda = (double*)malloc(csize * sizeof(double));
 
 
 
@@ -644,11 +647,11 @@ int arclmStatic(struct arclmframe* af)
 	for(i = 0; i < nshell; i++)
 	{
 		//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
-		fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+		fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
 		((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
 		((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
 		((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
-		((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+		((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 		);
 	}
 	fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
@@ -1403,11 +1406,11 @@ int arclmStatic(struct arclmframe* af)
 			for(i = 0; i < nshell; i++)
 			{
 				//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
-				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
 				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
 				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
 				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
-				((shells+i)->gp[0]).qn,((shells+i)->gp[0]).qm,((shells+i)->gp[0]).qnm,((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+				((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 				);
 			}
 			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
@@ -1494,8 +1497,8 @@ int arclmStatic(struct arclmframe* af)
 
 			for(i = 0; i < msize; i++)
 			{
-				*(finertial  + i) = 0.0;
-				//*(finternal  + i) = 0.0;
+				//*(finertial  + i) = 0.0;
+				*(finternal  + i) = 0.0;
 				*(fexternal  + i) = 0.0;
 				*(funbalance + i) = 0.0;
 				*(freaction  + i) = 0.0;
