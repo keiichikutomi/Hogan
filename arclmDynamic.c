@@ -21,6 +21,7 @@ int arclmStatDyna(struct arclmframe* af)
 		if(af->loadfactor > targetload || ENDFLAG == 1)break;
 		ENDFLAG = arclmDynamic(af);
 		if(af->loadfactor > targetload || ENDFLAG == 1)break;
+		if(af->nlaps > 1000)break;
 	}
 	return 0;
 }
@@ -86,14 +87,14 @@ int arclmDynamic(struct arclmframe* af)
 	double* mvct, * cvct;/*MASS & DAMPING VECTOR(DIAGONAL MATRIX)*/
 
 	///FOR ITERATIVE CALCULATION///
-	int nlap;
-	int beginlap;
-	int laps;
-	int iteration;
+	int nlap = 1;
+	int beginlap = 1;
+	int laps = 1000;
+	int iteration = 1;
 	int maxiteration = 20;
 	double tolerance = 1.0E-4;
 	double residual = 0.0;
-    double constraintresidual = 0.0;
+	double constraintresidual = 0.0;
 	double gvctlen = 0.0;
 
 	double ddt = 0.001;/*TIME INCREMENT[sec]*/
@@ -105,15 +106,13 @@ int arclmDynamic(struct arclmframe* af)
 	double loadlambda = 0.0;
 
 	double volume = 0.0;
-	double Wkt,Wet,Wpt,Wot; /* ENERGY */
-	double lastWkt;
-	Wkt = 0.0;
-	Wet = 0.0;
-	Wpt = 0.0;
-	Wot = 0.0;
 
-
-
+	/* ENERGY */
+	double Wkt = 0.0;
+	double Wet = 0.0;
+	double Wpt = 0.0;
+	double Wot = 0.0;
+	double lastWkt = 0.0;
 
 	/*ANALYSIS MODE*/
 	int outputmode   = 0;/*0:ConvergedLaps.1:AllLaps.*/
@@ -575,34 +574,28 @@ int arclmDynamic(struct arclmframe* af)
 	}
 
 
-
-
-
-
-	nlap = 1;
 	if(af->nlaps != NULL)
 	{
-		nlap = af->nlaps;
+		nlap = af->nlaps;/*INITIAL FROM ARCLMFRAME*/
 	}
-	beginlap = nlap;
-	iteration = 1;
+	beginlap = nlap;/*BEGINING OF THIS ANALYSIS*/
 	setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
 	/*INITIAL*/
-	if(nlap==1)
+	if(nlap==1)/*INITIAL FROM ANALYSISDATA*/
 	{
-		loadfactor = initialloadfactor;
+		loadfactor = initialloadfactor + loadfactormap(time);
 	}
-	if(STATDYNAFLAG == 1 && nlap!=1)
+	else if(STATDYNAFLAG == 1)/*INITIAL FROM ARCLMFRAME*/
 	{
 		initialloadfactor = af->loadfactor;
-		loadfactor = initialloadfactor;
+		loadfactor = initialloadfactor + loadfactormap(time);
 	}
-	loadfactor += loadfactormap(time);
+	else
+	{
+		loadfactor = loadfactormap(time);
+	}
 	lastloadfactor = loadfactor;
-
-	lastWkt = Wkt;
-
 
 	for(i = 0; i < msize; i++)
 	{
@@ -682,6 +675,7 @@ int arclmDynamic(struct arclmframe* af)
 		*(gvct + msize + i) = *(constraintvct + i);
 	}
 
+
 	/*OUTPUT(INITIAL)*/
 	sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
 
@@ -724,124 +718,6 @@ int arclmDynamic(struct arclmframe* af)
 
 	while (nlap <= laps && ENDFLAG == 0)
 	{
-		if(iteration==1)
-		{
-			time += ddt;
-			lastloadfactor = loadfactor;
-			lastWkt = Wkt;
-
-			loadfactor = loadfactormap(time);
-			if(STATDYNAFLAG == 1)
-			{
-				loadfactor += initialloadfactor;
-			}
-
-
-			for (ii = 0; ii < msize; ii++)
-			{
-				*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-				*(lastddisp + ii) = *(ddisp + ii);
-
-				*(lastlastudd_m  + ii) = *(lastud_m  + ii);
-
-				*(lastud_m  + ii) = *(ud_m  + ii);
-				*(lastudd_m + ii) = *(udd_m + ii);
-
-				*(ud_m + ii)  =- (gamma / beta - 1.0) **(lastud_m + ii)
-							   - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + ii);
-				*(udd_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
-							   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
-			}
-			for (ii = 0; ii < csize; ii++)
-			{
-				*(lastlambda + ii) = *(lambda + ii);
-			}
-
-			if(PEAKFLAG == 1)
-			{
-				for (ii = 0; ii < msize; ii++)
-				{
-					*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-					*(lastddisp + ii) = *(ddisp + ii);
-
-					*(lastlastudd_m  + ii) = 0.0;
-
-					*(lastud_m  + ii) = 0.0;
-					*(lastudd_m + ii) = 0.0;
-
-					*(ud_m + ii)  = 0.0;
-					*(udd_m + ii) = 0.0;
-				}
-				for (ii = 0; ii < csize; ii++)
-				{
-					*(lastlambda + ii) = *(lambda + ii);
-				}
-				PEAKFLAG = 0;
-				lastWkt = 0.0;
-			}
-
-			for(i = 0; i < msize; i++)
-			{
-				*(finertial  + i) = 0.0;
-				*(finternal  + i) = 0.0;
-				*(fexternal  + i) = 0.0;
-				*(funbalance + i) = 0.0;
-				*(freaction  + i) = 0.0;
-				*(fbaseload  + i) = 0.0;
-				*(fpressure  + i) = 0.0;
-				*(fconstraint + i) = 0.0;
-			}
-			for(i = 0; i < csize; i++)
-			{
-				*(constraintvct + i) = 0.0;
-			}
-
-			//volume = 0.0;
-			//assemshellvolume(shells, nshell, ddisp, &volume);
-
-			/*STRESS*/
-			/*elemstress_DYNA(elems, melem, nelem, constraintmain,
-							  iform, lastddisp, ddisp,
-							  lastudd_m, udd_m,
-							  lastud_m, ud_m,
-							  finertial, fdamping, finternal, fexternal,
-							  alpham, alphaf, xi);*/
-			shellstress_DYNA(shells, mshell, nshell, constraintmain,
-							 iform, lastddisp, ddisp,
-							 lastudd_m, udd_m,
-							 lastud_m, ud_m,
-							 finertial, fdamping, finternal, fpressure,
-							 alpham, alphaf, xi);
-			/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
-								  iform, lastddisp, ddisp, lastlambda, lambda,
-								  fconstraint,constraintvct,
-								  alphaf);*/
-
-
-			//strainenergy(af, &Wet, &Wpt);
-			//kineticenergy(af, ud_m, &Wkt);
-
-			for (i = 0; i < msize; i++)
-			{
-				*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
-				*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
-				*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i) - *(fconstraint + i);
-				if ((confs + i)->iconf == 1)
-				{
-					*(freaction + i) = *(funbalance + i);
-					*(funbalance + i) = 0.0;
-					*(fbaseload + i) = 0.0;
-				}
-				*(gvct + i) = *(funbalance + i);
-			}
-			for (i = 0; i < csize; i++)
-			{
-				*(gvct + msize + i) = *(constraintvct + i);
-			}
-
-		}
-
-
 		/*MATRIX INITIALIZE*/
 		std::vector<Triplet> Ktriplet;/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
 		std::vector<Triplet> Ktriplet2;/*FOR STATIC TANGENTIAL STIFFNESS*/
@@ -1008,6 +884,7 @@ int arclmDynamic(struct arclmframe* af)
 			*(gvct + ii) = *(gvct + *(constraintmain + ii));
 		}
 
+		/*COORD UPDATE*/
 		updaterotation(lapddisp, gvct, nnode);
 		updaterotation(ddisp, gvct, nnode);
 		for(ii = 0; ii < nnode;ii++)
@@ -1015,11 +892,13 @@ int arclmDynamic(struct arclmframe* af)
 			inputnode(ddisp,nodes+ii);
 		}
 
+		/*CONSTRAINT UPDATE*/
 		for (ii = 0; ii < csize; ii++)
 		{
 		  *(lambda+ii)+=*(gvct+msize+ii);
 		}
 
+		/*ACC & VEL UPDATE*/
 		lapddisp_m = pullback(lastddisp,lapddisp,nnode);
 		for(ii = 0; ii < msize; ii++)
 		{
@@ -1031,6 +910,7 @@ int arclmDynamic(struct arclmframe* af)
 						   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
 		}
 
+		/*FORCE INITIALIZATION*/
 		for(ii = 0; ii < msize; ii++)
 		{
 			*(finertial  + ii) = 0.0;
@@ -1042,7 +922,7 @@ int arclmDynamic(struct arclmframe* af)
 			*(fpressure  + ii) = 0.0;
 			*(fconstraint + ii) = 0.0;
 		}
-		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
+		for (i = 0; i < csize; i++)
 		{
 			*(constraintvct  + i) = 0.0;
 		}
@@ -1098,12 +978,10 @@ int arclmDynamic(struct arclmframe* af)
 		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
 		if ((gvctlen < tolerance || iteration > maxiteration-1) && iteration!=1)
 		{
-			nlap++;
+			nlap += 1;;
+			time += ddt;
 			iteration = 0;
 			if(RELAXATION == 1 && lastWkt > Wkt)PEAKFLAG = 1;
-
-			initialelem(elems,melem,nelem);
-			initialshell(shells,mshell,nshell);
 
 			clearwindow(*(wdraw.childs+1));
 			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
@@ -1155,23 +1033,145 @@ int arclmDynamic(struct arclmframe* af)
 		}
 
 
-		if(PEAKFLAG == 1 && STATDYNAFLAG == 1 && Wkt < 0.01)
+		if(sign > 20 || residual > 1e+10)
+		{
+			ENDFLAG = 1;
+			sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
+			errormessage(string);
+			break;
+		}
+		if(PEAKFLAG==1 && Wkt<0.01)
 		{
 			sprintf(string,"KINEMATIC ENERGY CONVERGED LAP: %4d ITER: %2d\n", nlap, iteration);
 			errormessage(string);
-            break;
+			break;
 		}
 
-		/*TERMINATION FLAG*/
-		if (iteration == 1)
+		if(iteration==1)
 		{
-			if (sign > 20 || residual > 1e+10)
+			initialelem(elems,melem,nelem);    /*melem (LAST LAP DATA) UPDATE.*/
+			initialshell(shells,mshell,nshell);/*mshell(LAST LAP DATA) UPDATE.*/
+
+			lastloadfactor = loadfactor;
+			if(STATDYNAFLAG == 1)/*INITIAL FROM ARCLMFRAME*/
 			{
-				ENDFLAG = 1;
-				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
-				errormessage(string);
+				loadfactor = initialloadfactor + loadfactormap(time);
 			}
+			else
+			{
+				loadfactor = loadfactormap(time);
+			}
+
+
+			if(PEAKFLAG == 1)
+			{
+				for (ii = 0; ii < msize; ii++)
+				{
+					*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+					*(lastddisp + ii) = *(ddisp + ii);
+
+					*(lastlastudd_m  + ii) = 0.0;
+
+					*(lastud_m  + ii) = 0.0;
+					*(lastudd_m + ii) = 0.0;
+
+					*(ud_m + ii)  = 0.0;
+					*(udd_m + ii) = 0.0;
+				}
+				for (ii = 0; ii < csize; ii++)
+				{
+					*(lastlambda + ii) = *(lambda + ii);
+				}
+				PEAKFLAG = 0;
+				lastWkt = 0.0;
+			}
+			else
+			{
+				for (ii = 0; ii < msize; ii++)
+				{
+					*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+					*(lastddisp + ii) = *(ddisp + ii);
+
+					*(lastlastudd_m  + ii) = *(lastud_m  + ii);
+
+					*(lastud_m  + ii) = *(ud_m  + ii);
+					*(lastudd_m + ii) = *(udd_m + ii);
+
+					*(ud_m + ii)  =- (gamma / beta - 1.0) **(lastud_m + ii)
+								   - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + ii);
+					*(udd_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
+								   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
+				}
+				for (ii = 0; ii < csize; ii++)
+				{
+					*(lastlambda + ii) = *(lambda + ii);
+				}
+				lastWkt = Wkt;
+            }
+
+			for(i = 0; i < msize; i++)
+			{
+				*(finertial  + i) = 0.0;
+				*(finternal  + i) = 0.0;
+				*(fexternal  + i) = 0.0;
+				*(funbalance + i) = 0.0;
+				*(freaction  + i) = 0.0;
+				*(fbaseload  + i) = 0.0;
+				*(fpressure  + i) = 0.0;
+				*(fconstraint + i) = 0.0;
+			}
+			for(i = 0; i < csize; i++)
+			{
+				*(constraintvct + i) = 0.0;
+			}
+
+
+			//volume = 0.0;
+			//assemshellvolume(shells, nshell, ddisp, &volume);
+
+			/*STRESS*/
+			/*elemstress_DYNA(elems, melem, nelem, constraintmain,
+							  iform, lastddisp, ddisp,
+							  lastudd_m, udd_m,
+							  lastud_m, ud_m,
+							  finertial, fdamping, finternal, fexternal,
+							  alpham, alphaf, xi);*/
+			shellstress_DYNA(shells, mshell, nshell, constraintmain,
+							 iform, lastddisp, ddisp,
+							 lastudd_m, udd_m,
+							 lastud_m, ud_m,
+							 finertial, fdamping, finternal, fpressure,
+							 alpham, alphaf, xi);
+			/*constraintstress_DYNA(constraints, nconstraint, constraintmain,
+								  iform, lastddisp, ddisp, lastlambda, lambda,
+								  fconstraint,constraintvct,
+								  alphaf);*/
+
+
+			//strainenergy(af, &Wet, &Wpt);
+			//kineticenergy(af, ud_m, &Wkt);
+
+			for (i = 0; i < msize; i++)
+			{
+				*(fbaseload + i) = *(fdeadload + i)+*(fpressure + i);
+				*(fexternal + i) = (alphaf * lastloadfactor + (1-alphaf) * loadfactor) * *(fbaseload + i);
+				*(funbalance + i) = *(fexternal + i) - *(finertial + i) - *(finternal + i) - *(fconstraint + i);
+				if ((confs + i)->iconf == 1)
+				{
+					*(freaction + i) = *(funbalance + i);
+					*(funbalance + i) = 0.0;
+					*(fbaseload + i) = 0.0;
+				}
+				*(gvct + i) = *(funbalance + i);
+			}
+			for (i = 0; i < csize; i++)
+			{
+				*(gvct + msize + i) = *(constraintvct + i);
+			}
+
 		}
+
+
 
 
 		//MESSAGE FOR UPDATE UI
@@ -1244,7 +1244,6 @@ int arclmDynamic(struct arclmframe* af)
 
 	gfree(gmtx, nnode);  	/*FREE GLOBAL MATRIX.*/
 	gfree(gmtx2, nnode);
-
 
 	free(gvct);
 

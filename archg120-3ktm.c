@@ -20326,14 +20326,14 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		offset++;
 	  }
 	}
-	for(ii=0;ii<(af->shells+i-1)->nnod;ii++)                                  /*STRESS.*/
+	/*for(ii=0;ii<(af->shells+i-1)->nnod;ii++)
 	{
 	  for(jj=0;jj<6;jj++)
 	  {
 		(af->shells+i-1)->stress[ii][jj]=strtod(*(data+k),NULL);
 		k++;
 	  }
-	}
+	}*/
 	for(ii=0;ii<(af->shells+i-1)->ngp;ii++)                                  /*STRESS.*/
 	{
 	  for(jj=0;jj<(af->shells+i-1)->nstress;jj++)
@@ -20346,17 +20346,31 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  ((af->shells+i-1)->gp[ii]).qn=0.0;
 	  ((af->shells+i-1)->gp[ii]).qm=0.0;
 	  ((af->shells+i-1)->gp[ii]).qnm=0.0;
+
 	  ((af->shells+i-1)->gp[ii]).yinit=0.0;
 	  ((af->shells+i-1)->gp[ii]).y=0.0;
+
 	  ((af->shells+i-1)->gp[ii]).f[0]=-1.0;
 	  ((af->shells+i-1)->gp[ii]).f[1]=-1.0;
+
 	  ((af->shells+i-1)->gp[ii]).lambda[0]=0.0;
 	  ((af->shells+i-1)->gp[ii]).lambda[1]=0.0;
+
 	  ((af->shells+i-1)->gp[ii]).alpha=0.0;
 	}
+	for(ii=0;ii<(af->shells+i-1)->ngp;ii++)                                  /*STRESS.*/
+	{
+	  for(jj=0;jj<6;jj++)
+	  {
+		(af->shells+i-1)->stress[ii][jj]=strtod(*(data+k),NULL);
+		k++;
+	  }
+	}
+
 
 	/*INITIAL AREA OF SHELL*/
 	(af->shells+i-1)->area = shellarea(*(af->shells+i-1));
+
 	/*WEIGHT OF GAUSS INTEGRATION POINT*/
 	/*
 	(af->shells+i-1)->w[0]=27.0/60.0;
