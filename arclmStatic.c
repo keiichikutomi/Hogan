@@ -1681,8 +1681,7 @@ int arclmStatic(struct arclmframe* af)
 	sprintf(string,"CONSUMPTION:%ld[BYTES]",(memory0-memory1));
 	errormessage(string);
 
-	if(ENDFLAG==1)return 1;
-	else return 0;
+	return 0;
 }
 /*arclmCR*/
 
