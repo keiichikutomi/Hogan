@@ -118,8 +118,9 @@ int arclmStatic(struct arclmframe* af)
 	int USINGEIGENFLAG = 0;
 
 	/*LAST LAP*/
-	double* lastddisp,* lastlambda,* lastpivot;
-	double lastloadfactor,lastloadlambda;
+	double* lastddisp,* lastlambda;
+	double* lastpivot;
+	double lastloadfactor;
 	double lastsign = 0;
 
 
@@ -835,15 +836,12 @@ int arclmStatic(struct arclmframe* af)
 		errormessage(string);
 
 
-		if(iteration == 1 && (sign - lastsign) != 0 && nlap != beginlap && STATDYNAFLAG == 1)
-		{
-			sprintf(string,"BUCKLING DITECTED LAP: %4d ITER: %2d\n", nlap, iteration);
-			errormessage(string);
-			break;
-		}
-
-
-
+			if(iteration == 1 && (sign - lastsign) != 0 && nlap != beginlap && STATDYNAFLAG == 1)
+			{
+				sprintf(string,"BUCKLING DITECTED LAP: %4d ITER: %2d\n", nlap, iteration);
+				errormessage(string);
+				break;
+			}
 
 
 			if(iteration == 1 && (sign - lastsign) != 0 && nlap != beginlap && pinpointmode == 1)/*BUCKLING DETECTED*/
@@ -1078,19 +1076,19 @@ int arclmStatic(struct arclmframe* af)
 
 
 			/*MEMORY OF PREDICTOR*/
+			laploadfactor = 0.0;
+			lastloadfactor = loadfactor;/*LOAD FACTOR AT CONVERGED POINT*/
+			lastsign = sign;/*SIGN AT CONVERGED POINT*/
 			for (ii = 0; ii < msize; ii++)
 			{
 				*(lastddisp + ii) = *(ddisp + ii);/*NODE COORDINATION AT CONVERGED POINT*/
 				*(lastpivot + ii) = (gmtx + ii)->value;/*PIVOT SIGN OF TANGENTIAL STIFFNESS*/
 				*(lapddisp + ii) = 0.0;
 			}
-			lastloadfactor = loadfactor;/*LOAD FACTOR AT CONVERGED POINT*/
-			lastloadlambda = loadlambda;/*INCREMENTAL LOAD FACTOR OF PREDICTOR*/
-			laploadfactor = 0.0;
-			lastsign = sign;/*SIGN AT CONVERGED POINT*/
-
-
-
+			for (ii = 0; ii < csize; ii++)
+			{
+				*(lastlambda + ii) = *(lambda + ii);
+			}
 		}
 		else/*CORRECTOR CALCULATION*/
 		{
@@ -1434,7 +1432,7 @@ int arclmStatic(struct arclmframe* af)
 					}
 				}
 			}
-			if (sign > 20)
+			if (sign > 20 || residual > 1e+10)
 			{
 				ENDFLAG = 1;
 				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
@@ -1449,18 +1447,14 @@ int arclmStatic(struct arclmframe* af)
 		}
 
 
-		if(iteration==1)
+
+		if (iteration == 1)
 		{
 
-
-
-
-
-			if(0)
+			if (sign > 20)/*TERMINATION AT LAST LAP*/
 			{
 				laploadfactor = 0.0;
 				loadfactor = lastloadfactor;
-
 				for (ii = 0; ii < msize; ii++)
 				{
 					*(lapddisp + ii) = 0.0;
@@ -1481,17 +1475,21 @@ int arclmStatic(struct arclmframe* af)
 				initialelem(elems,melem,nelem);    /*melem (LAST LAP DATA) UPDATE.*/
 				initialshell(shells,mshell,nshell);/*mshell(LAST LAP DATA) UPDATE.*/
 
+				/*
 				laploadfactor = 0.0;
 				lastloadfactor = loadfactor;
+				lastsign = sign;
 				for (ii = 0; ii < msize; ii++)
 				{
 					*(lapddisp  + ii) = 0.0;
 					*(lastddisp + ii) = *(ddisp + ii);
+					*(lastpivot + ii) = (gmtx + ii)->value;;
 				}
 				for (ii = 0; ii < csize; ii++)
 				{
 					*(lastlambda + ii) = *(lambda + ii);
 				}
+				*/
 			}
 
 
@@ -1510,7 +1508,6 @@ int arclmStatic(struct arclmframe* af)
 			{
 				*(constraintvct + i) = 0.0;
 			}
-
 
 			//volume = 0.0;
 			//assemshellvolume(shells, nshell, ddisp, &volume);
@@ -1546,10 +1543,6 @@ int arclmStatic(struct arclmframe* af)
 			}
 
 		}
-
-
-
-
 
 
 		//MESSAGE FOR UPDATE UI

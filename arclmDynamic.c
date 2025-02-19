@@ -1032,19 +1032,20 @@ int arclmDynamic(struct arclmframe* af)
 			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 		}
 
-
-		if(sign > 20 || residual > 1e+10)
+		if(iteration==1)
 		{
-			ENDFLAG = 1;
-			sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
-			errormessage(string);
-			break;
-		}
-		if(PEAKFLAG==1 && Wkt<0.01)
-		{
-			sprintf(string,"KINEMATIC ENERGY CONVERGED LAP: %4d ITER: %2d\n", nlap, iteration);
-			errormessage(string);
-			break;
+			if(sign > 20 || residual > 1e+10)
+			{
+				ENDFLAG = 1;
+				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
+				errormessage(string);
+			}
+			if(PEAKFLAG==1 && Wkt<0.01)
+			{
+				ENDFLAG = 1;
+				sprintf(string,"KINEMATIC ENERGY CONVERGED LAP: %4d ITER: %2d\n", nlap, iteration);
+				errormessage(string);
+			}
 		}
 
 		if(iteration==1)

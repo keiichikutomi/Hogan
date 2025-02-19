@@ -208,22 +208,6 @@ struct obans{long int code,loff;
              struct onode **nods;}; /*PLANE OF ELEMENT.*/
 struct surface{double exp,fmax[6],fmin[6];};
 
-struct gausspoint{double estrain[6];
-				  double pstrain[6];
-				  double stress[6];
-				  double backstress[6];
-				  double w;
-
-				  /*FOR ILYUSHIN*/
-				  //double qn,qm,qnm;
-				  double yinit,y,alpha;
-				  double f[2];
-				  double lambda[2];
-
-				  double Ee,Ep;
-
-				  struct gausspoint2 gp2[5];
-				  };
 
 struct gausspoint2{double estrain[3];
 				   double pstrain[3];
@@ -239,6 +223,25 @@ struct gausspoint2{double estrain[3];
 
 				   double Ee,Ep;
 				   };
+struct gausspoint{double estrain[6];
+				  double pstrain[6];
+				  double stress[6];
+				  double backstress[6];
+				  double w;
+
+				  /*FOR ILYUSHIN*/
+				  //double qn,qm,qnm;
+				  double yinit,y,alpha;
+				  double f[2];
+				  double lambda[2];
+
+				  double Ee,Ep;
+
+				  int ngp2;
+				  struct gausspoint2 gp2[5];
+				  };
+
+
 
 struct owire{long int code,loff;
 			 int nnod;
@@ -266,10 +269,10 @@ struct oshell{long int code,loff;
 			  struct osect *sect;
 			  double stress[4][6];
 			  double area;
-			  struct gausspoint gp[7];/*INTEGRATION POINTS PARAMS*/
-
 			  double prate;/*IN-PLANE STIFFNESS RATIO*/
 			  double brate;/*BENDING STIFFNESS RATIO*/
+
+			  struct gausspoint gp[7];/*INTEGRATION POINTS PARAMS*/
 			 }; /*SHELL ELEM*/
 
 struct memoryshell{

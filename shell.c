@@ -1536,7 +1536,7 @@ void assemshellvolume(struct oshell* shells, int nshell, double* ddisp, double* 
 	return;
 }
 
-
+/*shells or mshell->shell*/
 void inputshell(struct oshell *shells,
 				struct memoryshell *mshell,int offset,
 				struct oshell *shell)
@@ -1638,6 +1638,7 @@ void inputshell(struct oshell *shells,
   return;
 }/*inputshell*/
 
+/*shell -> shells*/
 void outputshell(struct oshell *shells,
 				 int offset,
 				 struct oshell *shell)
@@ -1683,6 +1684,7 @@ void outputshell(struct oshell *shells,
   return;
 }/*inputshell*/
 
+/*shells -> mshell*/
 void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell)
 {
   int i,j,k;
@@ -1729,6 +1731,9 @@ void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell)
   }
   return;
 }/*initialshell*/
+
+
+/*mshell->shell*/
 
 
 
@@ -2830,8 +2835,8 @@ double*** shellCconsistentmises(struct oshell shell)
 
 void assemshellestrain(struct oshell* shell, double*** B, double* edisp)
 {
-  int ii,i;
-  int nnod,ngp,nstress;
+  int ii,jj,i;
+  int nnod,ngp,ngp2,nstress;
 
   double* gpstrain;
 
@@ -2841,19 +2846,21 @@ void assemshellestrain(struct oshell* shell, double*** B, double* edisp)
 
   for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
   {
+	ngp2 = (shell->gp[ii]).ngp2;
 	gpstrain = matrixvectorIII(*(B+ii),edisp,nstress,6*nnod);
-	if(nstress==6)
+	for(i = 0; i < 6; i++)
 	{
-		for(i = 0; i < 6; i++)
-		{
-		  (shell->gp[ii]).estrain[i] = *(gpstrain+i);/*STRAIN {É√x É√y É√xy É¡x É¡y É¡xy} FOR INTEGRATION POINT ii*/
-		}
+	  (shell->gp[ii]).estrain[i] = *(gpstrain+i);/*STRAIN {É√x É√y É√xy É¡x É¡y É¡xy} FOR INTEGRATION POINT ii*/
 	}
+
 	if(nstress==3)
 	{
-		for(i = 0; i < 3; i++)
+		for(jj = 0; jj < ngp2; jj++)
 		{
-		  (shell->gp[ii]).estrain[i] = *(gpstrain+i) + (shell->gp[ii]).z**(gpstrain+3+i);/*STRAIN {É√x É√y É√xy} FOR INTEGRATION POINT ii*//*-h/2<z<h/2*/
+			for(i = 0; i < 3; i++)
+			{
+			  (shell->gp[ii]).gp2[jj].estrain[i] = *(gpstrain+i) + (shell->gp[ii]).gp2[jj].z**(gpstrain+3+i);/*STRAIN {É√x É√y É√xy} FOR INTEGRATION POINT ii*//*-h/2<z<h/2*/
+			}
 		}
 	}
 	free(gpstrain);
