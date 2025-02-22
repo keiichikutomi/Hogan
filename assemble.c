@@ -320,6 +320,8 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		HPT = transmatrixHPT(eform, edisp, T, nnod);
 
 		inputshell(shells, NULL, i - 1, &shell);
+
+
 		C = shellCconsistentilyushin(shell);
 		einternal = assemshelleinternal(&shell, B);
 
@@ -401,7 +403,7 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 	double* ginternal, * einternal;                        /*INTERNAL FORCE OF ELEMENT*/
 	double* gexternal, * eexternal;                          /*EXTERNAL FORCE OF ELEMENT*/
 
-	double*** C, ***B;
+	double***B;
 
 
 	for (i = 1; i <= nshell; i++)
@@ -430,7 +432,6 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
-		C = shellC(shell);
 		B = shellB(shell);
 
 		/*DEFORMED CONFIGFURATION*/
@@ -450,7 +451,7 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 		TtPtHt = matrixtranspose(HPT, 6 * nnod);
 
 		assemshellestrain(&shell, B, edisp);
-		assemshellestress(&shell, C);
+		assemshellestress(&shell);
 		einternal = assemshelleinternal(&shell, B);//einternal = matrixvector(Kp, edisp, 6*nnod);
 		ginternal = matrixvector(TtPtHt, einternal, 6 * nnod);
 
@@ -468,8 +469,6 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 
 		outputshell(shells, i - 1, &shell);
 
-		for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
-		free(C);
 		for(ii=0;ii<ngp;ii++)freematrix(*(B+ii), nstress);
 		free(B);
 
@@ -787,7 +786,7 @@ void elemstress_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, l
 		TtPtHt = matrixtranspose(HPT, 6 * nnod);
 
 		//assemshellestrain(&shell, B, edisp);
-		//assemshellestress(&shell, C);
+		//assemshellestress(&shell/*, C*/);
 		//einternal = assemeinternal(&elem);
 
 		//eexternal = assempvct(elem, drccos);
@@ -1136,7 +1135,7 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 	double** lapH;
 	double* lapgform;
 
-	double*** C, ***B;
+	double***B;
 	double** M;
 
 	for (i = 1; i <= nshell; i++)
@@ -1165,7 +1164,6 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 		gforminit = extractshelldisplacement(shell, iform);                 /*{Xg}*/
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);        	/*{Xe}*/
 
-        C = shellC(shell);
 		B = shellB(shell);
 		M = assemshellmmtx(shell);
 
@@ -1210,7 +1208,7 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 		TtPtHt = matrixtranspose(HPT, 6 * nnod);
 
 		assemshellestrain(&shell, B, edisp);
-		assemshellestress(&shell, C);
+		assemshellestress(&shell);
 		einternal = assemshelleinternal(&shell, B);
 
 		eexternal = assemshellpvct(shell, drccos);
@@ -1249,8 +1247,6 @@ void shellstress_DYNA(struct oshell* shells, struct memoryshell* mshell, int nsh
 
 		outputshell(shells, i - 1, &shell);
 
-		for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
-		free(C);
 		for(ii=0;ii<ngp;ii++)freematrix(*(B+ii), nstress);
 		free(B);
 

@@ -230,7 +230,6 @@ struct gausspoint{double estrain[6];
 				  double w;
 
 				  /*FOR ILYUSHIN*/
-				  //double qn,qm,qnm;
 				  double yinit,y,alpha;
 				  double f[2];
 				  double lambda[2];
