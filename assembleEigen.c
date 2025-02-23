@@ -203,7 +203,7 @@ void assemshellEigen(struct oshell* shells, struct memoryshell* mshell, int nshe
 		HPT = transmatrixHPT(eform, edisp, T, nnod);
 
 		inputshell(shells, NULL, i - 1, &shell);
-		C = shellCconsistentilyushin(shell);
+		C = shellCconsistent(shell);
 		einternal = assemshelleinternal(&shell, B);
 
 		Kp = assemshellpmtx(shell,C,B);
@@ -552,7 +552,7 @@ void assemshellEigen_DYNA(struct oshell* shells, struct memoryshell* mshell, int
 		R = pushforwardmtx(gform,nnod);
 
 		inputshell(shells, NULL, i - 1, &shell);
-		C = shellCconsistentilyushin(shell);
+		C = shellCconsistent(shell);
 		einternal = assemshelleinternal(&shell, B);//
 
 		gacc_m = extractshelldisplacement(shell, udd_m);

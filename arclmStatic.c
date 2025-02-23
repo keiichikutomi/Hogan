@@ -648,11 +648,11 @@ int arclmStatic(struct arclmframe* af)
 	for(i = 0; i < nshell; i++)
 	{
 		//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
-		fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+		fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
 		((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
 		((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
 		((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
-		((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+		((shells+i)->gp[0]).alpha,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 		);
 	}
 	fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
@@ -670,10 +670,12 @@ int arclmStatic(struct arclmframe* af)
 		SparseMatrix Kglobal((msize+csize), (msize+csize));
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
-		Eigen::SimplicialLDLT<SparseMatrix> solver;
-		//Eigen::BiCGSTAB<SparseMatrix> solver;
-		//solver.setTolerance(1e-9); // 許容誤差の設定
-		//solver.setMaxIterations(10000); // 最大反復回数
+		//Eigen::SimplicialLDLT<SparseMatrix> solver;
+		//Eigen::SparseLU<SparseMatrix> solver;
+
+		Eigen::BiCGSTAB<SparseMatrix> solver;
+		solver.setTolerance(1e-9); // 許容誤差の設定
+		solver.setMaxIterations(10000); // 最大反復回数
 
 		for (i = 1; i <= (msize+csize); i++)
 		{
@@ -731,6 +733,7 @@ int arclmStatic(struct arclmframe* af)
 		{
 			solver.compute(Kglobal);
 
+			/*
 			Eigen::VectorXd D = solver.vectorD();
 			determinant= 0.0;
 			sign = 0;
@@ -742,6 +745,7 @@ int arclmStatic(struct arclmframe* af)
 				determinant += log10(fabs(D(i)));
 			  }
 			}
+			*/
 
 			if (solver.info() != Eigen::Success)sign=-1;
 		}
@@ -770,6 +774,7 @@ int arclmStatic(struct arclmframe* af)
 			//	}
 			//}
 
+			/*
 			for (ii = 0; ii < msize+csize; ii++)
 			{
 				if (((confs + ii)->iconf == 0 && ii<msize) || ii >= msize)
@@ -783,6 +788,7 @@ int arclmStatic(struct arclmframe* af)
 
 			}
 			dbgstr("\n");
+            */
 
 
 			//dbggcomp(gmtx,msize+csize,"GMTX");
@@ -1408,7 +1414,7 @@ int arclmStatic(struct arclmframe* af)
 				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
 				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
 				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
-				((shells+i)->gp[0]).y,((shells+i)->gp[0]).yinit,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+				((shells+i)->gp[0]).alpha,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
 				);
 			}
 			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);

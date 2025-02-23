@@ -322,7 +322,7 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		inputshell(shells, NULL, i - 1, &shell);
 
 
-		C = shellCconsistentilyushin(shell);
+		C = shellCconsistent(shell);
 		einternal = assemshelleinternal(&shell, B);
 
 		Kp = assemshellpmtx(shell,C,B);
@@ -1003,7 +1003,7 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 		R = pushforwardmtx(gform,nnod);
 
 		inputshell(shells, NULL, i - 1, &shell);
-		C = shellCconsistentilyushin(shell);
+		C = shellCconsistent(shell);
 		einternal = assemshelleinternal(&shell, B);//
 
 		gacc_m = extractshelldisplacement(shell, udd_m);

@@ -217,10 +217,9 @@ struct gausspoint2{double estrain[3];
 				   double z;
 
 				   /*FOR MISES*/
-				   double yinit,y,alpha;
+				   double alpha;
 				   double f;
 				   double lambda;
-
 				   double Ee,Ep;
 				   };
 struct gausspoint{double estrain[6];
@@ -230,10 +229,9 @@ struct gausspoint{double estrain[6];
 				  double w;
 
 				  /*FOR ILYUSHIN*/
-				  double yinit,y,alpha;
+				  double alpha;
 				  double f[2];
 				  double lambda[2];
-
 				  double Ee,Ep;
 
 				  int ngp2;
@@ -264,9 +262,9 @@ struct memoryelem{long int code;
 							  /*ELEMENT MEMORY FOR ARCLM.*/
 struct oshell{long int code,loff;
 			  int nnod,ngp,nstress;
-			  struct onode *(node[4]);
+			  struct onode *(node[3]);
 			  struct osect *sect;
-			  double stress[4][6];
+			  double stress[3][6];
 			  double area;
 			  double prate;/*IN-PLANE STIFFNESS RATIO*/
 			  double brate;/*BENDING STIFFNESS RATIO*/
@@ -276,8 +274,8 @@ struct oshell{long int code,loff;
 
 struct memoryshell{
 					long int code;
-					double stress[4][6];
-					struct gausspoint gp[9];/*INTEGRATION POINTS PARAMS*/
+					double stress[3][6];
+					struct gausspoint gp[7];/*INTEGRATION POINTS PARAMS*/
 				  };                     /*SHELL ELEMENT MEMORY FOR ARCLM.*/
 
 struct oconstraint{long int code,loff;
@@ -20096,7 +20094,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 /*TRANSLATE ARCLM INPUTFILE TEXT INTO MEMORY.*/
 {
   char **data;
-  int i,j,ii,jj,k,l,m,n;
+  int i,j,k,l,m,n,ii,jj,kk;
   long int offset,mainoff,suboff;
   long int scode,ncode,dcode,code1,code2,code3,code4;
   char str[50];/*for debug*/
@@ -20361,21 +20359,100 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		((af->shells+i-1)->gp[ii]).stress[jj]=0.0;
 		((af->shells+i-1)->gp[ii]).backstress[jj]=0.0;
 	  }
-	  //((af->shells+i-1)->gp[ii]).qn=0.0;
-	  //((af->shells+i-1)->gp[ii]).qm=0.0;
-	  //((af->shells+i-1)->gp[ii]).qnm=0.0;
-
-	  ((af->shells+i-1)->gp[ii]).yinit=0.0;
-	  ((af->shells+i-1)->gp[ii]).y=0.0;
 
 	  ((af->shells+i-1)->gp[ii]).f[0]=-1.0;
 	  ((af->shells+i-1)->gp[ii]).f[1]=-1.0;
-
 	  ((af->shells+i-1)->gp[ii]).lambda[0]=0.0;
 	  ((af->shells+i-1)->gp[ii]).lambda[1]=0.0;
-
 	  ((af->shells+i-1)->gp[ii]).alpha=0.0;
+
+	  ((af->shells+i-1)->gp[ii]).ngp2=0;
+	  //((af->shells+i-1)->gp[ii]).ngp2=2;
+	  //((af->shells+i-1)->gp[ii]).ngp2=5;
+
+	  for(jj=0;jj<((af->shells+i-1)->gp[ii]).ngp2;jj++)
+	  {
+
+		  for(kk=0;kk<3;kk++)
+		  {
+			((af->shells+i-1)->gp[ii]).gp2[jj].estrain[kk]=0.0;
+			((af->shells+i-1)->gp[ii]).gp2[jj].pstrain[kk]=0.0;
+			((af->shells+i-1)->gp[ii]).gp2[jj].stress[kk]=0.0;
+			((af->shells+i-1)->gp[ii]).gp2[jj].backstress[kk]=0.0;
+		  }
+
+		  ((af->shells+i-1)->gp[ii]).gp2[jj].f=-1.0;
+		  ((af->shells+i-1)->gp[ii]).gp2[jj].lambda=0.0;
+		  ((af->shells+i-1)->gp[ii]).gp2[jj].alpha=0.0;
+	  }
+
+
+
 	}
+	/*WEIGHT OF GAUSS INTEGRATION POINT*/
+	if((af->shells+i-1)->nnod==3 && (af->shells+i-1)->ngp==7)
+	{
+		((af->shells+i-1)->gp[0]).w=27.0/60.0;
+		((af->shells+i-1)->gp[1]).w=8.0/60.0;
+		((af->shells+i-1)->gp[2]).w=((af->shells+i-1)->gp[1]).w;
+		((af->shells+i-1)->gp[3]).w=((af->shells+i-1)->gp[1]).w;
+		((af->shells+i-1)->gp[4]).w=3.0/60.0;
+		((af->shells+i-1)->gp[5]).w=((af->shells+i-1)->gp[4]).w;
+		((af->shells+i-1)->gp[6]).w=((af->shells+i-1)->gp[4]).w;
+	}
+	if((af->shells+i-1)->nnod==3 && (af->shells+i-1)->ngp==4)
+	{
+		((af->shells+i-1)->gp[0]).w=0.0;
+		((af->shells+i-1)->gp[1]).w=1.0/3.0;
+		((af->shells+i-1)->gp[2]).w=1.0/3.0;
+		((af->shells+i-1)->gp[3]).w=1.0/3.0;
+	}
+	for(ii=0;ii<(af->shells+i-1)->ngp;ii++)                                  /*STRESS.*/
+	{
+		if(((af->shells+i-1)->gp[ii]).ngp2==1)
+		{
+			((af->shells+i-1)->gp[ii]).gp2[0].w=2.0;
+
+			((af->shells+i-1)->gp[ii]).gp2[0].z= 0.0;
+		}
+		if(((af->shells+i-1)->gp[ii]).ngp2==2)
+		{
+			((af->shells+i-1)->gp[ii]).gp2[0].w = 1.0;
+			((af->shells+i-1)->gp[ii]).gp2[1].w = 1.0;
+
+			((af->shells+i-1)->gp[ii]).gp2[0].z = 0.577350296189626;
+			((af->shells+i-1)->gp[ii]).gp2[1].z =-0.577350296189626;
+		}
+		if(((af->shells+i-1)->gp[ii]).ngp2==3)
+		{
+			((af->shells+i-1)->gp[ii]).gp2[0].w = 0.555555555555556;
+			((af->shells+i-1)->gp[ii]).gp2[1].w = 0.888888888888889;
+			((af->shells+i-1)->gp[ii]).gp2[2].w = 0.555555555555556;
+
+			((af->shells+i-1)->gp[ii]).gp2[0].z = 0.774596669241483;
+			((af->shells+i-1)->gp[ii]).gp2[1].z =-0.0;
+			((af->shells+i-1)->gp[ii]).gp2[2].z =-0.774596669241483;
+		}
+		if(((af->shells+i-1)->gp[ii]).ngp2==5)
+		{
+			((af->shells+i-1)->gp[ii]).gp2[0].w = 0.236926885056189;
+			((af->shells+i-1)->gp[ii]).gp2[1].w = 0.478628670499366;
+			((af->shells+i-1)->gp[ii]).gp2[2].w = 0.568888888888889;
+			((af->shells+i-1)->gp[ii]).gp2[3].w = 0.478628670499366;
+			((af->shells+i-1)->gp[ii]).gp2[4].w = 0.236926885056189;
+
+			((af->shells+i-1)->gp[ii]).gp2[0].z = 0.906179845938664;
+			((af->shells+i-1)->gp[ii]).gp2[1].z = 0.538469310105683;
+			((af->shells+i-1)->gp[ii]).gp2[2].z = 0.0;
+			((af->shells+i-1)->gp[ii]).gp2[3].z =-0.538469310105683;;
+			((af->shells+i-1)->gp[ii]).gp2[4].z =-0.906179845938664;
+		}
+	}
+
+
+
+
+
 	for(ii=0;ii<(af->shells+i-1)->ngp;ii++)                                  /*STRESS.*/
 	{
 	  for(jj=0;jj<6;jj++)
@@ -20388,22 +20465,6 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 
 	/*INITIAL AREA OF SHELL*/
 	(af->shells+i-1)->area = shellarea(*(af->shells+i-1));
-
-	/*WEIGHT OF GAUSS INTEGRATION POINT*/
-	/*
-	((af->shells+i-1)->gp[0]).w=27.0/60.0;
-	((af->shells+i-1)->gp[1]).w=8.0/60.0;
-	((af->shells+i-1)->gp[2]).w=((af->shells+i-1)->gp[1]).w;
-	((af->shells+i-1)->gp[3]).w=((af->shells+i-1)->gp[1]).w;
-	((af->shells+i-1)->gp[4]).w=3.0/60.0;
-	((af->shells+i-1)->gp[5]).w=((af->shells+i-1)->gp[4]).w;
-	((af->shells+i-1)->gp[6]).w=((af->shells+i-1)->gp[4]).w;
-	*/
-
-	((af->shells+i-1)->gp[0]).w=0.0;
-	((af->shells+i-1)->gp[1]).w=1.0/3.0;
-	((af->shells+i-1)->gp[2]).w=1.0/3.0;
-	((af->shells+i-1)->gp[3]).w=1.0/3.0;
 
 	if(k==n-2)
 	{

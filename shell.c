@@ -31,13 +31,15 @@ void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell);/
 
 double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy);
 
+double*** shellCconsistent(struct oshell shell);/*UPDATE STIFFNESS MATRIX*/
+
 double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG);/*YIELD FUNCTION*/
 void returnmapilyushin(struct oshell* shell, int ii);/*RETURN-MAPPING*/
-double*** shellCconsistentilyushin(struct oshell shell);/*UPDATE STIFFNESS MATRIX*/
+double** shellCconsistentilyushin(struct oshell shell, int ii);/*UPDATE STIFFNESS MATRIX*/
 
-double* mises(struct oshell* shell, int ii, int jj, double* lambda, int UPDATEFLAG);/*YIELD FUNCTION*/
+double mises(struct oshell* shell, int ii, int jj, double* lambda, int UPDATEFLAG);/*YIELD FUNCTION*/
 void returnmapmises(struct oshell* shell, int ii, int jj);/*RETURN-MAPPING*/
-double*** shellCconsistentmises(struct oshell shell);/*UPDATE STIFFNESS MATRIX*/
+double** shellCconsistentmises(struct oshell shell, int ii);/*UPDATE STIFFNESS MATRIX*/
 
 void assemshellestrain(struct oshell* shell, double*** B, double* edisp);
 void assemshellestress(struct oshell* shell/*, double*** C*/);
@@ -1555,7 +1557,7 @@ void inputshell(struct oshell *shells,
 				struct memoryshell *mshell,int offset,
 				struct oshell *shell)
 {
-  int i,j;
+  int i,j,k;
   shell->nnod=(shells+offset)->nnod;
   shell->ngp=(shells+offset)->ngp;
   shell->nstress=(shells+offset)->nstress;
@@ -1578,24 +1580,18 @@ void inputshell(struct oshell *shells,
 			shell->stress[i][j]=(mshell+offset)->stress[i][j];
 		  }
 	  }
+	 // memcpy(shell->gp,(mshell+offset)->gp,sizeof(shell->gp));
 	  for(i=0;i<shell->ngp;i++)
 	  {
 		  (shell->gp[i]).w=((shells+offset)->gp[i]).w;
 
-		  for(j=0;j<shell->nstress;j++)                                      /*STRESS.*/
+		  for(j=0;j<shell->nstress;j++)
 		  {
 			(shell->gp[i]).estrain[j]=((mshell+offset)->gp[i]).estrain[j];
 			(shell->gp[i]).pstrain[j]=((mshell+offset)->gp[i]).pstrain[j];
 			(shell->gp[i]).stress[j]=((mshell+offset)->gp[i]).stress[j];
 			(shell->gp[i]).backstress[j]=((mshell+offset)->gp[i]).backstress[j];
 		  }
-		  //(shell->gp[i]).qn=((mshell+offset)->gp[i]).qn;
-		  //(shell->gp[i]).qm=((mshell+offset)->gp[i]).qm;
-		  //(shell->gp[i]).qnm=((mshell+offset)->gp[i]).qnm;
-
-		  (shell->gp[i]).yinit=((mshell+offset)->gp[i]).yinit;
-		  (shell->gp[i]).y=((mshell+offset)->gp[i]).y;
-
 		  (shell->gp[i]).f[0]=((mshell+offset)->gp[i]).f[0];
 		  (shell->gp[i]).f[1]=((mshell+offset)->gp[i]).f[1];
 
@@ -1606,7 +1602,11 @@ void inputshell(struct oshell *shells,
 
 		  (shell->gp[i]).Ee=((mshell+offset)->gp[i]).Ee;
 		  (shell->gp[i]).Ep=((mshell+offset)->gp[i]).Ep;
+
+		  (shell->gp[i]).ngp2=((mshell+offset)->gp[i]).ngp2;
+
 	  }
+
   }
   else
   {
@@ -1618,8 +1618,10 @@ void inputshell(struct oshell *shells,
 			shell->stress[i][j]=(shells+offset)->stress[i][j];
 		  }
 	  }
+	  //memcpy(shell->gp,(shells+offset)->gp,sizeof(shell->gp));
 	  for(i=0;i<shell->ngp;i++)
 	  {
+
 		  (shell->gp[i]).w=((shells+offset)->gp[i]).w;
 		  for(j=0;j<shell->nstress;j++)
 		  {
@@ -1628,13 +1630,6 @@ void inputshell(struct oshell *shells,
 			(shell->gp[i]).stress[j]=((shells+offset)->gp[i]).stress[j];
 			(shell->gp[i]).backstress[j]=((shells+offset)->gp[i]).backstress[j];
 		  }
-		  //(shell->gp[i]).qn=((shells+offset)->gp[i]).qn;
-		  //(shell->gp[i]).qm=((shells+offset)->gp[i]).qm;
-		  //(shell->gp[i]).qnm=((shells+offset)->gp[i]).qnm;
-
-		  (shell->gp[i]).yinit=((shells+offset)->gp[i]).yinit;
-		  (shell->gp[i]).y=((shells+offset)->gp[i]).y;
-
 		  (shell->gp[i]).f[0]=((shells+offset)->gp[i]).f[0];
 		  (shell->gp[i]).f[1]=((shells+offset)->gp[i]).f[1];
 
@@ -1646,7 +1641,10 @@ void inputshell(struct oshell *shells,
 		  (shell->gp[i]).Ee=((shells+offset)->gp[i]).Ee;
 		  (shell->gp[i]).Ep=((shells+offset)->gp[i]).Ep;
 
+		  (shell->gp[i]).ngp2=((shells+offset)->gp[i]).ngp2;
+
 	  }
+
   }
 
   return;
@@ -1667,22 +1665,17 @@ void outputshell(struct oshell *shells,
 	  (shells+offset)->stress[i][j]=shell->stress[i][j];
 	}
   }
+  //memcpy((shells+offset)->gp,shell->gp,sizeof(shell->gp));
+
   for(i=0;i<shell->ngp;i++)
   {
-	for(j=0;j<shell->nstress;j++)                                      /*STRESS.*/
+	for(j=0;j<shell->nstress;j++)
 	{
 	  ((shells+offset)->gp[i]).estrain[j]=(shell->gp[i]).estrain[j];
 	  ((shells+offset)->gp[i]).pstrain[j]=(shell->gp[i]).pstrain[j];
 	  ((shells+offset)->gp[i]).stress[j]=(shell->gp[i]).stress[j];
 	  ((shells+offset)->gp[i]).backstress[j]=(shell->gp[i]).backstress[j];
 	}
-	//((shells+offset)->gp[i]).qn=(shell->gp[i]).qn;
-	//((shells+offset)->gp[i]).qm=(shell->gp[i]).qm;
-	//((shells+offset)->gp[i]).qnm=(shell->gp[i]).qnm;
-
-	((shells+offset)->gp[i]).yinit=(shell->gp[i]).yinit;
-	((shells+offset)->gp[i]).y=(shell->gp[i]).y;
-
 	((shells+offset)->gp[i]).f[0]=(shell->gp[i]).f[0];
 	((shells+offset)->gp[i]).f[1]=(shell->gp[i]).f[1];
 
@@ -1693,8 +1686,10 @@ void outputshell(struct oshell *shells,
 
 	((shells+offset)->gp[i]).Ee=(shell->gp[i]).Ee;
 	((shells+offset)->gp[i]).Ep=(shell->gp[i]).Ep;
+	((shells+offset)->gp[i]).ngp2=(shell->gp[i]).ngp2;
 
   }
+
   return;
 }/*inputshell*/
 
@@ -1714,33 +1709,36 @@ void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell)
 		  (mshell+i)->stress[j][k]=(shells+i)->stress[j][k];
 		}
 	  }
+	  //memcpy((mshell+i)->gp,(shells+i)->gp,sizeof((shells+i)->gp));
 
 	  for(j=0;j<(shells+i)->ngp;j++)
 	  {
-		for(k=0;k<(shells+i)->nstress;k++)                                      /*STRESS.*/
+
+		for(k=0;k<(shells+i)->nstress;k++)
 		{
 		  ((mshell+i)->gp[j]).estrain[k]=((shells+i)->gp[j]).estrain[k];
 		  ((mshell+i)->gp[j]).pstrain[k]=((shells+i)->gp[j]).pstrain[k];
 		  ((mshell+i)->gp[j]).stress[k]=((shells+i)->gp[j]).stress[k];
 		  ((mshell+i)->gp[j]).backstress[k]=((shells+i)->gp[j]).backstress[k];
 		}
-		//((mshell+i)->gp[j]).qn=((shells+i)->gp[j]).qn;
-		//((mshell+i)->gp[j]).qm=((shells+i)->gp[j]).qm;
-		//((mshell+i)->gp[j]).qnm=((shells+i)->gp[j]).qnm;
-
-		((mshell+i)->gp[j]).yinit=((shells+i)->gp[j]).yinit;
-		((mshell+i)->gp[j]).y=((shells+i)->gp[j]).y;
-
 		((mshell+i)->gp[j]).f[0]=((shells+i)->gp[j]).f[0];
 		((mshell+i)->gp[j]).f[1]=((shells+i)->gp[j]).f[1];
 
+
 		((mshell+i)->gp[j]).lambda[0]=0.0/*((shells+i)->gp[j]).lambda[0]*/;
 		((mshell+i)->gp[j]).lambda[1]=0.0/*((shells+i)->gp[j]).lambda[1]*/;
+
 
 		((mshell+i)->gp[j]).alpha=((shells+i)->gp[j]).alpha;
 
 		((mshell+i)->gp[j]).Ee=((shells+i)->gp[j]).Ee;
 		((mshell+i)->gp[j]).Ep=((shells+i)->gp[j]).Ep;
+		((mshell+i)->gp[j]).ngp2=((shells+i)->gp[j]).ngp2;
+
+		for(k=0;k<(shells+i)->gp[j].ngp2;k++)
+		{
+			((mshell+i)->gp[j]).gp2[j].lambda=0.0/*((shells+i)->gp[j]).gp2[j].lambda*/;
+		}
 	  }
   }
   return;
@@ -1785,9 +1783,13 @@ double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy)
 	  }
 	}
 	*/
-	else/*SWIFT'S HARDNING LAW : σ=sc*(sa+ε_p)^sn*/
+	else
 	{
-	  sa = pow(yinit/c,n);
+	  /*SWIFT'S HARDNING LAW : σ=sc*(sa+ε_p)^sn*/
+	  /*RAMBERG-OSGOOD : ε=σ/E+(σ/c)^n, ε_p=(σ/c)^n*/
+	  /*MODIFIED RAMBERG-OSGOOD : ε=σ/E+(σ/c)^n+(σy/c)^n, ε_p=(σ/c)^n+(σy/c)^n, σ=c{(σy/c)^n+ε_p}^(1/n)*/
+
+	  sa = pow(yinit/c,n);/*(σy/c)^n*/
 	  sc = c;
 	  sn = 1/n;
 
@@ -1811,6 +1813,28 @@ double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy)
 }
 
 
+double*** shellCconsistent(struct oshell shell)
+{
+  int ii;
+  double *** consistentC;/*ngp x nstress x nstress*/
+
+  consistentC = (double***)malloc(shell.ngp * sizeof(double**));
+
+  for(ii = 0; ii < shell.ngp; ii++)/*FOR EACH INTEGRATION POINT*/
+  {
+	if(shell.gp[ii].ngp2==0)
+	{
+		*(consistentC+ii) = shellCconsistentilyushin(shell, ii);
+
+	}
+	else
+	{
+		*(consistentC+ii) = shellCconsistentmises(shell, ii);
+    }
+  }
+  return consistentC;
+}
+
 
 /*ELASTO-PLASTICITY*/
 double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG)
@@ -1825,7 +1849,7 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG)
   double E,t,poi;
   double yinit,y;
   double alpha;
-  //double qn,qm,qnm;
+  double qn,qm,qnm;
 
   double v[3],p[3],e[3],det[3];
   double O[2][2][3], Oinv[2][2][3];
@@ -1929,13 +1953,24 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG)
 
 
   /*f={σtry-αtry}^T[W]^T[A][W]{σtry-αtry}*/
-  /*
+
   qn = (p[0]**(ostress+0)**(ostress+0) + p[1]**(ostress+1)**(ostress+1) + p[2]**(ostress+2)**(ostress+2))/fn2 ;
   qm = (p[0]**(ostress+3)**(ostress+3) + p[1]**(ostress+4)**(ostress+4) + p[2]**(ostress+5)**(ostress+5))/fm2 ;
   qnm= (p[0]**(ostress+0)**(ostress+3) + p[1]**(ostress+1)**(ostress+4) + p[2]**(ostress+2)**(ostress+5))/fnfm;
 
   *(f+0) = qn+qm+(qnm/sqrt(3.0));
   *(f+1) = qn+qm-(qnm/sqrt(3.0));
+
+  /*
+  qn  = ( pow(gp->stress[0],2)+pow(gp->stress[1],2)-(gp->stress[0])*(gp->stress[1])+3.0*pow(gp->stress[2],2) )/fn2;
+  qm  = ( pow(gp->stress[3],2)+pow(gp->stress[4],2)-(gp->stress[3])*(gp->stress[4])+3.0*pow(gp->stress[5],2) )/fm2;
+  qnm = (       (gp->stress[0])*(gp->stress[3])
+		  +     (gp->stress[1])*(gp->stress[4])
+		  -0.5* (gp->stress[0])*(gp->stress[4])
+		  -0.5* (gp->stress[1])*(gp->stress[3])
+		  +3.0* (gp->stress[2])*(gp->stress[5])  )/fnfm;
+
+
 
 
   *(f+0) = p[0] * (*(ostress+0)**(ostress+0)/fn2 + *(ostress+3)**(ostress+3)/fm2 + *(ostress+0)**(ostress+3)/(sqrt(3.0)*fnfm))
@@ -1945,14 +1980,6 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG)
 		 + p[1] * (*(ostress+1)**(ostress+1)/fn2 + *(ostress+4)**(ostress+4)/fm2 - *(ostress+1)**(ostress+4)/(sqrt(3.0)*fnfm))
 		 + p[2] * (*(ostress+2)**(ostress+2)/fn2 + *(ostress+5)**(ostress+5)/fm2 - *(ostress+2)**(ostress+5)/(sqrt(3.0)*fnfm));
 
-
-  qn  = ( pow(gp->stress[0],2)+pow(gp->stress[1],2)-(gp->stress[0])*(gp->stress[1])+3.0*pow(gp->stress[2],2) )/fn2;
-  qm  = ( pow(gp->stress[3],2)+pow(gp->stress[4],2)-(gp->stress[3])*(gp->stress[4])+3.0*pow(gp->stress[5],2) )/fm2;
-  qnm = (       (gp->stress[0])*(gp->stress[3])
-		  +     (gp->stress[1])*(gp->stress[4])
-		  -0.5* (gp->stress[0])*(gp->stress[4])
-		  -0.5* (gp->stress[1])*(gp->stress[3])
-		  +3.0* (gp->stress[2])*(gp->stress[5])  )/fnfm;
   */
 
 
@@ -1978,13 +2005,7 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG)
 	  //gp->backstress[4]=(*(ostress+3)+*(ostress+4))/sqrt(2.0);
 	  //gp->backstress[5]= *(ostress+5);
 
-	  //gp->qn = qn;
-	  //gp->qm = qm;
-	  //gp->qnm = qnm;
-
 	  gp->alpha = alpha;
-	  gp->yinit = yinit;
-	  gp->y = y;
 
 	  gp->f[0] = *(f+0);
 	  gp->f[1] = *(f+1);
@@ -2040,9 +2061,9 @@ double* ilyushin(struct oshell* shell, int ii, double* lambda, int UPDATEFLAG)
 
 
 
-double*** shellCconsistentilyushin(struct oshell shell)
+double** shellCconsistentilyushin(struct oshell shell, int ii)
 {
-  int ii,i,j;
+  int i,j;
   int nnod,ngp,nstress;
 
   struct gausspoint* gp;
@@ -2054,7 +2075,7 @@ double*** shellCconsistentilyushin(struct oshell shell)
   double O[2][2][3], Oinv[2][2][3];
   double c[3],a[6];
 
-  double ** C, *** consistentC;
+  double ** C, ** consistentC;
   double ** W;
   double ** H, ** g;
   double Halpha, galpha;
@@ -2065,7 +2086,7 @@ double*** shellCconsistentilyushin(struct oshell shell)
   double M00,M01,M10,M11;
   double detM;
   double beta;
-  double tolerance = 1.0e-5;/*SAME AS RETURNMAP*/
+  double tolerance = 1.0e-6;/*SAME AS RETURNMAP*/
 
   char str[800];
 
@@ -2100,34 +2121,33 @@ double*** shellCconsistentilyushin(struct oshell shell)
   c[2] = 2.0*sqrt(3.0)*fn*fm;
 
 
-  C = shellC(shell);
 
-  consistentC = (double***)malloc(ngp * sizeof(double**));
-  for (ii = 0; ii < ngp; ii++)
-  {
-	*(consistentC + ii) = (double**)malloc(nstress * sizeof(double*));
+
+
+	consistentC = (double**)malloc(nstress * sizeof(double*));
 	for (i = 0; i < nstress; i++)
 	{
-	  *(*(consistentC + ii) + i) = (double*)malloc(nstress * sizeof(double));
+		*(consistentC + i) = (double*)malloc(nstress * sizeof(double));
+		for (j = 0; j < nstress; j++)
+		{
+			*(*(consistentC + i) + j) = 0.0;
+		}
 	}
-  }
 
-  W = (double**)malloc(nstress * sizeof(double*));
-  for (i = 0; i < nstress; i++)
-  {
-	*(W + i) = (double*)malloc(nstress * sizeof(double));
-  }
-  g  = (double**)malloc(2 * sizeof(double*));
-  for (i = 0; i < 2; i++)
-  {
-	*(g+i) = (double*)malloc(nstress * sizeof(double));
-  }
+	W = (double**)malloc(nstress * sizeof(double*));
+	for (i = 0; i < nstress; i++)
+	{
+	  *(W + i) = (double*)malloc(nstress * sizeof(double));
+	}
+	g  = (double**)malloc(2 * sizeof(double*));
+	for (i = 0; i < 2; i++)
+	{
+	  *(g+i) = (double*)malloc(nstress * sizeof(double));
+	}
 
-
-  for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
-  {
 	gp = &(shell.gp[ii]);
 
+	C = shellC(shell);
 
 	e[0] = (gp->lambda[0] + gp->lambda[1]) / fn2;
 	e[1] = (gp->lambda[0] + gp->lambda[1]) / fm2;
@@ -2237,7 +2257,7 @@ double*** shellCconsistentilyushin(struct oshell shell)
 	  {
 		for (j = 0; j < nstress; j++)
 		{
-		  *(*(*(consistentC + ii) + i) + j) = *(*(H+i)+j) - ( M11**(N0+i)**(N0+j) - M01**(N0+i)**(N1+j) - M10**(N1+i)**(N0+j) + M00**(N1+i)**(N1+j) )/detM;
+		  *(*(consistentC + i) + j) = *(*(H+i)+j) - ( M11**(N0+i)**(N0+j) - M01**(N0+i)**(N1+j) - M10**(N1+i)**(N0+j) + M00**(N1+i)**(N1+j) )/detM;
 		}
 	  }
 	  free(N0);
@@ -2253,7 +2273,7 @@ double*** shellCconsistentilyushin(struct oshell shell)
 	  {
 		for (j = 0; j < nstress; j++)
 		{
-		  *(*(*(consistentC + ii) + i) + j) = *(*(H+i)+j) - *(N0+i)**(N0+j)/M00;
+		  *(*(consistentC + i) + j) = *(*(H+i)+j) - *(N0+i)**(N0+j)/M00;
 		}
 	  }
 	  free(N0);
@@ -2268,7 +2288,7 @@ double*** shellCconsistentilyushin(struct oshell shell)
 	  {
 		for (j = 0; j < nstress; j++)
 		{
-		  *(*(*(consistentC + ii) + i) + j) = *(*(H+i)+j) - *(N1+i)**(N1+j)/M11;
+		  *(*(consistentC + i) + j) = *(*(H+i)+j) - *(N1+i)**(N1+j)/M11;
 		}
 	  }
 	  free(N1);
@@ -2279,17 +2299,17 @@ double*** shellCconsistentilyushin(struct oshell shell)
 	  {
 		for (j = 0; j < nstress; j++)
 		{
-		  *(*(*(consistentC + ii) + i) + j) = *(*(H+i)+j);
+		  *(*(consistentC + i) + j) = *(*(H+i)+j);
 		}
 	  }
 	}
 	freematrix(H,nstress);
-  }
-  freematrix(W,nstress);
-  freematrix(g,2);
-  freematrix(C, nstress);
 
-  return consistentC;
+	freematrix(W,nstress);
+	freematrix(g,2);
+	freematrix(C, nstress);
+
+	return consistentC;
 }
 
 
@@ -2306,10 +2326,11 @@ void returnmapilyushin(struct oshell* shell, int ii)
    double** dfdl;
    double det;
    double residual;
-   double tolerance = 1.0e-5;/*SAME AS CONSISTENT_C*/
+   double tolerance = 1.0e-6;/*SAME AS CONSISTENT_C*/
    double eps = 1.0e-2;
    char str[800];
    int iteration;
+   int maxiteration=20;
    int FLAG=0;
 
 
@@ -2357,7 +2378,7 @@ void returnmapilyushin(struct oshell* shell, int ii)
 
 	   residual=1.0;
 	   iteration=1;
-	   while(residual>tolerance && iteration<10)
+	   while(residual>tolerance && iteration<maxiteration)
 	   {
 		 /*SENSITIVITY*/
 		 for(i=0;i<2;i++)
@@ -2419,7 +2440,7 @@ void returnmapilyushin(struct oshell* shell, int ii)
 
 	   residual=1.0;
 	   iteration=1;
-	   while(residual>tolerance && iteration<10)
+	   while(residual>tolerance && iteration<maxiteration)
 	   {
 		 /*SENSITIVITY*/
 		 *(lambdaeps+0)=*(lambda+0)+eps;
@@ -2465,7 +2486,7 @@ void returnmapilyushin(struct oshell* shell, int ii)
 
 	   residual=1.0;
 	   iteration=1;
-	   while(residual>tolerance && iteration<10)
+	   while(residual>tolerance && iteration<maxiteration)
 	   {
 		 /*SENSITIVITY*/
 		 *(lambdaeps+0)=0.0;
@@ -2652,8 +2673,6 @@ double mises(struct oshell* shell, int ii, int jj, double lambda, int UPDATEFLAG
 	  //gp2->backstress[2]= *(ostress+2);
 
 	  gp2->alpha = alpha;
-	  gp2->yinit = yinit;
-	  gp2->y = y;
 	  gp2->f = f;
 	  gp2->lambda = lambda;
 
@@ -2676,11 +2695,9 @@ double mises(struct oshell* shell, int ii, int jj, double lambda, int UPDATEFLAG
 }
 
 
-
-
-double*** shellCconsistentmises(struct oshell shell)
+double** shellCconsistentmises(struct oshell shell, int ii)
 {
-  int ii,jj,i,j;
+  int jj,i,j;
   int nnod,ngp,nstress;
 
   struct gausspoint* gp;
@@ -2692,7 +2709,7 @@ double*** shellCconsistentmises(struct oshell shell)
   double a[3];
 
   double ** C;/*3x3*/
-  double *** consistentC;/*ngp x 6 x 6*/
+  double ** consistentC;/*6x6*/
   double ** W;
   double ** H, * g;
   double Halpha, galpha;
@@ -2702,7 +2719,7 @@ double*** shellCconsistentmises(struct oshell shell)
   double* N;
   double M;
   double beta;
-  double tolerance = 1.0e-5;/*SAME AS RETURNMAP*/
+  double tolerance = 1.0e-6;/*SAME AS RETURNMAP*/
 
   char str[800];
 
@@ -2723,32 +2740,23 @@ double*** shellCconsistentmises(struct oshell shell)
   p[1]=1.5;
   p[2]=3.0;
 
-
-
-  consistentC = (double***)malloc(ngp * sizeof(double**));
-  for (ii = 0; ii < ngp; ii++)
-  {
-	*(consistentC + ii) = (double**)malloc(nstress * sizeof(double*));
+	consistentC = (double**)malloc(nstress * sizeof(double*));
 	for (i = 0; i < nstress; i++)
 	{
-	  *(*(consistentC + ii) + i) = (double*)malloc(nstress * sizeof(double));
-	  for (i = 0; i < nstress; i++)
+	  *(consistentC + i) = (double*)malloc(nstress * sizeof(double));
+	  for (j = 0; j < nstress; j++)
 	  {
-		*(*(*(consistentC + ii) + i) + j) = 0.0;
+		*(*(consistentC + i) + j) = 0.0;
 	  }
 	}
-  }
 
-  W = (double**)malloc(3 * sizeof(double*));
-  for (i = 0; i < 3; i++)
-  {
-	*(W + i) = (double*)malloc(3 * sizeof(double));
-  }
-  g  = (double*)malloc(3 * sizeof(double*));
+	W = (double**)malloc(3 * sizeof(double*));
+	for (i = 0; i < 3; i++)
+	{
+	  *(W + i) = (double*)malloc(3 * sizeof(double));
+	}
+	g  = (double*)malloc(3 * sizeof(double*));
 
-
-  for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
-  {
 	gp = &(shell.gp[ii]);
 	for(jj = 0; jj < gp->ngp2; jj++)/*FOR EACH INTEGRATION POINT*/
 	{
@@ -2833,29 +2841,25 @@ double*** shellCconsistentmises(struct oshell shell)
 	  /*[A B]*/
 	  /*[B D]*/
 
-	  /*[A]=Σ[C]    *w*t/2*/
-	  /*[B]=Σ[C]*z  *w*t/2*/
-	  /*[D]=Σ[C]*z*z*w*t/2*/
+	  /*[A]=Σ[C]*w*t/2*/
+	  /*[B]=Σ[C]*z*w*t/2*t/2*/
+	  /*[D]=Σ[C]*z*z*w*t/2*t/2*t/2*/
 	  for (i = 0; i < 3; i++)
 	  {
 		for (j = 0; j < 3; j++)
 		{
-		  *(*(*(consistentC+ii)+  i)  +j) += *(*(C+i)+j)*(gp2->w)*t/2;
-		  *(*(*(consistentC+ii)+3+i)  +j) += *(*(C+i)+j)*(gp2->z)*(gp2->w)*t/2;
-		  *(*(*(consistentC+ii)  +i)+3+j) += *(*(C+i)+j)*(gp2->z)*(gp2->w)*t/2;
-		  *(*(*(consistentC+ii)+3+i)+3+j) += *(*(C+i)+j)*(gp2->z)*(gp2->z)*(gp2->w)*t/2;
+		  *(*(consistentC+  i)  +j) += *(*(C+i)+j)*(gp2->w)*t/2.0;
+		  *(*(consistentC+3+i)  +j) += *(*(C+i)+j)*(gp2->z)*(gp2->w)*pow(t/2.0,2);
+		  *(*(consistentC  +i)+3+j) += *(*(C+i)+j)*(gp2->z)*(gp2->w)*pow(t/2.0,2);
+		  *(*(consistentC+3+i)+3+j) += *(*(C+i)+j)*(gp2->z)*(gp2->z)*(gp2->w)*pow(t/2.0,3);
 		}
 	  }
 	  freematrix(C,3);
 	}
-  }
+	freematrix(W,3);
+	free(g);
 
-
-
-  freematrix(W,3);
-  free(g);
-
-  return consistentC;
+	return consistentC;
 }
 
 
@@ -2867,10 +2871,11 @@ void returnmapmises(struct oshell* shell, int ii, int jj)
    double lambda, lambdaeps, dlambda;
    double f, feps;
    double residual;
-   double tolerance = 1.0e-5;/*SAME AS CONSISTENT_C*/
+   double tolerance = 1.0e-6;/*SAME AS CONSISTENT_C*/
    double eps = 1.0e-2;
    char str[800];
    int iteration;
+   int maxiteration=20;
    int FLAG=0;
 
    lambda = 0.0;
@@ -2881,7 +2886,7 @@ void returnmapmises(struct oshell* shell, int ii, int jj)
 	   /*YIELD SURFACE IS ACTIVE.*//*f=0 && lambda>0*/
 	   residual=1.0;
 	   iteration=1;
-	   while(residual>tolerance && iteration<10)
+	   while(residual>tolerance && iteration<maxiteration)
 	   {
 		 /*SENSITIVITY*/
 		 lambdaeps=lambda+eps;
@@ -2924,12 +2929,13 @@ void assemshellestrain(struct oshell* shell, double*** B, double* edisp)
 {
   int ii,jj,i;
   int nnod,ngp,ngp2,nstress;
-
+  double t;
   double* gpstrain;
 
   nnod = shell->nnod;
   ngp = shell->ngp;
   nstress = shell->nstress;
+  t=shell->sect->area;
 
   for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
   {
@@ -2949,7 +2955,7 @@ void assemshellestrain(struct oshell* shell, double*** B, double* edisp)
 			for(i = 0; i < 3; i++)
 			{
 			  (shell->gp[ii]).gp2[jj].estrain[i] = (shell->gp[ii]).estrain[i]
-												 + (shell->gp[ii]).estrain[3+i] * (shell->gp[ii]).gp2[jj].z;
+												 + (shell->gp[ii]).estrain[3+i] * (shell->gp[ii]).gp2[jj].z * t/2.0;
 			  /*STRAIN {εx εy εxy} FOR INTEGRATION POINT ii*//*-h/2<z<h/2*/
 			}
 		}
@@ -2977,14 +2983,53 @@ void assemshellestress(struct oshell* shell)
   t=shell->sect->area;
 
 
-
-  if(ngp2!=0)/*MISES*/
+  for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
   {
-	  C=planeC(*shell);
-	  for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
-	  {
-		gp = &(shell->gp[ii]);
-		ngp2 = gp->ngp2;
+	gp = &(shell->gp[ii]);
+	ngp2 = gp->ngp2;
+
+	if(ngp2==0)/*ILYUSHIN*/
+	{
+		C=shellC(*shell);
+
+		gpstrain = (double*)malloc(nstress * sizeof(double));
+		for(i = 0; i < nstress; i++)
+		{
+		  /*estrain : NEW TOTAL STRAIN DERIVED FROM [B]{d}*/
+		  /*pstrain : OLD PLASTIC STRAIN*/
+		  gp->estrain[i] -= gp->pstrain[i];/*UPDATE estrain : NEW ELASTIC STRAIN*/
+
+		  *(gpstrain+i) = gp->estrain[i];
+		}
+		gpstress = matrixvector(C,gpstrain,nstress);/*ELASTIC PREDICTOR*/
+		for(i = 0; i < nstress; i++)
+		{
+		  gp->stress[i] = *(gpstress + i);/*TRIAL STRESS*/
+		}
+		free(gpstress);
+		free(gpstrain);
+
+		/*RETURN-MAPPING & UPDATE*/
+		if(shell->sect->yieldinit != 0.0)returnmapilyushin(shell, ii);
+
+		/*
+		(shell->gp[ii]).Ee = 0.0;
+		for(i = 0; i < 6; i++)
+		{
+		  (shell->gp[ii]).Ee += 0.5 * (shell->area) * (shell->gp[ii]).w
+							   * (shell->gp[ii]). stress[i]
+							   * (shell->gp[ii]).estrain[i];
+		  (shell->gp[ii]).Ep += (shell->area) * (shell->gp[ii]).w
+							   * 0.5 *((shell->gp[ii]). stress[i] + (mshell->gp[ii]). stress[i])
+							   *((shell->gp[ii]).pstrain[i] - (mshell->gp[ii]).pstrain[i]);
+		}
+		*/
+
+		freematrix(C,6);
+	}
+    else/*MISES*/
+	{
+		C=planeC(*shell);
 
 		for(i = 0; i < nstress; i++)
 		{
@@ -3028,55 +3073,18 @@ void assemshellestress(struct oshell* shell)
 										   *((shell->gp[ii]).pstrain[i] - (mshell->gp[ii]).pstrain[i]);
 			}
 			*/
-
 			for(i = 0; i < 3; i++)
 			{
-				gp->stress[i]   += gp2->stress[i] * gp2->w * t/2;
-				gp->stress[3+i] += gp2->stress[i] * gp2->z * gp2->w * t/2;
+				gp->stress[i]   += gp2->stress[i] * gp2->w * t/2.0;
+				gp->stress[3+i] += gp2->stress[i] * gp2->z * gp2->w * pow(t/2.0,2);
 			}
 		}
-	  }
-	  freematrix(C,3);
-  }
-  else/*ILYUSHIN*/
-  {
-	  C=shellC(*shell);
-	  for(ii = 0; ii < ngp; ii++)/*FOR EACH INTEGRATION POINT*/
-	  {
-		gpstrain = (double*)malloc(nstress * sizeof(double));
-		for(i = 0; i < nstress; i++)
-		{
-		  /*estrain : NEW TOTAL STRAIN DERIVED FROM [B]{d}*/
-		  /*pstrain : OLD PLASTIC STRAIN*/
-		  gp->estrain[i] -= gp->pstrain[i];/*UPDATE estrain : NEW ELASTIC STRAIN*/
 
-		  *(gpstrain+i) = gp->estrain[i];
-		}
-		gpstress = matrixvector(C,gpstrain,nstress);/*ELASTIC PREDICTOR*/
-		for(i = 0; i < nstress; i++)
-		{
-		  gp->stress[i] = *(gpstress + i);/*TRIAL STRESS*/
-		}
-		free(gpstress);
-		free(gpstrain);
 
-		/*RETURN-MAPPING & UPDATE*/
-		if(shell->sect->yieldinit != 0.0)returnmapilyushin(shell, ii);
 
-		/*
-		(shell->gp[ii]).Ee = 0.0;
-		for(i = 0; i < 6; i++)
-		{
-		  (shell->gp[ii]).Ee += 0.5 * (shell->area) * (shell->gp[ii]).w
-							   * (shell->gp[ii]). stress[i]
-							   * (shell->gp[ii]).estrain[i];
-		  (shell->gp[ii]).Ep += (shell->area) * (shell->gp[ii]).w
-							   * 0.5 *((shell->gp[ii]). stress[i] + (mshell->gp[ii]). stress[i])
-							   *((shell->gp[ii]).pstrain[i] - (mshell->gp[ii]).pstrain[i]);
-		}
-		*/
-	  }
-	  freematrix(C,6);
+
+		freematrix(C,3);
+	}
   }
   return;
 }
