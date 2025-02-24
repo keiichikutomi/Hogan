@@ -2803,8 +2803,8 @@ double** shellCconsistentmises(struct oshell shell, int ii)
 	  y = yieldstress(shell.sect, gp2->alpha, &dy, &ddy);
 	  if(dy!=0)
 	  {
-		Halpha = 1.0/(t*dy-gp2->lambda*2.0*(dy*dy+y*ddy)/pow(yinit,2.0));
-		galpha = -2.0*y*dy/pow(yinit,2.0);
+		Halpha = 1.0/(dy-(gp2->lambda)*2.0*dy*dy);
+		galpha = -2.0*y*dy;
 
 		beta = Halpha*pow(galpha,2.0);
 	  }
