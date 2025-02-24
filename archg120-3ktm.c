@@ -33257,12 +33257,12 @@ MessageBox(NULL,str,"CADRE",MB_OK);*/
   count=0;
   while(1)
   {
-    data=fgetsbrk(ftext,&n);
+	data=fgetsbrk(ftext,&n);
     if(n<=0) return;
 
     ncode=strtol(*(data+0),NULL,10);
 
-    for(j=0;j<(af->nnode);j++)
+	for(j=0;j<(af->nnode);j++)
     {
       if(ncode==(af->nodes+j)->code) break;
     }

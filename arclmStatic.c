@@ -23,6 +23,98 @@ extern void bisecgeneral(struct gcomponent *A,double factorA,
 extern double inversemethod(struct gcomponent *gmtx, struct oconf *confs, double *evct, int msize);
 
 
+
+void inputdsp(struct arclmframe *af, const char *fname, int targetlap, int targetiteration)
+{
+	char fullfname[256],line[1024];
+	int lap, iteration, laps;
+	FILE *fdsp;
+	char **data;
+	int n,i,j;
+
+	snprintf(fullfname, sizeof(fullfname), "%s.%s", fname, "dsp");
+	fdsp = fopen(fullfname, "r");
+	if (fdsp == NULL)return;
+
+	while (fgets(line, sizeof(line), fdsp) != NULL)
+	{
+		if (strstr(line, "LAP:") != NULL)
+		{
+			if (sscanf(line, "LAP: %d / %d ITERATION: %d", &lap, &laps, &iteration) != 3)continue;
+			if (lap == targetlap && iteration == targetiteration)
+			{
+				for (int i = 0; i < af->nnode; i++)
+				{
+					data=fgetsbrk(fdsp,&n);
+					for (j = 0; j < 3; j++)
+					{
+						af->nodes[i].d[j] = strtod(*(data + 1 + j), NULL);
+						af->nodes[i].r[j] = strtod(*(data + 4 + j), NULL);
+					}
+					for(;n>0;n--) free(*(data+n-1));
+					free(data);
+				}
+				break;
+			}
+			else
+			{
+				for (int i = 0; i < af->nnode; i++)
+				{
+					fgets(line, sizeof(line), fdsp);
+				}
+			}
+		}
+	}
+	fclose(fdsp);
+}
+
+void inputplst(struct arclmframe *af, const char *fname, int targetlap, int targetiteration)
+{
+	char fullfname[256], line[1024];
+    int lap, iteration, laps;
+    FILE *fplst;
+    char **data;
+    int n, i, j, k;
+
+    snprintf(fullfname, sizeof(fullfname), "%s.%s", fname, "plst");
+    fplst = fopen(fullfname, "r");
+    if (fplst == NULL) return;
+
+	while (fgets(line, sizeof(line), fplst) != NULL)
+	{
+		if (strstr(line, "LAP:") != NULL)
+		{
+			if (sscanf(line, "LAP: %d / %d ITERATION: %d", &lap, &laps, &iteration) != 3)continue;
+			if (lap == targetlap && iteration == targetiteration)
+			{
+				for (i = 0; i < af->nshell; i++)
+				{
+					data = fgetsbrk(fplst, &n);
+					for (j = 0; j < af->shells[i].ngp; j++)
+					{
+						for (k = 0; k < 6; k++)
+						{
+							af->shells[i].gp[j].pstrain[k] = strtod(data[6 * j + k + 1], NULL);
+						}
+						af->shells[i].gp[j].alpha = strtod(data[6 * j + 7], NULL);
+					}
+					for(j = 0; j < n; j++) free(data[j]);
+					free(data);
+				}
+				break;
+            }
+			else
+			{
+				for (i = 0; i < af->nshell; i++)
+				{
+					fgets(line, sizeof(line), fplst);
+				}
+			}
+		}
+    }
+    fclose(fplst);
+}
+
 int arclmStatic(struct arclmframe* af)
 {
 	DWORDLONG memory0,memory1;
@@ -73,6 +165,7 @@ int arclmStatic(struct arclmframe* af)
 	///FOR ARC-LENGTH PARAMETER///
 	int nlap = 1;
 	int beginlap = 1;
+	int targetlap;
 	int laps = 1000;
 	int iteration = 1;
 	int maxiteration = 20;
@@ -153,7 +246,7 @@ int arclmStatic(struct arclmframe* af)
 	FILE *fdata;
 	int nstr, pstr, readflag;
 	char** data;
-	char filename[256];
+	char filename[256],inputfilename[256],outputfilename[256];
 	char description[256];
 	char* dot;
 
@@ -231,6 +324,16 @@ int arclmStatic(struct arclmframe* af)
 								strcpy(filename, *(data + pstr));
 							}
 						}
+						if (!strcmp(*(data + pstr), "INPUTFILENAME"))
+						{
+							pstr++;
+							strcpy(inputfilename, *(data + pstr));
+						}
+						if (!strcmp(*(data + pstr), "OUTPUTFILENAME"))
+						{
+							pstr++;
+							strcpy(outputfilename, *(data + pstr));
+						}
 						if (!strcmp(*(data + pstr), "DESCRIPTION"))
 						{
 							pstr++;
@@ -238,6 +341,7 @@ int arclmStatic(struct arclmframe* af)
 							strcat(filename, "_");
 							strcat(filename, description);
 						}
+
 						if (!strcmp(*(data + pstr), "LAPS"))
 						{
 							pstr++;
@@ -310,6 +414,11 @@ int arclmStatic(struct arclmframe* af)
 						{
 							pstr++;
 							initialloadfactor = (double)strtod(*(data + pstr), NULL);
+						}
+						if (!strcmp(*(data + pstr), "TARGETLAP"))
+						{
+							pstr++;
+							targetlap = (int)strtol(*(data + pstr), NULL, 10);
 						}
 						if (!strcmp(*(data + pstr), "NEIG"))
 						{
@@ -409,12 +518,12 @@ int arclmStatic(struct arclmframe* af)
 	free(af->elems);
 	free(af->shells);
 	free(af->confs);
-	free(af->iform);
-	free(af->ddisp);
-	free(af->melem);
-	free(af->mshell);
 	free(af->constraintmain);
 	free(af->constraints);
+	//free(af->iform);
+	//free(af->ddisp);
+	//free(af->melem);
+	//free(af->mshell);
 
 	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
 	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
@@ -422,12 +531,12 @@ int arclmStatic(struct arclmframe* af)
 	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
 	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
 	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
+	constraintmain = (long int*)malloc(msize * sizeof(long int));
+	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
 	//iform = (double*)malloc(msize * sizeof(double));
 	//ddisp = (double*)malloc(msize * sizeof(double));
 	//melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	//mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
-	constraintmain = (long int*)malloc(msize * sizeof(long int));
-	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
 
 	af->sects = sects;
 	af->nodes = nodes;
@@ -435,12 +544,12 @@ int arclmStatic(struct arclmframe* af)
 	af->elems = elems;
 	af->shells = shells;
 	af->confs = confs;
+	af->constraintmain = constraintmain;
+	af->constraints = constraints;
 	//af->iform = iform;
 	//af->ddisp = ddisp;
 	//af->melem = melem;
 	//af->mshell = mshell;
-	af->constraintmain = constraintmain;
-	af->constraints = constraints;
 
 	inputtexttomemory(fin, af);
 	fclose(fin);
@@ -453,13 +562,19 @@ int arclmStatic(struct arclmframe* af)
 	elems = af->elems;
 	shells = af->shells;
 	confs = af->confs;
+	constraintmain = af->constraintmain;
+	constraints = af->constraints;
 	//iform = af->iform;
 	//ddisp = af->ddisp;
 	//melem = af->melem;
 	//mshell = af->mshell;
-	constraintmain = af->constraintmain;
-	constraints = af->constraints;
 #endif
+
+	if(inputfilename!=NULL && targetlap!=NULL)
+	{
+	  inputdsp(af, inputfilename, targetlap, 1);
+	  inputplst(af, inputfilename, targetlap, 1);
+	}
 
 	iform = (double*)malloc(msize * sizeof(double));
 	ddisp = (double*)malloc(msize * sizeof(double));
@@ -470,7 +585,6 @@ int arclmStatic(struct arclmframe* af)
 	af->ddisp = ddisp;
 	af->melem = melem;
 	af->mshell = mshell;
-
 
 	csize = 0;
 	for (i = 0; i < nconstraint; i++)
@@ -1432,7 +1546,8 @@ int arclmStatic(struct arclmframe* af)
 			}
 			for(i = 0; i < nshell; i++)
 			{
-				fprintf(fplst, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				fprintf(fplst, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],((shells+i)->gp[0]).alpha,
 				((shells+i)->gp[1]).pstrain[0],((shells+i)->gp[1]).pstrain[1],((shells+i)->gp[1]).pstrain[2],((shells+i)->gp[1]).pstrain[3],((shells+i)->gp[1]).pstrain[4],((shells+i)->gp[1]).pstrain[5],((shells+i)->gp[1]).alpha,
 				((shells+i)->gp[2]).pstrain[0],((shells+i)->gp[2]).pstrain[1],((shells+i)->gp[2]).pstrain[2],((shells+i)->gp[2]).pstrain[3],((shells+i)->gp[2]).pstrain[4],((shells+i)->gp[2]).pstrain[5],((shells+i)->gp[2]).alpha,
 				((shells+i)->gp[3]).pstrain[0],((shells+i)->gp[3]).pstrain[1],((shells+i)->gp[3]).pstrain[2],((shells+i)->gp[3]).pstrain[3],((shells+i)->gp[3]).pstrain[4],((shells+i)->gp[3]).pstrain[5],((shells+i)->gp[3]).alpha

@@ -1581,34 +1581,6 @@ void inputshell(struct oshell *shells,
 		  }
 	  }
 	  memcpy(shell->gp,(mshell+offset)->gp,sizeof(shell->gp));
-	  /*
-	  for(i=0;i<shell->ngp;i++)
-	  {
-		  (shell->gp[i]).w=((shells+offset)->gp[i]).w;
-
-		  for(j=0;j<shell->nstress;j++)
-		  {
-			(shell->gp[i]).estrain[j]=((mshell+offset)->gp[i]).estrain[j];
-			(shell->gp[i]).pstrain[j]=((mshell+offset)->gp[i]).pstrain[j];
-			(shell->gp[i]).stress[j]=((mshell+offset)->gp[i]).stress[j];
-			(shell->gp[i]).backstress[j]=((mshell+offset)->gp[i]).backstress[j];
-		  }
-		  (shell->gp[i]).f[0]=((mshell+offset)->gp[i]).f[0];
-		  (shell->gp[i]).f[1]=((mshell+offset)->gp[i]).f[1];
-
-		  (shell->gp[i]).lambda[0]=((mshell+offset)->gp[i]).lambda[0];
-		  (shell->gp[i]).lambda[1]=((mshell+offset)->gp[i]).lambda[1];
-
-		  (shell->gp[i]).alpha=((mshell+offset)->gp[i]).alpha;
-
-		  (shell->gp[i]).Ee=((mshell+offset)->gp[i]).Ee;
-		  (shell->gp[i]).Ep=((mshell+offset)->gp[i]).Ep;
-
-		  (shell->gp[i]).ngp2=((mshell+offset)->gp[i]).ngp2;
-
-	  }
-	  */
-
   }
   else
   {
@@ -1621,36 +1593,7 @@ void inputshell(struct oshell *shells,
 		  }
 	  }
 	  memcpy(shell->gp,(shells+offset)->gp,sizeof(shell->gp));
-	  /*
-	  for(i=0;i<shell->ngp;i++)
-	  {
-
-		  (shell->gp[i]).w=((shells+offset)->gp[i]).w;
-		  for(j=0;j<shell->nstress;j++)
-		  {
-			(shell->gp[i]).estrain[j]=((shells+offset)->gp[i]).estrain[j];
-			(shell->gp[i]).pstrain[j]=((shells+offset)->gp[i]).pstrain[j];
-			(shell->gp[i]).stress[j]=((shells+offset)->gp[i]).stress[j];
-			(shell->gp[i]).backstress[j]=((shells+offset)->gp[i]).backstress[j];
-		  }
-		  (shell->gp[i]).f[0]=((shells+offset)->gp[i]).f[0];
-		  (shell->gp[i]).f[1]=((shells+offset)->gp[i]).f[1];
-
-		  (shell->gp[i]).lambda[0]=((shells+offset)->gp[i]).lambda[0];
-		  (shell->gp[i]).lambda[1]=((shells+offset)->gp[i]).lambda[1];
-
-		  (shell->gp[i]).alpha=((shells+offset)->gp[i]).alpha;
-
-		  (shell->gp[i]).Ee=((shells+offset)->gp[i]).Ee;
-		  (shell->gp[i]).Ep=((shells+offset)->gp[i]).Ep;
-
-		  (shell->gp[i]).ngp2=((shells+offset)->gp[i]).ngp2;
-
-	  }
-	  */
-
   }
-
   return;
 }/*inputshell*/
 
@@ -1670,31 +1613,6 @@ void outputshell(struct oshell *shells,
 	}
   }
   memcpy((shells+offset)->gp,shell->gp,sizeof(shell->gp));
-
-  /*
-  for(i=0;i<shell->ngp;i++)
-  {
-	for(j=0;j<shell->nstress;j++)
-	{
-	  ((shells+offset)->gp[i]).estrain[j]=(shell->gp[i]).estrain[j];
-	  ((shells+offset)->gp[i]).pstrain[j]=(shell->gp[i]).pstrain[j];
-	  ((shells+offset)->gp[i]).stress[j]=(shell->gp[i]).stress[j];
-	  ((shells+offset)->gp[i]).backstress[j]=(shell->gp[i]).backstress[j];
-	}
-	((shells+offset)->gp[i]).f[0]=(shell->gp[i]).f[0];
-	((shells+offset)->gp[i]).f[1]=(shell->gp[i]).f[1];
-
-	((shells+offset)->gp[i]).lambda[0]=(shell->gp[i]).lambda[0];
-	((shells+offset)->gp[i]).lambda[1]=(shell->gp[i]).lambda[1];
-
-	((shells+offset)->gp[i]).alpha=(shell->gp[i]).alpha;
-
-	((shells+offset)->gp[i]).Ee=(shell->gp[i]).Ee;
-	((shells+offset)->gp[i]).Ep=(shell->gp[i]).Ep;
-	((shells+offset)->gp[i]).ngp2=(shell->gp[i]).ngp2;
-
-  }
-  */
   return;
 }/*inputshell*/
 
@@ -1718,22 +1636,6 @@ void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell)
 
 	  for(j=0;j<(shells+i)->ngp;j++)
 	  {
-		/*
-		for(k=0;k<(shells+i)->nstress;k++)
-		{
-		  ((mshell+i)->gp[j]).estrain[k]=((shells+i)->gp[j]).estrain[k];
-		  ((mshell+i)->gp[j]).pstrain[k]=((shells+i)->gp[j]).pstrain[k];
-		  ((mshell+i)->gp[j]).stress[k]=((shells+i)->gp[j]).stress[k];
-		  ((mshell+i)->gp[j]).backstress[k]=((shells+i)->gp[j]).backstress[k];
-		}
-		((mshell+i)->gp[j]).f[0]=((shells+i)->gp[j]).f[0];
-		((mshell+i)->gp[j]).f[1]=((shells+i)->gp[j]).f[1];
-		((mshell+i)->gp[j]).alpha=((shells+i)->gp[j]).alpha;
-		((mshell+i)->gp[j]).Ee=((shells+i)->gp[j]).Ee;
-		((mshell+i)->gp[j]).Ep=((shells+i)->gp[j]).Ep;
-		((mshell+i)->gp[j]).ngp2=((shells+i)->gp[j]).ngp2;
-		*/
-
 		((mshell+i)->gp[j]).lambda[0]=0.0/*((shells+i)->gp[j]).lambda[0]*/;
 		((mshell+i)->gp[j]).lambda[1]=0.0/*((shells+i)->gp[j]).lambda[1]*/;
 
