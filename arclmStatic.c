@@ -30,7 +30,7 @@ int arclmStatic(struct arclmframe* af)
 	char string[400],fname[100];
 	clock_t t0;
 	/*INPUT & OUTPUT FILE*/
-	FILE * fin, * fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout;         /*FILE 8 BYTES*/
+	FILE * fin, * fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout, *fplst;         /*FILE 8 BYTES*/
 
 	int i, ii, jj;
 
@@ -367,6 +367,8 @@ int arclmStatic(struct arclmframe* af)
 		feig = fopen(fname, "a");
 		snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
 		fout = fopen(fname, "a");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "plst");
+		fplst = fopen(fname, "a");
 	}
 	else
 	{
@@ -394,6 +396,8 @@ int arclmStatic(struct arclmframe* af)
 		feig = fopen(fname, "w");
 		snprintf(fname, sizeof(fname), "%s.%s", filename, "otl");
 		fout = fopen(fname, "w");
+		snprintf(fname, sizeof(fname), "%s.%s", filename, "plst");
+		fplst = fopen(fname, "w");
 	}
 	t0 = clock();                                                   /*CLOCK BEGIN.*/
 
@@ -645,6 +649,7 @@ int arclmStatic(struct arclmframe* af)
 	/*OUTPUT FOR LOCAL*/
 	fprintf(fstr, string);
 	fprintf(fene, string);
+    fprintf(fplst, string);
 	for(i = 0; i < nshell; i++)
 	{
 		//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
@@ -653,6 +658,14 @@ int arclmStatic(struct arclmframe* af)
 		((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
 		((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
 		((shells+i)->gp[0]).alpha,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+		);
+	}
+	for(i = 0; i < nshell; i++)
+	{
+		fprintf(fplst, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+		((shells+i)->gp[1]).pstrain[0],((shells+i)->gp[1]).pstrain[1],((shells+i)->gp[1]).pstrain[2],((shells+i)->gp[1]).pstrain[3],((shells+i)->gp[1]).pstrain[4],((shells+i)->gp[1]).pstrain[5],((shells+i)->gp[1]).alpha,
+		((shells+i)->gp[2]).pstrain[0],((shells+i)->gp[2]).pstrain[1],((shells+i)->gp[2]).pstrain[2],((shells+i)->gp[2]).pstrain[3],((shells+i)->gp[2]).pstrain[4],((shells+i)->gp[2]).pstrain[5],((shells+i)->gp[2]).alpha,
+		((shells+i)->gp[3]).pstrain[0],((shells+i)->gp[3]).pstrain[1],((shells+i)->gp[3]).pstrain[2],((shells+i)->gp[3]).pstrain[3],((shells+i)->gp[3]).pstrain[4],((shells+i)->gp[3]).pstrain[5],((shells+i)->gp[3]).alpha
 		);
 	}
 	fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
@@ -1407,14 +1420,22 @@ int arclmStatic(struct arclmframe* af)
 			/*OUTPUT FOR LOCAL*/
 			fprintf(fstr, string);
 			fprintf(fene, string);
+			fprintf(fplst, string);
 			for(i = 0; i < nshell; i++)
 			{
-				//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
-				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				fprintf(fstr, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
 				((shells+i)->gp[0]). stress[0],((shells+i)->gp[0]). stress[1],((shells+i)->gp[0]). stress[2],((shells+i)->gp[0]). stress[3],((shells+i)->gp[0]). stress[4],((shells+i)->gp[0]). stress[5],
 				((shells+i)->gp[0]).estrain[0],((shells+i)->gp[0]).estrain[1],((shells+i)->gp[0]).estrain[2],((shells+i)->gp[0]).estrain[3],((shells+i)->gp[0]).estrain[4],((shells+i)->gp[0]).estrain[5],
 				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],
 				((shells+i)->gp[0]).alpha,((shells+i)->gp[0]).f[0],((shells+i)->gp[0]).f[1]
+				);
+			}
+			for(i = 0; i < nshell; i++)
+			{
+				fprintf(fplst, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				((shells+i)->gp[1]).pstrain[0],((shells+i)->gp[1]).pstrain[1],((shells+i)->gp[1]).pstrain[2],((shells+i)->gp[1]).pstrain[3],((shells+i)->gp[1]).pstrain[4],((shells+i)->gp[1]).pstrain[5],((shells+i)->gp[1]).alpha,
+				((shells+i)->gp[2]).pstrain[0],((shells+i)->gp[2]).pstrain[1],((shells+i)->gp[2]).pstrain[2],((shells+i)->gp[2]).pstrain[3],((shells+i)->gp[2]).pstrain[4],((shells+i)->gp[2]).pstrain[5],((shells+i)->gp[2]).alpha,
+				((shells+i)->gp[3]).pstrain[0],((shells+i)->gp[3]).pstrain[1],((shells+i)->gp[3]).pstrain[2],((shells+i)->gp[3]).pstrain[3],((shells+i)->gp[3]).pstrain[4],((shells+i)->gp[3]).pstrain[5],((shells+i)->gp[3]).alpha
 				);
 			}
 			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);

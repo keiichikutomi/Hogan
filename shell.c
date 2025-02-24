@@ -1580,7 +1580,8 @@ void inputshell(struct oshell *shells,
 			shell->stress[i][j]=(mshell+offset)->stress[i][j];
 		  }
 	  }
-	 // memcpy(shell->gp,(mshell+offset)->gp,sizeof(shell->gp));
+	  memcpy(shell->gp,(mshell+offset)->gp,sizeof(shell->gp));
+	  /*
 	  for(i=0;i<shell->ngp;i++)
 	  {
 		  (shell->gp[i]).w=((shells+offset)->gp[i]).w;
@@ -1606,6 +1607,7 @@ void inputshell(struct oshell *shells,
 		  (shell->gp[i]).ngp2=((mshell+offset)->gp[i]).ngp2;
 
 	  }
+	  */
 
   }
   else
@@ -1618,7 +1620,8 @@ void inputshell(struct oshell *shells,
 			shell->stress[i][j]=(shells+offset)->stress[i][j];
 		  }
 	  }
-	  //memcpy(shell->gp,(shells+offset)->gp,sizeof(shell->gp));
+	  memcpy(shell->gp,(shells+offset)->gp,sizeof(shell->gp));
+	  /*
 	  for(i=0;i<shell->ngp;i++)
 	  {
 
@@ -1644,6 +1647,7 @@ void inputshell(struct oshell *shells,
 		  (shell->gp[i]).ngp2=((shells+offset)->gp[i]).ngp2;
 
 	  }
+	  */
 
   }
 
@@ -1665,8 +1669,9 @@ void outputshell(struct oshell *shells,
 	  (shells+offset)->stress[i][j]=shell->stress[i][j];
 	}
   }
-  //memcpy((shells+offset)->gp,shell->gp,sizeof(shell->gp));
+  memcpy((shells+offset)->gp,shell->gp,sizeof(shell->gp));
 
+  /*
   for(i=0;i<shell->ngp;i++)
   {
 	for(j=0;j<shell->nstress;j++)
@@ -1689,7 +1694,7 @@ void outputshell(struct oshell *shells,
 	((shells+offset)->gp[i]).ngp2=(shell->gp[i]).ngp2;
 
   }
-
+  */
   return;
 }/*inputshell*/
 
@@ -1709,11 +1714,11 @@ void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell)
 		  (mshell+i)->stress[j][k]=(shells+i)->stress[j][k];
 		}
 	  }
-	  //memcpy((mshell+i)->gp,(shells+i)->gp,sizeof((shells+i)->gp));
+	  memcpy((mshell+i)->gp,(shells+i)->gp,sizeof((shells+i)->gp));
 
 	  for(j=0;j<(shells+i)->ngp;j++)
 	  {
-
+		/*
 		for(k=0;k<(shells+i)->nstress;k++)
 		{
 		  ((mshell+i)->gp[j]).estrain[k]=((shells+i)->gp[j]).estrain[k];
@@ -1723,17 +1728,14 @@ void initialshell(struct oshell *shells,struct memoryshell *mshell,int nshell)
 		}
 		((mshell+i)->gp[j]).f[0]=((shells+i)->gp[j]).f[0];
 		((mshell+i)->gp[j]).f[1]=((shells+i)->gp[j]).f[1];
-
-
-		((mshell+i)->gp[j]).lambda[0]=0.0/*((shells+i)->gp[j]).lambda[0]*/;
-		((mshell+i)->gp[j]).lambda[1]=0.0/*((shells+i)->gp[j]).lambda[1]*/;
-
-
 		((mshell+i)->gp[j]).alpha=((shells+i)->gp[j]).alpha;
-
 		((mshell+i)->gp[j]).Ee=((shells+i)->gp[j]).Ee;
 		((mshell+i)->gp[j]).Ep=((shells+i)->gp[j]).Ep;
 		((mshell+i)->gp[j]).ngp2=((shells+i)->gp[j]).ngp2;
+		*/
+
+		((mshell+i)->gp[j]).lambda[0]=0.0/*((shells+i)->gp[j]).lambda[0]*/;
+		((mshell+i)->gp[j]).lambda[1]=0.0/*((shells+i)->gp[j]).lambda[1]*/;
 
 		for(k=0;k<(shells+i)->gp[j].ngp2;k++)
 		{
@@ -2912,7 +2914,7 @@ void returnmapmises(struct oshell* shell, int ii, int jj)
 	   }
 	   if(FLAG==1)
 	   {
-		 errormessage("RETURN-MAPPING FAILED./n");
+		 errormessage("RETURN-MAPPING FAILED.");
 		 lambda=0.0;
        }
 
@@ -3050,7 +3052,7 @@ void assemshellestress(struct oshell* shell)
 
 			  *(gpstrain+i) = gp2->estrain[i];
 			}
-			gpstress = matrixvector(C,gpstrain,nstress);/*ELASTIC PREDICTOR*/
+			gpstress = matrixvector(C,gpstrain,3);/*ELASTIC PREDICTOR*/
 			for(i = 0; i < 3; i++)
 			{
 			  gp2->stress[i] = *(gpstress + i);/*TRIAL STRESS*/

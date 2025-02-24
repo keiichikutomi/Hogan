@@ -1476,7 +1476,7 @@ double *matrixvector(double **mtx,double *vct,int msize)
   {
     *(v+i)=0.0;
     for(j=0;j<=msize-1;j++)
-    {*(v+i)+=(*(*(mtx+i)+j))*(*(vct+j));}
+	{*(v+i)+=(*(*(mtx+i)+j))*(*(vct+j));}
   }
 
   return v;
