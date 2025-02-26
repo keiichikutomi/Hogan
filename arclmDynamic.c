@@ -494,11 +494,7 @@ int arclmDynamic(struct arclmframe* af)
 	//melem = af->melem;
 	//mshell = af->mshell;
 #endif
-	if(inputfilename!=NULL && targetlap!=NULL)
-	{
-	  inputdsp(af, inputfilename, targetlap, 1);
-	  inputplst(af, inputfilename, targetlap, 1);
-	}
+
 
 	iform = (double*)malloc(msize * sizeof(double));
 	ddisp = (double*)malloc(msize * sizeof(double));
@@ -579,7 +575,11 @@ int arclmDynamic(struct arclmframe* af)
 	ud_m = (double*)malloc(msize * sizeof(double));  		/*LATEST ITERATION IN MATERIAL*/
 	udd_m = (double*)malloc(msize * sizeof(double));
 
-
+	if(inputfilename!=NULL && targetlap!=NULL)
+	{
+	  inputdsp(af, inputfilename, targetlap, 1);
+	  inputplst(af, inputfilename, targetlap, 1);
+	}
 
 	initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
@@ -1070,7 +1070,8 @@ int arclmDynamic(struct arclmframe* af)
 			}
 			for(i = 0; i < nshell; i++)
 			{
-				fprintf(fplst, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+			    fprintf(fplst, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+				((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],((shells+i)->gp[0]).alpha,
 				((shells+i)->gp[1]).pstrain[0],((shells+i)->gp[1]).pstrain[1],((shells+i)->gp[1]).pstrain[2],((shells+i)->gp[1]).pstrain[3],((shells+i)->gp[1]).pstrain[4],((shells+i)->gp[1]).pstrain[5],((shells+i)->gp[1]).alpha,
 				((shells+i)->gp[2]).pstrain[0],((shells+i)->gp[2]).pstrain[1],((shells+i)->gp[2]).pstrain[2],((shells+i)->gp[2]).pstrain[3],((shells+i)->gp[2]).pstrain[4],((shells+i)->gp[2]).pstrain[5],((shells+i)->gp[2]).alpha,
 				((shells+i)->gp[3]).pstrain[0],((shells+i)->gp[3]).pstrain[1],((shells+i)->gp[3]).pstrain[2],((shells+i)->gp[3]).pstrain[3],((shells+i)->gp[3]).pstrain[4],((shells+i)->gp[3]).pstrain[5],((shells+i)->gp[3]).alpha

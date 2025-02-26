@@ -1567,14 +1567,14 @@ void inputshell(struct oshell *shells,
   shell->prate=(shells+offset)->prate;
   shell->brate=(shells+offset)->brate;
   shell->area=(shells+offset)->area;
-
-
-
+  for(i=0;i<shell->nnod;i++)
+  {
+	shell->node[i]=(shells+offset)->node[i];
+  }
   if(mshell!=NULL)
   {
 	  for(i=0;i<shell->nnod;i++)
 	  {
-		  shell->node[i]=(shells+offset)->node[i];
 		  for(j=0;j<6;j++)                                      /*STRESS.*/
 		  {
 			shell->stress[i][j]=(mshell+offset)->stress[i][j];
@@ -1586,7 +1586,6 @@ void inputshell(struct oshell *shells,
   {
      for(i=0;i<shell->nnod;i++)
 	  {
-		  shell->node[i]=(shells+offset)->node[i];
 		  for(j=0;j<6;j++)                                      /*STRESS.*/
 		  {
 			shell->stress[i][j]=(shells+offset)->stress[i][j];
@@ -2224,7 +2223,6 @@ double** shellCconsistentilyushin(struct oshell shell, int ii)
 void returnmapilyushin(struct oshell* shell, int ii)
 {
    int i,j;
-   //struct gausspoint* gp;
    double* lambda,* lambda01,* lambda0,* lambda1,* lambdaeps,* dlambda;
    double* f,* feps,* finit,* f01,* f0,* f1;
    double** dfdl;
@@ -2236,10 +2234,13 @@ void returnmapilyushin(struct oshell* shell, int ii)
    int iteration;
    int maxiteration=20;
    int FLAG=0;
+   int OUTPUTFLAG=0;
 
-
-
-   //gp = &(shell->gp[ii]);
+   if(OUTPUTFLAG==1)
+   {
+	   sprintf(str,"SHELL ID:%d INTEGRATION PT:%d\n",shell->code,ii);
+	   dbgstr(str);
+   }
    /*FLAG = 0 ; BOTH SURFACES ARE ACTIVE*/
    /*FLAG = 1 ; SURFACE 1 IS ACTIVE     */
    /*FLAG = 2 ; SURFACE 2 IS ACTIVE     */
@@ -2279,6 +2280,12 @@ void returnmapilyushin(struct oshell* shell, int ii)
 
 	   *(f + 0) = *(finit + 0);
 	   *(f + 1) = *(finit + 1);
+
+	   if(OUTPUTFLAG==1)
+	   {
+		   sprintf(str,"Y12:%e %e %e %e\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1));
+		   dbgstr(str);
+	   }
 
 	   residual=1.0;
 	   iteration=1;
@@ -2326,6 +2333,12 @@ void returnmapilyushin(struct oshell* shell, int ii)
 		 free(f);
 		 f=ilyushin(shell, ii, lambda, NULL);
 
+		 if(OUTPUTFLAG==1)
+		 {
+			 sprintf(str,"Y12:%e %e %e %e\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1));
+			 dbgstr(str);
+		 }
+
 		 residual=vectorlength(f,2);
 		 iteration++;
 	   }
@@ -2341,6 +2354,12 @@ void returnmapilyushin(struct oshell* shell, int ii)
 
 	   *(f + 0) = *(finit + 0);
 	   *(f + 1) = *(finit + 1);
+
+	   if(OUTPUTFLAG==1)
+	   {
+		   sprintf(str,"Y1:%e %e %e %e\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1));
+		   dbgstr(str);
+	   }
 
 	   residual=1.0;
 	   iteration=1;
@@ -2371,6 +2390,12 @@ void returnmapilyushin(struct oshell* shell, int ii)
 		 free(f);
 		 f=ilyushin(shell, ii, lambda, NULL);
 
+		 if(OUTPUTFLAG==1)
+		 {
+			 sprintf(str,"Y1:%e %e %e %e\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1));
+			 dbgstr(str);
+		 }
+
 
 		 residual = abs(*(f+0));
 		 iteration++;
@@ -2387,6 +2412,12 @@ void returnmapilyushin(struct oshell* shell, int ii)
 
 	   *(f + 0) = *(finit + 0);
 	   *(f + 1) = *(finit + 1);
+
+	   if(OUTPUTFLAG==1)
+	   {
+		   sprintf(str,"Y2:%e %e %e %e\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1));
+		   dbgstr(str);
+	   }
 
 	   residual=1.0;
 	   iteration=1;
@@ -2414,6 +2445,12 @@ void returnmapilyushin(struct oshell* shell, int ii)
 		 /*NEW JUDGE*/
 		 free(f);
 		 f=ilyushin(shell, ii, lambda, NULL);
+
+		 if(OUTPUTFLAG==1)
+		 {
+			sprintf(str,"Y2:%e %e %e %e\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1));
+			dbgstr(str);
+		 }
 
 		 residual = abs(*(f+1));
 		 iteration++;
@@ -2450,6 +2487,12 @@ void returnmapilyushin(struct oshell* shell, int ii)
    }
    free(f);
    f=ilyushin(shell, ii, lambda, 1);
+
+   if(OUTPUTFLAG==1)
+   {
+	   sprintf(str,"CONVERGED:%e %e %e %e\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1));
+	   dbgstr(str);
+   }
 
    free(lambdaeps);
    free(dlambda);
@@ -2880,6 +2923,7 @@ void assemshellestress(struct oshell* shell)
   double* gpstrain;
   double* gpstress;
   double** C;
+  char str[256];
 
   nnod = shell->nnod;
   ngp = shell->ngp;
@@ -2905,6 +2949,8 @@ void assemshellestress(struct oshell* shell)
 
 		  *(gpstrain+i) = gp->estrain[i];
 		}
+
+
 		gpstress = matrixvector(C,gpstrain,nstress);/*ELASTIC PREDICTOR*/
 		for(i = 0; i < nstress; i++)
 		{

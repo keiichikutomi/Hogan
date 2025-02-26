@@ -112,6 +112,8 @@
         <BCC_SelectedWarnings>false</BCC_SelectedWarnings>
         <DCC_MaxStackSize>2097152</DCC_MaxStackSize>
         <ILINK_StackReserveSize>0x00800000</ILINK_StackReserveSize>
+        <BCC_UserSuppliedOptions>-fopenmp</BCC_UserSuppliedOptions>
+        <ILINK_AdditionalOptions>-lomp</ILINK_AdditionalOptions>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -160,6 +162,7 @@
         <BCC_SelectedWarnings>false</BCC_SelectedWarnings>
         <DCC_MaxStackSize>2097152</DCC_MaxStackSize>
         <ILINK_StackReserveSize>0x00800000</ILINK_StackReserveSize>
+        <BCC_UserSuppliedOptions>-fopenmp</BCC_UserSuppliedOptions>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <TASM_Debugging>None</TASM_Debugging>
@@ -173,6 +176,7 @@
         <Defines>NDEBUG;$(Defines)</Defines>
         <DCC_MaxStackSize>2097152</DCC_MaxStackSize>
         <VerInfo_Locale>1033</VerInfo_Locale>
+        <BCC_UserSuppliedOptions>-fopenmp</BCC_UserSuppliedOptions>
     </PropertyGroup>
     <ItemGroup>
         <ResourceCompile Include="CANBMP.RC">
@@ -252,8 +256,8 @@
                     <Source Name="MainSource">Hogan004.cpp</Source>
                 </Source>
                 <Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\bcboffice2k280.bpl">Embarcadero C++Builder Office 2000 サーバー パッケージ</Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\bcbofficexp280.bpl">Embarcadero C++Builder Office XP サーバー パッケージ</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\bcboffice2k290.bpl">Embarcadero C++Builder Office 2000 サーバー パッケージ</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\bcbofficexp290.bpl">Embarcadero C++Builder Office XP サーバー パッケージ</Excluded_Packages>
                 </Excluded_Packages>
             </CPlusPlusBuilder.Personality>
             <Deployment Version="4">

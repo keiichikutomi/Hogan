@@ -321,7 +321,6 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 
 		inputshell(shells, NULL, i - 1, &shell);
 
-
 		C = shellCconsistent(shell);
 		einternal = assemshelleinternal(&shell, B);
 

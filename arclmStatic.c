@@ -94,9 +94,9 @@ void inputplst(struct arclmframe *af, const char *fname, int targetlap, int targ
 					{
 						for (k = 0; k < 6; k++)
 						{
-							af->shells[i].gp[j].pstrain[k] = strtod(data[6 * j + k + 1], NULL);
+							af->shells[i].gp[j].pstrain[k] = strtod(data[7 * j + k + 1], NULL);
 						}
-						af->shells[i].gp[j].alpha = strtod(data[6 * j + 7], NULL);
+						af->shells[i].gp[j].alpha = strtod(data[7 * j + 7], NULL);
 					}
 					for(j = 0; j < n; j++) free(data[j]);
 					free(data);
@@ -208,7 +208,7 @@ int arclmStatic(struct arclmframe* af)
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
-	int USINGEIGENFLAG = 0;
+	int USINGEIGENFLAG = 1;
 
 	/*LAST LAP*/
 	double* lastddisp,* lastlambda;
@@ -570,11 +570,6 @@ int arclmStatic(struct arclmframe* af)
 	//mshell = af->mshell;
 #endif
 
-	if(inputfilename!=NULL && targetlap!=NULL)
-	{
-	  inputdsp(af, inputfilename, targetlap, 1);
-	  inputplst(af, inputfilename, targetlap, 1);
-	}
 
 	iform = (double*)malloc(msize * sizeof(double));
 	ddisp = (double*)malloc(msize * sizeof(double));
@@ -643,6 +638,13 @@ int arclmStatic(struct arclmframe* af)
 	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
 
 
+	if(inputfilename!=NULL && targetlap!=NULL)
+	{
+	  errormessage("OUTPUT DATA READING...");
+	  inputdsp(af, inputfilename, targetlap, 1);
+	  inputplst(af, inputfilename, targetlap, 1);
+	}
+
 	initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
@@ -661,8 +663,6 @@ int arclmStatic(struct arclmframe* af)
 	{
 	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);                     /*DRAW GLOBAL AXIS.*/
 	}
-
-
 
 
 	if(af->nlaps != NULL)
@@ -744,6 +744,8 @@ int arclmStatic(struct arclmframe* af)
 		*(dup + msize + i) = 0.0;
 		*(due + msize + i) = *(constraintvct + i);
 	}
+	residual = vectorlength(funbalance,msize);
+	constraintresidual = vectorlength(constraintvct,csize);
 
 	/*OUTPUT(INITIAL)*/
 	sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
@@ -776,7 +778,8 @@ int arclmStatic(struct arclmframe* af)
 	}
 	for(i = 0; i < nshell; i++)
 	{
-		fprintf(fplst, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+		fprintf(fplst, "%5ld %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n", (shells+i)->code,
+		((shells+i)->gp[0]).pstrain[0],((shells+i)->gp[0]).pstrain[1],((shells+i)->gp[0]).pstrain[2],((shells+i)->gp[0]).pstrain[3],((shells+i)->gp[0]).pstrain[4],((shells+i)->gp[0]).pstrain[5],((shells+i)->gp[0]).alpha,
 		((shells+i)->gp[1]).pstrain[0],((shells+i)->gp[1]).pstrain[1],((shells+i)->gp[1]).pstrain[2],((shells+i)->gp[1]).pstrain[3],((shells+i)->gp[1]).pstrain[4],((shells+i)->gp[1]).pstrain[5],((shells+i)->gp[1]).alpha,
 		((shells+i)->gp[2]).pstrain[0],((shells+i)->gp[2]).pstrain[1],((shells+i)->gp[2]).pstrain[2],((shells+i)->gp[2]).pstrain[3],((shells+i)->gp[2]).pstrain[4],((shells+i)->gp[2]).pstrain[5],((shells+i)->gp[2]).alpha,
 		((shells+i)->gp[3]).pstrain[0],((shells+i)->gp[3]).pstrain[1],((shells+i)->gp[3]).pstrain[2],((shells+i)->gp[3]).pstrain[3],((shells+i)->gp[3]).pstrain[4],((shells+i)->gp[3]).pstrain[5],((shells+i)->gp[3]).alpha
@@ -803,6 +806,8 @@ int arclmStatic(struct arclmframe* af)
 		Eigen::BiCGSTAB<SparseMatrix> solver;
 		solver.setTolerance(1e-9); // 許容誤差の設定
 		solver.setMaxIterations(10000); // 最大反復回数
+
+		Eigen::setNbThreads(omp_get_max_threads());
 
 		for (i = 1; i <= (msize+csize); i++)
 		{
