@@ -1,4 +1,4 @@
-ï»¿/*=================================================================*/
+/*=================================================================*/
 /*     SUBROUTINE BCLNG001                                         */
 /*     ELASTIC BUCKLING FOR 3D FRAME                               */
 /*     CODED BY JUN SATO                                           */
@@ -2612,7 +2612,7 @@ for(ii=0;ii<msize;ii++)
     laptime("MATRIX ELIMINATION BEGIN.",t0);
 
 	/*CONDENSATION*/ /*WITH CONSIDERING CONF*/
-	for(j=/*0*/6*nmultinode;j<msize;j++)/*j:ç¸®ç´„ã§å‰Šé™¤ã™ã‚‹è¡Œã€åˆ—*/
+	for(j=/*0*/6*nmultinode;j<msize;j++)/*j:k–ñ‚Åíœ‚·‚ésA—ñ*/
 	{
 	  if(j>=msize) break;
 /*
@@ -2656,10 +2656,10 @@ MessageBox(NULL,string,"CONDENSE",MB_OK);
 			  if(!(confs+jj)->iconf)
 			  /*if(jj!=j)*/
 			  {
-              /*ç¸®ç´„ï¼ˆå¼¾æ€§å‰›æ€§ãƒãƒˆãƒªã‚¯ã‚¹ï¼‰*/
+              /*k–ñi’e«„«ƒ}ƒgƒŠƒNƒXj*/
 				*(*(ktmtx+ii)+jj)=(*(*(kcmtx+ii)+jj))-(*(*(kcmtx+ii)+j))*(*(*(kcmtx+j)+jj))/(*(*(kcmtx+j)+j));
 
-              /*ç¸®ç´„ï¼ˆå¹¾ä½•å‰›æ€§ãƒãƒˆãƒªã‚¯ã‚¹ï¼‰*/
+              /*k–ñiŠô‰½„«ƒ}ƒgƒŠƒNƒXj*/
 				/*
 				*(*(gtmtx+ii)+jj)=(*(*(gcmtx+ii)+jj))-(*(*(kcmtx+ii)+j))*(*(*(gcmtx+j)+jj))/(*(*(kcmtx+j)+j));
 				*/
@@ -2758,7 +2758,7 @@ for(ii=ioff;ii<joff+6;ii++)
 }
 */
 
-/*ç¸®ç´„ã•ã‚ŒãŸå‰›æ€§ãƒãƒˆãƒªã‚¯ã‚¹ã®å‡ºåŠ›*/
+/*k–ñ‚³‚ê‚½„«ƒ}ƒgƒŠƒNƒX‚Ìo—Í*/
 #if 0
 fprintf(fout,"[ke']\n");
 for(ii=0;ii<6*nmultinode;ii++)
@@ -3641,7 +3641,7 @@ for(ii=0;ii<msize;ii++)
     laptime("MATRIX ELIMINATION BEGIN.",t0);
 
 	/*CONDENSATION*/ /*WITH CONSIDERING CONF*/
-	for(j=/*0*/6*nmultinode;j<msize;j++)/*j:ç¸®ç´„ã§å‰Šé™¤ã™ã‚‹è¡Œã€åˆ—*/
+	for(j=/*0*/6*nmultinode;j<msize;j++)/*j:k–ñ‚Åíœ‚·‚ésA—ñ*/
 	{
 	  if(j>=msize) break;
 /*
@@ -3685,10 +3685,10 @@ MessageBox(NULL,string,"CONDENSE",MB_OK);
 			  if(!(confs+jj)->iconf)
 			  /*if(jj!=j)*/
 			  {
-              /*ç¸®ç´„ï¼ˆå¼¾æ€§å‰›æ€§ãƒãƒˆãƒªã‚¯ã‚¹ï¼‰*/
+              /*k–ñi’e«„«ƒ}ƒgƒŠƒNƒXj*/
 				*(*(ktmtx+ii)+jj)=(*(*(kcmtx+ii)+jj))-(*(*(kcmtx+ii)+j))*(*(*(kcmtx+j)+jj))/(*(*(kcmtx+j)+j));
 
-              /*ç¸®ç´„ï¼ˆå¹¾ä½•å‰›æ€§ãƒãƒˆãƒªã‚¯ã‚¹ï¼‰*/
+              /*k–ñiŠô‰½„«ƒ}ƒgƒŠƒNƒXj*/
 				/*
 				*(*(gtmtx+ii)+jj)=(*(*(gcmtx+ii)+jj))-(*(*(kcmtx+ii)+j))*(*(*(gcmtx+j)+jj))/(*(*(kcmtx+j)+j));
 				*/
@@ -3787,7 +3787,7 @@ for(ii=ioff;ii<joff+6;ii++)
 }
 */
 
-/*ç¸®ç´„ã•ã‚ŒãŸå‰›æ€§ãƒãƒˆãƒªã‚¯ã‚¹ã®å‡ºåŠ›*/
+/*k–ñ‚³‚ê‚½„«ƒ}ƒgƒŠƒNƒX‚Ìo—Í*/
 #if 0
 fprintf(fout,"[ke']\n");
 for(ii=0;ii<6*nmultinode;ii++)
@@ -8645,7 +8645,7 @@ void bisecsylvester(struct gcomponent *A,
     while(1)
 	{
 bisecstart:
-	  /* CALCULATE (A-Î»B)x=b */
+	  /* CALCULATE (A-ƒÉB)x=b */
       gmtx=gcomponentadd2(A,B,-1.0*lambda,N);
 	  croutlu(gmtx,confs,N,&determinant,&sign,gcomp1);
 
@@ -8943,7 +8943,7 @@ double inversemethod(struct gcomponent *gmtx, struct oconf *confs, double *evct,
 		nline = forwardbackward(gmtx, evct, confs, msize, gcomp1);
 
 		/*QUADRATIC FORM*/
-		/*[K]{x}=Î»{x} <=> Î»={x}^t[K]{x}/{x}^t{x}*/
+		/*[K]{x}=ƒÉ{x} <=> ƒÉ={x}^t[K]{x}/{x}^t{x}*/
 		evctlastevct = dotproduct(evct, lastevct, msize);/*{x}^t[K]{x} evct:{x] lastevct:[K]{x}*/
 		evctevct = dotproduct(evct, evct, msize);
 		eigen = evctlastevct / evctevct;
@@ -9137,11 +9137,11 @@ void definencr(struct arclmframe *af,double *ncr)       /*UJIOKA*/
 	  {
 		  ncr[i]=nz[i]/bsafety[i]/nu;                    /*Ncr*/
 /*
-		  sprintf(str,"ELEM %d :Nz=%5.8f,1/Î»'=%12.5f,Ncr=%5.8f\n",
+		  sprintf(str,"ELEM %d :Nz=%5.8f,1/ƒÉ'=%12.5f,Ncr=%5.8f\n",
 					(af->elems+i)->code,nz[i],bsafety[i],ncr[i]);
 		  errormessage(str);
 */
-		  sprintf(str,"ELEM %d SECT %d :Nz= %5.8f 1/Î»'=%12.5f Ncr'= %5.8f\n",
+		  sprintf(str,"ELEM %d SECT %d :Nz= %5.8f 1/ƒÉ'=%12.5f Ncr'= %5.8f\n",
 					(af->elems+i)->code,(af->elems+i)->sect->code,
 					nz[i],bsafety[i],ncr[i]);
 //     	  errormessage(str);
@@ -9162,7 +9162,7 @@ return;                                            /*Return Ncr*/
 int bclng011(struct arclmframe *af,struct arclmframe *af0)
 /*ELASTIC BUCKLING FOR ARCLM FRAME WITH PRE-STRESS.
 
-  ([KE]-[KG0]){Ue}=Î»[KG]{Ue}
+  ([KE]-[KG0]){Ue}=ƒÉ[KG]{Ue}
   [KE]:ELASTIC
   [KG0]:GEOMETRIC FROM PRE-STRESS
   [KG]:GEOMETRIC FROM LOAD

@@ -1,5 +1,4 @@
-ï»¿
-/* ========================================================= */
+                                                                           /* ========================================================= */
 /* PROGRAM GUNBASHIRA SHINDOU 002 */
 /* 6 D.O.F. 3D FRAME WITH POINT MASS */
 /* GRAVITY LOADED. */
@@ -34,7 +33,7 @@
 
 #define BCLNGCONDENSATION 1 //ujioka
 /*
-  Yield Surface 
+  Yield Surface
   0:Normal , 1:Revised(Buckling Condensation)
 */
 
@@ -141,7 +140,7 @@ int gnshn101(struct arclmframe *af)
     double gdata;
 
     bclngcondensation=BCLNGCONDENSATION;
-    
+
 	memory0 = availablephysicalmemory("INITIAL:"); /* MEMORY AVAILABLE */
 
 	/* INPUT FILE */
@@ -217,7 +216,7 @@ int gnshn101(struct arclmframe *af)
 
 	/* ACCCELERATION DATA INPUT */
 	/* change x wave*/
-	fxacc = fopen("el1220w04.txt","r");   /*æ¨¡æ“¬åœ°éœ‡æ³¢ï¼šEL CENTRO*/
+	fxacc = fopen("el1220w04.txt","r");   /*–Í‹[’nk”gFEL CENTRO*/
 	fyacc = NULL;
 	fzacc = NULL;
 
@@ -230,7 +229,7 @@ int gnshn101(struct arclmframe *af)
 	ddt = 0.020; /* TIME INCREMENT[sec] */
 
 	/* change strongth of earthquake*/
-	afact = 125.0/100.061; /*æ¨¡æ“¬åœ°éœ‡æ³¢ï¼šEL CENTRO*/ //BezierDome
+	afact = 125.0/100.061; /*–Í‹[’nk”gFEL CENTRO*/ //BezierDome
 
 	ene1 = 0.0;
 	ene2 = 0.0;
@@ -486,7 +485,7 @@ int gnshn101(struct arclmframe *af)
 		}
 
 		/*CHANGE T1*/
-		T1 = 1.77364112 ;/* FUNDAMENTAL NATURAL PERIOD 1æ¬¡å›ºæœ‰å‘¨æœŸ */
+		T1 = 1.77364112 ;/* FUNDAMENTAL NATURAL PERIOD 1ŸŒÅ—LüŠú */
 
 
 		w1 = 2.0 * PI / T1;
@@ -509,9 +508,9 @@ int gnshn101(struct arclmframe *af)
 
 
 
-	/* ã“ã“ã‹ã‚‰æŒ¯å‹•è§£æã®ç¹°ã‚Šè¿”ã—æ¼”ç®— */
+	/* ‚±‚±‚©‚çU“®‰ğÍ‚ÌŒJ‚è•Ô‚µ‰‰Z */
 	for (nlap = 1; nlap <= n101 ; nlap++)
-	{ /*ã€€n11ã§å¼·åˆ¶çµ‚äº† or lapsã¾ã§ã€€*/
+	{ /*@n11‚Å‹­§I—¹ or laps‚Ü‚Å@*/
 
 		/* af->nlaps=nlap; */
 		af->nlaps = 1;
@@ -645,7 +644,7 @@ int gnshn101(struct arclmframe *af)
 		assemaccel(gacc, dacc, nnode, af); /* ACCELERATION VECTOR. */
 
 
-		/* CALCULATE EIGEN PERIOD å›ºæœ‰å‘¨æœŸè§£æ */
+		/* CALCULATE EIGEN PERIOD ŒÅ—LüŠú‰ğÍ */
 		if (nlap == 1)
         {
 			if (MessageBox(NULL,"Calculate Eigen Period.","GNSHN",MB_YESNO) == IDYES)
@@ -752,7 +751,7 @@ int gnshn101(struct arclmframe *af)
 //				T1 = 2.0 * PI / w1;
 //				fclose(fout);
 //				return 1;
-			} /* #endif */    /* å›ºæœ‰å‘¨æœŸè§£æã“ã“ã¾ã§ */
+			} /* #endif */    /* ŒÅ—LüŠú‰ğÍ‚±‚±‚Ü‚Å */
 
 			if (dtype != 1)
             {
@@ -910,8 +909,8 @@ int gnshn101(struct arclmframe *af)
               elemstressIIbc(estress, &elem, du, melem, fout, drccos, tmatrix,
 				estiff, gdisp, edisp, func,ftxt,0);
               /*
-				ä¾¿å®œä¸ŠNcr=0ã¨ã—ã€ã“ã®å ´åˆé™ä¼æ›²é¢ã¯ä¿®æ­£ã—ãªã„ã€‚
-				(updatestressbc,coefficientsbcã§ã®æ¡ä»¶åˆ†å²ã«ã‚ˆã‚‹)
+				•Ö‹XãNcr=0‚Æ‚µA‚±‚Ìê‡~•š‹È–Ê‚ÍC³‚µ‚È‚¢B
+				(updatestressbc,coefficientsbc‚Å‚ÌğŒ•ªŠò‚É‚æ‚é)
 			  */
             }
 
@@ -1070,7 +1069,7 @@ int gnshn101(struct arclmframe *af)
 				break; /* CONTINUE AFTER WAITING. */
 		}
 
-	} /* END OF LAP.REPEAT UNTIL INSTABLE. æŒ¯å‹•ç¹°ã‚Šè¿”ã—ã“ã“ã¾ã§ */
+	} /* END OF LAP.REPEAT UNTIL INSTABLE. U“®ŒJ‚è•Ô‚µ‚±‚±‚Ü‚Å */
 
 
 	/*edit*/
@@ -1085,10 +1084,10 @@ int gnshn101(struct arclmframe *af)
 				}
 			}
 			fprintf(ftxt0, "//Check for Energy Distribution//\n\n");
-			fprintf(ftxt0, "Wpt Total = %-13.6f\n",Wpt);//ç´¯ç©å¡‘æ€§æ­ªã‚¨ãƒãƒ«ã‚®ãƒ¼
-			fprintf(ftxt0, "Wkt Total = %-13.6f\n",Wkt);//å¼¾æ€§æŒ¯å‹•ã‚¨ãƒãƒ«ã‚®ãƒ¼
-			fprintf(ftxt0, "Wet Total = %-13.6f\n",Wet);//å¼¾æ€§æ­ªã‚¨ãƒãƒ«ã‚®ãƒ¼
-			fprintf(ftxt0, "Wot Total = %-13.6f\n",Wot);//å…¥åŠ›ã‚¨ãƒãƒ«ã‚®ãƒ¼
+			fprintf(ftxt0, "Wpt Total = %-13.6f\n",Wpt);//—İÏ‘Y«˜cƒGƒlƒ‹ƒM[
+			fprintf(ftxt0, "Wkt Total = %-13.6f\n",Wkt);//’e«U“®ƒGƒlƒ‹ƒM[
+			fprintf(ftxt0, "Wet Total = %-13.6f\n",Wet);//’e«˜cƒGƒlƒ‹ƒM[
+			fprintf(ftxt0, "Wot Total = %-13.6f\n",Wot);//“ü—ÍƒGƒlƒ‹ƒM[
 			fprintf(ftxt0, "Wkt+Wet+Wpt Total = %-13.6f\n",Wkt+Wet+Wpt);
 			fprintf(ftxt0, "VE = %-13.6f\n\n",sqrt(2*Wot*10000/mtotal));
 			sprintf(string, "VE = %-13.6f\n", sqrt(2*Wot*10000/mtotal));
@@ -1167,7 +1166,7 @@ int gnshn101(struct arclmframe *af)
 			}*/
 
 /****Modified by UJIOKA****/
-            // å¸åã‚¨ãƒãƒ«ã‚®ãƒ¼ã®å€¤ã‚’å‡ºåŠ›
+            // ‹zûƒGƒlƒ‹ƒM[‚Ì’l‚ğo—Í
             for (ii = 0; ii < nelem; ii++)
             {
 				ratio0 = ((elems + ii)->Ee[0] + (elems + ii)->Ep[0]) / (Wet+Wpt);
@@ -1255,7 +1254,7 @@ int gnshn102(struct arclmframe *af)
     /* gosei:timely, t1:first */
 	/* DYNAMIC RESPONSE ANALYSIS. */
 	/* NODE MASSES ARE ALREADY SUMMED IN EXTRACTION. */
-	/* GRAVITY LOADED ANALYSIS IS ALREADY DONE BY ARCLM. */ 
+	/* GRAVITY LOADED ANALYSIS IS ALREADY DONE BY ARCLM. */
     {
 	DWORD memory0, memory1, memory2;
 
@@ -1470,7 +1469,7 @@ int gnshn102(struct arclmframe *af)
 		fprintf(fout, "TIME INCREMENT ddt = %.5f\n", ddt);
 
 	/* change strongth of earthquake*/
-	/* åŸºæº–åŒ– */
+	/* Šî€‰» */
 	/* afact=0.2; */ /* KOKUJI LEVEL 1 */
 	/* afact=1.0; */ /* KOKUJI LEVEL 2 */
 	/* afact=1.0; */ /* LEVEL 3 */
@@ -1725,7 +1724,7 @@ int gnshn102(struct arclmframe *af)
 		}
 
 		/*change eigen period*/
-		T1 = 1.58; /* FUNDAMENTAL NATURAL PERIOD 1æ¬¡å›ºæœ‰å‘¨æœŸ */
+		T1 = 1.58; /* FUNDAMENTAL NATURAL PERIOD 1ŸŒÅ—LüŠú */
 		/* T1=0.78; */ /* FOR E-DEFENSE*[sec] */
 		/* T1=0.74210; */ /* FOR HAKUSHIMA Y */
 		/* T1=0.19261; */ /* FOR HAKUSHIMA X */
@@ -1749,8 +1748,8 @@ int gnshn102(struct arclmframe *af)
 
 	/*change analysis*/
 	bool FLAG2 = 0; /* 0:bisecsylvester  , 1:deigabgeneral */
-	/* ã“ã“ã‹ã‚‰æŒ¯å‹•è§£æã®ç¹°ã‚Šè¿”ã—æ¼”ç®— */
-	for (nlap = 1; nlap <= laps; nlap++) { /*ã€€n11ã§å¼·åˆ¶çµ‚äº† or lapsã¾ã§ã€€*/
+	/* ‚±‚±‚©‚çU“®‰ğÍ‚ÌŒJ‚è•Ô‚µ‰‰Z */
+	for (nlap = 1; nlap <= laps; nlap++) { /*@n11‚Å‹­§I—¹ or laps‚Ü‚Å@*/
 
 		/* af->nlaps=nlap; */
 		af->nlaps = 1;
@@ -2138,7 +2137,7 @@ int gnshn102(struct arclmframe *af)
 				break; /* CONTINUE AFTER WAITING. */
 		}
 
-	} /* END OF LAP.REPEAT UNTIL INSTABLE. æŒ¯å‹•ç¹°ã‚Šè¿”ã—ã“ã“ã¾ã§ */
+	} /* END OF LAP.REPEAT UNTIL INSTABLE. U“®ŒJ‚è•Ô‚µ‚±‚±‚Ü‚Å */
 
 	/*edit*/
 		if (ftxt0 != NULL) {
@@ -2991,9 +2990,3 @@ void energyoutputtomemory(FILE *ftext,struct arclmframe *af)
 
 
 
-
-
-
-
-
-

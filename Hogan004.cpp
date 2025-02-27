@@ -31,25 +31,23 @@
 
 
 
-
-
 #include "canhead.h"                    /*DEFINITION OF COMMAND ID.*/
 #include "archg120-3ktm.c"       /*ANALYSIS NONLINEAR,MATH,VIEWING.*/
+
 #include "corotational.c"
 #include "elem.c"
 #include "shell.c"
 #include "constraint.c"
-
+#include "archg015.c"/*ANALYSIS STATIC LINEAR.*/
 #include "arclmEigen.c"
 #include "assemble.c"
 #include "assembleEigen.c"
-#include "archg015ktm.c"                  /*ANALYSIS STATIC LINEAR.*/
-#include "arclmStatic.c"              /*ANALYSIS STATIC NON-LINEAR.*/
+#include "arclmStatic.c"/*ANALYSIS STATIC NON-LINEAR.*/
 #include "arclmDynamic.c"
 #include "bclng021ujok.c"                       /*ELASTIC BUCKLING.*/
 #include "vbrat001.c"
-#include "qadhg001.c"               /*ANALYSIS BIQUADRATIC ELEMENT.*/
-#include "srcal007ujok.c"                     /*DRAW SECTIONS LIST.*/
+#include "qadhg001ktm.c"               /*ANALYSIS BIQUADRATIC ELEMENT.*/
+#include "srcal007ktm.c"/*DRAW SECTIONS LIST.*/
 #include "gnshn103ktm.c"                        /*DYNAMIC ANALYSIS.*/
 
 #include "optimization.c"                 			 /*OPTIMIZATION*/
@@ -95,8 +93,8 @@
 //#define FILENAME       "hogtxt"
 
 
-#define FILENAME      "ShellTest"
-#define FILENAME      "ShellDynaTest"
+#define FILENAME  "ShellTest"
+#define FILENAME  "ShellDynaTest"
 #define FILENAME  "240701LMBosfullp1b1"
 #define FILENAME  "QuadPoly2mmp02b5"
 #define FILENAME  "ShellDynaTest"
@@ -328,26 +326,26 @@ LRESULT CALLBACK WindowProcedureSect(HWND,UINT,WPARAM,LPARAM);
 LRESULT CALLBACK WindowProcedureSview(HWND,UINT,WPARAM,LPARAM);
 LRESULT CALLBACK WindowProcedureMesg(HWND,UINT,WPARAM,LPARAM);
 LRESULT CALLBACK WindowProcedureMenu(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcMenu1(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcMenu2(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcMenu3(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcMenu4(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcText(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcIncrement(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcPsim(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcSsim(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcKatakou(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcProperty(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcElemType(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcSectRegist(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcConf(HWND,UINT,WPARAM,LPARAM);
-static BOOL CALLBACK DialogProcBond(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcMenu1(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcMenu2(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcMenu3(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcMenu4(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcText(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcIncrement(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcPsim(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcSsim(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcKatakou(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcProperty(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcElemType(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcSectRegist(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcConf(HWND,UINT,WPARAM,LPARAM);
+static INT_PTR CALLBACK DialogProcBond(HWND,UINT,WPARAM,LPARAM);
 static BOOL CALLBACK EnumChildProcSheet(HWND hwnd,LPARAM lParam);
 VOID APIENTRY popupmenudraw(HWND hwnd,POINT pt);
 
 int classnamealloc(struct windowparams *wp,char *cname);
 int classdefinition(HINSTANCE hInstance,
-                    char *lpszclassname,
+					char *lpszclassname,
                     WNDPROC lpfnwndproc,
                     char *lpszmenuname,
                     int br,int bg,int bb);
@@ -3526,9 +3524,9 @@ MessageBox(NULL,str,"Preview",MB_OK);
 }/*WindowProcedureMain*/
 
 LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
-                                      UINT message,
-                                      WPARAM wParam,
-                                      LPARAM lParam)
+									  UINT message,
+									  WPARAM wParam,
+									  LPARAM lParam)
 /*SHEET WINDOW WITH VSCROLL,HSCROLL.*/
 {
   HDC hdc;
@@ -3548,46 +3546,46 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
   switch(message)
   {
 	case WM_PAINT:
-    case WM_SIZE:
+	case WM_SIZE:
 	  DefWindowProc(hwnd,message,wParam,lParam);
 	  /*EnumChildWindows(hwnd,(DLGPROC)EnumChildProcSheet,0);*/ /*UPDATE CHILDS.*/
 	  EnumChildWindows(hwnd,EnumChildProcSheet,0); /*UPDATE CHILDS.*/
 
-      getclientsize(hwnd,&maxX,&maxY);
+	  getclientsize(hwnd,&maxX,&maxY);
 
-      hdc=GetDC(hwnd);
+	  hdc=GetDC(hwnd);
 
 	  hbrush = (HBRUSH)GetClassLong(hwnd,GCL_HBRBACKGROUND);
-      SelectObject(hdc,hbrush);
-      PatBlt(hdc,0,0,maxX,maxY,PATCOPY);
+	  SelectObject(hdc,hbrush);
+	  PatBlt(hdc,0,0,maxX,maxY,PATCOPY);
 
-      DrawSunken(hdc,0,0,(maxX-BARWIDTH-4),(maxY-BARWIDTH-4));
+	  DrawSunken(hdc,0,0,(maxX-BARWIDTH-4),(maxY-BARWIDTH-4));
       DrawSunken(hdc,(maxX-BARWIDTH-2),0,(maxX-1),(maxY-BARWIDTH-4));
       DrawSunken(hdc,0,(maxY-BARWIDTH-2),(maxX-BARWIDTH-4),(maxY-1));
       DrawSunken(hdc,(maxX-BARWIDTH-2),(maxY-BARWIDTH-2),
-                     (maxX-1),(maxY-1));
+					 (maxX-1),(maxY-1));
 
       wp=getwindowparams(hwnd);
       if(wp!=NULL && ((wp->childs)+1)!=NULL)
       {
-        vbarlocation(wp->hwnd,(wp->childs+1)->hwnd,&(wp->vbar));
+		vbarlocation(wp->hwnd,(wp->childs+1)->hwnd,&(wp->vbar));
         hbarlocation(wp->hwnd,(wp->childs+1)->hwnd,&(wp->hbar));
         drawvbar(hdc,maxX,maxY,wp); /*REDRAW VBAR.*/
         drawhbar(hdc,maxX,maxY,wp); /*REDRAW HBAR.*/
       }
-      ReleaseDC(hwnd,hdc);
+	  ReleaseDC(hwnd,hdc);
 
       /*ExcludeClipRect(hdc,x1,y1,x2,y2);*/
       break;
 
     case WM_LBUTTONDOWN:
-      point.x = LOWORD(lParam);
+	  point.x = LOWORD(lParam);
       point.y = HIWORD(lParam);
 
       wp=getwindowparams(hwnd);
       if(wp==NULL) break;
 
-      getclientsize(hwnd,&maxX,&maxY); /*PARENT SHEET.*/
+	  getclientsize(hwnd,&maxX,&maxY); /*PARENT SHEET.*/
       getclientsize((wp->childs+0)->hwnd,&pw,&ph); /*BACKGROUND.*/
 	  getwindowsize((wp->childs+1)->hwnd,&cw,&ch); /*CHILD.*/
 
@@ -3599,12 +3597,12 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
       else if(/*cw>pw &&*/ PtInRect(&(wp->hbar),point))
       {
         wp->sstatus=HSCROLLING; /*HORIZONTAL SCROLL BEGIN.*/
-        pbar=point;
+		pbar=point;
       }
       else
       {
         wp->sstatus=NEUTRAL; /*SCROLL END.*/
-      }
+	  }
 	  break;
 
 	/*Scroll with Wheel*/
@@ -3742,7 +3740,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
       if((wParam == MK_LBUTTON)&&
          (wp->sstatus==VSCROLLING || wp->sstatus==HSCROLLING))
       {
-        point.x = LOWORD(lParam);
+		point.x = LOWORD(lParam);
         point.y = HIWORD(lParam);
 
         getclientsize(hwnd,&maxX,&maxY);
@@ -3766,7 +3764,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
           {
             wp->vbar.top=1;
             if(bb>=bmax)     wp->vbar.bottom=bmax;
-            else if(bb<bmax) wp->vbar.bottom=bb;
+			else if(bb<bmax) wp->vbar.bottom=bb;
           }
           else if(ch+cp.y-1<=bmax)
           {
@@ -3778,21 +3776,21 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
           {
             if(bt<=1)
             {
-              wp->vbar.top   =1;
+			  wp->vbar.top   =1;
               wp->vbar.bottom=1+bb-bt;
             }
             else if(bb>=bmax)
             {
               wp->vbar.bottom=bmax;
               wp->vbar.top   =bmax-bb+bt;
-            }
+			}
             else
             {
               wp->vbar.top   =bt;
               wp->vbar.bottom=bb;
             }
           }
-          pbar=point;
+		  pbar=point;
 
           drawvbar(hdc,maxX,maxY,wp); /*REDRAW VBAR.*/
         }
@@ -3814,7 +3812,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
             wp->hbar.right=bmax;
             if(bl<=1 || cp.x==1) wp->hbar.left=1;
             else if(bl>1)        wp->hbar.left=bl;
-          }
+		  }
           else
           {
             if(bl<=1)
@@ -3826,7 +3824,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
             {
               wp->hbar.right=bmax;
               wp->hbar.left =bmax-br+bl;
-            }
+			}
             else
             {
               wp->hbar.left =bl;
@@ -3837,7 +3835,7 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
 
           drawhbar(hdc,maxX,maxY,wp); /*REDRAW HBAR.*/
         }
-        ReleaseDC(hwnd,hdc);
+		ReleaseDC(hwnd,hdc);
 
         winleft=-(cw)*(wp->hbar.left-1)/(maxX-BARWIDTH-6);
         wintop =-(ch)*(wp->vbar.top -1)/(maxY-BARWIDTH-6);
@@ -3847,19 +3845,19 @@ LRESULT CALLBACK WindowProcedureSheet(HWND hwnd,
       else
       {
         wp->sstatus=NEUTRAL; /*SCROLL END*/
-      }
-      break;
+	  }
+	  break;
 
-    default:
+	default:
 	  return DefWindowProc(hwnd,message,wParam,lParam);
   }
   return 0;
 }/*WindowProcedureSheet*/
 
 LRESULT CALLBACK WindowProcedureBack(HWND hwnd,
-                                     UINT message,
-                                     WPARAM wParam,
-                                     LPARAM lParam)
+									 UINT message,
+									 WPARAM wParam,
+									 LPARAM lParam)
 /*DISPLAY AREA OF SHEET WINDOW.*/
 {
   HWND hoya;
@@ -3867,24 +3865,24 @@ LRESULT CALLBACK WindowProcedureBack(HWND hwnd,
 
   switch(message)
   {
-    case WM_COMMAND:
-      switch(LOWORD(wParam))
-      {
-        case IDM_FITPARENT: /*FIT SIZE TO PARENT.*/
-          hoya=GetParent(hwnd);
-          getclientsize(hoya,&maxX,&maxY);
+	case WM_COMMAND:
+	  switch(LOWORD(wParam))
+	  {
+		case IDM_FITPARENT: /*FIT SIZE TO PARENT.*/
+		  hoya=GetParent(hwnd);
+		  getclientsize(hoya,&maxX,&maxY);
 
-          MoveWindow(hwnd,1,1,
-                          (maxX-BARWIDTH-5),(maxY-BARWIDTH-5),TRUE);
-          break;
+		  MoveWindow(hwnd,1,1,
+						  (maxX-BARWIDTH-5),(maxY-BARWIDTH-5),TRUE);
+		  break;
 
-        default: /*OTHERS*/
-          return DefWindowProc(hwnd,message,wParam,lParam);
-      }
-      break;
+		default: /*OTHERS*/
+		  return DefWindowProc(hwnd,message,wParam,lParam);
+	  }
+	  break;
 
 	default:
-      return DefWindowProc(hwnd,message,wParam,lParam);
+	  return DefWindowProc(hwnd,message,wParam,lParam);
   }
   return 0;
 }/*WindowProcedureBack*/
@@ -4449,8 +4447,8 @@ MessageBox(NULL,str,"Divide Element",MB_OK);
 			SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
 			hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-			SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);
+			SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 			icount=0;
 			globalstatus=NEUTRAL;
 		  }
@@ -4779,7 +4777,7 @@ gelem.type=TYPENULL;
 			/*globalstatus=NEUTRAL;
 			hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
 			SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);*/
+						 GCL_HCURSOR,(LONG_PTR)hcursor);*/
 /*MessageBox(NULL,"Pass 2","Add Elem",MB_OK);*/
 		  }
 
@@ -7067,22 +7065,22 @@ if(loff>=nnode || moff>=nnode)
               globalstatus = SELECTNODE;
 
               hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-              SetClassLong((wdraw.childs+1)->hwnd,
-                           GCL_HCURSOR,(LONG)hcursor);
+			  SetClassLongPtr((wdraw.childs+1)->hwnd,
+						   GCL_HCURSOR,(LONG_PTR)hcursor);
             }
           }
           break;
         case IDM_POPPERPENDICULAR: /*SELECT PERPENDICULAR DOT.*/
           if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
           {
-            if(wdraw.hwnd!=NULL &&
+			if(wdraw.hwnd!=NULL &&
                (wdraw.childs+1)->org.nodes!=NULL)
             {
               globalstatus = SELECTPERPENDICULAR;
 
               hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-              SetClassLong((wdraw.childs+1)->hwnd,
-                           GCL_HCURSOR,(LONG)hcursor);
+              SetClassLongPtr((wdraw.childs+1)->hwnd,
+                           GCL_HCURSOR,(LONG_PTR)hcursor);
             }
           }
           break;
@@ -7243,8 +7241,8 @@ else
 			  SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
 			  /*hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-			  SetClassLong((wdraw.childs+1)->hwnd,
-						   GCL_HCURSOR,(LONG)hcursor);
+			  SetClassLongPtr((wdraw.childs+1)->hwnd,
+						   GCL_HCURSOR,(LONG_PTR)hcursor);
 			  globalstatus=NEUTRAL;*/
 }
 			  break;
@@ -7337,7 +7335,7 @@ else
 		  {
 			hcursor = LoadCursor(hInstGlobal,"CANBOXW");
 			SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
 
             globalstatus=MOVENODEBYMOUSE;
           }
@@ -7350,7 +7348,7 @@ else
           {
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");
             SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
 
             globalstatus=PINCHNODEBYMOUSE;
           }
@@ -7362,8 +7360,8 @@ else
              (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
           {
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
 			if(MessageBox(NULL,"Initial Analysis","Pinch Node",
 						  MB_OKCANCEL)==IDOK)
 			{
@@ -7409,8 +7407,8 @@ else
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
 		  {
 			hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-			SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);
+			SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
 			globalstatus=PINCHNODEVENEZIA;
 		  }
@@ -7422,8 +7420,8 @@ else
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
 		  {
 			hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-			SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);
+			SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
 			globalstatus=PINCHNODESTACK;
 		  }
@@ -7444,8 +7442,8 @@ else
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
 		  {
 			hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-			SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);
+			SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
 			globalstatus=PINCHNODEELASTIC;
 		  }
@@ -7457,8 +7455,8 @@ else
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
 		  {
 			hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-			SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);
+			SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
 			globalstatus=ADDELEMWITHSAFETY;
 			createitem=C_ELEMENT;
@@ -7471,8 +7469,8 @@ else
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
 		  {
 			/*hcursor = LoadCursor(hInstGlobal,"CANBOXW");*/
-			/*SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);*/
+			/*SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);*/
 
 			/*globalstatus=ADDCOLUMNWITHSAFETY;*/
 			/*createitem=C_ELEMENT;*/
@@ -7637,8 +7635,8 @@ else
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
 		  {
 			/*hcursor = LoadCursor(hInstGlobal,"CANBOXW");*/
-			/*SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);*/
+			/*SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);*/
 
 			/*globalstatus=DELETECOLUMNWITHSAFETY;*/
 			/*createitem=C_ELEMENT;*/
@@ -7759,8 +7757,8 @@ else
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN)
 		  {
 			hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-			SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);
+			SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
 			globalstatus=MOVENODEWITHSAFETY;
 		  }
@@ -7845,8 +7843,8 @@ else
             gincrement.dc[2]=0.0;
 
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
 
             if(LOWORD(wParam)==IDM_POPMOVENODENODETONODE)
             {
@@ -8139,8 +8137,8 @@ else
             gincrement.dc[2]=0.0;
 
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
 
             if(LOWORD(wParam)==IDM_POPMOVENODETONODE)
             {
@@ -8181,8 +8179,8 @@ else
             SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
 
             globalstatus=COPYCONF;
           }
@@ -8192,8 +8190,8 @@ else
           if(wdraw.nchilds>=2)
           {
             hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
             globalstatus=NEUTRAL;
           }
           break;
@@ -8461,8 +8459,8 @@ else
             SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+			SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
             globalstatus = CHANGEBOND;
 		  }
@@ -8499,8 +8497,8 @@ else
           SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
           hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-          SetClassLong((wdraw.childs+1)->hwnd,
-                       GCL_HCURSOR,(LONG)hcursor);
+          SetClassLongPtr((wdraw.childs+1)->hwnd,
+					   GCL_HCURSOR,(LONG_PTR)hcursor);
 
           globalstatus=NEUTRAL;
           break;
@@ -9799,8 +9797,8 @@ LRESULT CALLBACK WindowProcedureSview(HWND hwnd,
           }
 
           hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-          SetClassLong((wsdsp.childs+1)->hwnd,
-                       GCL_HCURSOR,(LONG)hcursor);
+          SetClassLongPtr((wsdsp.childs+1)->hwnd,
+					   GCL_HCURSOR,(LONG_PTR)hcursor);
 
           /*prestatus=SELECTNODE;*/
         }
@@ -10061,10 +10059,10 @@ MessageBox(NULL,str,"Circle",MB_OK);
         cpolycurve=gpolypoly.pcurves+gpolypoly.npcurve-1;
 
         hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-		SetClassLong((wsdsp.childs+1)->hwnd,
-                     GCL_HCURSOR,(LONG)hcursor);
-        SetClassLong((wsect.childs+2+(gsect->loff))->hwnd,
-                     GCL_HCURSOR,(LONG)hcursor);
+		SetClassLongPtr((wsdsp.childs+1)->hwnd,
+					 GCL_HCURSOR,(LONG_PTR)hcursor);
+        SetClassLongPtr((wsect.childs+2+(gsect->loff))->hwnd,
+                     GCL_HCURSOR,(LONG_PTR)hcursor);
 
         globalstatus=NEUTRAL;
       }
@@ -10107,10 +10105,10 @@ MessageBox(NULL,str,"Circle",MB_OK);
         }
 
         hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-        SetClassLong((wsdsp.childs+1)->hwnd,
-                     GCL_HCURSOR,(LONG)hcursor);
-        SetClassLong((wsect.childs+2+(gsect->loff))->hwnd,
-                     GCL_HCURSOR,(LONG)hcursor);
+        SetClassLongPtr((wsdsp.childs+1)->hwnd,
+                     GCL_HCURSOR,(LONG_PTR)hcursor);
+        SetClassLongPtr((wsect.childs+2+(gsect->loff))->hwnd,
+                     GCL_HCURSOR,(LONG_PTR)hcursor);
 
         globalstatus=NEUTRAL;
       }
@@ -10580,8 +10578,8 @@ MessageBox(NULL,str,"Circle",MB_OK);
         case IDM_POPCHOOSENODE:
           (wsdsp.childs+1)->lstatus=SELECTNODE;
           hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-          SetClassLong((wsdsp.childs+1)->hwnd,
-                       GCL_HCURSOR,(LONG)hcursor);
+          SetClassLongPtr((wsdsp.childs+1)->hwnd,
+                       GCL_HCURSOR,(LONG_PTR)hcursor);
           break;
 
         case IDMS_VIEW:
@@ -10666,9 +10664,9 @@ LRESULT CALLBACK WindowProcedureMenu(HWND hwnd,
   return 0;
 }/*WindowProcedureMenu*/
 
-static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
-                                     UINT message,
-                                     WPARAM wParam,
+static INT_PTR CALLBACK DialogProcMenu1(HWND hdwnd,
+									 UINT message,
+									 WPARAM wParam,
                                      LPARAM lParam)
 /*OPTION MENU DIALOG BOX 1.*/
 {
@@ -10841,8 +10839,8 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
       {
         SetTextColor(hdc,RGB(255,255,255));
       }*/
-      return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
-      //return (BOOL)(HBRUSH)GetStockObject(NULL_BRUSH);
+	  return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
+      //return (INT_PTR)GetStockObject(NULL_BRUSH);
 
     case WM_PAINT: /*INSERT ILLUSTRATION.*/
       /*DefWindowProc(hwnd,message,wParam,lParam);*/
@@ -11644,8 +11642,8 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
 		  {
 			(wdraw.childs+1)->lstatus=ROTATE;
             hcursor=LoadCursor(hInstGlobal,"CANCURSORW");   /*CURSOR*/
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
             globalstatus=NEUTRAL;
           }
           break;
@@ -11654,8 +11652,8 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
           {
             (wdraw.childs+1)->lstatus=MOVE;
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");   /*CURSOR*/
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
             globalstatus=NEUTRAL;
           }
           break;
@@ -11728,10 +11726,10 @@ static BOOL CALLBACK DialogProcMenu1(HWND hdwnd,
   return 0;
 }/*DialogProcMenu1*/
 
-static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
-                                     UINT message,
-                                     WPARAM wParam,
-                                     LPARAM lParam)
+static INT_PTR CALLBACK DialogProcMenu2(HWND hdwnd,
+									 UINT message,
+									 WPARAM wParam,
+									 LPARAM lParam)
 /*OPTION MENU DIALOG BOX 2.*/
 {
   HWND hitem;
@@ -11765,7 +11763,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
 		SetDlgItemText(hdwnd, IDV_TXTGX, "Gx"); //mihara for zahyo 20190329
 		SetDlgItemText(hdwnd, IDV_TXTGY, "Gy"); //mihara for zahyo 20190329
 		SetDlgItemText(hdwnd, IDV_TXTGZ, "Gz"); //mihara for zahyo 20190329
-      SetDlgItemText(hdwnd,IDV_TXTLOADS,      "UnitLoads");
+	  SetDlgItemText(hdwnd,IDV_TXTLOADS,      "UnitLoads");
       SetDlgItemText(hdwnd,IDV_TXTCONFINEMENT,"Confinement");
       SetDlgItemText(hdwnd,IDV_TXTMASSCIRCLE, "MassCircle");
       SetDlgItemText(hdwnd,IDV_TXTMASSVALUE,  "MassValue");
@@ -11776,7 +11774,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
 	  SetDlgItemText(hdwnd,IDV_TXTSECTIONSHAPE,"SectionShape"); //honda
 	  SetDlgItemText(hdwnd,IDV_TXTCMQLINE,    "CmqLine");
       SetDlgItemText(hdwnd,IDV_TXTDEFORMATION,"Deformation");
-      SetDlgItemText(hdwnd,IDV_TXTDX,"dX");
+	  SetDlgItemText(hdwnd,IDV_TXTDX,"dX");
       SetDlgItemText(hdwnd,IDV_TXTDY,"dY");
       SetDlgItemText(hdwnd,IDV_TXTDZ,"dZ");
 
@@ -11787,7 +11785,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       SetDlgItemText(hdwnd,IDV_TXTMX,"Mx");
       SetDlgItemText(hdwnd,IDV_TXTMY,"My");
       SetDlgItemText(hdwnd,IDV_TXTNZ_G,"Nz");
-      SetDlgItemText(hdwnd,IDV_TXTQX_G,"Qx");
+	  SetDlgItemText(hdwnd,IDV_TXTQX_G,"Qx");
       SetDlgItemText(hdwnd,IDV_TXTQY_G,"Qy");
       SetDlgItemText(hdwnd,IDV_TXTMZ_G,"Mz");
       SetDlgItemText(hdwnd,IDV_TXTMX_G,"Mx");
@@ -11796,7 +11794,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       SetDlgItemText(hdwnd,IDV_TXTQX_B,"Qx");
       SetDlgItemText(hdwnd,IDV_TXTQY_B,"Qy");
       SetDlgItemText(hdwnd,IDV_TXTMZ_B,"Mz");
-      SetDlgItemText(hdwnd,IDV_TXTMX_B,"Mx");
+	  SetDlgItemText(hdwnd,IDV_TXTMX_B,"Mx");
       SetDlgItemText(hdwnd,IDV_TXTMY_B,"My");
       SetDlgItemText(hdwnd,IDV_TXTNZ_W,"Nz");
       SetDlgItemText(hdwnd,IDV_TXTNZ_S,"Nz");
@@ -11805,7 +11803,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       SetDlgItemText(hdwnd,IDV_TXTGIRDER,"Girder");
       SetDlgItemText(hdwnd,IDV_TXTBEAM,  "Beam");
       SetDlgItemText(hdwnd,IDV_TXTBRACE, "Brace");
-      SetDlgItemText(hdwnd,IDV_TXTWALL,  "Wall");
+	  SetDlgItemText(hdwnd,IDV_TXTWALL,  "Wall");
       SetDlgItemText(hdwnd,IDV_TXTSLAB,  "Slab");
 
       SetDlgItemText(hdwnd,IDV_TXTREACTION,"Reaction");
@@ -11814,7 +11812,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       SetDlgItemText(hdwnd,IDV_TXTOUTPUTFILE,"OutputFile");
 
       SetDlgItemText(hdwnd,IDV_TXTSRCANRATE, "SrcanRate");
-      SetDlgItemText(hdwnd,IDV_TXTSRCANCOLOR,"SrcanColor");
+	  SetDlgItemText(hdwnd,IDV_TXTSRCANCOLOR,"SrcanColor");
 
       SetDlgItemText(hdwnd,IDV_TXTTITLE,"Title:");
       SetDlgItemText(hdwnd,IDV_TXTCONF,"ConfFig");
@@ -11832,7 +11830,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       SetDlgItemText(hdwnd,IDP_MARGINRIGHT, "200");
       SetDlgItemText(hdwnd,IDP_JIHEIGHT, "50");
       SetDlgItemText(hdwnd,IDP_JIWIDTH,  "20");
-      SetDlgItemText(hdwnd,IDP_JIPITCH,   "0");
+	  SetDlgItemText(hdwnd,IDP_JIPITCH,   "0");
       SetDlgItemText(hdwnd,IDP_GYOPITCH, "70");
       SetDlgItemText(hdwnd,IDP_DANS,      "2");
       SetDlgItemText(hdwnd,IDP_DANGAP,  "100");
@@ -11840,30 +11838,30 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       if(wdraw.nchilds>=2 && (wdraw.childs+1)!=NULL)
       {
         SetDlgItemText(hdwnd,IDV_TITLEBOX,
-                       (wdraw.childs+1)->title);
+					   (wdraw.childs+1)->title);
       }
-      break;
+	  break;
 
-    case WM_CTLCOLORSTATIC: /*STATIC TEXT MENU.*/
-      DefWindowProc(hdwnd,message,wParam,lParam);
+	case WM_CTLCOLORSTATIC: /*STATIC TEXT MENU.*/
+	  DefWindowProc(hdwnd,message,wParam,lParam);
 
-      hdc=(HDC)wParam;
-      hitem=(HWND)lParam;
+	  hdc=(HDC)wParam;
+	  hitem=(HWND)lParam;
       id=GetDlgCtrlID(hitem);
 
       if(wdraw.hwnd!=NULL) gv=&((wdraw.childs+1)->vparam.vflag);
 
-      if(id==IDV_TXTUNITTM && globalunit!=1.0)
-      {SetTextColor(hdc,RGB(255,255,255));}
+	  if(id==IDV_TXTUNITTM && globalunit!=1.0)
+	  {SetTextColor(hdc,RGB(255,255,255));}
       if(id==IDV_TXTUNITNM && globalunit!=SIUNIT)
       {SetTextColor(hdc,RGB(255,255,255));}
 
-      if((id==IDV_TXTGLOBALAXIS) &&
+	  if((id==IDV_TXTGLOBALAXIS) &&
          (wdraw.hwnd==NULL || gv->axis!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTNODECODE) &&
+	  {SetTextColor(hdc,RGB(255,255,255));}
+	  if((id==IDV_TXTNODECODE) &&
          (wdraw.hwnd==NULL || gv->nv.code!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
+	  {SetTextColor(hdc,RGB(255,255,255));}
 /*mihara for zahyo 20190329///////////////////////////////////////////////////*/
 		if ((id == IDV_TXTGX) && (wdraw.hwnd == NULL || gv->nv.d[0] != 1)
 			) {
@@ -11878,25 +11876,25 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
 			SetTextColor(hdc, RGB(255, 255, 255));
 		}
 /*mihara for zahyo 20190329///////////////////////////////////////////////////*/
-      if((id==IDV_TXTLOADS) &&
-         (wdraw.hwnd==NULL || gv->nv.loads[0]!=1))
+	  if((id==IDV_TXTLOADS) &&
+		 (wdraw.hwnd==NULL || gv->nv.loads[0]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTCONFINEMENT) &&
+	  if((id==IDV_TXTCONFINEMENT) &&
          (wdraw.hwnd==NULL || gv->nv.confs[0]!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
+	  {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTMASSCIRCLE) &&
          (wdraw.hwnd==NULL || gv->nv.mcircle!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTMASSVALUE) &&
-         (wdraw.hwnd==NULL || gv->nv.mvalue!=1))
+		 (wdraw.hwnd==NULL || gv->nv.mvalue!=1))
+	  {SetTextColor(hdc,RGB(255,255,255));}
+	  if((id==IDV_TXTELEMENTCODE) &&
+		 (wdraw.hwnd==NULL || gv->ev.code!=1))
+	  {SetTextColor(hdc,RGB(255,255,255));}
+	  if((id==IDV_TXTELEMENTAXIS) &&
+		 (wdraw.hwnd==NULL || gv->ev.axis!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTELEMENTCODE) &&
-         (wdraw.hwnd==NULL || gv->ev.code!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTELEMENTAXIS) &&
-         (wdraw.hwnd==NULL || gv->ev.axis!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTHINGE) &&
+	  if((id==IDV_TXTHINGE) &&
 		 (wdraw.hwnd==NULL || gv->ev.hinge!=1))
 	  {SetTextColor(hdc,RGB(255,255,255));}
 	  if((id==IDV_TXTSECTIONCODE) &&
@@ -11908,24 +11906,24 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
 	  if((id==IDV_TXTCMQLINE) &&
 		 (wdraw.hwnd==NULL || gv->ev.cmqline!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTDEFORMATION) &&
-         (wdraw.hwnd==NULL || gv->ev.deformation!=1))
+	  if((id==IDV_TXTDEFORMATION) &&
+		 (wdraw.hwnd==NULL || gv->ev.deformation!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
 
       if((id==IDV_TXTDX) &&
          (wdraw.hwnd==NULL || gv->nv.disps[0]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTDY) &&
-         (wdraw.hwnd==NULL || gv->nv.disps[1]!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTDZ) &&
+	  if((id==IDV_TXTDY) &&
+		 (wdraw.hwnd==NULL || gv->nv.disps[1]!=1))
+	  {SetTextColor(hdc,RGB(255,255,255));}
+	  if((id==IDV_TXTDZ) &&
          (wdraw.hwnd==NULL || gv->nv.disps[2]!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
+	  {SetTextColor(hdc,RGB(255,255,255));}
 
-      if((id==IDV_TXTCOLUMN) &&
-         (wdraw.hwnd==NULL || gv->ev.etype[COLUMN]!=1))
+	  if((id==IDV_TXTCOLUMN) &&
+		 (wdraw.hwnd==NULL || gv->ev.etype[COLUMN]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTGIRDER) &&
+	  if((id==IDV_TXTGIRDER) &&
          (wdraw.hwnd==NULL || gv->ev.etype[GIRDER]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTBEAM) &&
@@ -11933,7 +11931,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTBRACE) &&
          (wdraw.hwnd==NULL || gv->ev.etype[BRACE]!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
+	  {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTWALL) &&
          (wdraw.hwnd==NULL || gv->ev.etype[WALL]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
@@ -11950,7 +11948,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       if((id==IDV_TXTQY) &&
          (wdraw.hwnd==NULL || gv->ev.stress[1][2]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
-      if((id==IDV_TXTMZ) &&
+	  if((id==IDV_TXTMZ) &&
          (wdraw.hwnd==NULL || gv->ev.stress[1][3]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTMX) &&
@@ -11967,7 +11965,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
          (wdraw.hwnd==NULL || gv->ev.stress[2][1]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTQY_G) &&
-         (wdraw.hwnd==NULL || gv->ev.stress[2][2]!=1))
+		 (wdraw.hwnd==NULL || gv->ev.stress[2][2]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTMZ_G) &&
          (wdraw.hwnd==NULL || gv->ev.stress[2][3]!=1))
@@ -11984,7 +11982,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTQX_B) &&
          (wdraw.hwnd==NULL || gv->ev.stress[4][1]!=1))
-      {SetTextColor(hdc,RGB(255,255,255));}
+	  {SetTextColor(hdc,RGB(255,255,255));}
       if((id==IDV_TXTQY_B) &&
          (wdraw.hwnd==NULL || gv->ev.stress[4][2]!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
@@ -12018,7 +12016,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
         SetTextColor(hdc,RGB(255,255,255));
       }
       if((id==IDV_TXTOUTPUTFILE) &&
-         (wdraw.hwnd==NULL || gv->mv.outputfile!=1))
+		 (wdraw.hwnd==NULL || gv->mv.outputfile!=1))
       {
         SetTextColor(hdc,RGB(255,255,255));
       }
@@ -12035,7 +12033,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
         SetTextColor(hdc,RGB(255,255,255));
       }
 
-      if((id==IDV_TXTTITLE) &&
+	  if((id==IDV_TXTTITLE) &&
          (wdraw.hwnd==NULL || gv->mv.title!=1))
       {
         SetTextColor(hdc,RGB(255,255,255));
@@ -12050,9 +12048,9 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       {
         SetTextColor(hdc,RGB(255,255,255));
       }
-      return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	  return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
 
-    case WM_COMMAND:
+	case WM_COMMAND:
       if(wdraw.hwnd!=NULL) gv=&((wdraw.childs+1)->vparam.vflag);
 
       switch(LOWORD(wParam))
@@ -12086,7 +12084,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
                            (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
             SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
-            SetDlgItemText(hdwnd,IDV_MODENUM,"1");
+			SetDlgItemText(hdwnd,IDV_MODENUM,"1");
 
             (wdraw.childs+1)->lstatus=ROTATE;
 
@@ -12103,7 +12101,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             if(arc.nodes==NULL) break;
 
             fout=fgetstofopen("\0","r",ID_OUTPUTFILE);  /*OPEN FILE.*/
-            if(fout==NULL) break;
+			if(fout==NULL) break;
 
 		    if(MessageBox(NULL,"ARCLM101 Result(Zobun)","OPEN RESULT",MB_OKCANCEL)==IDOK)
             {
@@ -12119,7 +12117,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             clearwindow(*(wdraw.childs+1));
             drawarclmframe((wdraw.childs+1)->hdcC,
                            (wdraw.childs+1)->vparam,arc,0,ONSCREEN);
-            SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
+			SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
             SetDlgItemText(hdwnd,IDV_MODENUM,"1");
 
@@ -12128,7 +12126,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
 */          }
         case IDV_UNITTM:
           globalunit=1.0;
-          SendMessage(hdwnd,WM_INITDIALOG,0,0);
+		  SendMessage(hdwnd,WM_INITDIALOG,0,0);
           break;
         case IDV_UNITNM:
           globalunit=SIUNIT;
@@ -12138,7 +12136,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
         case IDV_GLOBALAXIS:
           if(wdraw.hwnd!=NULL)
           {
-            flagswitch(&(gv->axis));
+			flagswitch(&(gv->axis));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
@@ -12176,7 +12174,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->nv.loads[0]));
-            flagswitch(&(gv->nv.loads[1]));
+			flagswitch(&(gv->nv.loads[1]));
             flagswitch(&(gv->nv.loads[2]));
             flagswitch(&(gv->nv.loads[3]));
             flagswitch(&(gv->nv.loads[4]));
@@ -12195,7 +12193,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->nv.confs[5]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
         case IDV_MASSCIRCLE:
           if(wdraw.hwnd!=NULL)
           {
@@ -12214,7 +12212,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             if((wdraw.childs+1)->org.loads==NULL)
             {
               gv->nv.mvalue=0;
-            }
+			}
             else flagswitch(&(gv->nv.mvalue));
 
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
@@ -12233,7 +12231,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->ev.axis));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
         case IDV_HINGE:
           if(wdraw.hwnd!=NULL)
           {
@@ -12255,7 +12253,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
 			SendMessage(hdwnd,WM_INITDIALOG,0,0);  //honda
 		  }
 		  break;
-        case IDV_CMQLINE:
+		case IDV_CMQLINE:
           if(wdraw.hwnd!=NULL)
           {
 			flagswitch(&(gv->ev.cmqline));
@@ -12263,9 +12261,9 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           }
           break;
 
-        case IDV_MODENUM:
+		case IDV_MODENUM:
           if(wdraw.hwnd!=NULL)
-          {
+		  {
             gv->ev.deformation=0;
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
@@ -12284,7 +12282,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM &&
 			   mode>arc.nlaps) break;
             if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_FRAME &&
-               mode>1) break;
+			   mode>1) break;
 
 			if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM &&
 			   arc.ddisp==NULL) break;
@@ -12293,7 +12291,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
 
             flagswitch(&(gv->ev.deformation));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
-          }
+		  }
           break;
         case IDV_DX:
           if(wdraw.hwnd!=NULL)
@@ -12301,7 +12299,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->nv.disps[0]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
         case IDV_DY:
           if(wdraw.hwnd!=NULL)
           {
@@ -12309,7 +12307,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
-        case IDV_DZ:
+		case IDV_DZ:
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->nv.disps[2]));
@@ -12317,7 +12315,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           }
           break;
 
-        case IDV_COLUMN:
+		case IDV_COLUMN:
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.etype[COLUMN]));
@@ -12325,42 +12323,42 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           }
           break;
         case IDV_GIRDER:
-          if(wdraw.hwnd!=NULL)
+		  if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.etype[GIRDER]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
         case IDV_BEAM:
-          if(wdraw.hwnd!=NULL)
+		  if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.etype[BEAM]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
         case IDV_BRACE:
-          if(wdraw.hwnd!=NULL)
+		  if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.etype[BRACE]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
         case IDV_WALL:
-          if(wdraw.hwnd!=NULL)
+		  if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.etype[WALL]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
         case IDV_SLAB:
-          if(wdraw.hwnd!=NULL)
+		  if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.etype[SLAB]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
 
-        case IDV_NZ:
+		case IDV_NZ:
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.stress[COLUMN][0]));
@@ -12369,7 +12367,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           break;
         case IDV_QX:
           if(wdraw.hwnd!=NULL)
-          {
+		  {
             flagswitch(&(gv->ev.stress[COLUMN][1]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
@@ -12379,7 +12377,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           {
             flagswitch(&(gv->ev.stress[COLUMN][2]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
-          }
+		  }
           break;
         case IDV_MZ:
           if(wdraw.hwnd!=NULL)
@@ -12389,7 +12387,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           }
           break;
         case IDV_MX:
-          if(wdraw.hwnd!=NULL)
+		  if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.stress[COLUMN][4]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
@@ -12399,7 +12397,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.stress[COLUMN][5]));
-            SendMessage(hdwnd,WM_INITDIALOG,0,0);
+			SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
 
@@ -12409,7 +12407,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->ev.stress[GIRDER][0]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
         case IDV_QX_G:
           if(wdraw.hwnd!=NULL)
           {
@@ -12419,7 +12417,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           break;
         case IDV_QY_G:
           if(wdraw.hwnd!=NULL)
-          {
+		  {
             flagswitch(&(gv->ev.stress[GIRDER][2]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
@@ -12427,7 +12425,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
         case IDV_MZ_G:
           if(wdraw.hwnd!=NULL)
           {
-            flagswitch(&(gv->ev.stress[GIRDER][3]));
+			flagswitch(&(gv->ev.stress[GIRDER][3]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
@@ -12435,7 +12433,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.stress[GIRDER][4]));
-            SendMessage(hdwnd,WM_INITDIALOG,0,0);
+			SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
         case IDV_MY_G:
@@ -12443,7 +12441,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           {
             flagswitch(&(gv->ev.stress[GIRDER][5]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
-          }
+		  }
           break;
 
         case IDV_NZ_B:
@@ -12451,7 +12449,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
           {
             flagswitch(&(gv->ev.stress[BRACE][0]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
-          }
+		  }
           break;
         case IDV_QX_B:
           if(wdraw.hwnd!=NULL)
@@ -12459,19 +12457,19 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->ev.stress[BRACE][1]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
         case IDV_QY_B:
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.stress[BRACE][2]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
-          }
+		  }
           break;
         case IDV_MZ_B:
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.stress[BRACE][3]));
-            SendMessage(hdwnd,WM_INITDIALOG,0,0);
+			SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
         case IDV_MX_B:
@@ -12481,7 +12479,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
-        case IDV_MY_B:
+		case IDV_MY_B:
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->ev.stress[BRACE][5]));
@@ -12492,7 +12490,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
         case IDV_NZ_W:
           if(wdraw.hwnd!=NULL)
           {
-            flagswitch(&(gv->ev.stress[WALL][0]));
+			flagswitch(&(gv->ev.stress[WALL][0]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
@@ -12503,7 +12501,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->ev.stress[SLAB][0]));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
 
         case IDV_REACTION:
           if(wdraw.hwnd!=NULL)
@@ -12514,7 +12512,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->nv.react[3]));
             flagswitch(&(gv->nv.react[4]));
 			flagswitch(&(gv->nv.react[5]));
-            SendMessage(hdwnd,WM_INITDIALOG,0,0);
+			SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
 
@@ -12525,7 +12523,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
-        case IDV_OUTPUTFILE:
+		case IDV_OUTPUTFILE:
           if(wdraw.hwnd!=NULL)
           {
             flagswitch(&(gv->mv.outputfile));
@@ -12536,7 +12534,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
         case IDV_SRCANRATE:
           if(wdraw.hwnd!=NULL)
           {
-            flagswitch(&(gv->ev.srcanrate));
+			flagswitch(&(gv->ev.srcanrate));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
           break;
@@ -12547,7 +12545,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             flagswitch(&(gv->ev.srcancolor));
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
           }
-          break;
+		  break;
 
         case IDV_TITLE:
           flagswitch(&(gv->mv.title));
@@ -12556,44 +12554,44 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
         case IDV_TITLEBOX: /*GET INPUT OF KEYBOARD ONE BY ONE.*/
           if(wdraw.nchilds>=2 && (wdraw.childs+1)!=NULL)
           {
-            GetDlgItemText(hdwnd,IDV_TITLEBOX,
-                           (wdraw.childs+1)->title,256);
-          }
-          break;
+			GetDlgItemText(hdwnd,IDV_TITLEBOX,
+						   (wdraw.childs+1)->title,256);
+		  }
+		  break;
 
-        case IDV_CONF:
-          if(wdraw.hwnd!=NULL)
-          {
-            flagswitch(&(gv->nv.conffig));
-            SendMessage(hdwnd,WM_INITDIALOG,0,0);
-          }
-          break;
-        case IDV_VIEW:
-          if(wdraw.hwnd!=NULL)
-          {
-            flagswitch(&(gv->mv.view));
-            SendMessage(hdwnd,WM_INITDIALOG,0,0);
-          }
-          break;
+		case IDV_CONF:
+		  if(wdraw.hwnd!=NULL)
+		  {
+			flagswitch(&(gv->nv.conffig));
+			SendMessage(hdwnd,WM_INITDIALOG,0,0);
+		  }
+		  break;
+		case IDV_VIEW:
+		  if(wdraw.hwnd!=NULL)
+		  {
+			flagswitch(&(gv->mv.view));
+			SendMessage(hdwnd,WM_INITDIALOG,0,0);
+		  }
+		  break;
 
-        case IDD_SECTION: /*SELECT SECTION.*/
-          if(wdraw.hwnd!=NULL && arc.sects!=NULL)
-          {
-            globalstatus = SELECTSECTION;
+		case IDD_SECTION: /*SELECT SECTION.*/
+		  if(wdraw.hwnd!=NULL && arc.sects!=NULL)
+		  {
+			globalstatus = SELECTSECTION;
 
-            GetDlgItemText(hdwnd,IDS_CODE,str,20);
-            code=strtol(str,NULL,10);
+			GetDlgItemText(hdwnd,IDS_CODE,str,20);
+			code=strtol(str,NULL,10);
 			getsection(hdwnd,arc.sects,arc.nsect,code);
 
-            clearwindow(*(wdraw.childs+1));
-            drawarclmframe((wdraw.childs+1)->hdcC,
-                           (wdraw.childs+1)->vparam,
-                           arc,code,ONSCREEN);
+			clearwindow(*(wdraw.childs+1));
+			drawarclmframe((wdraw.childs+1)->hdcC,
+						   (wdraw.childs+1)->vparam,
+						   arc,code,ONSCREEN);
             SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");   /*CURSOR*/
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
           }
           break;
         case IDD_NODE: /*SELECT NODE.*/
@@ -12602,7 +12600,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             globalstatus = SELECTNODE;
 
             GetDlgItemText(hdwnd,IDN_CODE,str,20);
-            code=strtol(str,NULL,10);
+			code=strtol(str,NULL,10);
             getnode(hdwnd,&arc,code);
 
             clearwindow(*(wdraw.childs+1));
@@ -12612,9 +12610,9 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");   /*CURSOR*/
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
-          }
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
+		  }
           break;
         case IDD_ELEMENT: /*SELECT ELEMENT.*/
           if(wdraw.hwnd!=NULL && arc.elems!=NULL)
@@ -12626,20 +12624,20 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             getelement(hdwnd,&arc,code);
 
             clearwindow(*(wdraw.childs+1));
-            drawarclmframe((wdraw.childs+1)->hdcC,
+			drawarclmframe((wdraw.childs+1)->hdcC,
                            (wdraw.childs+1)->vparam,
                            arc,code,ONSCREEN);
             SendMessage((wdraw.childs+1)->hwnd,WM_PAINT,0,0);
 
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");   /*CURSOR*/
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
           }
           break;
 
         case IDD_PRINTFRAME:                         /*PRINT FRAME.*/
           if(wdraw.hwnd!=NULL)
-          {
+		  {
             GetDlgItemText(hdwnd,IDP_MARGINTOP,str,20);
             prn.margin[0]=(int)strtol(str,NULL,10);
             GetDlgItemText(hdwnd,IDP_MARGINBOTTOM,str,20);
@@ -12665,7 +12663,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
             pd.nMaxPage = (WORD)NULL;
             pd.nCopies = (WORD)NULL;
             /*pd.nFromPage = 1;
-            pd.nToPage = 1;
+			pd.nToPage = 1;
             pd.nMinPage = 0;
             pd.nMaxPage = 0;
             pd.nCopies = 1;*/
@@ -12691,7 +12689,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
               sprintf(doc,"CanvsPrint");
               di.lpszDocName = doc;
               di.lpszOutput = (LPTSTR)NULL;
-              di.lpszDatatype = (LPTSTR) NULL;
+			  di.lpszDatatype = (LPTSTR) NULL;
               di.fwType = 0;
 
               cWidthPels  = GetDeviceCaps(pd.hDC,HORZRES);
@@ -12704,7 +12702,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
               prn.jiheight=(int)(((double)prn.jiheight*cHeightDpi)
                                  /600.0);
 
-              gprn=prn; /*COPY TO GLOBAL*/
+			  gprn=prn; /*COPY TO GLOBAL*/
               gprn.pflag=0;
 
               StartDoc(pd.hDC,&di);
@@ -12717,7 +12715,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
               vprint.gfactor*=pfactor;
 
               setfontformat(pd.hDC,prn.jiheight,prn.jiwidth,
-                            "MS Mincho",0,0,255);
+							"MS Mincho",0,0,255);
               SetBkMode(pd.hDC,TRANSPARENT);
 
 			  hbrush = CreateSolidBrush(RGB(255,255,255));
@@ -12730,7 +12728,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
                   ==F_FRAME) &&
                  arc.elems!=NULL)
               {
-                drawarclmframe(pd.hDC,vprint,arc,0,ONPRINTER);
+				drawarclmframe(pd.hDC,vprint,arc,0,ONPRINTER);
               }
               if((wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN &&
                  (wdraw.childs+1)->org.elems!=NULL)
@@ -12769,7 +12767,7 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
               if(pd.hDevMode != NULL) GlobalFree(pd.hDevMode);
               if(pd.hDevNames != NULL) GlobalFree(pd.hDevNames);
               MessageBox(hdwnd,"Completed.","Print",MB_OK);
-            }
+			}
           }
           break;
 
@@ -12779,15 +12777,15 @@ static BOOL CALLBACK DialogProcMenu2(HWND hdwnd,
       }
       break;
 
-    default:
-      return DefWindowProc(hdwnd,message,wParam,lParam);
+	default:
+	  return DefWindowProc(hdwnd,message,wParam,lParam);
   }
   return 0;
 }/*DialogProcMenu2*/
 
-static BOOL CALLBACK DialogProcMenu3(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcMenu3(HWND hdwnd,
                                      UINT message,
-                                     WPARAM wParam,
+									 WPARAM wParam,
                                      LPARAM lParam)
 /*OPTION MENU DIALOG BOX 3:FRAME CREATION.*/
 {
@@ -12799,33 +12797,33 @@ static BOOL CALLBACK DialogProcMenu3(HWND hdwnd,
 
   switch(message)
   {
-    case WM_INITDIALOG:
-      SetDlgItemText(hdwnd,IDC_TXTCREATE,"Creation");
+	case WM_INITDIALOG:
+	  SetDlgItemText(hdwnd,IDC_TXTCREATE,"Creation");
 
-      SetDlgItemText(hdwnd,IDC_TXTPROP,"Property");
-      SetDlgItemText(hdwnd,IDC_TXTSECT,"Section");
-      SetDlgItemText(hdwnd,IDC_TXTNODE,"Node");
-      SetDlgItemText(hdwnd,IDC_TXTELEM,"Element");
+	  SetDlgItemText(hdwnd,IDC_TXTPROP,"Property");
+	  SetDlgItemText(hdwnd,IDC_TXTSECT,"Section");
+	  SetDlgItemText(hdwnd,IDC_TXTNODE,"Node");
+	  SetDlgItemText(hdwnd,IDC_TXTELEM,"Element");
 
-      SetDlgItemText(hdwnd,IDC_TXTADD,   "Add");
-      SetDlgItemText(hdwnd,IDC_TXTCHANGE,"Change");
-      SetDlgItemText(hdwnd,IDC_TXTDELETE,"Delete");
-      SetDlgItemText(hdwnd,IDC_TXTREFER, "Refer");
+	  SetDlgItemText(hdwnd,IDC_TXTADD,   "Add");
+	  SetDlgItemText(hdwnd,IDC_TXTCHANGE,"Change");
+	  SetDlgItemText(hdwnd,IDC_TXTDELETE,"Delete");
+	  SetDlgItemText(hdwnd,IDC_TXTREFER, "Refer");
 
-      SetDlgItemText(hdwnd,IDV_TXTENERGYCIRCLE, "EnergyCircle");
+	  SetDlgItemText(hdwnd,IDV_TXTENERGYCIRCLE, "EnergyCircle");
       SetDlgItemText(hdwnd,IDV_TXTPLASTICENERGY, ":Ep¬•ª");
       SetDlgItemText(hdwnd,IDV_TXTENERGYVALUE,  "EnergyValue");
 
-      SetDlgItemText(hdwnd,IDV_TXTSRCANMAX,"SrcanMax");
+	  SetDlgItemText(hdwnd,IDV_TXTSRCANMAX,"SrcanMax");
 
       SetDlgItemText(hdwnd,IDV_TXTPAGETITLE,"PageTitle");
-      if(wdraw.nchilds>=2 && (wdraw.childs+1)!=NULL)
-      {
-        SetDlgItemText(hdwnd,IDV_PAGETITLEBOX,
-                       (wdraw.childs+1)->pagetitle);
-      }
+	  if(wdraw.nchilds>=2 && (wdraw.childs+1)!=NULL)
+	  {
+		SetDlgItemText(hdwnd,IDV_PAGETITLEBOX,
+					   (wdraw.childs+1)->pagetitle);
+	  }
 
-      if(wdraw.nchilds>=2)
+	  if(wdraw.nchilds>=2)
       {
         setdoubleintodialog(hdwnd,IDVS_OPAQUE,
                             (wdraw.childs+1)->org.opaque);
@@ -12879,23 +12877,23 @@ static BOOL CALLBACK DialogProcMenu3(HWND hdwnd,
          (wdraw.hwnd==NULL || gv->mv.pagetitle!=1))
       {SetTextColor(hdc,RGB(255,255,255));}
 
-      return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	  return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
 
     case WM_COMMAND:
-      if(wdraw.hwnd!=NULL) gv=&((wdraw.childs+1)->vparam.vflag);
+	  if(wdraw.hwnd!=NULL) gv=&((wdraw.childs+1)->vparam.vflag);
 
       switch(LOWORD(wParam))
       {
         case IDC_CREATE:
           if(createcommand!=C_NEUTRAL)
-          {
+		  {
             createcommand=C_NEUTRAL;
             createitem=C_NEUTRAL;
             SendMessage(hdwnd,WM_INITDIALOG,0,0);
 
             hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
             globalstatus=NEUTRAL;
           }
           break;
@@ -12920,8 +12918,8 @@ static BOOL CALLBACK DialogProcMenu3(HWND hdwnd,
           {
             globalstatus = SELECTNODE;
             hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-            SetClassLong((wdraw.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wdraw.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
           }
           break;
 
@@ -12933,8 +12931,8 @@ static BOOL CALLBACK DialogProcMenu3(HWND hdwnd,
 		  {
 			globalstatus = SELECTNODE;
 			hcursor = LoadCursor(hInstGlobal,"CANBOXW");
-			SetClassLong((wdraw.childs+1)->hwnd,
-						 GCL_HCURSOR,(LONG)hcursor);
+			SetClassLongPtr((wdraw.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 		  }
 		  break;
 		case IDC_CHANGE:
@@ -13042,7 +13040,7 @@ static BOOL CALLBACK DialogProcMenu3(HWND hdwnd,
   return 0;
 }/*DialogProcMenu3*/
 
-static BOOL CALLBACK DialogProcMenu4(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcMenu4(HWND hdwnd,
                                      UINT message,
                                      WPARAM wParam,
                                      LPARAM lParam)
@@ -13071,7 +13069,7 @@ static BOOL CALLBACK DialogProcMenu4(HWND hdwnd,
   return 0;
 }/*DialogProcMenu4*/
 
-static BOOL CALLBACK DialogProcText(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcText(HWND hdwnd,
                                     UINT message,
                                     WPARAM wParam,
                                     LPARAM lParam)
@@ -13101,7 +13099,7 @@ static BOOL CALLBACK DialogProcText(HWND hdwnd,
   return 0;
 }/*DialogProcText*/
 
-static BOOL CALLBACK DialogProcIncrement(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcIncrement(HWND hdwnd,
                                          UINT message,
                                          WPARAM wParam,
                                          LPARAM lParam)
@@ -13132,7 +13130,7 @@ static BOOL CALLBACK DialogProcIncrement(HWND hdwnd,
   return 0;
 }/*DialogProcIncrement*/
 
-static BOOL CALLBACK DialogProcPsim(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcPsim(HWND hdwnd,
                                     UINT message,
                                     WPARAM wParam,
                                     LPARAM lParam)
@@ -13172,15 +13170,15 @@ static BOOL CALLBACK DialogProcPsim(HWND hdwnd,
         hbrush = (HBRUSH)CreateSolidBrush(RGB(gprop->r,
                                               gprop->g,
                                               gprop->b));
-		pbrush=(HBRUSH)SetClassLong(hitem,GCL_HBRBACKGROUND,
-                                    (LONG)hbrush);
+		pbrush=(HBRUSH)SetClassLongPtr(hitem,GCL_HBRBACKGROUND,
+                                    (LONG_PTR)hbrush);
         DeleteObject(pbrush);
-        return (BOOL)hbrush;
+		return (INT_PTR)hbrush;
       }
-      else return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+      else return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
 
     case WM_PAINT:
-      /*DefWindowProc(hdwnd,message,wParam,lParam);*/
+	  /*DefWindowProc(hdwnd,message,wParam,lParam);*/
 
       /*PROPERTY CODE*/
       GetDlgItemText(hdwnd,IDDP_TXTPROPCODE,str,20);
@@ -13221,10 +13219,10 @@ static BOOL CALLBACK DialogProcPsim(HWND hdwnd,
           if(globalstatus==C_PROPERTYDROP)
           {
             hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-            SetClassLong((wsdsp.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
-            SetClassLong((wprop.childs+2+(gprop->loff))->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wsdsp.childs+1)->hwnd,
+                         GCL_HCURSOR,(LONG_PTR)hcursor);
+            SetClassLongPtr((wprop.childs+2+(gprop->loff))->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
             globalstatus=NEUTRAL;
           }
@@ -13233,11 +13231,11 @@ static BOOL CALLBACK DialogProcPsim(HWND hdwnd,
             hcursor
             =(HCURSOR)createpropertyicon(hInstGlobal,
                                          (wprop.childs+1)->hdcC,
-                                         gprop,FALSE);
-            SetClassLong((wsdsp.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
-            SetClassLong((wprop.childs+2+(gprop->loff))->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+										 gprop,FALSE);
+			SetClassLongPtr((wsdsp.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
+            SetClassLongPtr((wprop.childs+2+(gprop->loff))->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
             globalstatus=C_PROPERTYDROP;
           }
@@ -13268,7 +13266,7 @@ static BOOL CALLBACK DialogProcPsim(HWND hdwnd,
   return 0;
 }/*DialogProcPsim*/
 
-static BOOL CALLBACK DialogProcSsim(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcSsim(HWND hdwnd,
                                     UINT message,
                                     WPARAM wParam,
                                     LPARAM lParam)
@@ -13309,33 +13307,33 @@ static BOOL CALLBACK DialogProcSsim(HWND hdwnd,
       {
         SetTextColor(hdc,RGB(255,255,255));
       }
-      return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	  return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
 
-    case WM_CTLCOLOREDIT:
-      hitem=(HWND)lParam;
-      id=GetDlgCtrlID(hitem);
+	case WM_CTLCOLOREDIT:
+	  hitem=(HWND)lParam;
+	  id=GetDlgCtrlID(hitem);
 
-      if((id==IDDS_COLOR))
-      {
-        hbrush = (HBRUSH)CreateSolidBrush(RGB(gsect->dcolor.r,
-                                              gsect->dcolor.g,
-                                              gsect->dcolor.b));
-        pbrush=(HBRUSH)SetClassLong(hitem,GCL_HBRBACKGROUND,
-                                    (LONG)hbrush);
-        DeleteObject(pbrush);
-        return (BOOL)hbrush;
-      }
-      else return (BOOL)(HBRUSH)GetStockObject(WHITE_BRUSH);
+	  if((id==IDDS_COLOR))
+	  {
+		hbrush = (HBRUSH)CreateSolidBrush(RGB(gsect->dcolor.r,
+											  gsect->dcolor.g,
+											  gsect->dcolor.b));
+		pbrush=(HBRUSH)SetClassLongPtr(hitem,GCL_HBRBACKGROUND,
+									(LONG_PTR)hbrush);
+		DeleteObject(pbrush);
+		return (INT_PTR)hbrush;
+	  }
+	  else return (INT_PTR)GetStockObject(WHITE_BRUSH);
 
     case WM_DRAWITEM:
-      DefWindowProc(hdwnd,message,wParam,lParam);
+	  DefWindowProc(hdwnd,message,wParam,lParam);
 
-      if(wParam==IDDS_SECTICON)
+	  if(wParam==IDDS_SECTICON)
       {
-        GetDlgItemText(hdwnd,IDDS_TXTSECTCODE,str,20);
+		GetDlgItemText(hdwnd,IDDS_TXTSECTCODE,str,20);
         code=strtol(str,NULL,10);
 
-        gsect=currentsects;
+		gsect=currentsects;
         while(code != gsect->code) gsect++;
 
         if((gsect->ppc.npcurve)>0)
@@ -13421,10 +13419,10 @@ static BOOL CALLBACK DialogProcSsim(HWND hdwnd,
           if(globalstatus==C_SECTIONDROP)
           {
             hcursor = LoadCursor(hInstGlobal,"CANCURSORW");
-            SetClassLong((wsdsp.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
-            SetClassLong((wsect.childs+2+(gsect->loff))->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wsdsp.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
+            SetClassLongPtr((wsect.childs+2+(gsect->loff))->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
             globalstatus=NEUTRAL;
           }
@@ -13432,10 +13430,10 @@ static BOOL CALLBACK DialogProcSsim(HWND hdwnd,
           {
             gsect->ppc.ici.fIcon=FALSE; /*TRUE=ICON FALSE=CURSOR*/
             hcursor = CreateIconIndirect(&(gsect->ppc.ici));
-            SetClassLong((wsdsp.childs+1)->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
-            SetClassLong((wsect.childs+2+(gsect->loff))->hwnd,
-                         GCL_HCURSOR,(LONG)hcursor);
+            SetClassLongPtr((wsdsp.childs+1)->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
+            SetClassLongPtr((wsect.childs+2+(gsect->loff))->hwnd,
+						 GCL_HCURSOR,(LONG_PTR)hcursor);
 
             globalstatus=C_SECTIONDROP;
           }
@@ -13471,7 +13469,7 @@ static BOOL CALLBACK DialogProcSsim(HWND hdwnd,
   return 0;
 }/*DialogProcSsim*/
 
-static BOOL CALLBACK DialogProcKatakou(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcKatakou(HWND hdwnd,
                                        UINT message,
                                        WPARAM wParam,
                                        LPARAM lParam)
@@ -13572,12 +13570,12 @@ static BOOL CALLBACK DialogProcKatakou(HWND hdwnd,
       {
         SetTextColor(hdc,RGB(255,255,255));
       }
-      return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	  return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
 
     case WM_COMMAND:
       switch(LOWORD(wParam))
       {
-        case IDOK:
+		case IDOK:
         case IDCANCEL:
           wparam = MAKEWPARAM((WORD)IDM_POPSECTIONRETURN,
                               (WORD)0);
@@ -13624,7 +13622,7 @@ static BOOL CALLBACK DialogProcKatakou(HWND hdwnd,
   return 0;
 }/*DialogProcKatakou*/
 
-static BOOL CALLBACK DialogProcProperty(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcProperty(HWND hdwnd,
                                         UINT message,
                                         WPARAM wParam,
                                         LPARAM lParam)
@@ -13678,17 +13676,17 @@ static BOOL CALLBACK DialogProcProperty(HWND hdwnd,
         hbrush = (HBRUSH)CreateSolidBrush(RGB(gprop->r,
                                               gprop->g,
                                               gprop->b));
-        pbrush=(HBRUSH)SetClassLong(hitem,GCL_HBRBACKGROUND,
-                                    (LONG)hbrush);
+		pbrush=(HBRUSH)SetClassLongPtr(hitem,GCL_HBRBACKGROUND,
+									(LONG_PTR)hbrush);
         DeleteObject(pbrush);
-        return (BOOL)hbrush;
-      }
-      else return (BOOL)(HBRUSH)GetStockObject(WHITE_BRUSH);
+		return (INT_PTR)hbrush;
+	  }
+	  else return (INT_PTR)GetStockObject(WHITE_BRUSH);
 
     case WM_PAINT:
       /*DefWindowProc(hdwnd,message,wParam,lParam);*/
 
-      if(globalstatus==C_ADDPROPERTY) gprop=addingprop;
+	  if(globalstatus==C_ADDPROPERTY) gprop=addingprop;
 
       hbrush = (HBRUSH)CreateSolidBrush(RGB(gprop->r,
                                             gprop->g,
@@ -13768,7 +13766,7 @@ static BOOL CALLBACK DialogProcProperty(HWND hdwnd,
   return 0;
 }/*DialogProcProperty*/
 
-static BOOL CALLBACK DialogProcElemType(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcElemType(HWND hdwnd,
                                         UINT message,
                                         WPARAM wParam,
                                         LPARAM lParam)
@@ -13808,11 +13806,11 @@ static BOOL CALLBACK DialogProcElemType(HWND hdwnd,
       {
         SetTextColor(hdc,RGB(255,255,255));
       }
-      return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	  return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
 
     case WM_COMMAND:
       switch(LOWORD(wParam))
-      {
+	  {
         case IDOK:
         case IDCANCEL:
           wparam = MAKEWPARAM((WORD)IDM_POPETYPERETURN,(WORD)0);
@@ -13859,7 +13857,7 @@ static BOOL CALLBACK DialogProcElemType(HWND hdwnd,
   return 0;
 }/*DialogProcElemType*/
 
-static BOOL CALLBACK DialogProcSectRegist(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcSectRegist(HWND hdwnd,
                                           UINT message,
                                           WPARAM wParam,
                                           LPARAM lParam)
@@ -13912,10 +13910,10 @@ static BOOL CALLBACK DialogProcSectRegist(HWND hdwnd,
   return 0;
 }/*DialogProcSectRegist*/
 
-static BOOL CALLBACK DialogProcConf(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcConf(HWND hdwnd,
                                     UINT message,
                                     WPARAM wParam,
-                                    LPARAM lParam)
+									LPARAM lParam)
 /*POPUP DIALOG BOX FOR CHANGE BOND.*/
 {
   HDC hdc;
@@ -13959,7 +13957,7 @@ static BOOL CALLBACK DialogProcConf(HWND hdwnd,
       {
         SetTextColor(hdc,RGB(255,255,255)); /*WHITE:FREE*/
       }
-      return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	  return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
 
     case WM_COMMAND:
       loff=6*pnode->loff;
@@ -13968,7 +13966,7 @@ static BOOL CALLBACK DialogProcConf(HWND hdwnd,
       switch(LOWORD(wParam))
       {
         case IDCC_X:
-          if((conf+0)->iconf==0)      (conf+0)->iconf=1;
+		  if((conf+0)->iconf==0)      (conf+0)->iconf=1;
           else if((conf+0)->iconf==1) (conf+0)->iconf=0;
           SendMessage(hdwnd,WM_INITDIALOG,0,0);
           break;
@@ -14018,7 +14016,7 @@ static BOOL CALLBACK DialogProcConf(HWND hdwnd,
   return 0;
 }/*DialogProcConf*/
 
-static BOOL CALLBACK DialogProcBond(HWND hdwnd,
+static INT_PTR CALLBACK DialogProcBond(HWND hdwnd,
                                     UINT message,
                                     WPARAM wParam,
                                     LPARAM lParam)
@@ -14074,7 +14072,7 @@ static BOOL CALLBACK DialogProcBond(HWND hdwnd,
       {
         SetTextColor(hdc,RGB(255,255,255)); /*WHITE:HINGE*/
       }
-      return (BOOL)(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	  return (INT_PTR)GetStockObject(LTGRAY_BRUSH);
 
     case WM_COMMAND:
       for(i=0;i<pelem->nnod;i++)
@@ -14085,7 +14083,7 @@ static BOOL CALLBACK DialogProcBond(HWND hdwnd,
           break;
         }
       }
-      bond=pelem->bonds+loff;
+	  bond=pelem->bonds+loff;
 
       switch(LOWORD(wParam))
       {

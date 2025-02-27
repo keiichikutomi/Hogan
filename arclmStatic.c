@@ -1,4 +1,7 @@
-﻿int arclmStatic(struct arclmframe* af);
+void inputdsp(struct arclmframe *af, const char *fname, int targetlap, int targetiteration);
+void inputplst(struct arclmframe *af, const char *fname, int targetlap, int targetiteration);
+
+int arclmStatic(struct arclmframe* af);
 
 void LDLmode(struct gcomponent* gmtx, struct oconf* confs, int* m, int nmode, double** mode, double* norm, double* dm, long int msize);
 double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);
@@ -9,6 +12,7 @@ void dbgvct(double* vct, int size, int linesize, const char* str);
 void dbgmtx(double** mtx, int rows, int cols, const char* str);
 void dbggcomp(struct gcomponent* gmtx, int size, const char* str);
 
+extern void clearwindow(struct windowparams wp);
 extern struct gcomponent *copygcompmatrix(struct gcomponent *gmtx,long int msize);
 extern struct gcomponent *gcomponentadd3(struct gcomponent *mtx1,double factor1,
 										 struct gcomponent *mtx2,double factor2,
@@ -165,7 +169,7 @@ int arclmStatic(struct arclmframe* af)
 	///FOR ARC-LENGTH PARAMETER///
 	int nlap = 1;
 	int beginlap = 1;
-	int targetlap;
+	int targetlap = 0;
 	int laps = 1000;
 	int iteration = 1;
 	int maxiteration = 20;
@@ -208,7 +212,7 @@ int arclmStatic(struct arclmframe* af)
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
-	int USINGEIGENFLAG = 1;
+	int USINGEIGENFLAG = 0;
 
 	/*LAST LAP*/
 	double* lastddisp,* lastlambda;
@@ -638,7 +642,7 @@ int arclmStatic(struct arclmframe* af)
 	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
 
 
-	if(inputfilename!=NULL && targetlap!=NULL)
+	if(inputfilename[0] != '\0' && targetlap!=NULL)
 	{
 	  errormessage("OUTPUT DATA READING...");
 	  inputdsp(af, inputfilename, targetlap, 1);
@@ -804,10 +808,10 @@ int arclmStatic(struct arclmframe* af)
 		//Eigen::SparseLU<SparseMatrix> solver;
 
 		Eigen::BiCGSTAB<SparseMatrix> solver;
-		solver.setTolerance(1e-9); // 許容誤差の設定
-		solver.setMaxIterations(10000); // 最大反復回数
+		solver.setTolerance(1e-9);
+		solver.setMaxIterations(10000);
 
-		Eigen::setNbThreads(omp_get_max_threads());
+		//Eigen::setNbThreads(2);
 
 		for (i = 1; i <= (msize+csize); i++)
 		{
@@ -1161,7 +1165,7 @@ int arclmStatic(struct arclmframe* af)
 			}
 
 			/*SIGN OF PREDICTOR VECTOR & ARC-LENGTH SCALING FACTOR*/
-			if(nlap == beginlap)/*?*/
+			if(nlap == beginlap)
 			{
 				for (ii = 0; ii < msize; ii++)
 				{
@@ -2062,7 +2066,7 @@ int arclmStatic(struct arclmframe* af)
 				loadfactor += loadlambda;
 				for (ii = 0; ii < msize; ii++)
 				{
-					*(gvct + ii) = *(dup + ii) * loadlambda + *(due + ii);/*gvct:{��U_e+��U_p}*/
+					*(gvct + ii) = *(dup + ii) * loadlambda + *(due + ii);/*gvct:{??U_e+???U_p}*/
 				}
 
 
