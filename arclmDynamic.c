@@ -1082,7 +1082,7 @@ int arclmDynamic(struct arclmframe* af)
 
 		if(iteration==1)
 		{
-			if(sign > 20 || residual > 1e+10)
+			if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1e+10)
 			{
 				ENDFLAG = 1;
 				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
