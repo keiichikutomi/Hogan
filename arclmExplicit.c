@@ -5,32 +5,8 @@
 /* CODED BY KEIICHI KUTOMI SINSE 2024.05.26                  */
 /* ========================================================= */
 
-int arclmStatDyna(struct arclmframe* af);
-int arclmDynamic(struct arclmframe* af);
-double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* lastudd_m, double* lastlastudd_m, double beta, int msize);
-double loadfactormap(double time);
 
-int arclmStatDyna(struct arclmframe* af)
-{
-	double targetload;
-	double ENDFLAG = 0;
-	targetload = 1e+10;
-	while(1)
-	{
-		("arclmStatic START.");
-		ENDFLAG = arclmStatic(af);
-		if(af->loadfactor > targetload || ENDFLAG == 1)break;
-		("arclmDynamic START.");
-		ENDFLAG = arclmDynamic(af);
-		if(af->loadfactor > targetload || ENDFLAG == 1)break;
-
-	}
-	errormessage("arclmStatDyna END.");
-	return 0;
-}
-
-
-int arclmDynamic(struct arclmframe* af)
+int arclmExplicit(struct arclmframe* af)
 {
 	DWORDLONG memory0,memory1;
 	char dir[] = DIRECTORY;
@@ -122,9 +98,8 @@ int arclmDynamic(struct arclmframe* af)
 	/*ANALYSIS MODE*/
 	int outputmode   = 0;/*0:ConvergedLaps.1:AllLaps.*/
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
-	int solver = 0;
+	int solver = 1;
 	int method = 0;
-	double rho,alpham,alphaf,xi,beta,gamma;
 	/*
 	[solver]
 	0:INPLICIT
@@ -328,38 +303,6 @@ int arclmDynamic(struct arclmframe* af)
 	if (outputmode == 1)errormessage("OUTPUT ALL RESULT\n");
 
 
-	if(method==1)/*HTT-alpha'S PARAMETER.*/
-	{
-		rho = 0.904762;
-		alpham = 0.0;  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
-		alphaf = (1.0-rho)/(1.0+rho);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
-		xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
-		beta = pow(1+alphaf,2)/4.0;
-		gamma = 0.5+alphaf;
-	}
-	else if(method==2)/*ENERGY MOMENTUM METHOD'S PARAMETER.*/
-	{
-		rho = 1.0;
-		//rho = 0.8;
-		alpham = (2.0*rho-1)/(rho+1);  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
-		alphaf = rho/(rho+1);        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
-		//xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
-		xi = 0.056;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
-		beta = 0.25*pow(1-alpham+alphaf,2);
-		gamma = 0.5-alpham+alphaf;
-	}
-	else/*NEWMARK METHOD'S PARAMETER.*/
-	{
-		rho = 1.0;
-		alpham = 0.0;  /*MID-POINT USED TO EVALUATE INERTIAL FORCE*/
-		alphaf = 0.0;        /*MID-POINT USED TO EVALUATE INTERNAL FORCE*/
-		xi = 0.0;   	 				/*NUMERICAL DISSIPATION COEFFICIENT*/
-		beta = 1.0/pow(rho+1,2);
-		gamma = (3.0-rho)/(2.0*(rho+1.0));
-	}
-	sprintf(string,"alpham=%.3f alphaf=%.3f beta=%.3f gamma=%.3f ",alpham,alphaf,beta,gamma);
-	errormessage(string);
-
 
 
 	///INPUT FILE OPEN & OUTPUT FILE SETTING///
@@ -536,17 +479,6 @@ int arclmDynamic(struct arclmframe* af)
 	lastlambda = (double*)malloc(csize * sizeof(double));
 
 
-
-
-	/*GLOBAL MATRIX*/
-	gmtx = (struct gcomponent*)malloc((msize+csize) * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-	gmtx2 = (struct gcomponent*)malloc((msize+csize) * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-	for (i = 0; i < (msize+csize); i++)
-	{
-		(gmtx + i)->down = NULL;
-		(gmtx2 + i)->down = NULL;
-	}
-
 	/*GLOBAL VECTOR*/
 	gvct = (double *)malloc((msize+csize) * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
 
@@ -580,13 +512,11 @@ int arclmDynamic(struct arclmframe* af)
 	ud_m = (double*)malloc(msize * sizeof(double));  		/*LATEST ITERATION IN MATERIAL*/
 	udd_m = (double*)malloc(msize * sizeof(double));
 
-	/*
 	if(inputfilename!=NULL && targetlap!=NULL)
 	{
 	  inputdsp(af, inputfilename, targetlap, 1);
 	  inputplst(af, inputfilename, targetlap, 1);
 	}
-	*/
 
 	initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
@@ -761,136 +691,75 @@ int arclmDynamic(struct arclmframe* af)
 
 	while (nlap <= laps && ENDFLAG == 0)
 	{
-		/*MATRIX INITIALIZE*/
-		std::vector<Triplet> Ktriplet;/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
-		std::vector<Triplet> Ktriplet2;/*FOR STATIC TANGENTIAL STIFFNESS*/
-
-		SparseMatrix Kglobal((msize+csize), (msize+csize));
-		SparseMatrix Kglobal2((msize+csize), (msize+csize));
-		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
-		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
-		//Eigen::SimplicialLDLT<SparseMatrix> solver;
-		Eigen::SparseLU<SparseMatrix> solver;
 
 
-		//Eigen::BiCGSTAB<SparseMatrix> solver;
-		//solver.setTolerance(1e-9); // 許容誤差の設定
-		//solver.setMaxIterations(10000); // 最大反復回数
 
-		for (i = 1; i <= (msize+csize); i++)/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
+		/*SOLVE*/
+
+
+		/*DYNAMIC RELAXATION.*/
+
+		double leftleftWkt,leftWkt,Wkt,rightWkt;/*KINETIC ENERGY AT t-3*dt/2, t-dt/2, t, t+dt/2*/
+		double q;
+
+		rightud_m = (double*)malloc(msize * sizeof(double));
+		leftud_m = (double*)malloc(msize * sizeof(double));
+		for (i = 0; i < msize; i++)
 		{
-			g = (gmtx + (i - 1))->down;
-			while (g != NULL)
+			*(rightud_m + i) = 0.0;
+			*(leftud_m + i) = 0.0;
+		}
+
+		for (i = 0; i < msize; i++)
+		{
+			if (time == 0.0 || PEAKFLAG)
 			{
-				p = g;
-				g = g->down;
-				free(p);
+				*(rightud_m + i) = *(funbalance + i) * ddt / (2.0 * *(mvct + i));
+				*(leftud_m  + i) = -*(rightud_m  + i);
+				leftleftWkt = 0.0;
+				leftWkt = 0.0;
+
+				PEAKFLAG = 0;
 			}
-			ginit.m = (unsigned short int)i;
-			*(gmtx + (i - 1)) = ginit;
-		}
-		for (i = 1; i <= (msize+csize); i++)/*FOR STATIC TANGENTIAL STIFFNESS*/
-		{
-			g = (gmtx2 + (i - 1))->down;
-			while (g != NULL)
+			else
 			{
-				p = g;
-				g = g->down;
-				free(p);
+				*(leftud_m  + i) = *(rightud_m  + i);
+				*(rightud_m  + i) = (*(funbalance + i) * ddt / *(mvct + i)) + *(leftud_m  + i);
+				//*(rightud_m  + i) = ( *(funbalance_m + i) + (*(mvct + i) / ddt - *(cvct + i) / 2.0) * *(leftud_m  + i) ) / ( *(mvct + i) / ddt + *(cvct + i) / 2.0 );
+				leftleftWkt = leftWkt;
+				leftWkt = rightWkt;
 			}
-			ginit.m = (unsigned short int)i;
-			*(gmtx2 + (i - 1)) = ginit;
-		}
-		//comps = msize;
+			Wkt = 0.0;
+			rightWkt = 0.0;
 
-		/*MATRIX ASSEMBLAGE*/
-		if(USINGEIGENFLAG==1)
-		{
-		  assemshellEigen_DYNA(shells, mshell, nshell, constraintmain, confs,
-							   Ktriplet,Ktriplet2,
-							   iform, lastddisp, ddisp,
-							   ud_m, udd_m,
-							   alpham, alphaf, xi, beta, ddt);
-		  //assemconstraintEigen_DYNA;
-		  /*GLOBAL MATRIX USING EIGEN*/
-		  modifytriplet(Ktriplet,confs,msize);
-		  modifytriplet(Ktriplet2,confs,msize);
+			*(ud_m  + i) = (*(rightud_m  + i) + *(leftud_m  + i)) / 2.0;
+			*(udd_m  + i) = (*(rightud_m  + i) - *(leftud_m  + i)) / ddt;
 
-		  Kglobal.reserve((msize+csize)*(msize+csize));
-		  Kglobal.setFromTriplets(Ktriplet.begin(), Ktriplet.end());//SPARSE MATRIX FROM TRIPLET
-		  Kglobal2.reserve((msize+csize)*(msize+csize));
-		  Kglobal2.setFromTriplets(Ktriplet2.begin(), Ktriplet2.end());//SPARSE MATRIX FROM TRIPLET
-		}
-		else
-		{
-		  assemshell_DYNA(shells, mshell, nshell, constraintmain,
-						  gmtx,gmtx2,
-						  iform, lastddisp, ddisp,
-						  ud_m, udd_m,
-						  alpham, alphaf, xi, beta, ddt);
-
-		  assemconstraint_DYNA(constraints, nconstraint, constraintmain,
-							   gmtx,
-							   iform, lastddisp, ddisp, lastlambda, lambda,
-							   alphaf, msize);
+			Wkt += 0.5 * *(mvct + i) * *(ud_m  + i) * *(ud_m  + i);
+			rightWkt += 0.5 * *(mvct + i) * *(rightud_m  + i) * *(rightud_m  + i);
 		}
 
-		/*SOLVE [K]*/
-		if(USINGEIGENFLAG==1)
+		/*FOR DINAMIC RELAXATION*/
+		if (Wkt < lastWkt)
 		{
-			solver.compute(Kglobal);
-
-			/*
-			Eigen::VectorXd D = solver.vectorD();
-			determinant= 0.0;
-			sign = 0;
+			q = (leftWkt - rightWkt) / (2 * leftWkt - rightWkt - leftleftWkt);
 			for (i = 0; i < msize; i++)
 			{
-			  if((confs+i)->iconf!=1)
-			  {
-				if(D(i)<0.0) sign += 1;
-				determinant += log10(fabs(D(i)));
-			  }
+				*(gvct + i) = -q * *(leftud_m  + i) * ddt;
 			}
-			*/
-
-			if (solver.info() != Eigen::Success)sign=-1;
-			/*DECOMPOSITION FAILED*/
-			if (sign < 0.0)
-			{
-				fclose(fin);
-				fclose(fonl);
-				fclose(fdsp);
-				fclose(fexf);
-				fclose(finf);
-				fclose(fubf);
-				fclose(frct);
-				fclose(fstr);
-				fclose(fene);
-				fclose(ffig);
-				fclose(fbcl);
-                fclose(fplst);
-				return 1;
-			}
-
-			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-					nlap, iteration, loadfactor,residual, Wkt, 0, 0, ddt, volume, time);
-			fprintf(ffig, "%s", string);
-			errormessage(string);
-
-			Vector P = Vector::Zero(msize + csize);
-			for(i=0;i<msize + csize;i++)P(i)=*(gvct+i);
-			Vector U = solver.solve(P);
-
-			/*solver.iteration();
-			solver.error();*/
-
-
-			for(i=0;i<msize + csize;i++)*(gvct+i)=U(i);
-			if (solver.info() != Eigen::Success)return 1;
+			PEAKFLAG = 1;
 		}
 		else
 		{
+			for (i = 0; i < msize; i++)
+			{
+				*(gvct + i) = *(rightud_m  + i) * ddt;
+			}
+		}
+
+
+
+
 			/*CROUT LU DECOMPOSITION.*/
 			nline = croutluII(gmtx, confs, msize, csize, &determinant, &sign, gcomp1);
 			nline2 = croutluII(gmtx2, confs, msize, csize, &determinant2, &sign2, gcomp1);
@@ -914,7 +783,6 @@ int arclmDynamic(struct arclmframe* af)
 				fclose(fene);
 				fclose(ffig);
 				fclose(fbcl);
-                fclose(fplst);
 				return 1;
 			}
 			sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
@@ -924,7 +792,9 @@ int arclmDynamic(struct arclmframe* af)
 
 
 			nline = forwardbackwardII(gmtx, gvct, confs, msize, csize, gcomp1);
-        }
+
+
+
 
 		for (ii = 0; ii < msize; ii++)
 		{
@@ -1027,14 +897,9 @@ int arclmDynamic(struct arclmframe* af)
 		{
 			nlap += 1;;
 			iteration = 0;
-			if(time>0.01 && (RELAXATION == 1 && lastWkt > Wkt))
+			if(RELAXATION == 1 && lastWkt > Wkt)
 			{
 				PEAKFLAG = 1;
-				//ddt = initialddt;
-			}
-			else
-			{
-				//ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
 			}
 			time += ddt;
 
@@ -1275,7 +1140,7 @@ int arclmDynamic(struct arclmframe* af)
 		{
 		  if(GetAsyncKeyState(VK_RBUTTON))      /*RIGHT CLICK TO ABORT.*/
 		  {
-			gfree(gmtx, nnode);  /*FREE GLOBAL MATRIX.*/
+
 			free(gvct);
 			free(funbalance);
 			free(finternal);
@@ -1294,7 +1159,6 @@ int arclmDynamic(struct arclmframe* af)
 			fclose(fene);
 			fclose(ffig);
 			fclose(fbcl);
-            fclose(fplst);
 
 			laptime("\0",t0);
 			return 1;
@@ -1327,12 +1191,8 @@ int arclmDynamic(struct arclmframe* af)
 	fclose(fbcl);
 	fclose(feig);
 	fclose(fout);
-    fclose(fvel);
+	fclose(fvel);
 	fclose(facc);
-	fclose(fplst);
-
-	gfree(gmtx, nnode);  	/*FREE GLOBAL MATRIX.*/
-	gfree(gmtx2, nnode);
 
 	free(gvct);
 
@@ -1379,105 +1239,6 @@ int arclmDynamic(struct arclmframe* af)
 
 
 
-double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* lastudd_m, double* lastlastudd_m, double beta, int msize)
-{
-	int i;
-	char string[100];
-	double eta_upper  = 0.06;
-	double eta_target = 0.05;
-	double eta_lower  = 0.04;
-	double eta, errornorm, dispnorm;
-	double* error, *disp;
 
-	error = (double *)malloc(msize * sizeof(double));
-	disp = (double *)malloc(msize * sizeof(double));
-	for (i = 0; i < msize; i++)
-	{
-	  if(i%6<3)
-	  {
-#if 0
-		  /*Time Step Control Algorithm by Schweizerhof & Riccius*/
-		  *(error + i) = ddt * ddt * ( (beta-(1.0/8.0))**(udd_m + i) + ((1.0/12.0)-beta)**(lastudd_m + i) + (1.0/24.0)**(lastlastudd_m + i));
-#endif
-#if 1
-		  /*Time Step Control Algorithm by Zienkiewics & Xie*/
-		  *(error + i) = ddt * ddt * (beta-(1.0/6.0)) * (*(udd_m + i) - *(lastudd_m + i));
-#endif
-		  *(disp + i) =  *(lapddisp_m + i);
-	  }
-	  else
-	  {
-		  *(error + i) =  0.0;
-		  *(disp + i) =  0.0;
-	  }
-	}
-
-	errornorm = vectorlength(error, msize);
-	dispnorm  = vectorlength(lapddisp_m, msize);
-
-	eta = errornorm / dispnorm;
-
-	//sprintf(string, "eta: %e\n",eta);
-	//errormessage(string);
-
-	if(eta > eta_upper || eta < eta_lower)
-	{
-	  ddt *= sqrt(eta_target/eta);
-	}
-
-	free(error);
-	free(disp);
-
-
-	return ddt;
-}
-
-
-double loadfactormap(double time)
-{
-	double loadfactor;
-
-#if 0/*FOR SHELL*/
-
-	  loadfactor = 0.0 * time;
-
-#endif
-#if 0/*FOR SHELL*/
-	if(time<=0.2)
-	{
-	  loadfactor = 2.5e+8 * time;
-	}
-	else
-	{
-	  loadfactor = 5.0e+7;
-	}
-#endif
-#if 1/*FOR HINGE*/
-/*0.1Mpa = 100000Pa*/
-	if(time<=100)
-	{
-	  loadfactor = 100* time;
-	}
-	else
-	{
-	  loadfactor = 10000;
-	}
-#endif
-#if 0/*FOR CYLINDER*/
-	if(time<=0.5)
-	{
-	  loadfactor = 10.0 * time;
-	}
-	else if(time<=1.0 && time>0.5)
-	{
-	  loadfactor = 10.0-10.0*time;
-	}
-	else
-	{
-	  loadfactor = 0.0;
-	}
-#endif
-	return loadfactor;
-}
 
 

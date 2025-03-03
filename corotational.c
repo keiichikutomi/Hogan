@@ -43,6 +43,12 @@ double** pushforwardmtx(double* gform, int nnod);
 double* midpointvct(double* vct,double* lastvct,double alpha,int size);
 double** midpointmtx(double** mtx,double** lastmtx,double alpha,int size);
 
+extern void dbgstr(const char* str);
+extern void dbgvct(double* vct, int size, int linesize, const char* str);
+extern void dbgmtx(double** mtx, int rows, int cols, const char* str);
+extern void dbggcomp(struct gcomponent* gmtx, int size, const char* str);
+
+
 
 
 
@@ -76,13 +82,13 @@ double* rotationvct(double** rmtx)
 			*(rvct + 1) = 0.5 * *(*(rmtx + 0) + 1) / (*(rvct + 0));
 			*(rvct + 2) = 0.5 * *(*(rmtx + 0) + 2) / (*(rvct + 0));
 		}
-		if (*(*(rmtx + 1) + 1) >= *(*(rmtx + 0) + 0) && *(*(rmtx + 1) + 1) >= *(*(rmtx + 2) + 2))
+		else if (*(*(rmtx + 1) + 1) >= *(*(rmtx + 0) + 0) && *(*(rmtx + 1) + 1) >= *(*(rmtx + 2) + 2))
 		{
 			*(rvct + 1) = sqrt( ( *(*(rmtx + 1) + 1) + 1.0 ) / 2.0 );
 			*(rvct + 0) = 0.5 * *(*(rmtx + 1) + 0) / (*(rvct + 1));
 			*(rvct + 2) = 0.5 * *(*(rmtx + 1) + 2) / (*(rvct + 1));
 		}
-		if (*(*(rmtx + 2) + 2) >= *(*(rmtx + 0) + 0) && *(*(rmtx + 2) + 2) >= *(*(rmtx + 1) + 1))
+		else/* (*(*(rmtx + 2) + 2) >= *(*(rmtx + 0) + 0) && *(*(rmtx + 2) + 2) >= *(*(rmtx + 1) + 1))*/
 		{
 			*(rvct + 2) = sqrt( ( *(*(rmtx + 2) + 2) + 1.0 ) / 2.0 );
 			*(rvct + 0) = 0.5 * *(*(rmtx + 2) + 0) / (*(rvct + 2));
@@ -94,6 +100,8 @@ double* rotationvct(double** rmtx)
 		*(rvct + 2) *= PI;
 
 		//sprintf(str,"%.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e\n",s,c,theta,*(rvct + 0),*(rvct + 1),*(rvct + 2), *(*(rmtx + 0) + 0), *(*(rmtx + 1) + 1), *(*(rmtx + 2) + 2));
+		//dbgstr(str);
+
 		errormessage("DETECT 180 DEGREE ROTATION\n");
 	}
 	else/*theta=0*/
@@ -113,6 +121,7 @@ double** rotationmtx(double* rvct)
 	double** rmtx;
 	double* n;
 	double theta;
+	double c1,c2;
 
 	n = (double*)malloc(3 * sizeof(double));
 	rmtx = (double**)malloc(3 * sizeof(double*));
@@ -121,7 +130,22 @@ double** rotationmtx(double* rvct)
 		*(rmtx + i) = (double*)malloc(3 * sizeof(double));
 	}
 	theta = sqrt(*(rvct + 0) * *(rvct + 0) + *(rvct + 1) * *(rvct + 1) + *(rvct + 2) * *(rvct + 2));
-	if (theta > 1e-15)
+	/*if (theta < 1e-3)
+	{
+		c1=1.0-pow(theta,2)/6.0+pow(theta,4)/120;
+		c2=0.5-pow(theta,2)/24.0+pow(theta,4)/720;
+
+		*(*(rmtx + 0) + 0) =  1.0              + c2 * (-*(rvct + 1) * *(rvct + 1) - *(rvct + 2) * *(rvct + 2));
+		*(*(rmtx + 0) + 1) = -c1 * *(rvct + 2) + c2 *  *(rvct + 0) * *(rvct + 1);
+		*(*(rmtx + 0) + 2) =  c1 * *(rvct + 1) + c2 *  *(rvct + 0) * *(rvct + 2);
+		*(*(rmtx + 1) + 0) =  c1 * *(rvct + 2) + c2 *  *(rvct + 1) * *(rvct + 0);
+		*(*(rmtx + 1) + 1) =  1.0              + c2 * (-*(rvct + 2) * *(rvct + 2) - *(rvct + 0) * *(rvct + 0));
+		*(*(rmtx + 1) + 2) = -c1 * *(rvct + 0) + c2 *  *(rvct + 1) * *(rvct + 2);
+		*(*(rmtx + 2) + 0) = -c1 * *(rvct + 1) + c2 *  *(rvct + 2) * *(rvct + 0);
+		*(*(rmtx + 2) + 1) =  c1 * *(rvct + 0) + c2 *  *(rvct + 2) * *(rvct + 1);
+		*(*(rmtx + 2) + 2) =  1.0              + c2 * (-*(rvct + 0) * *(rvct + 0) - *(rvct + 1) * *(rvct + 1));
+	}*/
+	if(theta > 1e-15)
 	{
 		for (i = 0; i < 3; i++)
 		{
@@ -149,7 +173,7 @@ double** rotationmtx(double* rvct)
 		*(*(rmtx + 2) + 0) = 0.0;
 		*(*(rmtx + 2) + 1) = 0.0;
 		*(*(rmtx + 2) + 2) = 1.0;
-	}
+    }
 	free(n);
 	return rmtx;
 }

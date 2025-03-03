@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <omp.h>
+//#include <omp.h>
 
 #if defined(_WIN64)
 	#define GCL_HCURSOR GCLP_HCURSOR

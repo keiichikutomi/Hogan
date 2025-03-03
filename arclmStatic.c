@@ -173,7 +173,7 @@ int arclmStatic(struct arclmframe* af)
 	int laps = 1000;
 	int iteration = 1;
 	int maxiteration = 20;
-	double tolerance = 1.0e-3;
+	double tolerance = 1.0e-2;
 	double residual = 0.0;
 	double constraintresidual = 0.0;
 	double gvctlen = 0.0;
@@ -262,7 +262,7 @@ int arclmStatic(struct arclmframe* af)
 	if(fin==NULL)
 	{
 	  errormessage("ACCESS IMPOSSIBLE.");
-	  return 0;
+	  return 1;
 	}
 	inputinitII(fin, &nnode, &nelem, &nshell, &nsect, &nconstraint); /*INPUT INITIAL.*/
 #endif
@@ -769,7 +769,7 @@ int arclmStatic(struct arclmframe* af)
 	/*OUTPUT FOR LOCAL*/
 	fprintf(fstr, string);
 	fprintf(fene, string);
-    fprintf(fplst, string);
+	fprintf(fplst, string);
 	for(i = 0; i < nshell; i++)
 	{
 		//fprintf(fene, "%5ld %e %e %e\n", (shells+i)->code, (mshell+i)->SEp, (mshell+i)->SEb, (mshell+i)->SE);
@@ -945,6 +945,7 @@ int arclmStatic(struct arclmframe* af)
 			fclose(fbcl);
 			fclose(fout);
 			fclose(feig);
+            fclose(fplst);
 
 			gfree(gmtx,nnode);
 
@@ -1125,7 +1126,7 @@ int arclmStatic(struct arclmframe* af)
 			  for(i=0;i<(msize+csize);i++)P(i)=*(dup+i);
 			  Vector Up = solver.solve(P);
 			  for(i=0;i<(msize+csize);i++)*(dup+i)=Up(i);
-			  if (solver.info() != Eigen::Success)return -1;
+			  if (solver.info() != Eigen::Success)return 1;
 			}
 			else
 			{
@@ -1240,13 +1241,13 @@ int arclmStatic(struct arclmframe* af)
 				for(i=0;i<msize;i++)P(i)=*(dup+i);
 				Vector Up = solver.solve(P);
 				for(i=0;i<(msize+csize);i++)*(dup+i)=Up(i);
-				if (solver.info() != Eigen::Success)return -1;
+				if (solver.info() != Eigen::Success)return 1;
 
 				Vector E = Vector::Zero((msize+csize));
 				for(i=0;i<msize;i++)E(i)=*(due+i);
 				Vector Ue = solver.solve(E);
 				for(i=0;i<(msize+csize);i++)*(due+i)=Ue(i);
-				if (solver.info() != Eigen::Success)return -1;
+				if (solver.info() != Eigen::Success)return 1;
 			}
 			else
 			{
@@ -1583,7 +1584,7 @@ int arclmStatic(struct arclmframe* af)
 					}
 				}
 			}
-			if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1e+10)
+			if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1.0)
 			{
 				ENDFLAG = 1;
 				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
@@ -1602,7 +1603,7 @@ int arclmStatic(struct arclmframe* af)
 		if (iteration == 1)
 		{
 
-			if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1e+10)/*TERMINATION AT LAST LAP*/
+			if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1.0)/*TERMINATION AT LAST LAP*/
 			{
 				laploadfactor = 0.0;
 				loadfactor = lastloadfactor;
@@ -1723,6 +1724,7 @@ int arclmStatic(struct arclmframe* af)
 			fclose(fbcl);
 			fclose(fout);
 			fclose(feig);
+            fclose(fplst);
 
 			gfree(gmtx,nnode);
 
@@ -1791,6 +1793,7 @@ int arclmStatic(struct arclmframe* af)
 	fclose(fbcl);
 	fclose(fout);
 	fclose(feig);
+    fclose(fplst);
 
 
 

@@ -49,7 +49,8 @@
 /*#include "canhead.h"*/                /*DEFINITION OF COMMAND ID.*/
 
 /*#ifndef PI*/
-#define PI 3.1415926535897932384
+//#define PI 3.1415926535897932384
+#define PI 3.14159265358979323846264338327950288
 /*#endif*/
 
 #define SIUNIT 9.80665                             /*SI UNIT FACTOR*/

@@ -6,7 +6,7 @@
         <MainSource>Hogan004.cpp</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Win64x</Platform>
+        <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <TargetedPlatforms>1048579</TargetedPlatforms>
         <AppType>Application</AppType>
         <ProjectName Condition="'$(ProjectName)'==''">Hogan004</ProjectName>
@@ -118,8 +118,6 @@
         <BCC_SelectedWarnings>false</BCC_SelectedWarnings>
         <DCC_MaxStackSize>2097152</DCC_MaxStackSize>
         <ILINK_StackReserveSize>0x00800000</ILINK_StackReserveSize>
-        <BCC_UserSuppliedOptions>-fopenmp</BCC_UserSuppliedOptions>
-        <ILINK_AdditionalOptions>-lomp</ILINK_AdditionalOptions>
         <BCC_AddProjectDirToIncludePath>true</BCC_AddProjectDirToIncludePath>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
