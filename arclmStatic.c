@@ -128,7 +128,7 @@ int arclmStatic(struct arclmframe* af)
 	/*INPUT & OUTPUT FILE*/
 	FILE * fin, * fonl, * fdsp, * fexf, * finf, * fubf, * frct, * fstr, * fene, * ffig, * fbcl, * feig, * fout, *fplst;         /*FILE 8 BYTES*/
 
-	int i, ii, jj;
+	int i, ii, jj, n;
 
 	int nnode, nelem, nshell, nsect, nconstraint;
 	long int msize,csize;
@@ -212,7 +212,7 @@ int arclmStatic(struct arclmframe* af)
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
-	int USINGEIGENFLAG = 0;
+	int USINGEIGENFLAG = 1;
 	int DIVFLAG = 0;
 
 	/*LAST LAP*/
@@ -454,6 +454,13 @@ int arclmStatic(struct arclmframe* af)
 
 	if (outputmode == 0)errormessage("OUTPUT CONVERGED RESULT\n");
 	if (outputmode == 1)errormessage("OUTPUT ALL RESULT\n");
+
+	Eigen::setNbThreads(16);
+	//n = Eigen::nbThreads( );
+	//sprintf(string, "%d THREADS USING.\n", n);
+	//errormessage(string);
+
+
 
 	if(STATDYNAFLAG == 1 && af->nlaps != NULL)
 	{
@@ -802,17 +809,20 @@ int arclmStatic(struct arclmframe* af)
 		std::vector<Triplet> Ktriplet;
 		std::vector<Triplet> Mtriplet;
 
-		SparseMatrix Kglobal((msize+csize), (msize+csize));
+
+		//Eigen::SparseMatrix<double,Eigen::ColMajor> Kglobal((msize+csize), (msize+csize));
+		Eigen::SparseMatrix<double,Eigen::RowMajor> Kglobal((msize+csize), (msize+csize));
+
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
 		//Eigen::SimplicialLDLT<SparseMatrix> solver;
 		//Eigen::SparseLU<SparseMatrix> solver;
 
-		Eigen::BiCGSTAB<SparseMatrix> solver;
+		Eigen::BiCGSTAB<Eigen::SparseMatrix<double>,Eigen::IncompleteLUT<double>> solver;
 		solver.setTolerance(1e-9);
 		solver.setMaxIterations(10000);
 
-		//Eigen::setNbThreads(2);
+
 
 		for (i = 1; i <= (msize+csize); i++)
 		{
@@ -1797,7 +1807,7 @@ int arclmStatic(struct arclmframe* af)
 	fclose(fbcl);
 	fclose(fout);
 	fclose(feig);
-    fclose(fplst);
+	fclose(fplst);
 
 
 

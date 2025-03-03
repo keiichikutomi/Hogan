@@ -6,7 +6,7 @@
         <MainSource>Hogan004.cpp</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win64x</Platform>
         <TargetedPlatforms>1048579</TargetedPlatforms>
         <AppType>Application</AppType>
         <ProjectName Condition="'$(ProjectName)'==''">Hogan004</ProjectName>
@@ -127,9 +127,11 @@
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>(なし)</Manifest_File>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
-        <IncludePath>$(BDSINCLUDE)\windows\vcl;$(IncludePath)</IncludePath>
-        <BCC_DisableWarnings>true</BCC_DisableWarnings>
+        <IncludePath>$(BDSINCLUDE)\windows\vcl;C:\Program Files (x86)\Embarcadero\Studio\23.0\include\x86_64-w64-mingw32;$(IncludePath)</IncludePath>
         <BCC_SelectedWarnings>false</BCC_SelectedWarnings>
+        <BCC_UserSuppliedOptions>-fopenmp</BCC_UserSuppliedOptions>
+        <ILINK_LibraryPath>C:\Program Files (x86)\Embarcadero\Studio\23.0\x86_64-w64-mingw32\lib;$(ILINK_LibraryPath)</ILINK_LibraryPath>
+        <BCC_DisableWarnings>true</BCC_DisableWarnings>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <BCC_OptimizeForSpeed>false</BCC_OptimizeForSpeed>
@@ -180,6 +182,7 @@
         <IntermediateOutputDir>C:\Users\keiic\Desktop\Hogan\Data\</IntermediateOutputDir>
         <BCC_AddProjectDirToIncludePath>true</BCC_AddProjectDirToIncludePath>
         <ILINK_StackReserveSize>0x00800000</ILINK_StackReserveSize>
+        <BCC_UserSuppliedOptions>-fopenmp</BCC_UserSuppliedOptions>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <TASM_Debugging>None</TASM_Debugging>
@@ -379,6 +382,12 @@
                 </DeployFile>
                 <DeployFile LocalName="Debug\Hogan004.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win64">
+                        <RemoteName>Hogan004.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="Debug\Hogan004.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win64x">
                         <RemoteName>Hogan004.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>

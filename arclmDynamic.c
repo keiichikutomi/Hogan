@@ -765,17 +765,21 @@ int arclmDynamic(struct arclmframe* af)
 		std::vector<Triplet> Ktriplet;/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
 		std::vector<Triplet> Ktriplet2;/*FOR STATIC TANGENTIAL STIFFNESS*/
 
-		SparseMatrix Kglobal((msize+csize), (msize+csize));
-		SparseMatrix Kglobal2((msize+csize), (msize+csize));
+		//Eigen::SparseMatrix<double,Eigen::ColMajor> Kglobal((msize+csize), (msize+csize));
+		//Eigen::SparseMatrix<double,Eigen::ColMajor> Kglobal2((msize+csize), (msize+csize));
+		Eigen::SparseMatrix<double,Eigen::RowMajor> Kglobal((msize+csize), (msize+csize));
+		Eigen::SparseMatrix<double,Eigen::RowMajor> Kglobal2((msize+csize), (msize+csize));
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
 		//Eigen::SimplicialLDLT<SparseMatrix> solver;
-		Eigen::SparseLU<SparseMatrix> solver;
+		//Eigen::SparseLU<SparseMatrix> solver;
 
 
-		//Eigen::BiCGSTAB<SparseMatrix> solver;
-		//solver.setTolerance(1e-9); // 許容誤差の設定
-		//solver.setMaxIterations(10000); // 最大反復回数
+		Eigen::BiCGSTAB<Eigen::SparseMatrix<double>> solver;
+		solver.setTolerance(1e-9); // 許容誤差の設定
+		solver.setMaxIterations(10000); // 最大反復回数
+
+		Eigen::setNbThreads(8);
 
 		for (i = 1; i <= (msize+csize); i++)/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
 		{
@@ -1035,7 +1039,7 @@ int arclmDynamic(struct arclmframe* af)
 		}
 
 		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
-		if ((gvctlen < tolerance || iteration > maxiteration-1) && iteration!=1)
+		if (((gvctlen < tolerance || iteration > maxiteration-1) && iteration!=1) || DIVFLAG == 1)
 		{
 			nlap += 1;
 			iteration = 0;
@@ -1052,7 +1056,9 @@ int arclmDynamic(struct arclmframe* af)
 			}
 			else if(DIVFLAG == 1)
 			{
+				time -= ddt;
 				ddt *= 0.1;
+				time += ddt;
 			}
 			else
 			{

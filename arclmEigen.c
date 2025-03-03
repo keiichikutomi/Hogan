@@ -13,7 +13,7 @@
 #include <vector>
 
 
-using SparseMatrix = Eigen::SparseMatrix<double,Eigen::ColMajor,int>;
+//using SparseMatrix = Eigen::SparseMatrix<double,Eigen::ColMajor,int>;
 using Vector = Eigen::VectorXd;
 using Triplet = Eigen::Triplet<double>;
 

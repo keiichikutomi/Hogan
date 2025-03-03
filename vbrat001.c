@@ -214,10 +214,10 @@ int vbrat001(struct arclmframe* af)
 	std::vector<Triplet> Ktriplet;
 	std::vector<Triplet> Mtriplet;
 
-	SparseMatrix Kglobal(msize, msize);
+	Eigen::SparseMatrix<double,Eigen::ColMajor> Kglobal(msize, msize);
 	/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 	//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
-	Eigen::SimplicialLDLT<SparseMatrix> solver;
+	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
 
   /***GLOBAL MATRIX***/
   kmtx=(struct gcomponent *)malloc(msize*sizeof(struct gcomponent));
