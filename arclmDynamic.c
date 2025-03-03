@@ -17,13 +17,12 @@ int arclmStatDyna(struct arclmframe* af)
 	targetload = 1e+10;
 	while(1)
 	{
-		("arclmStatic START.");
+		errormessage("arclmStatic START.");
 		ENDFLAG = arclmStatic(af);
 		if(af->loadfactor > targetload || ENDFLAG == 1)break;
-		("arclmDynamic START.");
+		errormessage("arclmDynamic START.");
 		ENDFLAG = arclmDynamic(af);
 		if(af->loadfactor > targetload || ENDFLAG == 1)break;
-
 	}
 	errormessage("arclmStatDyna END.");
 	return 0;
@@ -141,6 +140,7 @@ int arclmDynamic(struct arclmframe* af)
 	int UNLOADFLAG = 0;
 	int RELAXATION = 1;
 	int PEAKFLAG = 0;
+	int DIVFLAG = 0;
 
 	/*ANALYSIS TERMINATION*/
 	int ENDFLAG = 0;
@@ -1022,21 +1022,43 @@ int arclmDynamic(struct arclmframe* af)
 		constraintresidual = vectorlength(constraintvct,csize);
 		gvctlen = vectorlength(gvct,msize);
 
+		if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1e+10)
+		{
+			DIVFLAG = 1;
+			//ENDFLAG = 1;
+			sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
+			errormessage(string);
+		}
+		else
+		{
+			DIVFLAG = 0;
+		}
+
 		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
 		if ((gvctlen < tolerance || iteration > maxiteration-1) && iteration!=1)
 		{
-			nlap += 1;;
+			nlap += 1;
 			iteration = 0;
-			if(time>0.01 && (RELAXATION == 1 && lastWkt > Wkt))
+			if(RELAXATION == 1 && lastWkt > Wkt && time>0.01)
 			{
 				PEAKFLAG = 1;
-				//ddt = initialddt;
+				ddt = initialddt;
+				if(Wkt<0.01)
+				{
+					ENDFLAG = 1;
+					sprintf(string,"KINEMATIC ENERGY CONVERGED LAP: %4d ITER: %2d\n", nlap, iteration);
+				}
+				time += ddt;
+			}
+			else if(DIVFLAG == 1)
+			{
+				ddt *= 0.1;
 			}
 			else
 			{
-				//ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
+				ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
+				time += ddt;
 			}
-			time += ddt;
 
 			clearwindow(*(wdraw.childs+1));
 			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
@@ -1045,12 +1067,9 @@ int arclmDynamic(struct arclmframe* af)
 		iteration++;
 		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
-
 		free(lapddisp_m);
 
-
-
-		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
+		if (((outputmode == 0 && iteration == 1) || outputmode == 1) && DIVFLAG == 0)
 		{
 			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
 
@@ -1097,40 +1116,13 @@ int arclmDynamic(struct arclmframe* af)
 			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 		}
 
-		if(iteration==1)
-		{
-			if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1e+10)
-			{
-				ENDFLAG = 1;
-				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
-				errormessage(string);
-			}
-			if(PEAKFLAG==1 && Wkt<0.01)
-			{
-				ENDFLAG = 1;
-				sprintf(string,"KINEMATIC ENERGY CONVERGED LAP: %4d ITER: %2d\n", nlap, iteration);
-				errormessage(string);
-			}
-		}
+
 
 		if(iteration==1)
 		{
-			initialelem(elems,melem,nelem);    /*melem (LAST LAP DATA) UPDATE.*/
-			initialshell(shells,mshell,nshell);/*mshell(LAST LAP DATA) UPDATE.*/
-
-			lastloadfactor = loadfactor;
-			if(STATDYNAFLAG == 1)/*INITIAL FROM ARCLMFRAME*/
+			if(DIVFLAG == 1)/*TERMINATION AT LAST LAP*/
 			{
-				loadfactor = initialloadfactor + loadfactormap(time);
-			}
-			else
-			{
-				loadfactor = loadfactormap(time);
-			}
-
-
-			if(0)
-			{
+				loadfactor = lastloadfactor;
 				for (ii = 0; ii < msize; ii++)
 				{
 					*(lapddisp + ii) = 0.0;
@@ -1151,51 +1143,67 @@ int arclmDynamic(struct arclmframe* af)
 				}
 				Wkt = lastWkt;
 			}
-			if(PEAKFLAG == 1)
-			{
-				for (ii = 0; ii < msize; ii++)
-				{
-					*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-					*(lastddisp + ii) = *(ddisp + ii);
-
-					*(lastlastudd_m  + ii) = 0.0;
-
-					*(lastud_m  + ii) = 0.0;
-					*(lastudd_m + ii) = 0.0;
-
-					*(ud_m + ii)  = 0.0;
-					*(udd_m + ii) = 0.0;
-				}
-				for (ii = 0; ii < csize; ii++)
-				{
-					*(lastlambda + ii) = *(lambda + ii);
-				}
-				PEAKFLAG = 0;
-				lastWkt = 0.0;
-			}
 			else
 			{
-				for (ii = 0; ii < msize; ii++)
+				initialelem(elems,melem,nelem);    /*melem (LAST LAP DATA) UPDATE.*/
+				initialshell(shells,mshell,nshell);/*mshell(LAST LAP DATA) UPDATE.*/
+
+				lastloadfactor = loadfactor;
+				if(STATDYNAFLAG == 1)/*INITIAL FROM ARCLMFRAME*/
 				{
-					*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
-					*(lastddisp + ii) = *(ddisp + ii);
-
-					*(lastlastudd_m  + ii) = *(lastud_m  + ii);
-
-					*(lastud_m  + ii) = *(ud_m  + ii);
-					*(lastudd_m + ii) = *(udd_m + ii);
-
-					*(ud_m + ii)  =- (gamma / beta - 1.0) **(lastud_m + ii)
-								   - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + ii);
-					*(udd_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
-								   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
+					loadfactor = initialloadfactor + loadfactormap(time);
 				}
-				for (ii = 0; ii < csize; ii++)
+				else
 				{
-					*(lastlambda + ii) = *(lambda + ii);
+					loadfactor = loadfactormap(time);
 				}
-				lastWkt = Wkt;
-            }
+
+				if(PEAKFLAG == 1)
+				{
+					for (ii = 0; ii < msize; ii++)
+					{
+						*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+						*(lastddisp + ii) = *(ddisp + ii);
+
+						*(lastlastudd_m  + ii) = 0.0;
+
+						*(lastud_m  + ii) = 0.0;
+						*(lastudd_m + ii) = 0.0;
+
+						*(ud_m + ii)  = 0.0;
+						*(udd_m + ii) = 0.0;
+					}
+					for (ii = 0; ii < csize; ii++)
+					{
+						*(lastlambda + ii) = *(lambda + ii);
+					}
+					PEAKFLAG = 0;
+					lastWkt = 0.0;
+				}
+				else
+				{
+					for (ii = 0; ii < msize; ii++)
+					{
+						*(lapddisp  + ii) = 0.0;/*lapddisp : INCREMENTAL TRANSITION & ROTATION IN THIS LAP.*/
+						*(lastddisp + ii) = *(ddisp + ii);
+
+						*(lastlastudd_m  + ii) = *(lastud_m  + ii);
+
+						*(lastud_m  + ii) = *(ud_m  + ii);
+						*(lastudd_m + ii) = *(udd_m + ii);
+
+						*(ud_m + ii)  =- (gamma / beta - 1.0) **(lastud_m + ii)
+									   - (gamma / (2.0 * beta) - 1.0) * ddt **(lastudd_m + ii);
+						*(udd_m + ii) =- (1.0 / (beta * ddt)) **(lastud_m + ii)
+									   - (1.0 / (2.0 * beta) - 1.0) **(lastudd_m + ii);
+					}
+					for (ii = 0; ii < csize; ii++)
+					{
+						*(lastlambda + ii) = *(lambda + ii);
+					}
+					lastWkt = Wkt;
+				}
+			}
 
 			for(i = 0; i < msize; i++)
 			{
@@ -1383,9 +1391,9 @@ double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* la
 {
 	int i;
 	char string[100];
-	double eta_upper  = 0.06;
-	double eta_target = 0.05;
-	double eta_lower  = 0.04;
+	double eta_upper  = 0.006;
+	double eta_target = 0.005;
+	double eta_lower  = 0.004;
 	double eta, errornorm, dispnorm;
 	double* error, *disp;
 

@@ -213,6 +213,7 @@ int arclmStatic(struct arclmframe* af)
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
 	int USINGEIGENFLAG = 0;
+	int DIVFLAG = 0;
 
 	/*LAST LAP*/
 	double* lastddisp,* lastlambda;
@@ -642,7 +643,7 @@ int arclmStatic(struct arclmframe* af)
 	lastpivot = (double*)malloc(msize * sizeof(double));    /*PIVOT SIGN OF TANGENTIAL STIFFNESS.*/
 
 
-	if(inputfilename[0] != '\0' && targetlap!=NULL)
+	if(af->nlaps == NULL && inputfilename[0] != '\0' && targetlap!=NULL)
 	{
 	  errormessage("OUTPUT DATA READING...");
 	  inputdsp(af, inputfilename, targetlap, 1);
@@ -1508,6 +1509,18 @@ int arclmStatic(struct arclmframe* af)
 		constraintresidual = vectorlength(constraintvct,csize);
 		gvctlen = vectorlength(gvct,msize+csize);
 
+		if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1e+10)
+		{
+			DIVFLAG = 1;
+			ENDFLAG = 1;
+			sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
+			errormessage(string);
+		}
+		else
+		{
+			DIVFLAG = 0;
+		}
+
 		if ((residual < tolerance || iteration > maxiteration-1) && iteration != 1)
 		{
 			nlap++;
@@ -1517,12 +1530,11 @@ int arclmStatic(struct arclmframe* af)
 			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
 			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
 		}
-
 		iteration++;
 		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
 
 		/*OUTPUT.*/
-		if ((outputmode == 0 && iteration == 1) || outputmode == 1)
+		if (((outputmode == 0 && iteration == 1) || outputmode == 1) && DIVFLAG == 0)
 		{
 			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
 
@@ -1565,7 +1577,7 @@ int arclmStatic(struct arclmframe* af)
 			}
 			fprintf(fene, "%e %e %e %e\n", Wet, Wpt, Wkt, Wot);
 		}
-
+#if 0
 		/*TERMINATION FLAG*/
 		if (iteration == 1)
 		{
@@ -1584,26 +1596,18 @@ int arclmStatic(struct arclmframe* af)
 					}
 				}
 			}
-			if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1.0)
-			{
-				ENDFLAG = 1;
-				sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
-				errormessage(string);
-			}
-			if (0/*nlap>20 && loadfactor < 0.0*/)
+			if (nlap>20 && loadfactor < 0.0)
 			{
 				ENDFLAG = 1;
 				sprintf(string,"NEGATIVE LOAD DITECTED(LOADFACTOR = %8.5f). ANALYSIS TERMINATED.\n", loadfactor);
 				errormessage(string);
 			}
 		}
-
-
+#endif
 
 		if (iteration == 1)
 		{
-
-			if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1.0)/*TERMINATION AT LAST LAP*/
+			if (DIVFLAG == 1)/*TERMINATION AT LAST LAP*/
 			{
 				laploadfactor = 0.0;
 				loadfactor = lastloadfactor;
