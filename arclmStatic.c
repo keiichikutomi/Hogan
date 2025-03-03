@@ -455,7 +455,7 @@ int arclmStatic(struct arclmframe* af)
 	if (outputmode == 0)errormessage("OUTPUT CONVERGED RESULT\n");
 	if (outputmode == 1)errormessage("OUTPUT ALL RESULT\n");
 
-	Eigen::setNbThreads(16);
+	Eigen::setNbThreads(8);
 	//n = Eigen::nbThreads( );
 	//sprintf(string, "%d THREADS USING.\n", n);
 	//errormessage(string);
@@ -818,7 +818,8 @@ int arclmStatic(struct arclmframe* af)
 		//Eigen::SimplicialLDLT<SparseMatrix> solver;
 		//Eigen::SparseLU<SparseMatrix> solver;
 
-		Eigen::BiCGSTAB<Eigen::SparseMatrix<double>,Eigen::IncompleteLUT<double>> solver;
+		Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper, Eigen::DiagonalPreconditioner<double>> solver;
+		//Eigen::BiCGSTAB<Eigen::SparseMatrix<double>,Eigen::IncompleteLUT<double>> solver;
 		solver.setTolerance(1e-9);
 		solver.setMaxIterations(10000);
 
@@ -842,8 +843,8 @@ int arclmStatic(struct arclmframe* af)
 		/*STIFFNESS ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
 		{
-		  assemelemEigen(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp);
-		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp);
+		  assemelemEigen(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 1);
+		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 1);
 
 		  /*GLOBAL MATRIX USING EIGEN*/
 		  modifytriplet(Ktriplet,confs,msize);

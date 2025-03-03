@@ -16,7 +16,8 @@
 */
 void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,struct oconf* confs,
 					std::vector<Triplet>& Mtriplet,std::vector<Triplet>& Ktriplet,
-					double* iform, double* ddisp)
+					double* iform, double* ddisp,
+					int SYMFLAG)
 {
 	struct owire elem;
 	int i,j,ii,jj;
@@ -86,7 +87,12 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		einternal = matrixvector(Ke, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
 
 		Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
-		//symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+
+		if(SYMFLAG==1)
+		{
+		  symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+		}
+
 		//assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 		assemtripletelem(Ktriplet, Kt, &elem, constraintmain, confs);
 
@@ -136,7 +142,8 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 
 void assemshellEigen(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,struct oconf* confs,
 					 std::vector<Triplet>& Mtriplet,std::vector<Triplet>& Ktriplet,
-					 double* iform, double* ddisp)
+					 double* iform, double* ddisp,
+					 int SYMFLAG)
 {
 	char str[500];
 	struct oshell shell;
@@ -216,7 +223,10 @@ void assemshellEigen(struct oshell* shells, struct memoryshell* mshell, int nshe
 				*(*(Kt + ii) + jj) += *(*(Kp + ii) + jj);/*[Kt]=[Ke]+[Kg]*/
 			}
 		}
-		//symmetricmtx(Kt, 6 * nnod);											   /*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+		if(SYMFLAG==1)
+		{
+		  symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+		}
 		//assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 		assemtripletshell(Ktriplet, Kt, &shell, constraintmain, confs);
 
@@ -257,7 +267,7 @@ void assemelemEigen_DYNA(struct owire* elems, struct memoryelem* melem, int nele
 						 std::vector<Triplet>& Ktriplet,std::vector<Triplet>& Ktriplet2,
 						 double* iform, double* lastddisp, double* ddisp,
 						 double* ud_m, double* udd_m,
-						 double alpham, double alphaf, double xi, double beta, double ddt)
+						 double alpham, double alphaf, double xi, double beta, double ddt, int SYMFLAG)
 {
 	char str[500];
 	struct owire elem;
@@ -381,7 +391,10 @@ void assemelemEigen_DYNA(struct owire* elems, struct memoryelem* melem, int nele
 		Keff = assemtmtxCR_DYNA(Kint,
 								ginertial, M, R, lastRt, lapH,
 								alpham, beta, ddt, nnod);
-		//symmetricmtx(Keff, 6*nnod);
+		if(SYMFLAG==1)
+		{
+		  symmetricmtx(Keff, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+		}
 		//assemgstiffnesswithDOFelimination(gmtx, Keff, &elem, constraintmain);
 		assemtripletelem(Ktriplet, Keff, &elem, constraintmain, confs);
 
@@ -459,7 +472,7 @@ void assemshellEigen_DYNA(struct oshell* shells, struct memoryshell* mshell, int
 						  std::vector<Triplet>& Ktriplet,std::vector<Triplet>& Ktriplet2,
 						  double* iform, double* lastddisp, double* ddisp,
 						  double* ud_m, double* udd_m,
-						  double alpham, double alphaf, double xi, double beta, double ddt)
+						  double alpham, double alphaf, double xi, double beta, double ddt, int SYMFLAG)
 {
 	char str[500];
 	struct oshell shell;
@@ -580,7 +593,10 @@ void assemshellEigen_DYNA(struct oshell* shells, struct memoryshell* mshell, int
 		Keff = assemtmtxCR_DYNA(Kint,
 								ginertial, M, R, lastRt, lapH,
 								alpham, beta, ddt, nnod);
-		//symmetricmtx(Keff, 6*nnod);
+		if(SYMFLAG==1)
+		{
+		  symmetricmtx(Keff, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+		}
 		//assemgstiffnessIIwithDOFelimination(gmtx, Keff, &shell, constraintmain);
 		assemtripletshell(Ktriplet, Keff, &shell, constraintmain, confs);
 

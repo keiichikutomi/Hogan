@@ -814,7 +814,7 @@ int arclmDynamic(struct arclmframe* af)
 							   Ktriplet,Ktriplet2,
 							   iform, lastddisp, ddisp,
 							   ud_m, udd_m,
-							   alpham, alphaf, xi, beta, ddt);
+							   alpham, alphaf, xi, beta, ddt, 0);
 		  //assemconstraintEigen_DYNA;
 		  /*GLOBAL MATRIX USING EIGEN*/
 		  modifytriplet(Ktriplet,confs,msize);
