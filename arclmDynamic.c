@@ -100,7 +100,7 @@ int arclmDynamic(struct arclmframe* af)
 	double constraintresidual = 0.0;
 	double gvctlen = 0.0;
 
-	double ddt = 0.0001;/*TIME INCREMENT[sec]*/
+	double ddt = 0.01;/*TIME INCREMENT[sec]*/
 	double initialddt = ddt;
 	double time = 0.0;/*TOTAL TIME[sec]*/
 
@@ -770,16 +770,17 @@ int arclmDynamic(struct arclmframe* af)
 		Eigen::SparseMatrix<double,Eigen::RowMajor> Kglobal((msize+csize), (msize+csize));
 		Eigen::SparseMatrix<double,Eigen::RowMajor> Kglobal2((msize+csize), (msize+csize));
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
-		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
-		//Eigen::SimplicialLDLT<SparseMatrix> solver;
-		//Eigen::SparseLU<SparseMatrix> solver;
+		//Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
+		//Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+		Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
 
-
+		/*
 		Eigen::BiCGSTAB<Eigen::SparseMatrix<double>> solver;
 		solver.setTolerance(1e-9); // 許容誤差の設定
 		solver.setMaxIterations(10000); // 最大反復回数
 
 		Eigen::setNbThreads(8);
+		*/
 
 		for (i = 1; i <= (msize+csize); i++)/*FOR DYNAMIC TANGENTIAL STIFFNESS*/
 		{
@@ -1026,7 +1027,7 @@ int arclmDynamic(struct arclmframe* af)
 		constraintresidual = vectorlength(constraintvct,csize);
 		gvctlen = vectorlength(gvct,msize);
 
-		if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1e+10)
+		if (!isfinite(sign) || sign > 3 || !isfinite(residual) || residual > 1e+10)
 		{
 			DIVFLAG = 1;
 			//ENDFLAG = 1;

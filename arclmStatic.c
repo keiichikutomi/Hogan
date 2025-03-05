@@ -212,7 +212,7 @@ int arclmStatic(struct arclmframe* af)
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
-	int USINGEIGENFLAG = 1;
+	int USINGEIGENFLAG = 0;
 	int DIVFLAG = 0;
 
 	/*LAST LAP*/
@@ -1520,26 +1520,35 @@ int arclmStatic(struct arclmframe* af)
 		constraintresidual = vectorlength(constraintvct,csize);
 		gvctlen = vectorlength(gvct,msize+csize);
 
-		if (!isfinite(sign) || sign > 20 || !isfinite(residual) || residual > 1e+10)
+		if (!isfinite(sign) || sign > 3 || !isfinite(residual) || residual > 1e+10)
 		{
+			nlap++;
+			iteration = 0;
 			DIVFLAG = 1;
 			ENDFLAG = 1;
 			sprintf(string,"DIVERGENCE DITECTED(SIGN = %f). ANALYSIS TERMINATED.\n", sign);
 			errormessage(string);
+			clearwindow(*(wdraw.childs+1));
+			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+			overlayhdc(*(wdraw.childs + 1), SRCPAINT);
+
 		}
 		else
 		{
 			DIVFLAG = 0;
-		}
-
-		if ((residual < tolerance || iteration > maxiteration-1) && iteration != 1)
-		{
-			nlap++;
-			iteration = 0;
-
-			clearwindow(*(wdraw.childs+1));
-			drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-			overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+			if ((residual < tolerance || iteration > maxiteration-1) && iteration != 1)
+			{
+				nlap++;
+				iteration = 0;
+				if(residual>1.0)
+				{
+				  DIVFLAG=1;
+				  ENDFLAG=1;
+				}
+				clearwindow(*(wdraw.childs+1));
+				drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
+				overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+			}
 		}
 		iteration++;
 		setincrement((wmenu.childs+2)->hwnd,laps,nlap,maxiteration,iteration);
