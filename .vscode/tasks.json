@@ -1,0 +1,149 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile Hogan004.cpp",
+            "type": "shell",
+            "command": "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\bin64\\bcc64x.exe",
+            "args": [
+                // プリプロセッサ定義
+                "-cc1","-D", "FRAMEWORK_VCL",
+                // 出力設定
+                "-output-dir", "C:\\Users\\keiic\\Desktop\\Hogan\\Data",
+                // インクルードパス
+                "-I", "C:\\Users\\Keiic\\Desktop\\Hogan",
+                "-I", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\windows\\vcl",
+                "-I", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\x86_64-w64-mingw32",
+                "-isystem", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include",
+                "-isystem", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\x86_64-w64-mingw32\\c++\\v1",
+                "-isystem", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\lib\\clang\\15.0.7\\include",
+                "-isystem", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\windows\\sdk",
+                "-isystem", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\windows\\rtl",
+                "-isystem", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\windows\\fmx",
+                "-isystem", "C:\\Users\\Public\\Documents\\Embarcadero\\Studio\\23.0\\hpp\\Win64x",
+                "-isystem", "C:\\Users\\Keiic\\spectrA\\include",
+                "-isystem", "C:\\Users\\Keiic\\Eigen3",
+                
+                // デバッグ関連オプション
+                "-debug-info-kind=standalone",
+                "-gno-column-info",
+                "-gcodeview",
+                "-fcxx-exceptions",
+                "-fborland-extensions",
+                "-fdiagnostics-format", "borland",
+                "-nobuiltininc",
+                "-nostdsysteminc",
+                
+                // コード生成オプション
+                "-mframe-pointer=none",
+                "--mrelax-relocations",
+                "-clear-ast-before-backend",
+                "-ffp-contract=on",
+                "-fno-rounding-math",
+                "-mlong-double-64",
+                "-fgnuc-version=4.2.1",
+                "-mms-bitfields",
+                "-mrelax-all",
+                
+                "-triple", "x86_64-w64-windows-gnu",
+                "-emit-obj",
+                "-pic-level", "2",
+                "-target-cpu", "x86-64",
+                "-tune-cpu", "generic",
+                "-fexceptions",
+                "-exception-model=seh",
+                "-funwind-tables=2",
+                "-fno-spell-checking",
+                "-fno-use-cxa-atexit",
+                
+            
+                "-main-file-name Hogan004.cpp", 
+                "-x c++", "-std=c++17", "-O0", 
+                "-fmath-errno","-tM","-tW",
+                "-o", "C:\\Users\\keiic\\Desktop\\Hogan\\Data\\Hogan004.o",
+                "-dependency-file", "C:\\Users\\keiic\\Desktop\\Hogan\\Data\\Hogan004.d",
+                "-MT C:\\Users\\keiic\\Desktop\\Hogan\\Data\\Hogan004.o", 
+                "-sys-header-deps -w -fopenmp Hogan004.cpp" 
+            ],
+            "options": {
+                "cwd": "C:\\Users\\keiic\\Desktop\\Hogan"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Link Hogan004.exe",
+            "type": "shell",
+            "command": "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\bin64\\ld.lld.exe",
+            "args": [
+                // リンカ基本オプション
+                "-m", "i386pep",
+                "--subsystem", "windows",
+                "--Bstatic",
+                "--allow-multiple-definition",
+                "-pdb", "C:\\Users\\keiic\\Desktop\\Hogan\\Debug\\Hogan004.pdb",
+                
+                // ライブラリパス
+                "-L", "C:\\Users\\keiic\\Desktop\\Hogan\\Data",
+                "-L", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\lib\\Win64x\\release\\JA",
+                "-L", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\lib\\Win64x\\debug",
+                "-L", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\x86_64-w64-mingw32\\lib",
+                "-L", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\lib\\Win64x\\release",
+                "-L", "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\lib\\clang\\15.0.7\\lib\\windows",
+                "-L", "C:\\Users\\Public\\Documents\\Embarcadero\\Studio\\23.0\\Dcp\\Win64x",
+                "-L", "C:\\Users\\Keiic\\spectrA\\include\\Spectra",
+                "-L", "C:\\Users\\Keiic\\Eigen3\\Eigen",
+                "-L", "C:\\Users\\Keiic\\Eigen3\\Eigen/src",
+                "-L", "C:\\Users\\Public\\Documents\\Embarcadero\\Studio\\23.0\\DCP\\Win64x\\Debug",
+                
+                // リンカスクリプト
+                "@C:\\Users\\keiic\\Desktop\\Hogan\\Debug\\Hogan004Start.lnk",
+                "@C:\\Users\\keiic\\Desktop\\Hogan\\Debug\\Hogan004.lnk",
+                
+                // 標準ライブラリ
+                "-lmoldname",
+                "-lucrt",
+                "-lmingw32",
+                "-lmingwex",
+                "-l", "c++",
+                "-lunwind",
+                "-lmingwthrd",
+                "-l:vcl.lib",
+                "-l:rtl.lib",
+                "-l:import64.lib",
+                
+                // ランタイムライブラリ
+                "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\lib\\clang\\15.0.7\\lib\\windows\\libclang_rt.builtins-x86_64.a",
+                "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\x86_64-w64-mingw32\\lib\\crtend.o",
+                
+                // 出力ファイル
+                "-o", "C:\\Users\\keiic\\Desktop\\Hogan\\Debug\\Hogan004.exe",
+                "/map:C:\\Users\\keiic\\Desktop\\Hogan\\Debug\\Hogan004.map",
+                "--Wno-multiple-definition",
+                
+                // リソースファイル
+                "C:\\Users\\keiic\\Desktop\\Hogan\\Data\\CANBMP.res",
+                "C:\\Users\\keiic\\Desktop\\Hogan\\Data\\CanCur.res",
+                "C:\\Users\\keiic\\Desktop\\Hogan\\Data\\CanDlg.res",
+                "C:\\Users\\keiic\\Desktop\\Hogan\\Data\\CanIco.res",
+                "C:\\Users\\keiic\\Desktop\\Hogan\\Data\\CanMenu.res",
+                "C:\\Users\\keiic\\Desktop\\Hogan\\Data\\Hogan004.res"
+            ],
+            "options": {
+                "cwd": "C:\\Users\\keiic\\Desktop\\Hogan"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Hogan004",
+            "dependsOn": [
+                "Compile Hogan004.cpp",
+                "Link Hogan004.exe"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

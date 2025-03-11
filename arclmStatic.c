@@ -212,7 +212,7 @@ int arclmStatic(struct arclmframe* af)
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
-	int USINGEIGENFLAG = 0;
+	int USINGEIGENFLAG = 1;
 	int DIVFLAG = 0;
 
 	/*LAST LAP*/
@@ -815,13 +815,13 @@ int arclmStatic(struct arclmframe* af)
 
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
-		//Eigen::SimplicialLDLT<SparseMatrix> solver;
-		//Eigen::SparseLU<SparseMatrix> solver;
+		Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+		//Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
 
-		Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper, Eigen::DiagonalPreconditioner<double>> solver;
+		//Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper, Eigen::DiagonalPreconditioner<double>> solver;
 		//Eigen::BiCGSTAB<Eigen::SparseMatrix<double>,Eigen::IncompleteLUT<double>> solver;
-		solver.setTolerance(1e-9);
-		solver.setMaxIterations(10000);
+		//solver.setTolerance(1e-5);
+		//solver.setMaxIterations(10000);
 
 
 
@@ -881,7 +881,7 @@ int arclmStatic(struct arclmframe* af)
 		{
 			solver.compute(Kglobal);
 
-			/*
+#if 1
 			Eigen::VectorXd D = solver.vectorD();
 			determinant= 0.0;
 			sign = 0;
@@ -892,9 +892,10 @@ int arclmStatic(struct arclmframe* af)
 				if(D(i)<0.0) sign += 1;
 				determinant += log10(fabs(D(i)));
 			  }
-			}
-			*/
 
+
+			}
+#endif
 			if (solver.info() != Eigen::Success)sign=-1;
 		}
 		else
@@ -1540,7 +1541,7 @@ int arclmStatic(struct arclmframe* af)
 			{
 				nlap++;
 				iteration = 0;
-				if(residual>1.0)
+				if(residual>1e+2)
 				{
 				  DIVFLAG=1;
 				  ENDFLAG=1;

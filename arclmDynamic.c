@@ -1440,6 +1440,8 @@ double timestepcontrol(double ddt, double* lapddisp_m, double* udd_m, double* la
 	  ddt *= sqrt(eta_target/eta);
 	}
 
+	if(ddt<1.0e-4)ddt=1.0e-4;
+
 	free(error);
 	free(disp);
 

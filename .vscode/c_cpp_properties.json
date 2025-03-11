@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:\\Users\\Keiic\\Documents\\Eigen3\\Eigen",
+                "C:\\Users\\Keiic\\Documents\\Eigen3\\Eigen\\src",
+                "C:\\Users\\Keiic\\Documents\\spectrA\\include\\Spectra",
+                "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\windows\\vcl",
+                "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\windows\\rtl",
+                "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\windows\\fmx",
+                "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\windows\\sdk",
+                "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\include\\x86_64-w64-mingw32",
+                "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\lib\\clang\\15.0.7\\include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "FRAMEWORK_VCL"
+            ],
+            "compilerPath": "C:\\Program Files (x86)\\Embarcadero\\Studio\\23.0\\bin64\\bcc64x.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-clang-x64"
+        }
+    ],
+    "version": 4
+}
