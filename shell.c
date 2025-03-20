@@ -2084,12 +2084,25 @@ double*** shellCconsistent(struct oshell shell)
   {
 	if(shell.gp[ii].ngp2==0)
 	{
-		*(consistentC+ii) = shellCconsistentilyushin(shell, ii);
-
+		if(shell.sect->yieldinit != 0.0)
+		{
+			*(consistentC+ii) = shellCconsistentilyushin(shell, ii);
+		}
+		else
+		{
+			*(consistentC+ii) = shellC(shell);
+		}
 	}
 	else
 	{
-		*(consistentC+ii) = shellCconsistentmises(shell, ii);
+		if(shell.sect->yieldinit != 0.0)
+		{
+			*(consistentC+ii) = shellCconsistentmises(shell, ii);
+		}
+		else
+		{
+			*(consistentC+ii) = shellC(shell);
+		}
 	}
   }
   return consistentC;
@@ -2992,7 +3005,10 @@ void assemshellestress(struct oshell* shell)
 		free(gpstrain);
 
 		/*RETURN-MAPPING & UPDATE*/
-		if(shell->sect->yieldinit != 0.0)returnmapilyushin(shell, ii);
+		if(shell->sect->yieldinit != 0.0)
+		{
+			returnmapilyushin(shell, ii);
+		}
 
 		/*
 		(shell->gp[ii]).Ee = 0.0;
@@ -3041,7 +3057,10 @@ void assemshellestress(struct oshell* shell)
 			free(gpstrain);
 
 			/*RETURN-MAPPING & UPDATE*/
-			if(shell->sect->yieldinit != 0.0)returnmapmises(shell, ii, jj);
+			if(shell->sect->yieldinit != 0.0)
+			{
+				returnmapmises(shell, ii, jj);
+			}
 
 			/*
 			(shell->gp[ii]).gp2[jj].Ee = 0.0;

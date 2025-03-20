@@ -17467,6 +17467,41 @@ int forwardbackwardII(struct gcomponent *gmtx,
 }/* forwardbackwardII */
 /***/
 
+int backward(struct gcomponent *gmtx,
+			 double *gvct, struct oconf *confs,
+			 long int msize, long int csize,
+			 struct gcomponent *gcomp1)
+{
+  double data1;
+  long int i,j,k;
+
+
+  for(j=msize+csize;j>=1;j--)                                 /*BACKWARD.*/
+  {
+	if((j<=msize && (confs+j-1)->iconf==0) || j>msize) /*FREE*/
+	{
+	  data1=*(gvct+j-1);
+	  gcomp1=(gmtx+(j-1)); /*DIAGONAL.*/
+	  //data1/=gcomp1->value; /*DIAGONAL.*/
+
+	  while(gcomp1->down!=NULL) /*DOWNWARD.*/
+	  {
+		gcomp1=gcomp1->down;
+        i=gcomp1->m;
+
+		if((i<=msize && (confs+i-1)->iconf==0) || i>msize) /*FREE*/
+		{
+          data1-=gcomp1->value*(*(gvct+i-1));
+		}
+      }
+	  *(gvct+j-1)=data1;
+	}
+	//currentpivot((j-1),msize);
+  }
+
+  return 1;
+}/*backward*/
+
 int croutludecomposition(struct gcomponent *gmtx,
 						 double *gvct,struct oconf *confs,
 						 long int msize,
@@ -20450,11 +20485,7 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		}
 	}
 
-
-
-
-
-	for(ii=0;ii<(af->shells+i-1)->ngp;ii++)
+	for(ii=0;ii<(af->shells+i-1)->nnod;ii++)
 	{
 	  for(jj=0;jj<6;jj++)
 	  {
