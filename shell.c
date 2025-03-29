@@ -1785,7 +1785,7 @@ double mises(struct oshell* shell, int ii, int jj, double lambda, int UPDATEFLAG
   /*[O]*/
   for (i = 0; i < 3; i++)
   {
-	O[i] = 1.0 + 2.0*lambda*v[i]*p[i];
+	O[i] = 1.0 + 2.0*lambda*v[i]*p[i]/pow(yinit,2);
   }
   /*Oinv:[O]^-1*/
   for (i = 0; i < 3; i++)
@@ -1805,12 +1805,12 @@ double mises(struct oshell* shell, int ii, int jj, double lambda, int UPDATEFLAG
   *(ostress+2) = Oinv[2]**(qstress+2);
 
   /*f={σtry}^T[W]^T[A][W]{σtry}*/
-  f = (p[0]**(ostress+0)**(ostress+0) + p[1]**(ostress+1)**(ostress+1) + p[2]**(ostress+2)**(ostress+2));
+  f = (p[0]**(ostress+0)**(ostress+0) + p[1]**(ostress+1)**(ostress+1) + p[2]**(ostress+2)**(ostress+2))/pow(yinit,2);
 
-  alpha = gp2->alpha + 2.0*lambda*sqrt(f) ;
+  alpha = gp2->alpha + 2.0*lambda*sqrt(f)/pow(yinit,2) ;
   y = yieldstress(shell->sect,alpha,NULL,NULL);
 
-  f -= pow(y,2.0);
+  f -= pow(pow(y/yinit,2),2.0);
 
   if(UPDATEFLAG == 1)/*UPDATE PARAMS*/
   {
@@ -1828,9 +1828,9 @@ double mises(struct oshell* shell, int ii, int jj, double lambda, int UPDATEFLAG
 	  gp2->lambda = lambda;
 
 	  /*df/dσ*/
-	  a[0] = 2.0 * gp2->stress[0] - gp2->stress[1];
-	  a[1] = 2.0 * gp2->stress[1] - gp2->stress[0];
-	  a[2] = 6.0 * gp2->stress[2];
+	  a[0] = (2.0 * gp2->stress[0] - gp2->stress[1])/pow(yinit,2);
+	  a[1] = (2.0 * gp2->stress[1] - gp2->stress[0])/pow(yinit,2);
+	  a[2] =  6.0 * gp2->stress[2]/pow(yinit,2);
 
 	  /*dλ*df/dσ*/
 	  for (i = 0; i < 3; i++)
@@ -2182,7 +2182,7 @@ double** shellCconsistentmises(struct oshell shell, int ii)
 	  /*[O]*/
 	  for (i = 0; i < 3; i++)
 	  {
-		O[i] = 1.0 + 2.0*(gp2->lambda)*v[i]*p[i];
+		O[i] = 1.0 + 2.0*(gp2->lambda)*v[i]*p[i]/pow(yinit,2);
 	  }
 	  /*Oinv:[O]^-1*/
 	  for (i = 0; i < 3; i++)
@@ -2203,9 +2203,9 @@ double** shellCconsistentmises(struct oshell shell, int ii)
 	　H = matrixmatrix(W,C,3);
 
 	  /*{df/dσ}={d(σAσ)/dσ}=2[A]{σ}={g}*/
-	  a[0] = 2.0 * gp2->stress[0] - gp2->stress[1];
-	  a[1] = 2.0 * gp2->stress[1] - gp2->stress[0];
-	  a[2] = 6.0 * gp2->stress[2];
+	  a[0] = (2.0 * gp2->stress[0] - gp2->stress[1])/pow(yinit,2);
+	  a[1] = (2.0 * gp2->stress[1] - gp2->stress[0])/pow(yinit,2);
+	  a[2] =  6.0 * gp2->stress[2]/pow(yinit,2);
 
 	  *(g+0) = a[0];
 	  *(g+1) = a[1];
@@ -2216,8 +2216,8 @@ double** shellCconsistentmises(struct oshell shell, int ii)
 	  y = yieldstress(shell.sect, gp2->alpha, &dy, &ddy);
 	  if(dy!=0)
 	  {
-		Halpha = 1.0/(dy-(gp2->lambda)*2.0*dy*dy);
-		galpha = -2.0*y*dy;
+		Halpha = 1.0/(dy-(gp2->lambda)*2.0*(dy*dy+y*ddy)/pow(yinit,2.0));
+		galpha = -2.0*y*dy/pow(yinit,2.0);
 
 		beta = Halpha*pow(galpha,2.0);
 	  }
@@ -2547,24 +2547,24 @@ void returnmapmises(struct oshell* shell, int ii, int jj)
    int iteration;
    int maxiteration=20;
    int FLAG=0;
-   int OUTPUTFLAG=1;
+   int OUTPUTFLAG=0;
 
-   if(OUTPUTFLAG==1)
-   {
-	   sprintf(str,"\nSHELL ID:%d INTEGRATION PT:%d-%d\n",shell->code,ii,jj);
-	   dbgstr(str);
-   }
+
 
    lambda = 0.0;
    f=mises(shell, ii, jj, lambda, NULL);/*MISES YIELD FUNCTION.{σ-α}^T[A]{σ-α}*/
-   if(OUTPUTFLAG==1)
-   {
-	  sprintf(str,"%e %e\n",lambda,f);
-	  dbgstr(str);
-   }
+
 
    if(f>0)/*RETURN-MAPPING PROCEDURE USING NEWTON-RAPTHON METHOD FOR MISES YIELD CONDITION.*/
    {
+	   if(OUTPUTFLAG==1)
+	   {
+		   sprintf(str,"\nSHELL ID:%d INTEGRATION PT:%d-%d\n",shell->code,ii,jj);
+		   dbgstr(str);
+		   sprintf(str,"%e %e\n",lambda,f);
+		   dbgstr(str);
+	   }
+
 	   /*YIELD SURFACE IS ACTIVE.*//*f=0 && lambda>0*/
 	   residual=1.0;
 	   iteration=1;
@@ -2603,15 +2603,16 @@ void returnmapmises(struct oshell* shell, int ii, int jj)
 		 errormessage("RETURN-MAPPING FAILED.");
 		 lambda=0.0;
 	   }
+	   if(OUTPUTFLAG==1)
+	   {
+		   sprintf(str,"CONVERGED:\n%e %e\n",lambda,f);
+		   dbgstr(str);
+	   }
 
    }
    f=mises(shell, ii, jj, lambda, 1);/*OUTPUT TO OSHELL.*/
 
-   if(OUTPUTFLAG==1)
-   {
-	   sprintf(str,"CONVERGED:\n%e %e\n",lambda,f);
-	   dbgstr(str);
-   }
+
    return;
 }
 
@@ -2860,13 +2861,8 @@ void returnmapilyushin(struct oshell* shell, int ii)
 	   *(f1 + 1) = *(f + 1);
 
 
-	   if(FLAG==3)
-	   {
-		 errormessage("RETURN-MAPPING FAILED./n");
-		 *(lambda + 0) = 0.0;
-		 *(lambda + 1) = 0.0;
-       }
-	   else if( *(lambda01 + 0) > 0.0 && *(lambda01 + 1) > 0.0 && *(f01 + 0) <  tolerance && *(f01 + 1) <  tolerance)
+
+	   if( *(lambda01 + 0) > 0.0 && *(lambda01 + 1) > 0.0 && *(f01 + 0) <  tolerance && *(f01 + 1) <  tolerance)
 	   {
 		 *(lambda + 0) = *(lambda01 + 0);
 		 *(lambda + 1) = *(lambda01 + 1);
@@ -2880,6 +2876,14 @@ void returnmapilyushin(struct oshell* shell, int ii)
 	   {
 		 *(lambda + 0) = *(lambda1 + 0);
 		 *(lambda + 1) = *(lambda1 + 1);
+	   }
+	   else
+	   {
+		 //sprintf(str,"\nSHELL ID:%d INTEGRATION PT:%d\n",shell->code,ii);
+		 //dbgstr(str);
+
+		 *(lambda + 0) = 0.0;
+		 *(lambda + 1) = 0.0;
 	   }
 
    }

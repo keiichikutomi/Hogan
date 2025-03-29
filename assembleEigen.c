@@ -66,8 +66,8 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
 
 		Ke = assememtx(elem);
-		Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
-
+		//Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
+		dbgmtx(Ke,12,12,NULL);
 		/*DEFORMED CONFIDURATION*/
 		for (ii = 0; ii < nnod; ii++)
 		{
@@ -80,9 +80,9 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		edisp = extractdeformation(eforminit, eform, nnod);                	/*{Ue}*/
 
 		T = transmatrixIII(drccos, nnod);									/*[T].*/
-		//Tt = matrixtranspose(T, 6 * nnod);                    				/*[Tt].*/
 		HPT = transmatrixHPT(eform, edisp, T, nnod);
-		//TtPtHt = matrixtranspose(HPT, 6 * nnod);
+		dbgmtx(T,12,12,NULL);
+		dbgmtx(HPT,12,12,NULL);
 
 		einternal = matrixvector(Ke, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
 
@@ -93,8 +93,14 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		  symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		}
 
+		dbgmtx(Ke,12,12,NULL);
+		dbgmtx(Kt,12,12,NULL);
+
 		//assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 		assemtripletelem(Ktriplet, Kt, &elem, constraintmain, confs);
+
+		freematrix(Ke, 6 * nnod);
+		freematrix(Kt, 6 * nnod);
 
 		free(loffset);
 		free(eforminit);
@@ -104,20 +110,12 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		free(edisp);
 
 		free(einternal);
-		//free(ginternal);
 
 		freematrix(drccosinit, 3);
-
 		freematrix(drccos, 3);
 		freematrix(T, 6 * nnod);
-		freematrix(Tt, 6 * nnod);
 		freematrix(HPT, 6 * nnod);
-		freematrix(TtPtHt, 6 * nnod);
 
-		//freematrix(M, 6 * nnod);
-		freematrix(Ke, 6 * nnod);
-		//freematrix(Kp, 6 * nnod);
-		freematrix(Kt, 6 * nnod);
 
 	}
 	return;

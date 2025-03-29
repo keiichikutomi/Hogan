@@ -1,6 +1,5 @@
 
 
-
 /*
 ##########################################################################################################################################
 ######    ########        ####        ##            ##      ##########                  ##      ######            ##      ##########
@@ -29,12 +28,11 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 	double* gform, * eform, * edisp;
 
 	double* ginternal, * einternal;
-	//double* gexternal, * eexternal;
 
 	double** drccosinit;
-	double** drccos, ** T, ** Tt, **HPT, **TtPtHt;
+	double** drccos, ** T, **HPT;
 
-	double** M,** Ke,** Kp,** Kt;
+	double** Ke,** Kt;
 
 
 
@@ -67,7 +65,7 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
 
 		Ke = assememtx(elem);
-		Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
+		//Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
 
 		/*DEFORMED CONFIDURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -80,10 +78,8 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 
 		edisp = extractdeformation(eforminit, eform, nnod);                	/*{Ue}*/
 
-		T = transmatrixIII(drccos, nnod);									/*[T].*/
-		//Tt = matrixtranspose(T, 6 * nnod);                    				/*[Tt].*/
+		T = transmatrixIII(drccos, nnod);
 		HPT = transmatrixHPT(eform, edisp, T, nnod);
-		//TtPtHt = matrixtranspose(HPT, 6 * nnod);
 
 		einternal = matrixvector(Ke, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
 
@@ -101,24 +97,21 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 		free(edisp);
 
 		free(einternal);
-		//free(ginternal);
 
 		freematrix(drccosinit, 3);
-
 		freematrix(drccos, 3);
 		freematrix(T, 6 * nnod);
-		freematrix(Tt, 6 * nnod);
 		freematrix(HPT, 6 * nnod);
-		freematrix(TtPtHt, 6 * nnod);
-
-		//freematrix(M, 6 * nnod);
 		freematrix(Ke, 6 * nnod);
-		//freematrix(Kp, 6 * nnod);
 		freematrix(Kt, 6 * nnod);
 
 	}
 	return;
 }
+
+
+
+
 
 /*
 ############################################################################################################################################
@@ -183,7 +176,7 @@ void elemstress(struct owire* elems, struct memoryelem* melem, int nelem, long i
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
 
 		Ke = assememtx(elem);
-		Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
+		//Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
 
 		/*DEFORMED CONFIDURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -223,17 +216,13 @@ void elemstress(struct owire* elems, struct memoryelem* melem, int nelem, long i
 		free(ginternal);
 
 		freematrix(drccosinit, 3);
-
 		freematrix(drccos, 3);
 		freematrix(T, 6 * nnod);
 		freematrix(Tt, 6 * nnod);
 		freematrix(HPT, 6 * nnod);
 		freematrix(TtPtHt, 6 * nnod);
 
-		//freematrix(M, 6 * nnod);
 		freematrix(Ke, 6 * nnod);
-		//freematrix(Kp, 6 * nnod);
-		//freematrix(Kt, 6 * nnod);
 	}
 	return;
 }

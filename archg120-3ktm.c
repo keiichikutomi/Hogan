@@ -20403,7 +20403,6 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 	  ((af->shells+i-1)->gp[ii]).alpha=0.0;
 
 	  ((af->shells+i-1)->gp[ii]).ngp2=0;
-	  //((af->shells+i-1)->gp[ii]).ngp2=2;
 	  //((af->shells+i-1)->gp[ii]).ngp2=5;
 
 	  for(jj=0;jj<((af->shells+i-1)->gp[ii]).ngp2;jj++)

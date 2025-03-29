@@ -448,10 +448,6 @@ int arclmDynamic(struct arclmframe* af)
 	free(af->shells);
 	free(af->confs);
 	free(af->constraintmain);
-	//free(af->iform);
-	//free(af->ddisp);
-	//free(af->melem);
-	//free(af->mshell);
 
 	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
 	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
@@ -461,10 +457,6 @@ int arclmDynamic(struct arclmframe* af)
 	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
 	constraintmain = (long int*)malloc(msize * sizeof(long int));
 	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
-	//iform = (double*)malloc(msize * sizeof(double));		/*INITIAL*/
-	//ddisp = (double*)malloc(msize * sizeof(double));		/*LATEST ITERATION*/
-	//melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
-	//mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
 
 	af->sects = sects;
 	af->nodes = nodes;
@@ -475,10 +467,6 @@ int arclmDynamic(struct arclmframe* af)
 	af->constraintmain = constraintmain;
 	af->constraints = constraints;
 	af->nmass = nmass;
-	//af->iform = iform;
-	//af->ddisp = ddisp;
-	//af->melem = melem;
-	//af->mshell = mshell;
 
 	inputtexttomemory(fin, af);
 	fclose(fin);
@@ -494,22 +482,7 @@ int arclmDynamic(struct arclmframe* af)
 	constraintmain = af->constraintmain;
 	constraints = af->constraints;
 	nmass = af->nmass;
-	//iform = af->iform;
-	//ddisp = af->ddisp;
-	//melem = af->melem;
-	//mshell = af->mshell;
 #endif
-
-
-	iform = (double*)malloc(msize * sizeof(double));
-	ddisp = (double*)malloc(msize * sizeof(double));
-	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
-	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
-
-	af->iform = iform;
-	af->ddisp = ddisp;
-	af->melem = melem;
-	af->mshell = mshell;
 
 
 	csize = 0;
@@ -517,25 +490,6 @@ int arclmDynamic(struct arclmframe* af)
 	{
 		csize += (constraints+i)->neq;
 	}
-
-	constraintvct = (double*)malloc(csize * sizeof(double));
-
-	if(af->lambda==NULL)
-	{
-		lambda = (double*)malloc(csize * sizeof(double));
-		for (i = 0; i < csize; i++)
-		{
-			*(lambda + i) = 0.0;
-		}
-		af->lambda = lambda;
-	}
-	else
-	{
-		lambda = af->lambda;
-	}
-	lastlambda = (double*)malloc(csize * sizeof(double));
-
-
 
 
 	/*GLOBAL MATRIX*/
@@ -563,22 +517,36 @@ int arclmDynamic(struct arclmframe* af)
 	fpressure = (double*)malloc(msize * sizeof(double));         /*BASE PRESSURE FORCE VECTOR.*/
 	fgivendisp = (double*)malloc(msize * sizeof(double));
 	fconstraint = (double*)malloc(msize * sizeof(double));
-
-	/*POSITION VECTOR INITIALIZATION*/
-	/*IN SPATIAL FORM*/
-	lastddisp = (double*)malloc(msize * sizeof(double));	/*LATEST LAP*/
-	lapddisp  = (double*)malloc(msize * sizeof(double));	/*INCREMENT IN THE LAP*/
-	givendisp = (double*)malloc(msize * sizeof(double));
+	constraintvct = (double*)malloc(csize * sizeof(double));
 
 
-	/*VELOSITY & ACCELERATION VECTOR INITIALIZATION*/
-	//ud : VELOSITY, udd : ACCELERATION
-	//_m : ROTATIONAL DOFs ARE REPRESENTED IN SPATIAL & MATERIAL FORM
-	lastlastudd_m = (double*)malloc(msize * sizeof(double));
-	lastud_m = (double*)malloc(msize * sizeof(double));     /*LATEST LAP IN MATERIAL*/
-	lastudd_m = (double*)malloc(msize * sizeof(double));
-	ud_m = (double*)malloc(msize * sizeof(double));  		/*LATEST ITERATION IN MATERIAL*/
+	/*INITIAL CONFIGULATION*/
+	iform = (double*)malloc(msize * sizeof(double));
+	/*CURRENT CONFIGULATION*/
+	ddisp = (double*)malloc(msize * sizeof(double));
+	ud_m = (double*)malloc(msize * sizeof(double));
 	udd_m = (double*)malloc(msize * sizeof(double));
+	givendisp = (double*)malloc(msize * sizeof(double));
+	/*LAST CONFIGULATION*/
+	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
+	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
+	lastddisp = (double*)malloc(msize * sizeof(double));
+	lapddisp  = (double*)malloc(msize * sizeof(double));	/*INCREMENT IN THE LAP*/
+	lastud_m = (double*)malloc(msize * sizeof(double));
+	lastudd_m = (double*)malloc(msize * sizeof(double));
+	lastlambda = (double*)malloc(csize * sizeof(double));
+	/*LAST CONFIGULATION*/
+	lastlastudd_m = (double*)malloc(msize * sizeof(double));
+
+	//ud : VELOSITY, udd : ACCELERATION
+	//_m : ROTATIONAL DOFs ARE REPRESENTED IN MATERIAL FORM
+
+
+
+	af->iform = iform;
+	af->ddisp = ddisp;
+	af->melem = melem;
+	af->mshell = mshell;
 
 	/*
 	if(inputfilename!=NULL && targetlap!=NULL)
@@ -590,6 +558,27 @@ int arclmDynamic(struct arclmframe* af)
 
 	initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
+	initialform(nodes, lastddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
+
+	if(af->lambda==NULL)
+	{
+		lambda = (double*)malloc(csize * sizeof(double));
+		for (i = 0; i < csize; i++)
+		{
+			*(lambda + i) = 0.0;
+		}
+		af->lambda = lambda;
+	}
+	else
+	{
+		lambda = af->lambda;
+	}
+	for (i = 0; i < csize; i++)
+	{
+		*(lastlambda + i) = *(lambda + i);
+	}
+
+
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
 	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
@@ -1063,7 +1052,7 @@ int arclmDynamic(struct arclmframe* af)
 			}
 			else
 			{
-				ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
+				//ddt = timestepcontrol(ddt, lapddisp_m, udd_m, lastudd_m, lastlastudd_m, beta, msize);
 				time += ddt;
 			}
 

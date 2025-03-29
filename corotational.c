@@ -102,7 +102,7 @@ double* rotationvct(double** rmtx)
 		//sprintf(str,"%.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e\n",s,c,theta,*(rvct + 0),*(rvct + 1),*(rvct + 2), *(*(rmtx + 0) + 0), *(*(rmtx + 1) + 1), *(*(rmtx + 2) + 2));
 		//dbgstr(str);
 
-		errormessage("DETECT 180 DEGREE ROTATION\n");
+		//errormessage("DETECT 180 DEGREE ROTATION\n");
 	}
 	else/*theta=0*/
 	{
@@ -670,18 +670,27 @@ double** assemtmtxCR(double** Kp, double* eform, double* edisp, double* einterna
 					 int nnod)
 {
 	int i, j;
+	double** TtPtHt, ** TPHK, ** TPHKHPT;
 	double** Kt;
 
 	Kt = assemgmtxCR(eform, edisp, einternal, T, nnod);/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
-	Kp = transformationIII(Kp, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
+
+	TtPtHt = matrixtranspose(HPT, 6*nnod);
+	TPHK = matrixmatrix(TtPtHt, Kp, 6*nnod);
+	TPHKHPT = matrixmatrix(TPHK, HPT, 6*nnod);
+	//Kp = transformationIII(Kp, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
 
 	for (i = 0; i < 6*nnod; i++)
 	{
 		for (j = 0; j < 6*nnod; j++)
 		{
-			*(*(Kt + i) + j) += *(*(Kp + i) + j);/*[Kt]=[Ke]+[Kg]*/
+			*(*(Kt + i) + j) += *(*(TPHKHPT + i) + j);/*[Kt]=[Ke]+[Kg]*/
 		}
 	}
+	freematrix(TtPtHt,  6 * nnod);
+	freematrix(TPHK,  6 * nnod);
+	freematrix(TPHKHPT, 6 * nnod);
+
 	return Kt;
 }
 
@@ -689,7 +698,7 @@ double **assemtmtxCR_MID(double** Kp, double* eform, double* edisp, double* mide
 						 double** T, double** midTtPtHt, double** HPT,
 						 double alphaf, double xi, int nnod)
 {
-	int i,j,n;
+	int i,j;
 	double** TPHK, ** TPHKHPT;
 	double** Kt;
 

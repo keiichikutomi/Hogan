@@ -342,7 +342,7 @@ int arclmStatic(struct arclmframe* af)
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
 	int USINGEIGENFLAG = 0;
-	
+
 
 	/*INITIAL CONFIG*/
 	double* iform;
@@ -384,11 +384,13 @@ int arclmStatic(struct arclmframe* af)
 	double* evct_L, * evct_R;
 	double dotLR, lenR, eigen;/*NORM OF LDL MODE*/
 	int EXTENDEDFLAG = 0;
+	int ESMODE = 0;
 
 
-	double eps = 1e-5;
+	double eps = 1e-8;
 	double* epsddisp, * epsgvct, * epslambda;
 	double* re, * rp;
+	double* Kinvre, * Kinvrp, *Kevct;
 	double evctre, evctrp;
 
 	struct owire elem;
@@ -736,26 +738,10 @@ int arclmStatic(struct arclmframe* af)
 #endif
 
 
-
 	csize = 0;
 	for (i = 0; i < nconstraint; i++)
 	{
 		csize += (constraints+i)->neq;
-	}
-	constraintvct = (double*)malloc(csize * sizeof(double));
-
-	if(af->lambda==NULL)
-	{
-		lambda = (double*)malloc(csize * sizeof(double));
-		for (i = 0; i < csize; i++)
-		{
-			*(lambda + i) = 0.0;
-		}
-		af->lambda = lambda;
-	}
-	else
-	{
-		lambda = af->lambda;
 	}
 
 
@@ -782,7 +768,7 @@ int arclmStatic(struct arclmframe* af)
 	fpressure = (double*)malloc(msize * sizeof(double));           /*PRESSURE VECTOR.*/
 	fgivendisp = (double*)malloc(msize * sizeof(double));
 	fconstraint = (double*)malloc(msize * sizeof(double));
-
+	constraintvct = (double*)malloc(csize * sizeof(double));
 
 	/*POSITION VECTOR INITIALIZATION*/
 
@@ -791,7 +777,6 @@ int arclmStatic(struct arclmframe* af)
 	/*CURRENT CONFIGULATION*/
 	ddisp = (double*)malloc(msize * sizeof(double));
 	givendisp = (double*)malloc(msize * sizeof(double));
-
 	/*LAST CONFIGULATION*/
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
@@ -808,8 +793,6 @@ int arclmStatic(struct arclmframe* af)
 	lastlastlambda = (double*)malloc(csize * sizeof(double));
 
 
-
-
 	af->iform = iform;
 	af->ddisp = ddisp;
 	af->melem = melem;
@@ -824,6 +807,28 @@ int arclmStatic(struct arclmframe* af)
 
 	initialform(ninit, iform, nnode);           /*ASSEMBLAGE FORMATION.*/
 	initialform(nodes, ddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
+	initialform(nodes, lastddisp, nnode);           /*ASSEMBLAGE FORMATION.*/
+
+
+	if(af->lambda==NULL)
+	{
+		lambda = (double*)malloc(csize * sizeof(double));
+		for (i = 0; i < csize; i++)
+		{
+			*(lambda + i) = 0.0;
+		}
+		af->lambda = lambda;
+	}
+	else
+	{
+		lambda = af->lambda;
+	}
+	for (i = 0; i < csize; i++)
+	{
+		*(lastlambda + i) = *(lambda + i);
+	}
+
+
 	initialelem(elems, melem, nelem);             /*ASSEMBLAGE ELEMENTS.*/
 	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
@@ -980,8 +985,8 @@ int arclmStatic(struct arclmframe* af)
 
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
-		//Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-		Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+		Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+		//Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
 
 		//Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper, Eigen::DiagonalPreconditioner<double>> solver;
 		//Eigen::BiCGSTAB<Eigen::SparseMatrix<double>,Eigen::IncompleteLUT<double>> solver;
@@ -1008,8 +1013,8 @@ int arclmStatic(struct arclmframe* af)
 		/*STIFFNESS ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
 		{
-		  assemelemEigen(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 1);
-		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 1);
+		  assemelemEigen(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 0);
+		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 0);
 
 		  /*GLOBAL MATRIX USING EIGEN*/
 		  modifytriplet(Ktriplet,confs,msize);
@@ -1053,7 +1058,7 @@ int arclmStatic(struct arclmframe* af)
 
 			solver.compute(Kglobal);
 
-#if 0
+#if 1
 			Eigen::VectorXd D = solver.vectorD();
 			determinant= 0.0;
 			sign = 0;
@@ -1123,11 +1128,13 @@ int arclmStatic(struct arclmframe* af)
 		}
 
 		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-					nlap, iteration, loadfactor, residual, determinant, sign, 0, eigen, volume, 0.0);
+					nlap, iteration, loadfactor, residual, /*determinant*/lenR, sign, EXTENDEDFLAG, eigen, volume, 0.0);
 		fprintf(ffig, "%s", string);
 		errormessage(string);
 
-#if 1
+#if 0
+
+
 		if(iteration == 1 && (sign - lastsign) != 0 && nlap != beginlap)
 		{
 			/*PIVOT ZERO LINE CHECK*/
@@ -1151,6 +1158,7 @@ int arclmStatic(struct arclmframe* af)
 			{
 			  EXTENDEDFLAG=1;
 			}
+
 		}
 
 		/*TWO-POINTS BUCKLING ANALYSIS.*/
@@ -1161,78 +1169,47 @@ int arclmStatic(struct arclmframe* af)
 		/*NORMAL CALCULATION IN CASE OF REGULAR*/
 #endif
 
-		if(EXTENDEDFLAG)
+		if(/*EXTENDEDFLAG*/0)
 		{
 					/*CORRECTOR CALCULATION*/
-					if(USINGEIGENFLAG==1)
+					Vector P = Vector::Zero((msize+csize));
+					for(i=0;i<msize;i++)P(i)=*(dup+i);
+					Vector Up = solver.solve(P);
+					for(i=0;i<(msize+csize);i++)*(dup+i)=Up(i);
+					if (solver.info() != Eigen::Success)return 1;
+
+					Vector E = Vector::Zero((msize+csize));
+					for(i=0;i<msize;i++)E(i)=*(due+i);
+					Vector Ue = solver.solve(E);
+					for(i=0;i<(msize+csize);i++)*(due+i)=Ue(i);
+					if (solver.info() != Eigen::Success)return 1;
+
+
+					if(iteration==1)
 					{
-						Vector P = Vector::Zero((msize+csize));
-						for(i=0;i<msize;i++)P(i)=*(dup+i);
-						Vector Up = solver.solve(P);
-						for(i=0;i<(msize+csize);i++)*(dup+i)=Up(i);
-						if (solver.info() != Eigen::Success)return 1;
-
-						Vector E = Vector::Zero((msize+csize));
-						for(i=0;i<msize;i++)E(i)=*(due+i);
-						Vector Ue = solver.solve(E);
-						for(i=0;i<(msize+csize);i++)*(due+i)=Ue(i);
-						if (solver.info() != Eigen::Success)return 1;
-					}
-					else
-					{
-						nline = forwardbackwardII(gmtx, dup, confs, msize, csize, gcomp1);
-						nline = forwardbackwardII(gmtx, due, confs, msize, csize, gcomp1);
-					}
-
-					evct_L = (double*)malloc(msize * sizeof(double));
-					evct_R = (double*)malloc(msize * sizeof(double));
-
-
-						if(1)
+						evct_R = (double*)malloc(msize * sizeof(double));
+						for (ii = 0; ii < msize; ii++)
 						{
-
-							/*LDL^T MODE*/
-							for (ii = 0; ii < msize; ii++)
-							{
-								*(evct_L + ii) = 0.0;
-								*(evct_R + ii) = 0.0;
-							}
-
-							*(evct_L + m) = 1.0;
-							*(evct_R + m) = 1.0;
-							dm = (gmtx + m)->value;
-
-							backward(gmtx, evct_L, confs, msize, csize, gcomp1);
-							backward(gmtx, evct_R, confs, msize, csize, gcomp1);
-
-
-							dotLR = dotproduct(evct_L, evct_R, msize);
-							lenR = vectorlength(evct_R, msize);
-							eigen = dm/dotLR;
-
-							for (ii = 0; ii < msize; ii++)
-							{
-								*(evct_L + ii) *= lenR/dotLR;
-								*(evct_R + ii) *=   1.0/lenR;
-							}
-							/*LDL^T MODE*/
+							*(evct_R + ii) = *(dup + ii);
 						}
+						lenR = vectorlength(evct_R, msize);
 
+						for (ii = 0; ii < msize; ii++)
+						{
+							*(evct_R + ii) *= 1.0/lenR;
+						}
+						/*LDL^T MODE*/
+					}
+
+
+					dbgvct(evct_R,msize,6,"EVCT");
 
 					fprintf(fbcl, "CRITICAL EIGEN VECTOR : LINE = %5ld dm = %12.9f EIGENVALUE=%12.9f\n", m, dm, eigen);
-
 					for (ii = 0; ii < nnode; ii++)
 					{
 						fprintf(fbcl, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
 							*(evct_R + (6 * ii + 0)), *(evct_R + (6 * ii + 1)), *(evct_R + (6 * ii + 2)),
 							*(evct_R + (6 * ii + 3)), *(evct_R + (6 * ii + 4)), *(evct_R + (6 * ii + 5)));
-					}
-					fprintf(fbcl, "CRITICAL EIGEN VECTOR : LINE = %5ld  dm = %12.9f\n", m, dm);
-					for (ii = 0; ii < nnode; ii++)
-					{
-						fprintf(fbcl, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
-							*(evct_L + (6 * ii + 0)), *(evct_L + (6 * ii + 1)), *(evct_L + (6 * ii + 2)),
-							*(evct_L + (6 * ii + 3)), *(evct_L + (6 * ii + 4)), *(evct_L + (6 * ii + 5)));
 					}
 
 
@@ -1250,12 +1227,6 @@ int arclmStatic(struct arclmframe* af)
 						*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
 					}
 
-					/*
-					for (ii = 0; ii < msize; ii++)
-					{
-						*(epsddisp + ii) += *(epsgvct + ii);
-					}
-					*/
 					updaterotation(epsddisp, epsgvct, nnode);
 
 					for (ii = 0; ii < csize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
@@ -1270,10 +1241,16 @@ int arclmStatic(struct arclmframe* af)
 
 					re = (double*)malloc(msize * sizeof(double));
 					rp = (double*)malloc(msize * sizeof(double));
+					Kinvre = (double*)malloc(msize * sizeof(double));
+					Kinvrp = (double*)malloc(msize * sizeof(double));
+					Kevct = (double*)malloc(msize * sizeof(double));
 					for (ii = 0; ii < msize; ii++)
 					{
 						*(re + ii) = 0.0;
 						*(rp + ii) = 0.0;
+						*(Kinvre + ii) = 0.0;
+						*(Kinvrp + ii) = 0.0;
+						*(Kevct + ii) = 0.0;
 					}
 
 					for (i = 1; i <= nelem; i++)
@@ -1378,10 +1355,10 @@ int arclmStatic(struct arclmframe* af)
 						/*DEFORMED CONFIGFURATION*/
 						for (ii = 0; ii < nnod; ii++)
 						{
-							inputnode(ddisp, shell.node[ii]);
+							inputnode(epsddisp, shell.node[ii]);
 						}
 						drccos = shelldrccos(shell);
-						gform = extractshelldisplacement(shell, ddisp);                     /*{Xg+Ug}*/
+						gform = extractshelldisplacement(shell, epsddisp);                     /*{Xg+Ug}*/
 						eform = extractlocalcoord(gform,drccos,nnod); 			       	    /*{Xe+Ue}*/
 
 						edisp = extractdeformation(eforminit, eform, nnod);           		/*{Ue}*/
@@ -1412,6 +1389,7 @@ int arclmStatic(struct arclmframe* af)
 							{
 								*(re + *(constraintmain + *(loffset + ii))) += *(*(Kt + ii) + jj) * *(due + *(constraintmain + *(loffset + jj)));
 								*(rp + *(constraintmain + *(loffset + ii))) += *(*(Kt + ii) + jj) * *(dup + *(constraintmain + *(loffset + jj)));
+								*(Kevct + *(constraintmain + *(loffset + ii))) += *(*(Kt + ii) + jj) * *(evct_R + *(constraintmain + *(loffset + jj)));
 							}
 						}
 
@@ -1436,39 +1414,8 @@ int arclmStatic(struct arclmframe* af)
 						freematrix(HPT, 6 * nnod);
 					}
 
-
-					fprintf(fbcl, "RE\n", m, dm);
-					for (ii = 0; ii < nnode; ii++)
-					{
-						fprintf(fbcl, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
-							*(re + (6 * ii + 0)), *(re + (6 * ii + 1)), *(re + (6 * ii + 2)),
-							*(re + (6 * ii + 3)), *(re + (6 * ii + 4)), *(re + (6 * ii + 5)));
-					}
-
-					fprintf(fbcl, "RP\n", m, dm);
-					for (ii = 0; ii < nnode; ii++)
-					{
-						fprintf(fbcl, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
-							*(rp + (6 * ii + 0)), *(rp + (6 * ii + 1)), *(rp + (6 * ii + 2)),
-							*(rp + (6 * ii + 3)), *(rp + (6 * ii + 4)), *(rp + (6 * ii + 5)));
-					}
-
-					fprintf(fbcl, "funbalance\n", m, dm);
-					for (ii = 0; ii < nnode; ii++)
-					{
-						fprintf(fbcl, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
-							*(funbalance + (6 * ii + 0)), *(funbalance + (6 * ii + 1)), *(funbalance + (6 * ii + 2)),
-							*(funbalance + (6 * ii + 3)), *(funbalance + (6 * ii + 4)), *(funbalance + (6 * ii + 5)));
-					}
-
-					fprintf(fbcl, "fpressure\n", m, dm);
-					for (ii = 0; ii < nnode; ii++)
-					{
-						fprintf(fbcl, "%5ld %12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n", (nodes + ii)->code,
-							*(fpressure + (6 * ii + 0)), *(fpressure + (6 * ii + 1)), *(fpressure + (6 * ii + 2)),
-							*(fpressure + (6 * ii + 3)), *(fpressure + (6 * ii + 4)), *(fpressure + (6 * ii + 5)));
-					}
-
+					dbgvct(re,msize,6,"RE");
+					dbgvct(funbalance,msize,6,"FUNB");
 
 
 					for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
@@ -1476,90 +1423,82 @@ int arclmStatic(struct arclmframe* af)
 						if ((confs + ii)->iconf != 0)
 						{
 							*(re + ii) = 0.0;
-							*(rp + ii) = 0.0;
 						}
 						else
 						{
 							*(re + ii) = -(*(re + ii)-*(funbalance + ii))/eps;
-							*(rp + ii) = -(*(rp + ii)-*(fpressure + ii))/eps;
 						}
 					}
+					dbgvct(re,msize,6,"epsRE");
 
-					fprintf(fbcl, "RE NEW\n", m, dm);
-					for (ii = 0; ii < nnode; ii++)
+					Vector eigenRe = Vector::Zero((msize+csize));
+					for(i=0;i<msize;i++)eigenRe(i)=*(re+i);
+					Vector eigenKinvre = solver.solve(eigenRe);
+					for(i=0;i<(msize+csize);i++)*(Kinvre+i)=eigenKinvre(i);
+					if (solver.info() != Eigen::Success)return 1;
+
+					dbgvct(re,msize,6,"Kinvre");
+
+
+
+					dbgvct(rp,msize,6,"RP");
+					dbgvct(fbaseload,msize,6,"FBASE");
+
+					for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
 					{
-						fprintf(fbcl, "%5ld %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e\n", (nodes + ii)->code,
-							*(re + (6 * ii + 0)), *(re + (6 * ii + 1)), *(re + (6 * ii + 2)),
-							*(re + (6 * ii + 3)), *(re + (6 * ii + 4)), *(re + (6 * ii + 5)));
+						if ((confs + ii)->iconf != 0)
+						{
+							*(rp + ii) = 0.0;
+						}
+						else
+						{
+							*(rp + ii) = -(*(rp + ii)-*(fbaseload + ii))/eps;
+						}
 					}
+					dbgvct(rp,msize,6,"epsRP");
 
-					fprintf(fbcl, "RP NEW\n", m, dm);
-					for (ii = 0; ii < nnode; ii++)
-					{
-						fprintf(fbcl, "%5ld %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e\n", (nodes + ii)->code,
-							*(rp + (6 * ii + 0)), *(rp + (6 * ii + 1)), *(rp + (6 * ii + 2)),
-							*(rp + (6 * ii + 3)), *(rp + (6 * ii + 4)), *(rp + (6 * ii + 5)));
-					}
+					Vector eigenRp = Vector::Zero((msize+csize));
+					for(i=0;i<msize;i++)eigenRp(i)=*(rp+i);
+					Vector eigenKinvrp = solver.solve(eigenRp);
+					for(i=0;i<(msize+csize);i++)*(Kinvrp+i)=eigenKinvrp(i);
+					if (solver.info() != Eigen::Success)return 1;
 
-
-
+					dbgvct(re,msize,6,"Kinvrp");
 
 
-					if(0)
-					{
-							/*FOR NORMAL EXTENDED SYSTEM*/
-							if(USINGEIGENFLAG==1)
-							{
-								Vector P = Vector::Zero((msize+csize));
-								for(i=0;i<msize;i++)P(i)=*(rp+i);
-								Vector Up = solver.solve(P);
-								for(i=0;i<(msize+csize);i++)*(rp+i)=Up(i);
-								if (solver.info() != Eigen::Success)return 1;
 
-								Vector E = Vector::Zero((msize+csize));
-								for(i=0;i<msize;i++)E(i)=*(re+i);
-								Vector Ue = solver.solve(E);
-								for(i=0;i<(msize+csize);i++)*(re+i)=Ue(i);
-								if (solver.info() != Eigen::Success)return 1;
-							}
-							else
-							{
-								nline = forwardbackwardII(gmtx, rp, confs, msize, csize, gcomp1);
-								nline = forwardbackwardII(gmtx, re, confs, msize, csize, gcomp1);
-							}
-							lenR = vectorlength(evct_R, msize);
-                            loadlambda = (lenR-evctre)/evctrp;
 
-					}
 
-					evctre = dotproduct(re,evct_L,msize);
-					evctrp = dotproduct(rp,evct_L,msize);
+					lenR = vectorlength(evct_R, msize);
+
+					evctre = dotproduct(Kinvre,evct_R,msize);
+					evctrp = dotproduct(Kinvrp,evct_R,msize);
 					fprintf(fbcl, "evctre=%12.15f evctrp=%12.15f\n", evctre, evctrp);
 
-
-
-					loadlambda = (eigen-evctre)/evctrp;
+					loadlambda = (lenR-evctre)/evctrp;
+					eigen = dotproduct(evct_R,Kevct,msize);
+					eigen *= 1/(lenR*lenR);
 					fprintf(fbcl, "LOADLAMBDA=%12.9f\n", loadlambda);
+
 
 
 					for (ii = 0; ii < msize; ii++)
 					{
 						*(gvct + ii) = *(dup + ii) * loadlambda + *(due + ii);
 					}
-					/*
+
 					for (ii = 0; ii < msize; ii++)
 					{
-						*(evct_R + ii) = (*(rp + ii) * loadlambda + *(re + ii));
-						*(evct_L + ii) = (*(rp + ii) * loadlambda + *(re + ii));
+						*(evct_R + ii) = (*(Kinvrp + ii) * loadlambda + *(Kinvre + ii)) ;
 					}
-					*/
+
 					loadfactor += loadlambda;
 
 					free(rp);
 					free(re);
-
-					free(evct_L);
-					free(evct_R);
+					free(Kinvrp);
+					free(Kinvre);
+					free(Kevct);
 
 					free(epsgvct);
 					free(epsddisp);
@@ -1851,20 +1790,27 @@ int arclmStatic(struct arclmframe* af)
 		}
 		else
 		{
+
+
 			if(EXTENDEDFLAG == 1)
 			{
+			/*
 				if((residual < tolerance && fabs(eigen) < 1e-8)  && iteration != 1)
 				{
 					EXTENDEDFLAG = 0;
-					eigen=0.0;
+					//eigen=0.0;
+					if(ESMODE==0)
+					{
 
+                    }
 
 					nlap++;
 					iteration = 0;
 				}
+			*/
 				clearwindow(*(wdraw.childs+1));
 				drawarclmframe((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,*af,0,ONSCREEN);
-				overlayhdc(*(wdraw.childs + 1), SRCPAINT);                  /*UPDATE DISPLAY.*/
+				overlayhdc(*(wdraw.childs + 1), SRCPAINT);
 			}
 			else
 			{
@@ -2202,6 +2148,8 @@ int arclmStatic(struct arclmframe* af)
 	free(ddisp);
 	free(melem);
 	free(mshell);
+	free(lastmelem);
+	free(lastmshell);
 
 	errormessage(" ");
 	errormessage("COMPLETED.");
