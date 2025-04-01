@@ -4,7 +4,7 @@ double** rotationmtx(double* rvct);/*[R]*/
 double** spinmtx(double* rvct);
 double** jacobimtx(double* rvct);/*[H]*/
 
-double** spinfittermtx(double* eform, int nnod);/*[G]*/
+double** spinfittermtx(double* eform, double* edisp, int nnod);/*[G]*/
 double** projectionmtx(double* eform, double** G, int nnod);/*[P]*/
 double** blockjacobimtx(double* edisp, double* estress, double** M, int nnod);/*[H]&[M]*/
 
@@ -202,17 +202,24 @@ double** spinmtx(double* rvct)
 	return smtx;
 }
 
-double** spinfittermtx(double* eform, int nnod)
+
+
+
+
+double** spinfittermtx(double* eform, double* edisp, int nnod)
 /*spin-fitter matrix for beam & shell*/
 /*G     :3*6nnod matrix(rotational variation by translational motion)*/
 /*input :6nnod vector(variation of nodal displacement in local which inclouds noneffective rotational DOF)*/
-/*output:3 vector(variation of local coord psuedo rotation)*/
+/*output:3 vector(variation of CR frame's psuedo rotation)*/
 {
 	int i, j;
 	double A, len;
 	double x1, x2, y1, y2, z1;
 	double** G;
 
+	double* p, * p1, * p2;
+	double* rvct1, * rvct2;
+	double** rmtx1, ** rmtx2;
 
 	G = (double**)malloc(3 * sizeof(double*));
 	for (i = 0; i < 3; i++)
@@ -228,17 +235,57 @@ double** spinfittermtx(double* eform, int nnod)
 	if(nnod==2)/*[G1,0,G2,0]*/
 	{
 
+		/*Coratational Frame Formulation for Beam & Colume*/
+		/*by T.Le, J.Battini & M.Hjiaj, 2014*/
+		rvct1 = (double*)malloc(3 * sizeof(double));
+		rvct2 = (double*)malloc(3 * sizeof(double));
+		for (i = 0; i < 3; i++)
+		{
+			*(rvct1 + i) = *(edisp + 3 + i);
+			*(rvct2 + i) = *(edisp + 9 + i);
+		}
+		rmtx1= rotationmtx(rvct1);
+		rmtx2= rotationmtx(rvct2);
+
+
+		p1 = (double *)malloc(3*sizeof(double));
+		p2 = (double *)malloc(3*sizeof(double));
+		p = (double *)malloc(3*sizeof(double));
+		for(i=0;i<3;i++)
+		{
+		  *(p1+i)=*(*(rmtx1+1)+i);
+		  *(p2+i)=*(*(rmtx2+1)+i);
+		  *(p+i)=0.5*(*(p1+i)+*(p2+i));
+		}
+
+
 		x1 = *(eform + 6) - *(eform + 0);
 		y1 = *(eform + 7) - *(eform + 1);
 		z1 = *(eform + 8) - *(eform + 2);
 		len = sqrt(x1 * x1 + y1 * y1 + z1 * z1);
 
 		/*G1*/
-		*(*(G + 1) + 2) =  1 / len;
-		*(*(G + 2) + 1) = -1 / len;
+		*(*(G + 0) + 2)  =  *(p+0) / (len**(p+1));
+		*(*(G + 0) + 3)  =  *(p1+1) / (2.0**(p+1));
+		*(*(G + 0) + 4)  = -*(p1+0) / (2.0**(p+1));
+		*(*(G + 1) + 2)  =  1 / len;
+		*(*(G + 2) + 1)  = -1 / len;
 		/*G2*/
-		*(*(G + 1) + 8) = -1 / len;
-		*(*(G + 2) + 7) =  1 / len;
+		*(*(G + 0) + 8)  = -*(p+0) / (len**(p+1));
+		*(*(G + 0) + 9)  =  *(p2+1) / (2.0**(p+1));
+		*(*(G + 0) + 10) = -*(p2+0) / (2.0**(p+1));
+		*(*(G + 1) + 8)  = -1 / len;
+		*(*(G + 2) + 7)  =  1 / len;
+
+
+		free(rvct1);
+		free(rvct2);
+		freematrix(rmtx1, 3);
+		freematrix(rmtx2, 3);
+		free(p1);
+		free(p2);
+		free(p);
+
 	}
 	if(nnod==3)/*[G1,0,G2,0,G3,0]*/
 	{
@@ -270,7 +317,69 @@ double** spinfittermtx(double* eform, int nnod)
 	}
 	return G;
 }
+#if 1
+double** projectionmtx(double* eform, double** G,int nnod)
+/*element projection matrix for beam & shell*/
+/*G     :6nnod*6nnod matrix(variation correction)*/
+/*input :6nnod vector(initial variation of displacement in local coord)*/
+/*output:6nnod vector(corrected variation of displacement in local coord)*/
+{
+	int i, j, a, b;
+	double* node;
+	double** P, ** S, ** SG;
 
+	P = (double**)malloc(6*nnod * sizeof(double*));
+	for (i = 0; i < 6*nnod; i++)
+	{
+		*(P + i) = (double*)malloc(6*nnod * sizeof(double));
+	}
+
+	node = (double*)malloc(3 * sizeof(double));
+
+	for (a = 0; a < nnod; a++)/*row 6*a+0~6*a+5 of P*/
+	{
+		for (i = 0; i < 3; i++)
+		{
+			*(node + i) = *(eform + 6 * a + i);
+		}
+		S = spinmtx(node);
+		SG = matrixmatrixIII(S, G, 3, 3, 6*nnod);
+		for (b = 0; b < nnod; b++)/*column 6*b+0~6*b+5 of P*/
+		{
+			for (i = 0; i < 3; i++)
+			{
+				for (j = 0; j < 3; j++)
+				{
+
+					*(*(P + 6 * a     + i) + 6 * b     + j) = *(*(SG + i) + 6 * b     + j);/*SG*/
+					*(*(P + 6 * a     + i) + 6 * b + 3 + j) = *(*(SG + i) + 6 * b + 3 + j);/*SG*/
+
+					*(*(P + 6 * a + 3 + i) + 6 * b     + j) = -*(*(G + i) + 6 * b     + j);/*-G*/
+					*(*(P + 6 * a + 3 + i) + 6 * b + 3 + j) = -*(*(G + i) + 6 * b + 3 + j);/*-G*/
+
+					if (a == b && i == j)
+					{
+						*(*(P + 6 * a + i) + 6 * b + j) += 1.0 - 1.0/(double)nnod;	/*delta*I-1/3*I*/
+						*(*(P + 6 * a + 3 + i) + 6 * b + 3 + j) += 1.0;		/*delta*I*/
+					}
+					else if (i == j)
+					{
+						*(*(P + 6 * a + i) + 6 * b + j) += - 1.0/(double)nnod;		/*delta*I-1/3*I*/
+					}
+				}
+			}
+
+		}
+		freematrix(S, 3);
+		freematrix(SG, 3);
+	}
+	free(node);
+
+	return P;
+}
+#endif
+
+#if 0
 double** projectionmtx(double* eform, double** G,int nnod)
 /*element projection matrix for beam & shell*/
 /*G     :6nnod*6nnod matrix(variation correction)*/
@@ -286,6 +395,8 @@ double** projectionmtx(double* eform, double** G,int nnod)
 	{
 		*(P + i) = (double*)malloc(6*nnod * sizeof(double));
 	}
+
+
 
 	/*eform : latest coordination of nodes in local*/
 	node = (double*)malloc(3 * sizeof(double));
@@ -316,6 +427,10 @@ double** projectionmtx(double* eform, double** G,int nnod)
 				}
 			}
 			SGu = matrixmatrix(S, Gu, 3);
+
+			dbgmtx(S,3,3,"S") ;
+			dbgmtx(Gu,3,3,"Gu") ;
+			dbgmtx(SGu,3,3,"SGu") ;
 			for (i = 0; i < 3; i++)
 			{
 				for (j = 0; j < 3; j++)
@@ -348,6 +463,7 @@ double** projectionmtx(double* eform, double** G,int nnod)
 	freematrix(Gu, 3);
 	return P;
 }
+#endif
 
 double** jacobimtx(double* rvct)
 /*transformation from additional infinitesimal incremental rotation to increment of total rotational pseudo-vector*/
@@ -529,12 +645,18 @@ double** transmatrixHPT(double* eform, double* edisp, double** T, int nnod)
 	double** G, ** P, ** H;
 	double** HP, ** HPT;
 
-	G = spinfittermtx(eform, nnod);                     						/*SPIN-FITTER MATRIX[G].*/
+	G = spinfittermtx(eform, edisp, nnod);                     						/*SPIN-FITTER MATRIX[G].*/
 	P = projectionmtx(eform, G, nnod);    										/*PROJECTION MATRIX[P].*/
 	H = blockjacobimtx(edisp, NULL, NULL, nnod);								/*JACOBIAN MATRIX OF ROTATION[H].*/
 
 	HP = matrixmatrix(H, P, 6*nnod);
 	HPT = matrixmatrix(HP, T, 6*nnod);
+
+	dbgmtx(G,3,12,"G");
+	dbgmtx(P,12,12,"P");
+	dbgmtx(H,12,12,"H");
+	dbgmtx(HP,12,12,"HP");
+	dbgmtx(HPT,12,12,"HPT");
 
 	freematrix(G, 3);
 	freematrix(P, 6*nnod);
@@ -573,7 +695,7 @@ double** assemgmtxCR(double* eform, double* edisp, double* estress, double** T, 
 		}
 	}
 
-	G = spinfittermtx(eform, nnod);                     						/*SPIN-FITTER MATRIX[G].*/
+	G = spinfittermtx(eform, edisp, nnod);                     						/*SPIN-FITTER MATRIX[G].*/
 	P = projectionmtx(eform, G, nnod);    										/*PROJECTION MATRIX[P].*/
 	H = blockjacobimtx(edisp, estress, Kgm, nnod);								/*JACOBIAN MATRIX OF ROTATION[H].*/
 
@@ -943,7 +1065,7 @@ double* quaternionvct(double* rvct)
 		{
 			*(qvct + i) = 0.0;
 		}
-    }
+	}
 	*(qvct + 3) = cos(0.5*theta);
 	return qvct;
 }
@@ -954,39 +1076,88 @@ double** updatedrccos(double** drccosinit, double* gforminit, double* gform)
 	int i;
 	double** drccos;
 	double* rvct1, * rvct2;
-	double** rmtxinit, ** rmtxinitt, **rmtx, ** drccosrmtx;
+	double** rmtxinitt1, ** rmtxinitt2;
+	double** rmtx1, ** rmtx2;
+	double** drccosrmtx1, ** drccosrmtx2;
+	double* p1, * p2, * p;
+	double* r1, * r2, * r3;
 
 	rvct1 = (double*)malloc(3 * sizeof(double));
 	rvct2 = (double*)malloc(3 * sizeof(double));
 
 	for (i = 0; i < 3; i++)
 	{
-		*(rvct1 + i) = *(gforminit + 3 + i);
-		*(rvct2 + i) = *(gforminit + 9 + i);
+		*(rvct1 + i) = -*(gforminit + 3 + i);
+		*(rvct2 + i) = -*(gforminit + 9 + i);
 	}
-	rmtxinit = interpolatermtx(rvct1, rvct2, 0.5);
-	rmtxinitt = matrixtranspose(rmtxinit, 3);
+	rmtxinitt1= rotationmtx(rvct1);
+	rmtxinitt2= rotationmtx(rvct2);
 
 	for (i = 0; i < 3; i++)
 	{
 		*(rvct1 + i) = *(gform + 3 + i);
 		*(rvct2 + i) = *(gform + 9 + i);
 	}
-	rmtx = interpolatermtx(rvct1, rvct2, 0.5);
+	rmtx1= rotationmtx(rvct1);
+	rmtx2= rotationmtx(rvct2);
 
-	drccosrmtx = matrixmatrix(rmtx, rmtxinitt, 3);
-	drccos = matrixmatrix(drccosrmtx, drccosinit, 3);
+	drccosrmtx1 = matrixmatrix(rmtx1, rmtxinitt1, 3);
+	drccosrmtx2 = matrixmatrix(rmtx2, rmtxinitt2, 3);
+
+	p1 = matrixvector(drccosrmtx1, *(drccosinit+1), 3);
+	p2 = matrixvector(drccosrmtx2, *(drccosinit+1), 3);
+
+	p=(double *)malloc(3*sizeof(double));
+	for(i=0;i<3;i++)
+	{
+	  *(p+i)=0.5*(*(p1+i)+*(p2+i));
+	}
+
+	r1=(double *)malloc(3*sizeof(double));
+	for(i=0;i<3;i++)
+	{
+	  *(r1+i)=*(gform+6+i)-*(gform+i);
+	}
+	vectornormalize(r1, 3);
+	r3 = crossproduct(r1, p);
+	vectornormalize(r3, 3);
+	r2 = crossproduct(r3,r1);
+
+	drccos=(double **)malloc(3*sizeof(double *));
+	for(i=0;i<3;i++)
+	{
+	  *(drccos+i)=(double *)malloc(3*sizeof(double));
+	}
+
+	for(i=0;i<3;i++)
+	{
+	  *(*(drccos+0)+i)=*(r1+i);
+	  *(*(drccos+1)+i)=*(r2+i);
+	  *(*(drccos+2)+i)=*(r3+i);
+	}
 
 	free(rvct1);
 	free(rvct2);
 
-	freematrix(rmtxinit, 3);
-	freematrix(rmtxinitt, 3);
-	freematrix(rmtx, 3);
-	freematrix(drccosrmtx, 3);
+	freematrix(rmtxinitt1, 3);
+	freematrix(rmtxinitt2, 3);
+	freematrix(rmtx1, 3);
+	freematrix(rmtx2, 3);
+	freematrix(drccosrmtx1, 3);
+	freematrix(drccosrmtx2, 3);
+
+	free(p1);
+	free(p2);
+	free(p);
+	free(r1);
+	free(r2);
+	free(r3);
 
 	return drccos;
 }
+
+
+
 
 
 double** interpolatermtx(double* rvct1, double* rvct2, double alpha)
@@ -1060,8 +1231,9 @@ double* extractlocalcoord(double* gform, double** drccos, double nnod)
 		*(c + i) = 0.0;
 		for (n = 0; n < nnod; n++)
 		{
-			*(c + i) += *(gform + 6 * n + i) / nnod;
+			*(c + i) += *(gform + 6 * n + i);
 		}
+		*(c + i) *= 1.0/(double)nnod;
 	}
 	/*CENTER*/
 	for (n = 0; n < nnod; n++)

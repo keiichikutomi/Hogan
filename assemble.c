@@ -32,7 +32,7 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 	double** drccosinit;
 	double** drccos, ** T, **HPT;
 
-	double** Ke,** Kt;
+	double** Kp,** Kt;
 
 
 
@@ -64,8 +64,8 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 		gforminit = extractdisplacement(elem, iform);
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
 
-		Ke = assememtx(elem);
-		//Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
+		Kp = assememtx(elem);
+		//Kp = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
 
 		/*DEFORMED CONFIDURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -74,19 +74,55 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 		}
 		gform = extractdisplacement(elem, ddisp);
 		drccos = updatedrccos(drccosinit, gforminit, gform);
+		/*drccos = directioncosine(elem.node[0]->d[0],
+							elem.node[0]->d[1],
+							elem.node[0]->d[2],
+							elem.node[1]->d[0],
+							elem.node[1]->d[1],
+							elem.node[1]->d[2],
+							elem.cangle);*/
 		eform = extractlocalcoord(gform,drccos,nnod);
 
 		edisp = extractdeformation(eforminit, eform, nnod);                	/*{Ue}*/
 
+
+
 		T = transmatrixIII(drccos, nnod);
 		HPT = transmatrixHPT(eform, edisp, T, nnod);
 
-		einternal = matrixvector(Ke, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
+		einternal = matrixvector(Kp, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
 
-		Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
-		symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+
+		//Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
+		Kp = transformationIII(Kp, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
+		Kt = assemgmtxCR(eform, edisp, einternal, T, nnod);/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
+		for (ii = 0; ii < 6*nnod; ii++)
+		{
+			for (jj = 0; jj < 6*nnod; jj++)
+			{
+				*(*(Kt + ii) + jj) += *(*(Kp + ii) + jj);/*[Kt]=[Ke]+[Kg]*/
+			}
+		}
+		symmetricmtx(Kt, 6 * nnod);/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 
 		assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+
+
+		if(i==1)
+		{
+			dbgvct(gform,12,6,"gform");
+			dbgvct(eform,12,6,"eform");
+			dbgvct(gforminit,12,6,"gforminit");
+			dbgvct(eforminit,12,6,"eforminit");
+			dbgvct(edisp,12,6,"EDISP");
+			dbgmtx(drccosinit,3,3,"drccosinit");
+			dbgmtx(drccos,3,3,"drccos");
+			dbgmtx(Kp,12,12,"Kp");
+			dbgvct(einternal,12,6,"EINT");
+			dbgmtx(HPT,12,12,"HPT");
+			dbgmtx(Kt,12,12,"Kt");
+
+		}
 
 
 		free(loffset);
@@ -102,7 +138,7 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 		freematrix(drccos, 3);
 		freematrix(T, 6 * nnod);
 		freematrix(HPT, 6 * nnod);
-		freematrix(Ke, 6 * nnod);
+		freematrix(Kp, 6 * nnod);
 		freematrix(Kt, 6 * nnod);
 
 	}
@@ -185,6 +221,13 @@ void elemstress(struct owire* elems, struct memoryelem* melem, int nelem, long i
 		}
 		gform = extractdisplacement(elem, ddisp);
 		drccos = updatedrccos(drccosinit, gforminit, gform);
+		/*drccos = directioncosine(elem.node[0]->d[0],
+							elem.node[0]->d[1],
+							elem.node[0]->d[2],
+							elem.node[1]->d[0],
+							elem.node[1]->d[1],
+							elem.node[1]->d[2],
+							elem.cangle);*/
 		eform = extractlocalcoord(gform,drccos,nnod);
 
 		edisp = extractdeformation(eforminit, eform, nnod);                	/*{Ue}*/

@@ -1013,8 +1013,8 @@ int arclmStatic(struct arclmframe* af)
 		/*STIFFNESS ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
 		{
-		  assemelemEigen(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 0);
-		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 0);
+		  assemelemEigen(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 1);
+		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 1);
 
 		  /*GLOBAL MATRIX USING EIGEN*/
 		  modifytriplet(Ktriplet,confs,msize);
@@ -1825,6 +1825,8 @@ int arclmStatic(struct arclmframe* af)
 					{
 					  DIVFLAG=1;
 					  ENDFLAG=1;
+					  sprintf(string,"CONVERGENCE ERROR(RESIDUAL = %f). ANALYSIS TERMINATED.\n", sign, residual);
+					  errormessage(string);
 					}
 
 					clearwindow(*(wdraw.childs+1));

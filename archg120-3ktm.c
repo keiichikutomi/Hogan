@@ -18283,7 +18283,7 @@ int arclm101(struct arclmframe *af,int idinput)
         {
           (elems+i-1)->iconf[ii][jj]=elem.iconf[ii][jj];
 		}
-      }
+	  }
 	  inputnode(ddisp,elem.node[0]);                         /*HEAD*/
 	  inputnode(ddisp,elem.node[1]);                         /*TAIL*/
 
@@ -18385,14 +18385,14 @@ int arclm101(struct arclmframe *af,int idinput)
 	  inputelem(elems,melem,i-1,&elem);
 
 	  inputnode(ddisp,elem.node[0]);
-      inputnode(ddisp,elem.node[1]);
+	  inputnode(ddisp,elem.node[1]);
 
-      elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
+	  elem.sect=(elems+i-1)->sect;             /*READ SECTION DATA.*/
 
 	  estress=elemstress(&elem,gvct,melem,fout,func);
 
 	  outputstress(elem,estress,fout,func);
-      free(estress);
+	  free(estress);
 
 	}
 	if(wsurf.hwnd!=NULL)
@@ -21111,7 +21111,7 @@ int saveasarclm(char *fname,struct arclmframe *af)
 
   for(i=0;i<(af->nnode);i++) /*CONF VECTOR:CONFINEMENT,VALUE.*/
   {
-    fprintf(fin,"%5d",(af->nodes+i)->code);
+	fprintf(fin,"%5d",(af->nodes+i)->code);
 
     for(j=0;j<6;j++)
     {
