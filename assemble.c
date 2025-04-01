@@ -107,7 +107,7 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 
 		assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 
-
+		/*
 		if(i==1)
 		{
 			dbgvct(gform,12,6,"gform");
@@ -121,8 +121,8 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 			dbgvct(einternal,12,6,"EINT");
 			dbgmtx(HPT,12,12,"HPT");
 			dbgmtx(Kt,12,12,"Kt");
-
 		}
+		*/
 
 
 		free(loffset);

@@ -341,7 +341,7 @@ int arclmStatic(struct arclmframe* af)
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
-	int USINGEIGENFLAG = 0;
+	int USINGEIGENFLAG = 1;
 
 
 	/*INITIAL CONFIG*/
@@ -985,6 +985,7 @@ int arclmStatic(struct arclmframe* af)
 
 		/*EXECUTE BY WIN64. AMD ORDERING IS AVAILABLE ONLY BY WIN64*/
 		//Eigen::SimplicialLDLT<SparseMatrix,Eigen::Lower,Eigen::NaturalOrdering<int>> solver;
+
 		Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
 		//Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
 
@@ -1132,13 +1133,17 @@ int arclmStatic(struct arclmframe* af)
 		fprintf(ffig, "%s", string);
 		errormessage(string);
 
-#if 0
+#if 1
+		   /*if(nlap == 20)
+			{
+			  EXTENDEDFLAG=1;
+			}*/
 
 
 		if(iteration == 1 && (sign - lastsign) != 0 && nlap != beginlap)
 		{
 			/*PIVOT ZERO LINE CHECK*/
-			for (ii = 0; ii < msize; ii++)
+		/*	for (ii = 0; ii < msize; ii++)
 			{
 				if ((confs + ii)->iconf == 0 && *(lastpivot + ii) * ((gmtx + ii)->value) < 0)
 				{
@@ -1147,7 +1152,7 @@ int arclmStatic(struct arclmframe* af)
 					fprintf(fbcl, "%s\n", string);
 					errormessage(string);
 				}
-			}
+			}      */
 
 
 			if(pinpointmode == 1)
@@ -1169,7 +1174,7 @@ int arclmStatic(struct arclmframe* af)
 		/*NORMAL CALCULATION IN CASE OF REGULAR*/
 #endif
 
-		if(/*EXTENDEDFLAG*/0)
+		if(EXTENDEDFLAG)
 		{
 					/*CORRECTOR CALCULATION*/
 					Vector P = Vector::Zero((msize+csize));
@@ -1256,7 +1261,9 @@ int arclmStatic(struct arclmframe* af)
 					for (i = 1; i <= nelem; i++)
 					{
 						inputelem(elems,melem,i-1,&elem);
+
 						nnod=elem.nnod;
+
 						loffset = (int*)malloc(6 * nnod * sizeof(int));
 						for (ii = 0; ii < nnod; ii++)
 						{
@@ -1289,7 +1296,7 @@ int arclmStatic(struct arclmframe* af)
 						{
 							inputnode(ddisp, elem.node[ii]);
 						}
-						gform = extractdisplacement(elem, ddisp);
+						gform = extractdisplacement(elem, epsddisp);
 						drccos = updatedrccos(drccosinit, gforminit, gform);
 						eform = extractlocalcoord(gform,drccos,nnod);
 
@@ -1299,9 +1306,20 @@ int arclmStatic(struct arclmframe* af)
 						HPT = transmatrixHPT(eform, edisp, T, nnod);
 
 						einternal = matrixvector(Ke, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
+						//einternal = assemshelleinternal(&elem);
 
 						Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
 						symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
+
+						for (ii = 0; ii < 6*nnod; ii++)
+						{
+							for (jj = 0; jj < 6*nnod; jj++)
+							{
+								*(re + *(constraintmain + *(loffset + ii))) += *(*(Kt + ii) + jj) * *(due + *(constraintmain + *(loffset + jj)));
+								*(rp + *(constraintmain + *(loffset + ii))) += *(*(Kt + ii) + jj) * *(dup + *(constraintmain + *(loffset + jj)));
+								*(Kevct + *(constraintmain + *(loffset + ii))) += *(*(Kt + ii) + jj) * *(evct_R + *(constraintmain + *(loffset + jj)));
+							}
+						}
 
 						free(loffset);
 						free(eforminit);
@@ -1309,17 +1327,13 @@ int arclmStatic(struct arclmframe* af)
 						free(eform);
 						free(gform);
 						free(edisp);
-
 						free(einternal);
-
 						freematrix(drccosinit, 3);
-
 						freematrix(drccos, 3);
 						freematrix(T, 6 * nnod);
 						freematrix(HPT, 6 * nnod);
 
 						freematrix(Ke, 6 * nnod);
-						//freematrix(Kp, 6 * nnod);
 						freematrix(Kt, 6 * nnod);
 
 					}
@@ -1398,9 +1412,6 @@ int arclmStatic(struct arclmframe* af)
 						for(ii=0;ii<ngp;ii++)freematrix(*(B+ii), nstress);
 						free(B);
 
-						freematrix(Kp, 6 * nnod);
-						freematrix(Kt, 6 * nnod);
-
 						free(loffset);
 						free(eforminit);
 						free(gforminit);
@@ -1412,6 +1423,9 @@ int arclmStatic(struct arclmframe* af)
 						freematrix(drccosinit, 3);
 						freematrix(T, 6 * nnod);
 						freematrix(HPT, 6 * nnod);
+
+						freematrix(Kp, 6 * nnod);
+						freematrix(Kt, 6 * nnod);
 					}
 
 					dbgvct(re,msize,6,"RE");
@@ -1466,9 +1480,6 @@ int arclmStatic(struct arclmframe* af)
 					dbgvct(re,msize,6,"Kinvrp");
 
 
-
-
-
 					lenR = vectorlength(evct_R, msize);
 
 					evctre = dotproduct(Kinvre,evct_R,msize);
@@ -1492,7 +1503,6 @@ int arclmStatic(struct arclmframe* af)
 						*(evct_R + ii) = (*(Kinvrp + ii) * loadlambda + *(Kinvre + ii)) ;
 					}
 
-					loadfactor += loadlambda;
 
 					free(rp);
 					free(re);

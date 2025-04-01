@@ -428,9 +428,6 @@ double** projectionmtx(double* eform, double** G,int nnod)
 			}
 			SGu = matrixmatrix(S, Gu, 3);
 
-			dbgmtx(S,3,3,"S") ;
-			dbgmtx(Gu,3,3,"Gu") ;
-			dbgmtx(SGu,3,3,"SGu") ;
 			for (i = 0; i < 3; i++)
 			{
 				for (j = 0; j < 3; j++)
@@ -652,11 +649,6 @@ double** transmatrixHPT(double* eform, double* edisp, double** T, int nnod)
 	HP = matrixmatrix(H, P, 6*nnod);
 	HPT = matrixmatrix(HP, T, 6*nnod);
 
-	dbgmtx(G,3,12,"G");
-	dbgmtx(P,12,12,"P");
-	dbgmtx(H,12,12,"H");
-	dbgmtx(HP,12,12,"HP");
-	dbgmtx(HPT,12,12,"HPT");
 
 	freematrix(G, 3);
 	freematrix(P, 6*nnod);
