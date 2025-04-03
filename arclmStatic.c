@@ -188,7 +188,7 @@ void inputplst(struct arclmframe *af, const char *fname, int targetlap, int targ
     char **data;
     int n, i, j, k;
 
-    snprintf(fullfname, sizeof(fullfname), "%s.%s", fname, "plst");
+	snprintf(fullfname, sizeof(fullfname), "%s.%s", fname, "plst");
     fplst = fopen(fullfname, "r");
     if (fplst == NULL) return;
 
@@ -1159,7 +1159,7 @@ int arclmStatic(struct arclmframe* af)
 			{
 			  BISECTIONFLAG=1;
 			}
-			if(pinpointmode == 2)
+			if(pinpointmode == 2 && nlap >70)
 			{
 			  EXTENDEDFLAG=1;
 			}
@@ -1854,7 +1854,7 @@ int arclmStatic(struct arclmframe* af)
 			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
 
 			/*OUTPUT FOR GLOBAL*/
-			//dbgstr(string);
+			dbgstr(string);
 
 			fprintf(fdsp, string);
 			outputdisp(ddisp, fdsp, nnode, nodes);

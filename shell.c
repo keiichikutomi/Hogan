@@ -2445,7 +2445,7 @@ double** shellCconsistentilyushin(struct oshell shell, int ii)
 	y = yieldstress(shell.sect, gp->alpha, &dy, &ddy);
 	if(dy!=0)
 	{
-		Halpha = 1.0/(t*dy-((gp->lambda[0])+(gp->lambda[1]))*2.0*(dy*dy+y*ddy)/pow(yinit,2.0));
+		Halpha = 1.0/(t*dy-((gp->lambda[0])+(gp->lambda[1]))*2.0*(dy*dy/*+y*ddy*/)/pow(yinit,2.0));
 		galpha = -2.0*y*dy/pow(yinit,2.0);
 
 		beta = Halpha*pow(galpha,2.0);
@@ -2866,35 +2866,50 @@ void returnmapilyushin(struct oshell* shell, int ii)
 	   {
 		 *(lambda + 0) = *(lambda01 + 0);
 		 *(lambda + 1) = *(lambda01 + 1);
+		 if(1/*shell->code==1034*/)
+		 {
+		   sprintf(str,"SHELL ID:%d INTEGRATION PT:%d CONVERGED:%e %e %e %e\n",shell->code,ii,*(lambda+0),*(lambda+1),*(f01+0),*(f01+1));
+		   //errormessage(str);
+		   dbgstr(str);
+		 }
 	   }
 	   else if( *(lambda0 + 0) > 0.0 && abs(*(f0 + 0)) < tolerance && *(f0 + 1) < 0.0)
 	   {
 		 *(lambda + 0) = *(lambda0 + 0);
 		 *(lambda + 1) = *(lambda0 + 1);
+		 if(1/*shell->code==1034*/)
+		 {
+		   sprintf(str,"SHELL ID:%d INTEGRATION PT:%d CONVERGED:%e %e %e %e\n",shell->code,ii,*(lambda+0),*(lambda+1),*(f0+0),*(f0+1));
+		   //errormessage(str);
+		   dbgstr(str);
+		 }
 	   }
 	   else if( *(lambda1 + 1) > 0.0 && abs(*(f1 + 1)) < tolerance && *(f1 + 0) < 0.0)
 	   {
 		 *(lambda + 0) = *(lambda1 + 0);
 		 *(lambda + 1) = *(lambda1 + 1);
+		 if(1/*shell->code==1034*/)
+		 {
+		   sprintf(str,"SHELL ID:%d INTEGRATION PT:%d CONVERGED:%e %e %e %e\n",shell->code,ii,*(lambda+0),*(lambda+1),*(f1+0),*(f1+1));
+		   //errormessage(str);
+		   dbgstr(str);
+		 }
 	   }
 	   else
 	   {
-		 //sprintf(str,"\nSHELL ID:%d INTEGRATION PT:%d\n",shell->code,ii);
-		 //dbgstr(str);
-
 		 *(lambda + 0) = 0.0;
 		 *(lambda + 1) = 0.0;
+		 //sprintf(str,"SHELL ID:%d INTEGRATION PT:%d NOT CONVERGED:\n",shell->code,ii);
+		 //errormessage(str);
+		 //dbgstr(str);
 	   }
+
 
    }
    free(f);
    f=ilyushin(shell, ii, lambda, 1);
 
-   if(OUTPUTFLAG==1)
-   {
-	   sprintf(str,"CONVERGED:\n%e %e %e %e\n",*(lambda+0),*(lambda+1),*(f+0),*(f+1));
-	   dbgstr(str);
-   }
+
 
    free(lambdaeps);
    free(dlambda);

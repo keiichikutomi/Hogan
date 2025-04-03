@@ -100,9 +100,9 @@ double* rotationvct(double** rmtx)
 		*(rvct + 2) *= PI;
 
 		//sprintf(str,"%.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e\n",s,c,theta,*(rvct + 0),*(rvct + 1),*(rvct + 2), *(*(rmtx + 0) + 0), *(*(rmtx + 1) + 1), *(*(rmtx + 2) + 2));
+		//sprintf(str,"DETECT 180 DEGREE ROTATION\n");
 		//dbgstr(str);
-
-		//errormessage("DETECT 180 DEGREE ROTATION\n");
+		//errormessage(str);
 	}
 	else/*theta=0*/
 	{

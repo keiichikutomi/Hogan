@@ -1028,8 +1028,8 @@ int arclmDynamic(struct arclmframe* af)
 			DIVFLAG = 0;
 		}
 
-		//if ((residual < tolerance || iteration > maxiteration-1)) && iteration!=1)
-		if (((gvctlen < tolerance || iteration > maxiteration-1) && iteration!=1) || DIVFLAG == 1)
+		if (((residual < tolerance || iteration > maxiteration-1) && iteration!=1) || DIVFLAG == 1)
+		//if (((gvctlen < tolerance || iteration > maxiteration-1) && iteration!=1) || DIVFLAG == 1)
 		{
 			nlap += 1;
 			iteration = 0;
@@ -1068,6 +1068,8 @@ int arclmDynamic(struct arclmframe* af)
 		if (((outputmode == 0 && iteration == 1) || outputmode == 1) && DIVFLAG == 0)
 		{
 			sprintf(string, "LAP: %5ld / %5ld ITERATION: %5ld\n", nlap, laps, iteration);
+
+			dbgstr(string);
 
 			fprintf(fdsp, string);
 			fprintf(fvel, string);
