@@ -1667,8 +1667,8 @@ double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy)
 	if(n==0.0)
 	{
 	  y = yinit;
-	  if(dy!=NULL)*dy = 0.0;
-	  if(ddy!=NULL)*ddy = 0.0;
+	  if(dy!=nullptr)*dy = 0.0;
+	  if(ddy!=nullptr)*ddy = 0.0;
 	}
 	/*
 	else
@@ -1699,19 +1699,15 @@ double yieldstress(struct osect* sect, double alpha, double* dy, double* ddy)
 	  y = sc * pow(sa+alpha,sn);
 	  if(sn==1.0)
 	  {
-		if(dy!=NULL)*dy = sc;
-		if(ddy!=NULL)*ddy = 0.0;
+		if(dy!=nullptr)*dy = sc;
+		if(ddy!=nullptr)*ddy = 0.0;
 	  }
 	  else
 	  {
-		if(dy!=NULL)*dy = sc*sn*pow(sa+alpha,n-1);
-		if(ddy!=NULL)*ddy = sc*sn*sn*pow(sa+alpha,n-2);
+		if(dy!=nullptr)*dy = sc*sn*pow(sa+alpha,sn-1);
+		if(ddy!=nullptr)*ddy = sc*sn*sn*pow(sa+alpha,sn-2);
 	  }
 	}
-
-
-
-
 	return y;
 }
 
@@ -1807,10 +1803,10 @@ double mises(struct oshell* shell, int ii, int jj, double lambda, int UPDATEFLAG
   /*f={σtry}^T[W]^T[A][W]{σtry}*/
   f = (p[0]**(ostress+0)**(ostress+0) + p[1]**(ostress+1)**(ostress+1) + p[2]**(ostress+2)**(ostress+2))/pow(yinit,2);
 
-  alpha = gp2->alpha + 2.0*lambda*sqrt(f)/pow(yinit,2) ;
+  alpha = gp2->alpha + 2.0*lambda*sqrt(f)/yinit;
   y = yieldstress(shell->sect,alpha,NULL,NULL);
 
-  f -= pow(pow(y/yinit,2),2.0);
+  f -= pow(y/yinit,2);
 
   if(UPDATEFLAG == 1)/*UPDATE PARAMS*/
   {
@@ -2134,7 +2130,7 @@ double** shellCconsistentmises(struct oshell shell, int ii)
   double* N;
   double M;
   double beta;
-  double tolerance = 1.0e-6;/*SAME AS RETURNMAP*/
+  double tolerance = 1.0e-8;/*SAME AS RETURNMAP*/
 
   char str[800];
 
@@ -2216,7 +2212,7 @@ double** shellCconsistentmises(struct oshell shell, int ii)
 	  y = yieldstress(shell.sect, gp2->alpha, &dy, &ddy);
 	  if(dy!=0)
 	  {
-		Halpha = 1.0/(dy-(gp2->lambda)*2.0*(dy*dy+y*ddy)/pow(yinit,2.0));
+		Halpha = 1.0/(dy-(gp2->lambda)*2.0*(dy*dy/*+y*ddy*/)/pow(yinit,2.0));
 		galpha = -2.0*y*dy/pow(yinit,2.0);
 
 		beta = Halpha*pow(galpha,2.0);
@@ -2296,16 +2292,16 @@ double** shellCconsistentilyushin(struct oshell shell, int ii)
 
   double ** C, ** consistentC;
   double ** W;
-  double ** H, ** g;
+  double ** H, ** Ht, ** g;
   double Halpha, galpha;
   double y, dy, ddy;
   double yinit;
 
-  double* g0,* g1,* N0,* N1;
+  double* g0,* g1,* N0,* N1,* Nt0,* Nt1;
   double M00,M01,M10,M11;
   double detM;
   double beta;
-  double tolerance = 1.0e-6;/*SAME AS RETURNMAP*/
+  double tolerance = 1.0e-8;/*SAME AS RETURNMAP*/
 
   char str[800];
 
@@ -2358,11 +2354,7 @@ double** shellCconsistentilyushin(struct oshell shell, int ii)
 	{
 	  *(W + i) = (double*)malloc(nstress * sizeof(double));
 	}
-	g  = (double**)malloc(2 * sizeof(double*));
-	for (i = 0; i < 2; i++)
-	{
-	  *(g+i) = (double*)malloc(nstress * sizeof(double));
-	}
+
 
 	gp = &(shell.gp[ii]);
 
@@ -2417,100 +2409,138 @@ double** shellCconsistentilyushin(struct oshell shell, int ii)
 	}
 	H = matrixmatrix(W,C,nstress);
 
-	/*{df/dσ}={d(σAσ)/dσ}=2[A]{σ}={g}*/
-	a[0] = 2.0 * gp->stress[0] - gp->stress[1];
-	a[1] = 2.0 * gp->stress[1] - gp->stress[0];
-	a[2] = 6.0 * gp->stress[2];
-	a[3] = 2.0 * gp->stress[3] - gp->stress[4];
-	a[4] = 2.0 * gp->stress[4] - gp->stress[3];
-	a[5] = 6.0 * gp->stress[5];
 
-
-	*(*(g+0)+0) = a[0]/c[0] + a[3]/c[2];
-	*(*(g+0)+1) = a[1]/c[0] + a[4]/c[2];
-	*(*(g+0)+2) = a[2]/c[0] + a[5]/c[2];
-	*(*(g+0)+3) = a[0]/c[2] + a[3]/c[1];
-	*(*(g+0)+4) = a[1]/c[2] + a[4]/c[1];
-	*(*(g+0)+5) = a[2]/c[2] + a[5]/c[1];
-
-	*(*(g+1)+0) =   a[0]/c[0] - a[3]/c[2];
-	*(*(g+1)+1) =   a[1]/c[0] - a[4]/c[2];
-	*(*(g+1)+2) =   a[2]/c[0] - a[5]/c[2];
-	*(*(g+1)+3) = - a[0]/c[2] + a[3]/c[1];
-	*(*(g+1)+4) = - a[1]/c[2] + a[4]/c[1];
-	*(*(g+1)+5) = - a[2]/c[2] + a[5]/c[1];
-
-
-	/*df/dq=d/dq(-σy^2/σyinit^2)=-2*σy*σy'(q)/(σyinit^2)=beta*/
-	y = yieldstress(shell.sect, gp->alpha, &dy, &ddy);
-	if(dy!=0)
+	if(abs(gp->f[0])<tolerance || abs(gp->f[1])<tolerance)
 	{
-		Halpha = 1.0/(t*dy-((gp->lambda[0])+(gp->lambda[1]))*2.0*(dy*dy/*+y*ddy*/)/pow(yinit,2.0));
-		galpha = -2.0*y*dy/pow(yinit,2.0);
+		/*{df/dσ}={d(σAσ)/dσ}=2[A]{σ}={g}*/
+		a[0] = 2.0 * gp->stress[0] - gp->stress[1];
+		a[1] = 2.0 * gp->stress[1] - gp->stress[0];
+		a[2] = 6.0 * gp->stress[2];
+		a[3] = 2.0 * gp->stress[3] - gp->stress[4];
+		a[4] = 2.0 * gp->stress[4] - gp->stress[3];
+		a[5] = 6.0 * gp->stress[5];
 
-		beta = Halpha*pow(galpha,2.0);
-	}
-	else
-	{
-		beta = 0;
-    }
-
-	/*CONSISTENT STIFFNESS*/
-	if(abs(gp->f[0])<tolerance && abs(gp->f[1])<tolerance)
-	{
-	  N0=matrixvector(H,*(g+0),nstress);
-	  N1=matrixvector(H,*(g+1),nstress);
-
-	  M00=dotproduct(*(g+0),N0,nstress);
-	  M01=dotproduct(*(g+0),N1,nstress);
-	  M10=M01;
-	  M11=dotproduct(*(g+1),N1,nstress);
-
-	  M00+=beta;
-	  M01+=beta;
-	  M10+=beta;
-	  M11+=beta;
-	  detM = M00*M11-M01*M10;
-
-	  for (i = 0; i < nstress; i++)
-	  {
-		for (j = 0; j < nstress; j++)
+		g  = (double**)malloc(2 * sizeof(double*));
+		for (i = 0; i < 2; i++)
 		{
-		  *(*(consistentC + i) + j) = *(*(H+i)+j) - ( M11**(N0+i)**(N0+j) - M01**(N0+i)**(N1+j) - M10**(N1+i)**(N0+j) + M00**(N1+i)**(N1+j) )/detM;
+		  *(g+i) = (double*)malloc(nstress * sizeof(double));
 		}
-	  }
-	  free(N0);
-	  free(N1);
-	}
-	else if(abs(gp->f[0])<tolerance)
-	{
-	  N0=matrixvector(H,*(g+0),nstress);
-	  M00=dotproduct(*(g+0),N0,nstress);
-	  M00+=beta;
 
-	  for (i = 0; i < nstress; i++)
-	  {
-		for (j = 0; j < nstress; j++)
-		{
-		  *(*(consistentC + i) + j) = *(*(H+i)+j) - *(N0+i)**(N0+j)/M00;
-		}
-	  }
-	  free(N0);
-	}
-	else if(abs(gp->f[1])<tolerance)
-	{
-	  N1=matrixvector(H,*(g+1),nstress);
-	  M11=dotproduct(*(g+1),N1,nstress);
-	  M11+=beta;
+		*(*(g+0)+0) = a[0]/c[0] + a[3]/c[2];
+		*(*(g+0)+1) = a[1]/c[0] + a[4]/c[2];
+		*(*(g+0)+2) = a[2]/c[0] + a[5]/c[2];
+		*(*(g+0)+3) = a[0]/c[2] + a[3]/c[1];
+		*(*(g+0)+4) = a[1]/c[2] + a[4]/c[1];
+		*(*(g+0)+5) = a[2]/c[2] + a[5]/c[1];
 
-	  for (i = 0; i < nstress; i++)
-	  {
-		for (j = 0; j < nstress; j++)
+		*(*(g+1)+0) =   a[0]/c[0] - a[3]/c[2];
+		*(*(g+1)+1) =   a[1]/c[0] - a[4]/c[2];
+		*(*(g+1)+2) =   a[2]/c[0] - a[5]/c[2];
+		*(*(g+1)+3) = - a[0]/c[2] + a[3]/c[1];
+		*(*(g+1)+4) = - a[1]/c[2] + a[4]/c[1];
+		*(*(g+1)+5) = - a[2]/c[2] + a[5]/c[1];
+
+
+		Ht = matrixtranspose(H,nstress);
+
+		/*df/dq=d/dq(-σy^2/σyinit^2)=-2*σy*σy'(q)/(σyinit^2)=beta*/
+		y = yieldstress(shell.sect, gp->alpha, &dy, &ddy);
+		if(dy!=0)
 		{
-		  *(*(consistentC + i) + j) = *(*(H+i)+j) - *(N1+i)**(N1+j)/M11;
+			Halpha =  1.0/(t*dy-((gp->lambda[0])+(gp->lambda[1]))*2.0*(dy*dy/*+y*ddy*/)/pow(yinit,2.0));
+			galpha = -2.0*y*dy/pow(yinit,2.0);
+
+			beta = Halpha*pow(galpha,2.0);
 		}
-	  }
-	  free(N1);
+		else
+		{
+			beta = 0;
+		}
+
+		/*CONSISTENT STIFFNESS*/
+		if(abs(gp->f[0])<tolerance && abs(gp->f[1])<tolerance)
+		{
+		  N0=matrixvector(H,*(g+0),nstress);
+		  N1=matrixvector(H,*(g+1),nstress);
+
+
+
+		  Nt0=matrixvector(Ht,*(g+0),nstress);
+		  Nt1=matrixvector(Ht,*(g+1),nstress);
+
+		  M00=dotproduct(*(g+0),N0,nstress);
+		  M01=dotproduct(*(g+0),N1,nstress);
+		  M10=M01;
+		  M11=dotproduct(*(g+1),N1,nstress);
+
+		  M00+=beta;
+		  M01+=beta;
+		  M10+=beta;
+		  M11+=beta;
+		  detM = M00*M11-M01*M10;
+
+		  for (i = 0; i < nstress; i++)
+		  {
+			for (j = 0; j < nstress; j++)
+			{
+			  *(*(consistentC + i) + j) = *(*(H+i)+j) - ( M11**(N0+i)**(Nt0+j) - M01**(N0+i)**(Nt1+j) - M10**(N1+i)**(Nt0+j) + M00**(N1+i)**(Nt1+j) )/detM;
+			}
+		  }
+		  free(N0);
+		  free(N1);
+		  free(Nt0);
+		  free(Nt1);
+		}
+		else if(abs(gp->f[0])<tolerance)
+		{
+		  N0=matrixvector(H,*(g+0),nstress);
+		  Nt0=matrixvector(Ht,*(g+0),nstress);
+		  M00=dotproduct(*(g+0),N0,nstress);
+		  M00+=beta;
+
+		  for (i = 0; i < nstress; i++)
+		  {
+			for (j = 0; j < nstress; j++)
+			{
+			  *(*(consistentC + i) + j) = *(*(H+i)+j) - *(N0+i)**(Nt0+j)/M00;
+			}
+		  }
+		  free(N0);
+		  free(Nt0);
+		}
+		else if(abs(gp->f[1])<tolerance)
+		{
+		  N1=matrixvector(H,*(g+1),nstress);
+		  Nt1=matrixvector(Ht,*(g+1),nstress);
+		  M11=dotproduct(*(g+1),N1,nstress);
+
+		  sprintf(str,"M11= %e beta= %e lambda= %e alpha= %e y= %e dy= %e ddy= %e\n", M11, beta, gp->lambda[1],gp->alpha,y,dy,ddy);
+		  dbgstr(str);
+
+		  M11+=beta;
+
+		  for (i = 0; i < nstress; i++)
+		  {
+			for (j = 0; j < nstress; j++)
+			{
+			  *(*(consistentC + i) + j) = *(*(H+i)+j) - *(N1+i)**(Nt1+j)/M11;
+			}
+		  }
+		  free(N1);
+		  free(Nt1);
+
+		  /*
+		  dbgmtx(C, nstress, nstress, "C");
+		  dbgmtx(W, nstress, nstress, "W");
+		  dbgmtx(H, nstress, nstress, "H");
+		  dbgmtx(consistentC, nstress, nstress, "consistentC");
+		  dbgvct(N1, nstress, nstress, "N1");
+		  dbgvct(Nt1, nstress, nstress, "Nt1");
+		  */
+
+		}
+		freematrix(Ht,nstress);
+		freematrix(g,2);
 	}
 	else
 	{
@@ -2523,10 +2553,8 @@ double** shellCconsistentilyushin(struct oshell shell, int ii)
 	  }
 	}
 	freematrix(H,nstress);
-
 	freematrix(W,nstress);
-	freematrix(g,2);
-	freematrix(C, nstress);
+	freematrix(C,nstress);
 
 	return consistentC;
 }
@@ -2541,7 +2569,7 @@ void returnmapmises(struct oshell* shell, int ii, int jj)
    double lambda, lambdaeps, dlambda;
    double f, feps;
    double residual;
-   double tolerance = 1.0e-6;/*SAME AS CONSISTENT_C*/
+   double tolerance = 1.0e-8;/*SAME AS CONSISTENT_C*/
    double eps = 1.0e-2;
    char str[800];
    int iteration;
@@ -2598,6 +2626,7 @@ void returnmapmises(struct oshell* shell, int ii, int jj)
 		 residual = abs(f);
 		 iteration++;
 	   }
+
 	   if(FLAG==1)
 	   {
 		 errormessage("RETURN-MAPPING FAILED.");
@@ -2605,14 +2634,12 @@ void returnmapmises(struct oshell* shell, int ii, int jj)
 	   }
 	   if(OUTPUTFLAG==1)
 	   {
-		   sprintf(str,"CONVERGED:\n%e %e\n",lambda,f);
-		   dbgstr(str);
+		 sprintf(str,"CONVERGED:\n%e %e\n",lambda,f);
+		 dbgstr(str);
 	   }
 
    }
    f=mises(shell, ii, jj, lambda, 1);/*OUTPUT TO OSHELL.*/
-
-
    return;
 }
 
@@ -2627,7 +2654,7 @@ void returnmapilyushin(struct oshell* shell, int ii)
    double** dfdl;
    double det;
    double residual;
-   double tolerance = 1.0e-6;/*SAME AS CONSISTENT_C*/
+   double tolerance = 1.0e-8;/*SAME AS CONSISTENT_C*/
    double eps = 1.0e-2;
    char str[800];
    int iteration;
@@ -2866,7 +2893,7 @@ void returnmapilyushin(struct oshell* shell, int ii)
 	   {
 		 *(lambda + 0) = *(lambda01 + 0);
 		 *(lambda + 1) = *(lambda01 + 1);
-		 if(1/*shell->code==1034*/)
+		 if(0/*shell->code==1034*/)
 		 {
 		   sprintf(str,"SHELL ID:%d INTEGRATION PT:%d CONVERGED:%e %e %e %e\n",shell->code,ii,*(lambda+0),*(lambda+1),*(f01+0),*(f01+1));
 		   //errormessage(str);
@@ -2877,7 +2904,7 @@ void returnmapilyushin(struct oshell* shell, int ii)
 	   {
 		 *(lambda + 0) = *(lambda0 + 0);
 		 *(lambda + 1) = *(lambda0 + 1);
-		 if(1/*shell->code==1034*/)
+		 if(0/*shell->code==1034*/)
 		 {
 		   sprintf(str,"SHELL ID:%d INTEGRATION PT:%d CONVERGED:%e %e %e %e\n",shell->code,ii,*(lambda+0),*(lambda+1),*(f0+0),*(f0+1));
 		   //errormessage(str);
@@ -2888,7 +2915,7 @@ void returnmapilyushin(struct oshell* shell, int ii)
 	   {
 		 *(lambda + 0) = *(lambda1 + 0);
 		 *(lambda + 1) = *(lambda1 + 1);
-		 if(1/*shell->code==1034*/)
+		 if(0/*shell->code==1034*/)
 		 {
 		   sprintf(str,"SHELL ID:%d INTEGRATION PT:%d CONVERGED:%e %e %e %e\n",shell->code,ii,*(lambda+0),*(lambda+1),*(f1+0),*(f1+1));
 		   //errormessage(str);
