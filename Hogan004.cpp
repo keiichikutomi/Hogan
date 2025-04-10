@@ -44,6 +44,7 @@
 #include "assemble.c"
 #include "assembleEigen.c"
 #include "arclmStatic.c"/*ANALYSIS STATIC NON-LINEAR.*/
+#include "arclmStaticOptimization.c"/*ANALYSIS STATIC NON-LINEAR.*/
 #include "arclmDynamic.c"
 #include "bclng021ujok.c"                       /*ELASTIC BUCKLING.*/
 #include "vbrat001.c"
@@ -400,11 +401,7 @@ void printarclmlastfigures(FILE *fin,struct viewparam *vp,
 void printarclmlastfiguresII(FILE *fin,struct viewparam *vp,
                            struct arclmframe *af);
 
-/*OPTIMIZATION*/
-//void conjugategradient(struct organ *org); /*CONJUGATE*/
-//void conjugategradientxz(struct organ *org);             /*Fujimoto*/
-//void conjugategradientcurve(struct organ *org);          /*Fujimoto*/
-//double arclmautomatic(struct organ *org);  /*CONJUGATE*/
+
 
 /*GLOBAL PARAMETERS*/
 HINSTANCE hInstGlobal;                                  /*INSTANCE.*/
@@ -2259,19 +2256,24 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
           break;
         /*Optimization Test*/
 		case IDM_OPTIMIZATION: /*CONJUGATE*/
-		  if(wdraw.nchilds>=2 &&
-			 (wdraw.childs+1)->hwnd!=NULL &&
+		  if(wdraw.nchilds>=2 && (wdraw.childs+1)->hwnd!=NULL &&
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN &&
 			 (wdraw.childs+1)->org.nodes!=NULL)
 		  {
 			conjugategradientbezier(&((wdraw.childs+1)->org));
-			/*conjugategradientxz(&((wdraw.childs+1)->org));*/
-			/*conjugategradientcurve(&((wdraw.childs+1)->org));*/
+			//conjugategradientxz(&((wdraw.childs+1)->org));
+			//conjugategradientcurve(&((wdraw.childs+1)->org));
 		  }
+		  else if(wdraw.nchilds>=2 && (wdraw.childs+1)->hwnd!=NULL &&
+				  (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM &&)
+		  {
+			conjugategradientaf(&((wdraw.childs+1)->af));
+		  }
+
 		  break;
 
         /*change sect auto*/   /*For ghouse*/
-        case IDM_CHANGESECTAUTO:
+		case IDM_CHANGESECTAUTO:
           if(wdraw.nchilds>=2 &&
 			 (wdraw.childs+1)->hwnd!=NULL &&
 			 (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ORGAN &&

@@ -1,9 +1,11 @@
 /*OPTIMIZATION*/
 
-void conjugategradientbezier(struct organ *org); 	       	  /*CONJUGATE*/
+void conjugategradientbezier(struct organ *org); 	  /*CONJUGATE*/
 void conjugategradient(struct organ *org); 	       	  /*CONJUGATE*/
+
 void conjugategradientxz(struct organ *org);          /*Fujimoto*/
 void conjugategradientcurve(struct organ *org);       /*Fujimoto*/
+
 double arclmautomatic(struct organ *org);  			  /*CONJUGATE*/
 double arclmautomaticII(struct organ *org);  		  /*CONJUGATE*/
 double arclmautomatic101(struct organ *org);  		  /*CONJUGATE*/
@@ -142,7 +144,7 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
 	if(ndata!=3) return;
     x[i]=strtod(*(data+0),NULL);
     y[i]=strtod(*(data+1),NULL);
-    z[i]=strtod(*(data+2),NULL);
+	z[i]=strtod(*(data+2),NULL);
 
     for(;ndata>0;ndata--) free(*(data+ndata-1));
     free(data);
@@ -213,7 +215,7 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
   while(i<m)
   {
     fixed=0;
-    for(ii=0;ii<nfix;ii++)
+	for(ii=0;ii<nfix;ii++)
     {
       if(offset==fp[ii])
       {
@@ -241,7 +243,7 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
 
         (org->nodes+ii)->d[0]=node.d[0];
         (org->nodes+ii)->d[1]=node.d[1];
-        (org->nodes+ii)->d[2]=node.d[2];
+		(org->nodes+ii)->d[2]=node.d[2];
       }
 
 	  /*Strain Energy*/
@@ -250,10 +252,10 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
 	  *(fgrad1+i)=gamma*(f1-df)/dfact; /*NEGATIVE GRADIENT*/
 	  *(u1+i)=*(fgrad1+i);
 
-  	  fprintf(ftxt,"CONTROLE POINT[%d] Gradient=%9.5f\n",offset,(f1-df)/dfact);
+	  fprintf(ftxt,"CONTROLE POINT[%d] Gradient=%9.5f\n",offset,(f1-df)/dfact);
 
       i++;
-    }
+	}
 
     offset++;
   }
@@ -267,24 +269,24 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
 	SetDlgItemText((wmenu.childs+2)->hwnd,ID_LAPS,str);
 
 #if 1
-    offset=0; i=0;
-    while(i<m)
-    {
-      fixed=0;
-      for(ii=0;ii<nfix;ii++)
-      {
+	offset=0; i=0;
+	while(i<m)
+	{
+	  fixed=0;
+	  for(ii=0;ii<nfix;ii++)
+	  {
         if(offset==fp[ii])
-        {
+		{
           fixed=1;
-        }
-      }
-      if(!fixed)
+		}
+	  }
+	  if(!fixed)
       {
-        z[offset]=zini[offset]+(*(u1+i)); /*ONLY Z*/
-        i++;
-      }
+		z[offset]=zini[offset]+(*(u1+i)); /*ONLY Z*/
+		i++;
+	  }
 
-      offset++;
+	  offset++;
 	}
 
     for(ii=0;ii<nnode;ii++)
@@ -319,25 +321,25 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
     {
       fixed=0;
       for(ii=0;ii<nfix;ii++)
-      {
+	  {
         if(offset==fp[ii])
         {
           fixed=1;
         }
       }
-      if(!fixed)
+	  if(!fixed)
       {
   	    for(j=0;j<ncontrole;j++)
 	    {
 	      if(j==offset)
 	      {
-            z[j]=zini[j]+dfact;                 /*UPDATE ONLY Z OF CONTROLE POINT I*/
+			z[j]=zini[j]+dfact;                 /*UPDATE ONLY Z OF CONTROLE POINT I*/
 	      }
 	      else
 	      {
             z[j]=zini[j];                       /*RESET Z OF OTHER CONTROLE POINTS*/
 	      }
-        }
+		}
         /*BEZIER SURFACE*/
         for(ii=0;ii<nnode;ii++)
         {
@@ -345,15 +347,15 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
           beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
 
           (org->nodes+ii)->d[0]=node.d[0];
-          (org->nodes+ii)->d[1]=node.d[1];
-          (org->nodes+ii)->d[2]=node.d[2];
-        }
+		  (org->nodes+ii)->d[1]=node.d[1];
+		  (org->nodes+ii)->d[2]=node.d[2];
+		}
 
-	    /*Strain Energy*/
-	    df=arclmautomatic101(org);
+		/*Strain Energy*/
+		df=arclmautomatic101(org);
 
 //	    *(ua+i)=-gamma*(fa-df)/dfact+(*(u1+i)); /*WRONG:NEGATIVE GRADIENT*/
-	    *(ua+i)=-gamma*(fa-df)/dfact+(*(fgrad1+i)); /*NEGATIVE GRADIENT*/
+		*(ua+i)=-gamma*(fa-df)/dfact+(*(fgrad1+i)); /*NEGATIVE GRADIENT*/
         *(fgrad2+i)=gamma*(f1-df)/dfact;  /*NEGATIVE GRADIENT*/
         fprintf(ftxt,"CONTROLE POINT[%d] Gradient=%9.5f\n",offset,(f1-df)/dfact);
 
@@ -361,7 +363,7 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
       }
 
       offset++;
-    }
+	}
 	fprintf(ftxt,"\n");
 
 	/*
@@ -391,7 +393,7 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
     {
 	  vsize=0.0;
       offset=0; i=0;
-      while(i<m)
+	  while(i<m)
       {
         fixed=0;
         for(ii=0;ii<nfix;ii++)
@@ -401,25 +403,25 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
             fixed=1;
           }
         }
-        if(!fixed)
-        {
-          z[offset]=zini[offset]+alpha*(*(u1+i)); /*ONLY Z*/
+		if(!fixed)
+		{
+		  z[offset]=zini[offset]+alpha*(*(u1+i)); /*ONLY Z*/
 //  	      *(fgrad2+i)=(*(fgrad1+i))-alpha*(*(ua+i));
-	      vsize+=(*(fgrad2+i))*(*(fgrad2+i));
+		  vsize+=(*(fgrad2+i))*(*(fgrad2+i));
 
-          i++;
-        }
+		  i++;
+		}
 
-        offset++;
+		offset++;
 	  }
 
-      /*BEZIER SURFACE*/
-      for(ii=0;ii<nnode;ii++)
-      {
-        node=*(org->nodes+ii);
-        beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+	  /*BEZIER SURFACE*/
+	  for(ii=0;ii<nnode;ii++)
+	  {
+		node=*(org->nodes+ii);
+		beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
 
-        (org->nodes+ii)->d[0]=node.d[0];
+		(org->nodes+ii)->d[0]=node.d[0];
         (org->nodes+ii)->d[1]=node.d[1];
         (org->nodes+ii)->d[2]=node.d[2];
       }
@@ -433,14 +435,14 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
       test=f2-(f1-abs(xi*alpha*test));
 
       if(test<=0.0 || (alpha<=0.01 && f1>f2))
-      {
+	  {
         sprintf(s,"LINE SEARCH:ALPHA= %8.3f/f1=%.5f/f2=%.5f/TEST= %8.3f",alpha,f1,f2,test);
 	    fprintf(ftxt,"%s\n",s);
         break;
       }
       else
       {
-        alpha*=tau;
+		alpha*=tau;
       	sprintf(s,"LINE SEARCH:ALPHA= %8.3f/f1=%.5f/f2=%.5f/TEST= %8.3f",alpha,f1,f2,test);
 	    fprintf(ftxt,"%s\n",s);
 //        MessageBox(NULL,s,"Conjugate Gradient",MB_OK);
@@ -472,23 +474,23 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
 	}
 	beta=c3/c1;  /*FLETCHER-REEVES*/
 
-    offset=0; i=0;
+	offset=0; i=0;
     while(i<m)
-    {
-      fixed=0;
-      for(ii=0;ii<nfix;ii++)
-      {
-        if(offset==fp[ii])
+	{
+	  fixed=0;
+	  for(ii=0;ii<nfix;ii++)
+	  {
+		if(offset==fp[ii])
         {
           fixed=1;
         }
       }
-      if(!fixed)
+	  if(!fixed)
       {
   	    /*UPDATE INITIAL NODE*/
         zini[offset]=z[offset]; /*ONLY Z*/
   	    /*GRADIENTS*/
-	    *(u2+i)=(*(fgrad2+i))+beta*(*(u1+i));
+		*(u2+i)=(*(fgrad2+i))+beta*(*(u1+i));
 	    *(u1+i)=*(u2+i);
 	    *(fgrad1+i)=*(fgrad2+i);
 
@@ -500,13 +502,13 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
     f1=f2;  /*UJIOKA*/
 
     test=0.0;
-    for(i=0;i<m;i++)
+	for(i=0;i<m;i++)
     {
       test+=(*(u1+i))*(*(fgrad2+i));
     }
     if(test<=0)
     {
-      for(i=0;i<m;i++)
+	  for(i=0;i<m;i++)
       {
          *(u1+i)=(*(fgrad2+i));    /*THE STEEPEST DESCENT METHOD*/
       }
@@ -518,7 +520,7 @@ void conjugategradientbezier(struct organ *org)     /*CONJUGATE*/
 
     sprintf(str,"hogtxt_opt%d.inp",k);
     fresult=fopen(str,"w");
-    if(fresult==NULL) break;
+	if(fresult==NULL) break;
     saveorganization(fresult,&((wdraw.childs+1)->org),
                     &((wdraw.childs+1)->vparam));
     fclose(fresult);

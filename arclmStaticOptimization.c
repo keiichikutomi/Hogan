@@ -1,14 +1,3 @@
-void dbgstr(const char* str);
-void dbgvct(double* vct, int size, int linesize, const char* str);
-void dbgmtx(double** mtx, int rows, int cols, const char* str);
-void dbggcomp(struct gcomponent* gmtx, int size, const char* str);
-
-void inputdsp(struct arclmframe *af, const char *fname, int targetlap, int targetiteration);
-void inputplst(struct arclmframe *af, const char *fname, int targetlap, int targetiteration);
-
-double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize);
-
-int arclmStatic(struct arclmframe* af);
 
 
 
@@ -26,231 +15,407 @@ extern void bisecgeneral(struct gcomponent *A,double factorA,
 						 double BL, double BR);
 extern double inversemethod(struct gcomponent *gmtx, struct oconf *confs, double *evct, int msize);
 
+extern int beziersurfaceII(int m,int n,double *x,double *y,double *z,
+					double u,double v,struct onode *node);
 
-void dbgstr(const char* str)
+
+
+struct outputdata
 {
-	FILE *fout = fopen("hogan.dbg", "a");
-	if (fout == NULL)return;
-	fprintf(fout, "%s", str);
-	fclose(fout);
-}
 
-void dbgvct(double* vct, int size, int linesize, const char* str)
+};
+
+void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
+/*OPTIMIZE ORGAN WITH CONJUGATE GRADIENT.*/
 {
-	FILE *fout = fopen("hogan.dbg", "a");
-	if (fout == NULL)return;
+  FILE *ftxt;
+  char str[500];
+  int i,j,k,m,n;
+  int ii,jj;
 
-	if (str != NULL)
-	{
-		fprintf(fout, "%s\n", str);
-	}
-	if (linesize == NULL)
-	{
-		linesize = 1;
-	}
-	for (int i = 0; i < size; i++)
-	{
-		fprintf(fout, "%e ", *(vct+i));
-		if ((i + 1) % linesize == 0)fprintf(fout, "\n");
-	}
-	fclose(fout);
-}
+  int nnode,nelem,nshell;
+  double df,f1,f2,fa,ftarget;
+  double c1,c2,c3,alpha,beta,gamma,vsize,eps;
 
-void dbgmtx(double** mtx, int rows, int cols, const char* str)
-{
-	FILE *fout = fopen("hogan.dbg", "a");
-	if (fout == NULL)return;
+  double dfact; /*COORDINATES*/
+  double *u1,*u2,*ua,*fgrad1,*fgrad2; /*GRADIENT VECTOR*/
 
-	if (str != NULL)
+  double xi,tau,test; /*FOR LINE SEARCH(ARMIJO RULE)*/
+
+  /*BEZIER SURFACE*/
+  FILE *fbezier;
+  char **data/*,str[256]="\0"*/;
+  double ddata;
+  int ndata;
+  long int ncode;
+
+  /*CONTROL POINTS*/
+  int ncontrol;
+  int n1,n2;
+  double *x,*y,*z;              /*CURRENT CONTROLE POINTS*/
+  double *xini,*yini,*zini;     /*INITIAL CONTROLE POINTS*/
+  int *fp;                      /*ICONF OF CONTROLE POINTS*/
+
+  /*ALL NODES*/
+  struct onode node;
+  double *u,*v;                 /*U-V COORDINATES*/
+
+
+  ftarget=5.0;
+  gamma=0.01;
+  dfact=0.1;
+  eps=0.001;
+  /*PARAMETERS FOR LINE SEARCH(ARMIJO RULE)*/
+  xi=0.001;/*0.0<=xi<=1.0*/
+  tau=0.9; /*0<tau<1*/
+
+
+  nnode=af->nnode;
+  nelem=af->nelem;
+  nshell=af->nshell;
+
+  /*CONTROL SURFACE FOR DESIGN VARIABLES*/
+
+  /*CREATE INITIAL BEZIER SURFACE*/
+  fbezier=fopen("bezier.txt","r");   /*BEZIER SURFACE DATA*/
+  fseek(fbezier,0L,SEEK_SET);
+
+  data=fgetsbrk(fbezier,&ndata);
+  n1=strtol(*(data+0),NULL,10);
+  n2=strtol(*(data+1),NULL,10);
+  if(nnode!=strtol(*(data+2),NULL,10)) return;
+
+  /*CONTROLE POINTS*/
+  ncontrol=(n1+1)*(n2+1);
+  fp=(int *)malloc(ncontrol*sizeof(int));
+  x=(double *)malloc(ncontrol*sizeof(double));
+  y=(double *)malloc(ncontrol*sizeof(double));
+  z=(double *)malloc(ncontrol*sizeof(double));
+  zini=(double *)malloc(ncontrol*sizeof(double));
+
+  fgrad1=(double *)malloc(ncontrol*sizeof(double));
+  fgrad2=(double *)malloc(ncontrol*sizeof(double));
+  u1=(double *)malloc(ncontrol*sizeof(double));
+  u2=(double *)malloc(ncontrol*sizeof(double));
+  ua=(double *)malloc(ncontrol*sizeof(double));
+
+
+  for(i=0;i<ncontrol;i++)
+  {
+	data=fgetsbrk(fbezier,&ndata);
+	if(ndata!=3) return;
+	fp[i]=0;
+	x[i]=strtod(*(data+0),NULL);
+    y[i]=strtod(*(data+1),NULL);
+	z[i]=strtod(*(data+2),NULL);
+	zini[i]=z[i];
+
+    for(;ndata>0;ndata--) free(*(data+ndata-1));
+	free(data);
+  }
+
+  /*U-V COORDINATE OF EACH NODE*/
+  u=(double *)malloc(nnode*sizeof(double));
+  v=(double *)malloc(nnode*sizeof(double));
+  for(i=0;i<nnode;i++)
+  {
+	data=fgetsbrk(fbezier,&ndata);
+	if(ndata!=5) return;
+
+	ncode=strtol(*(data+1),NULL,10);
+	if(ncode!=(af->nodes+i)->code) return;
+
+	*(u+i)=strtod(*(data+3),NULL);
+	*(v+i)=strtod(*(data+4),NULL);
+
+    for(;ndata>0;ndata--) free(*(data+ndata-1));
+    free(data);
+  }
+  fclose(fbezier);
+
+
+
+
+  ///*INITIAL*///
+  for(ii=0;ii<nnode;ii++)
+  {
+	node=*(af->nodes+ii);
+	beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+
+	(af->nodes+ii)->d[0]=node.d[0];
+	(af->nodes+ii)->d[1]=node.d[1];
+	(af->nodes+ii)->d[2]=node.d[2];
+  }
+  f1=arclmStatic(af);
+  ///*INITIAL*///
+
+  ///*SENSITIVITY*///
+  for(i=0;i<ncontrol;i++)
+  {
+	if(*(fp+i)==0)
 	{
-		fprintf(fout, "%s\n", str);
-	}
-	if (cols== NULL)
-	{
-		cols = rows;
-	}
-	for (int i = 0; i < rows; i++)
-	{
-		for (int j = 0; j < cols; j++)
+	  for(j=0;j<ncontrol;j++)
+	  {
+		if(i==j)
 		{
-			fprintf(fout, "%e ", *(*(mtx+i)+j));
+		  z[j]=zini[j]+dfact;
 		}
-		fprintf(fout, "\n");
-	}
-	fclose(fout);
-}
-
-
-
-
-void dbgmtxEigen(const Eigen::SparseMatrix<double>& mtx, const char* str)
-{
-    FILE* fout = fopen("hogan.dbg", "a");
-    if (fout == nullptr)
-        return;
-
-    if (str != nullptr)
-    {
-        fprintf(fout, "%s\n", str);
-    }
-
-	int rows = mtx.rows();
-    int cols = mtx.cols();
-
-
-    for (int i = 0; i < rows; i++)
-    {
-        for (int j = 0; j < cols; j++)
+		else
 		{
-			fprintf(fout, "%e ", mtx.coeff(i, j));
-        }
-        fprintf(fout, "\n");
-    }
-
-    fclose(fout);
-}
-
-void dbggcomp(struct gcomponent* gmtx, int size, const char* str)
-{
-	double gdata;
-	FILE *fout = fopen("hogan.dbg", "a");
-	if (fout == NULL)return;
-
-	if (str != NULL)
-	{
-		fprintf(fout, "%s\n", str);
-	}
-
-	for (int i = 0; i < size; i++)
-	{
-		for (int j = 0; j < size; j++)
-		{
-			gread(gmtx,i+1,j+1,&gdata);
-
-			if(fabs(gdata)>1e-5)fprintf(fout, "1 ");
-			else fprintf(fout, "0 ");
+		  z[j]=zini[j];
 		}
-		fprintf(fout, "\n");
+	  }
+
+	  for(ii=0;ii<nnode;ii++)
+      {
+		node=*(af->nodes+ii);
+		beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+
+		(af->nodes+ii)->d[0]=node.d[0];
+		(af->nodes+ii)->d[1]=node.d[1];
+		(af->nodes+ii)->d[2]=node.d[2];
+	  }
+	  df=arclmStatic(af);
 	}
-	fclose(fout);
-}
-
-
-void inputdsp(struct arclmframe *af, const char *fname, int targetlap, int targetiteration)
-{
-	char fullfname[256],line[1024];
-	int lap, iteration, laps;
-	FILE *fdsp;
-	char **data;
-	int n,i,j;
-
-	snprintf(fullfname, sizeof(fullfname), "%s.%s", fname, "dsp");
-	fdsp = fopen(fullfname, "r");
-	if (fdsp == NULL)return;
-
-	while (fgets(line, sizeof(line), fdsp) != NULL)
+	else
 	{
-		if (strstr(line, "LAP:") != NULL)
+	  df=f1;
+	}
+	*(fgrad1+i)=gamma*(f1-df)/dfact;/*NEGATIVE GRADIENT*/
+	fprintf(ftxt,"CONTROLE POINT[%d] NEGATIVE GRADIENT=%9.5f\n",i,(f1-df)/dfact);
+  }
+  ///*SENSITIVITY*///
+  for(i=0;i<ncontrol;i++)
+  {
+	*(u1+i)=*(fgrad1+i);
+  }
+
+
+  k=0;
+  while(1)/*OPTIMIZATION BEGIN.*/
+  {
+	k++;
+	sprintf(str,"%d",k);
+	SetDlgItemText((wmenu.childs+2)->hwnd,ID_LAPS,str);
+	/*BACKTRACKING LINE SEARCH : TEST STEP*/
+
+	///*UPDATE*///
+	for(i=0;i<ncontrol;i++)
+	{
+	  z[i]=zini[i]+*(u1+i);
+	}
+	for(ii=0;ii<nnode;ii++)
+	{
+	  node=*(af->nodes+ii);
+	  beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+
+	  (af->nodes+ii)->d[0]=node.d[0];
+	  (af->nodes+ii)->d[1]=node.d[1];
+	  (af->nodes+ii)->d[2]=node.d[2];
+	}
+	fa=arclmStatic(af);
+	///*UPDATE*///
+
+	///*SENSITIVITY*///
+	for(i=0;i<ncontrol;i++)
+	{
+	  if(*(fp+i)==0)
+	  {
+		for(j=0;j<ncontrol;j++)
 		{
-			if (sscanf(line, "LAP: %d / %d ITERATION: %d", &lap, &laps, &iteration) != 3)continue;
-			if (lap == targetlap && iteration == targetiteration)
-			{
-				for (int i = 0; i < af->nnode; i++)
-				{
-					data=fgetsbrk(fdsp,&n);
-					for (j = 0; j < 3; j++)
-					{
-						af->nodes[i].d[j] = strtod(*(data + 1 + j), NULL);
-						af->nodes[i].r[j] = strtod(*(data + 4 + j), NULL);
-					}
-					for(;n>0;n--) free(*(data+n-1));
-					free(data);
-				}
-				break;
-			}
-			else
-			{
-				for (int i = 0; i < af->nnode; i++)
-				{
-					fgets(line, sizeof(line), fdsp);
-				}
-			}
+		  if(i==j)
+		  {
+			z[j]=zini[j]+*(u1+i)+dfact;
+		  }
+		  else
+		  {
+			z[j]=zini[j]+*(u1+i);
+		  }
 		}
-	}
-	fclose(fdsp);
-}
-
-void inputplst(struct arclmframe *af, const char *fname, int targetlap, int targetiteration)
-{
-	char fullfname[256], line[1024];
-    int lap, iteration, laps;
-    FILE *fplst;
-    char **data;
-    int n, i, j, k;
-
-	snprintf(fullfname, sizeof(fullfname), "%s.%s", fname, "plst");
-    fplst = fopen(fullfname, "r");
-    if (fplst == NULL) return;
-
-	while (fgets(line, sizeof(line), fplst) != NULL)
-	{
-		if (strstr(line, "LAP:") != NULL)
+		for(ii=0;ii<nnode;ii++)
 		{
-			if (sscanf(line, "LAP: %d / %d ITERATION: %d", &lap, &laps, &iteration) != 3)continue;
-			if (lap == targetlap && iteration == targetiteration)
-			{
-				for (i = 0; i < af->nshell; i++)
-				{
-					data = fgetsbrk(fplst, &n);
-					for (j = 0; j < af->shells[i].ngp; j++)
-					{
-						for (k = 0; k < 6; k++)
-						{
-							af->shells[i].gp[j].pstrain[k] = strtod(data[7 * j + k + 1], NULL);
-						}
-						af->shells[i].gp[j].alpha = strtod(data[7 * j + 7], NULL);
-					}
-					for(j = 0; j < n; j++) free(data[j]);
-					free(data);
-				}
-				break;
-            }
-			else
-			{
-				for (i = 0; i < af->nshell; i++)
-				{
-					fgets(line, sizeof(line), fplst);
-				}
-			}
+		  node=*(af->nodes+ii);
+		  beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+
+		  (af->nodes+ii)->d[0]=node.d[0];
+		  (af->nodes+ii)->d[1]=node.d[1];
+		  (af->nodes+ii)->d[2]=node.d[2];
 		}
-    }
-    fclose(fplst);
-}
-
-
-
-double equilibriumcurvature(double* weight, double* lapddisp, double laploadfactor, double* dup, int msize)
-{
-	int i;
-	double cos, dot, len, lastlen, curvature;
-	char string[40];
-
-	dot = laploadfactor;
-	len = 1.0;
-	lastlen = laploadfactor * laploadfactor;
-	for (i = 0; i < msize; i++)
-	{
-		dot += *(weight + i) **(dup + i) **(weight + i) **(lapddisp + i);
-		len += *(weight + i) **(dup + i) **(weight + i) **(dup + i);
-		lastlen += *(weight + i) **(lapddisp + i) **(weight + i) **(lapddisp + i);
+		df=arclmStatic(af);
+	  }
+	  else
+	  {
+		df=fa;
+	  }
+	  *(fgrad2+i)=gamma*(fa-df)/dfact;/*NEGATIVE GRADIENT*/
+	  fprintf(ftxt,"CONTROLE POINT[%d] NEGATIVE GRADIENT=%9.5f\n",i,(fa-df)/dfact);
 	}
-	cos = abs(dot / sqrt(len * lastlen));
-	curvature = acos(cos) / sqrt(lastlen);
-	return curvature;
-}
+	///*SENSITIVITY*///
+	for(i=0;i<ncontrol;i++)
+	{
+	  *(ua+i)=-*(fgrad2+i)+*(fgrad1+i); /*DIRECTION DERIVATIVE OF GRADIENT*/
+	}
 
 
-int arclmStatic(struct arclmframe* af)
+	/*BACKTRACKING LINE SEARCH : INITIAL STEP SIZE*/
+	c1=0.0;
+	c2=0.0;
+	for(i=0; i<m; i++)
+	{
+	  c1+=(*(fgrad1+i))*(*(fgrad1+i));
+	  c2+=(*(u1+i))*(*(ua+i));
+	}
+	alpha=c1/c2;
+
+	/*ARMIJO RULE*/
+	while(1)
+	{
+
+	  ///*UPDATE*///
+	  for(i=0;i<ncontrol;i++)
+	  {
+		z[i]=zini[i]+alpha**(u1+i);
+	  }
+	  for(ii=0;ii<nnode;ii++)
+	  {
+		node=*(af->nodes+ii);
+		beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+
+		(af->nodes+ii)->d[0]=node.d[0];
+		(af->nodes+ii)->d[1]=node.d[1];
+		(af->nodes+ii)->d[2]=node.d[2];
+	  }
+	  f2=arclmStatic(af);
+	  ///*UPDATE*///
+
+	  /*ARMIJO END.*/
+	  test=0.0;
+	  for(i=0;i<ncontrol;i++)
+	  {
+		*(fgrad2+i)=*(fgrad1+i)-alpha**(ua+i);
+		test+=*(fgrad2+i)**(u1+i);
+	  }
+	  test=f2-f1+abs(xi*alpha*test);
+	  if(test<=0.0 || (alpha<=0.01 && f1>f2))
+	  {
+		sprintf(str,"LINE SEARCH : ALPHA= %e f1= %e f2= %e TEST= %8.3f\n",alpha,f1,f2,test);
+		fprintf(ftxt,"%s",str);
+		break;
+	  }
+	  else
+	  {
+		alpha*=tau;
+		sprintf(str,"LINE SEARCH : ALPHA= %e f1= %e f2= %e TEST= %8.3f\n",alpha,f1,f2,test);
+		fprintf(ftxt,"%s",str);
+	  }
+	}
+
+	///*SENSITIVITY*///
+	for(i=0;i<ncontrol;i++)
+	{
+	  if(*(fp+i)==0)
+	  {
+		for(j=0;j<ncontrol;j++)
+		{
+		  if(i==j)
+		  {
+			z[j]=zini[j]+alpha**(u1+i)+dfact;
+		  }
+		  else
+		  {
+			z[j]=zini[j]+alpha**(u1+i);
+		  }
+		}
+		for(ii=0;ii<nnode;ii++)
+		{
+		  node=*(af->nodes+ii);
+		  beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+
+		  (af->nodes+ii)->d[0]=node.d[0];
+		  (af->nodes+ii)->d[1]=node.d[1];
+		  (af->nodes+ii)->d[2]=node.d[2];
+		}
+		df=arclmStatic(af);
+	  }
+	  else
+	  {
+		df=f2;
+	  }
+	  *(fgrad2+i)=gamma*(f2-df)/dfact;/*NEGATIVE GRADIENT*/
+	  fprintf(ftxt,"CONTROLE POINT[%d] NEGATIVE GRADIENT=%9.5f\n",i,(f2-df)/dfact);
+	}
+	///*SENSITIVITY*///
+
+
+
+	sprintf(str,"STEP= %d OBJECTIVE FUNCTION= %.5f GRADIENT SIZE= %.5f\n",k,f2,vsize);
+	fprintf(ftxt,"%s",str);
+
+	/*OPTIMIZATION END.*/
+	vsize=vectorlength(fgrad2,ncontrol);
+	if(vsize<eps || f2<=ftarget)
+	{
+	  sprintf(str,"COMPLETED\n");
+	  fprintf(ftxt,"%s",str);
+	  break;
+	}
+
+	/*UPDATE CONJUGATE GRADIENT DIRECTION*/
+	c3=0.0;
+	for(i=0; i<m; i++)
+	{
+	  c3+=*(fgrad2+i)**(fgrad2+i);
+	}
+	beta=c3/c1;/*FLETCHER-REEVES*/
+	for(i=0;i<ncontrol;i++)
+	{
+	  *(u2+i)=*(fgrad2+i)+beta**(u1+i);
+	}
+
+	/*GO TO NEXT LAP*/
+	for(i=0;i<ncontrol;i++)
+	{
+	  zini[i]=z[i];
+	  *(u1+i)=*(u2+i);
+	  *(fgrad1+i)=*(fgrad2+i);
+	}
+	f1=f2;
+
+	test=0.0;
+	for(i=0;i<ncontrol;i++)
+	{
+	  test+=*(u1+i)**(fgrad1+i);/*CHECK DIRECTION : COMPARE CONJUGATE GRADIENT WITH STEEPEST GRADIENT*/
+	}
+	if(test<=0)/*CONJUGATE GRADIENT IS NOT DESCENT DIRECTION*/
+	{
+	  for(i=0;i<ncontrol;i++)
+	  {
+		 *(u1+i)=*(fgrad1+i);/*THE STEEPEST DESCENT METHOD*/
+	  }
+	  sprintf(str,"THE STEEPEST DESCENT METHOD AT STEP %d\n",k+1);
+	  fprintf(ftxt,"%s",str);
+	}
+
+	/*OUTPUT*/
+	/*
+	sprintf(str,"hogtxt_opt%d.inp",k);
+	fresult=fopen(str,"w");
+	if(fresult==NULL) break;
+	saveorganization(fresult,&((wdraw.childs+1)->org),
+					&((wdraw.childs+1)->vparam));
+	fclose(fresult);
+	*/
+  }
+  fclose(ftxt);
+
+  return;
+}/*conjugategradientaf*/
+
+
+
+
+
+int arclmStaticOptimization(struct arclmframe* af, struct outputdata* op)
 {
 	DWORDLONG memory0,memory1;
 	char dir[]=DIRECTORY;
@@ -2173,459 +2338,4 @@ int arclmStatic(struct arclmframe* af)
 	return 0;
 }
 /*arclmCR*/
-
-#if 0
-int twopointsBuckling(struct arclmframe* af, struct gcomponent* gmtx, double* ddisp, double* lambda, double* gvct, int neig, int msize, int csize)
-{
-	int i,j,ii,jj;
-	char string[400]
-	int nnode, nelem, nshell, nsect, nconstraint;
-	struct gcomponent *epsgmtx, *dgmtx, *p,*g;;
-	struct gcomponent ginit = { 0,0,0.0,NULL };
-
-	double **evct, *eigen;
-	double* epsddisp, * epsgvct, * epslambda;
-	double eps=1e-3;
-
-	nnode=af->nnode;
-	nelem=af->nelem;
-	nshell=af->nshell;
-	nsect=af->nsect;
-	nconstraint=af->nconstraint;
-
-	/*BUCKLING ANALYSIS INITIALIZATION.*/
-	epsgmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-	for (i = 0; i < msize; i++)
-	{
-		(epsgmtx + i)->down = NULL;
-	}
-	for (i = 1; i <= msize; i++)
-	{
-		g = (epsgmtx + (i - 1))->down;
-		while (g != NULL)
-		{
-			p = g;
-			g = g->down;
-			free(p);
-		}
-		ginit.m = (unsigned short int)i;
-		*(epsgmtx + (i - 1)) = ginit;
-	}
-
-	evct=(double **)malloc(neig*sizeof(double *));   /*GLOBAL VECTORS*/
-	eigen=(double *)malloc(neig*sizeof(double));       /*EIGEN VALUES*/
-	for(i=0;i<neig;i++)
-	{
-	  *(evct+i)=(double *)malloc(msize*sizeof(double));
-	  for(ii=0;ii<msize;ii++)
-	  {
-		*(*(evct+i)+ii)=0.0;
-	  }
-	}
-
-	epsddisp = (double*)malloc(msize * sizeof(double));
-	epsgvct = (double*)malloc(msize * sizeof(double));
-	epslambda = (double*)malloc(csize * sizeof(double));
-	for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
-	{
-		*(epsgvct + ii) = eps * (*(gvct + ii));
-		*(epsddisp + ii) = *(ddisp + ii);
-	}
-	for (ii = 0; ii < msize; ii++)
-	{
-		*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
-	}
-	updateform(epsddisp, epsgvct, nnode);
-
-	for (ii = 0; ii < csize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
-	{
-		*(epslambda + ii) = eps * (*(gvct + msize + ii));
-	}
-
-	/*ELEMENT STIFFNESS & FORCE ASSEMBLAGE*/
-
-	elemstress( af->elems, af->melem, af->nelem, af->constraintmain, af->iform, epsddisp, NULL, NULL);
-	shellstress( af->shells, af->mshell, af->nshell, af->constraintmain, af->iform, epsddisp, NULL, NULL);
-	//constraintstress( af->constraints,  af->nconstraint,  af->constraintmain,  af->iform, epsddisp, epslambda, NULL, NULL);
-
-	assemelem(af->elems, af->melem, af->nelem, af->constraintmain, NULL, epsgmtx, af->iform, epsddisp);
-	assemshell(af->shells, af->mshell, af->nshell, af->constraintmain, NULL, epsgmtx, af->iform, epsddisp);
-	//assemconstraint(af->constraints, af->nconstraint, af->constraintmain, epsgmtx, af->iform, epsddisp, epslambda, msize);
-
-	dgmtx=gcomponentadd3(epsgmtx,1.0/eps,gmtxcpy,-1.0/eps,msize);
-	bisecgeneral(dgmtx,-1.0,gmtxcpy,-1.0,confs,msize,neig,sign,1.0E-10,eigen,evct,0.0,1.0E+3);
-
-	/*OUTPUT*/
-	if(feig!=NULL)
-	{
-		for(i=0;i<neig;i++)
-		{
-			fprintf(feig,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e ", nlap, (i+1), *(eigen + i), 0.0);
-
-			if (*(eigen + i) > 0.0)
-			{
-				*(eigen+i) = 1.0/(*(eigen + i));
-				fprintf(feig, "LOADLAMBDA = %e BUCKLINGLOAD = %e\n",*(eigen+i),loadfactor+*(eigen+i));
-			}
-			else
-			{
-				fprintf(feig, "ERROR:EIGEN VALUE NEGATIVE.\n");
-			}
-
-			for (ii = 0; ii < msize; ii++)
-			{
-				*(*(evct + i) + ii) = *(*(evct + i) + *(constraintmain + ii));
-			}
-			for (ii = 0; ii < nnode; ii++)
-			{
-				fprintf(feig,
-				"%4ld %e %e %e %e %e %e\n",
-				(nodes + ii)->code,
-				*(*(evct + i) + 6*ii + 0),
-				*(*(evct + i) + 6*ii + 1),
-				*(*(evct + i) + 6*ii + 2),
-				*(*(evct + i) + 6*ii + 3),
-				*(*(evct + i) + 6*ii + 4),
-				*(*(evct + i) + 6*ii + 5));
-			}
-		}
-	}
-
-	gfree(epsgmtx,nnode);
-	gfree(dgmtx,nnode);
-
-	free(eigen);
-	freematrix(evct,neig);
-
-    free(epsddisp);
-	free(epsgvct);
-	free(epslambda);
-
-	return 1;
-}
-
-#endif
-
-int bisecPinpoint(struct arclmframe* af, struct memoryelem* melem, struct memoryshell* mshell,
-				  double loadfactor_R, double loadfactor_L,
-				  double* ddisp_R, double* ddisp_L,
-				  double* lambda_R, double* lambda_L,
-				  double *evctinit,
-				  double *fexternal,
-				  int msize, int csize,
-				  int nlap, double lastsign,
-				  FILE* fbcl, FILE* feig)
-{
-	int i,j,ii,jj;
-	char string[400];
-	int nnode, nelem, nshell, nsect, nconstraint;
-	/*FOR BISECSYLVESTER*/
-	double LL,LR,LM;
-
-	double loadfactor;
-	double* ddisp;
-
-	double eigen;
-	double* evct;
-	
-	/*GLOBAL MATRIX*/
-	struct gcomponent ginit = { 0,0,0.0,NULL };
-	struct gcomponent *gmtx, * g, * p, * gcomp1;
-	double gg;
-	double sign, determinant;
-	long int nline;
-	
-	double eps = 1.0e-5;/*FOR CONVERGENT JUDGEMENT*/
-	double evctdot;/*FOR BIFURCATION JUDGEMENT*/
-
-	int iteration = 1;
-
-	nnode=af->nnode;
-	nelem=af->nelem;
-	nshell=af->nshell;
-	nsect=af->nsect;
-	nconstraint=af->nconstraint;
-
-	ddisp = (double*)malloc(msize * sizeof(double));
-	evct = (double*)malloc(msize * sizeof(double));
-	gmtx = (struct gcomponent*)malloc(msize * sizeof(struct gcomponent));/*DIAGONALS OF GLOBAL MATRIX.*/
-	for (i = 0; i < msize; i++)
-	{
-		(gmtx + i)->down = NULL;
-	}
-
-
-	LR = 1.0;
-	LL = 0.0;
-	while(LR - LL > eps)
-	{
-		LM = 0.5 * (LL + LR);
-		loadfactor = (1 - LM) * loadfactor_L + LM * loadfactor_R;
-		for (ii = 0; ii < msize; ii++)
-		{
-			*(ddisp + ii) = (1 - LM) * *(ddisp_L + ii) + LM * *(ddisp_R + ii);
-		}
-
-		for (i = 1; i <= msize; i++)
-		{
-			g = (gmtx + (i - 1))->down;
-			while (g != NULL)
-			{
-				p = g;
-				g = g->down;
-				free(p);
-			}
-			ginit.m = (unsigned short int)i;
-			*(gmtx + (i - 1)) = ginit;
-		}
-
-
-		elemstress(af->elems, melem, af->nelem,  af->constraintmain,  af->iform, ddisp, NULL, NULL);
-		shellstress(af->shells, mshell, af->nshell,  af->constraintmain,  af->iform, ddisp, NULL, NULL);
-		//constraintstress( af->constraints,  af->nconstraint,  af->constraintmain,  af->iform, ddisp, lambda, NULL,NULL);
-
-		assemelem(af->elems, melem, af->nelem,  af->constraintmain, NULL, gmtx,  af->iform, ddisp);
-		assemshell(af->shells, mshell, af->nshell,  af->constraintmain, NULL, gmtx,  af->iform, ddisp);
-		//assemconstraint( af->constraints,  af->nconstraint,  af->constraintmain, gmtx,  af->iform, ddisp, lambda, msize);
-
-		/*SOLVE*/
-		nline = croutluII(gmtx, af->confs, msize, csize, &determinant, &sign, gcomp1);/*FOT COUNTING NEGATIVE PIVOT*/
-		sprintf(string, "LAP: %4d ITER: %2d {LOAD}= %5.8f {RESD}= %1.5e {DET}= %5.5f {SIGN}= %2.0f {BCL}= %1d {EPS}= %1.5e {V}= %5.5f {TIME}= %5.5f\n",
-			nlap, iteration, loadfactor, 0.0, determinant, sign, 0, 0.0, 0.0, 0.0);
-		fprintf(fbcl, "%s", string);
-		errormessage(string);
-
-		/*LDL DECOMPOSITION FAILED*/
-		if (sign < 0.0)
-		{
-			for (ii = 1; ii <= msize; ii++)
-			{
-				gg = 0.0;
-				gread(gmtx, ii, ii, &gg);
-
-				if (gg < 0.0)
-				{
-					sprintf(string, "INSTABLE TERMINATION AT NODE %ld.",(af->nodes + int((ii - 1) / 6))->code);
-					fprintf(fbcl, "%s\n", string);
-					errormessage(string);
-				}
-			}
-			return 1;
-		}
-
-
-		/*BISECTION PIN-POINTING*/
-		if (lastsign == sign)
-		{
-			LL = LM;
-		}
-		else
-		{
-			LR = LM;
-		}
-		
-		iteration++;
-	}
-
-	/*INITIAL EIGEN VECTOR*/
-	for (ii = 0; ii < msize; ii++)
-	{
-		*(evct + ii) = *(evctinit + ii);
-	}
-	/*INVERS METHOD FOR EIGEN VECTOR*/
-	eigen=inversemethod(gmtx,af->confs,evct,msize);
-
-
-	/*BIFURCATION JUDGEMANT*/
-	if (fexternal!=NULL)
-	{
-		/*BIFURCATION JUDGE*/
-		vectornormalize(fexternal, msize);
-		evctdot = dotproduct(evct, fexternal, msize);
-	}
-
-
-	/*OUTPUT*/
-	if(feig!=NULL)
-	{
-		fprintf(feig,"LAP = %d MODE = %d GENERALIZED EIGENVALUE = %e STANDARD EIGENVALUE = %e LOADLAMBDA = %e DOT = %e\n",
-		nlap, 1, LM, eigen, loadfactor-loadfactor_L, evctdot);
-
-		for (ii = 0; ii < msize; ii++)
-		{
-			*(evct + ii) = *(evct + *(af->constraintmain + ii));
-		}
-		for (ii = 0; ii < nnode; ii++)
-		{
-			fprintf(feig,
-			"%4ld %e %e %e %e %e %e\n",
-			(af->nodes + ii)->code,
-			*(evct + 6*ii + 0),
-			*(evct + 6*ii + 1),
-			*(evct + 6*ii + 2),
-			*(evct + 6*ii + 3),
-			*(evct + 6*ii + 4),
-			*(evct + 6*ii + 5));
-		}
-	}
-	free(ddisp);
-	free(evct);
-	gfree(gmtx,nnode);
-	return 1;
-
-}
-
-#if 0
-
-/*FOR PATH SWITCH*/
-	double gradeps = 1.0e-8;
-	double gamma;
-	double evctfunbalance, epsevctfunbalance;
-	double* fswitching;
-	double * epsfunbalance, * epsfinternal, * epsfexternal, * epsfpressure;
-	epsfunbalance = (double*)malloc(6 * nnode * sizeof(double));
-	epsfinternal = (double*)malloc(6 * nnode * sizeof(double));
-	epsfexternal = (double*)malloc(6 * nnode * sizeof(double));
-	epsfpressure = (double*)malloc(6 * nnode * sizeof(double));
-
-
-	fswitching = (double*)malloc(msize * sizeof(double));
-	eps = 0.0;
-	gamma = 0.0;
-
-	residual = 0.0;
-	for (i = 0; i < msize; i++)
-	{
-		*(dup + i) = *(*(evct + 0) + i);
-		*(fswitching + i) = gamma * *(*(evct + 0) + i) + *(funbalance + i);
-		if ((confs + i)->iconf == 1)
-		{
-			*(fswitching + i) = 0.0;
-			*(dup + i) = 0.0;
-		}
-		residual += *(fswitching + i) * *(fswitching + i);
-		*(due + i) = *(fswitching + i);
-	}
-
-
-	/*GLOBALLY CONVERGENT NONLINEAR SOLUTION METHOD*/
-	nline = croutluII(gmtx, confs, msize, csize, &determinant, &sign, gcomp1);
-
-	sprintf(string, "LAP: %4d ITER: %2d {LOAD}= % 5.8f {RESD}= %1.6e {DET}= %8.5f {SIGN}= %2.0f {BCL}= %1d {EPS}=%1.5e {V}= %8.5f\n",
-		nlap, iteration, loadfactor, residual, determinant, sign, BCLFLAG, gamma, volume);
-	fprintf(ffig, "%s", string);
-	errormessage(string);
-
-
-	if (iteration == 1)/*PREDICTOR CALCULATION*/
-	{
-		nline = forwardbackwardII(gmtx, dup, confs, msize, csize, gcomp1);
-		scaledarclength = 1e-3 * arclength;
-
-
-		/*INCREMENTAL CALCULATION*/
-		arcsum = *(weight + msize) * *(weight + msize);
-		for (ii = 0; ii < msize; ii++)
-		{
-			arcsum += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);/*SCALED DISPLACEMENT.*/
-		}
-		loadlambda = scaledarclength / sqrt(arcsum);/*INCREMANTAL LOAD FACTOR.*/
-		for (ii = 0; ii < msize; ii++)
-		{
-			if ((confs + ii)->iconf != 1)
-			{
-				*(gvct + ii) = gamma * *(dup + ii);/*INCREMANTAL DISPLACEMENT.*/
-			}
-		}
-		fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, scaledarclength, sqrt(arcsum));
-	}
-	else/*CORRECTOR CALCULATION*/
-	{
-		nline = forwardbackwardII(gmtx, dup, confs, msize, csize, gcomp1);
-		nline = forwardbackwardII(gmtx, due, confs, msize, csize, gcomp1);
-		/*MINIMUM RESIDUAL QUANTITIES METHOD*/
-		dupdue = 0.0;
-		dupdup = *(weight + msize) * *(weight + msize);
-		for (ii = 0; ii < msize; ii++)
-		{
-			if ((confs + ii)->iconf != 1)
-			{
-				dupdue += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(due + ii);
-				dupdup += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);
-			}
-		}
-		loadlambda = -dupdue / dupdup;
-		for (ii = 0; ii < msize; ii++)
-		{
-			if ((confs + ii)->iconf != 1)
-			{
-				*(gvct + ii) = gamma * *(dup + ii) + *(due + ii);
-			}
-		}
-		fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, dupdue, dupdup);
-	}
-
-	gamma += loadlambda;
-	for (ii = 0; ii < msize; ii++)
-	{
-		*(gvct + ii) = *(gvct + *(constraintmain + ii));
-	}
-	updaterotation(ddisp, gvct, nnode);
-	if ((residual < tolerance || iteration > maxiteration) && iteration != 1)
-	{
-		nlap++;
-		iteration = 0;
-	}
-	iteration++;
-
-	/*LINE SEARCH*/
-	evctfunbalance = dotproduct(bisecevct, funbalance, msize);
-	fprintf(fbcl, " %5.8e %5.8e \n", eps, evctfunbalance);
-
-
-	for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
-	{
-		*(epsddisp + ii) = *(ddisp + ii);
-		*(epsgvct + ii) = gradeps * *(bisecevct + ii);
-	}
-	for (ii = 0; ii < msize; ii++)
-	{
-		*(epsgvct + ii) = *(epsgvct + *(constraintmain + ii));
-	}
-	updaterotation(epsddisp, epsgvct, nnode);
-
-	for (ii = 0; ii < msize; ii++)
-	{
-		*(epsfinternal + ii) = 0.0;
-		*(epsfpressure + ii) = 0.0;
-	}
-
-
-	shellstress(shells, mshell, nshell, constraintmain,iform, epsddisp, epsfinternal, epsfexternal);
-
-	for (ii = 0; ii < msize; ii++)
-	{
-		*(epsfunbalance + ii) = loadfactor * *(epsfpressure + ii) - *(epsfinternal + ii);
-		if ((confs + ii)->iconf == 1) *(epsfunbalance + ii) = 0.0;
-	}
-	fprintf(fbcl, " %5.8e %5.8e \n", eps + gradeps, epsevctfunbalance);
-	epsevctfunbalance = (dotproduct(bisecevct, epsfunbalance, msize) - evctfunbalance) / gradeps;/*GRADIENT*/
-	eps -= evctfunbalance / epsevctfunbalance;
-
-	for (ii = 0; ii < msize; ii++)/*UPDATE FORM FOR DIRECTIONAL DERIVATIVE*/
-	{
-		*(ddisp + ii) = *(lastddisp + ii);
-		*(gvct + ii) = eps * *(bisecevct + ii);
-	}
-	for (ii = 0; ii < msize; ii++)/*FORMATION UPDATE FOR PREDICTOR/CORRECTOR*/
-	{
-			*(gvct + ii) = *(gvct + *(constraintmain + ii));
-	}
-	updaterotation(ddisp, gvct, nnode);
-	iteration++;
-
-
-
-#endif
-
 
