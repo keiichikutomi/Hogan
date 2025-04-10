@@ -317,6 +317,7 @@ struct biquadframe bqf={0,0,
 						NULL,
 						NULL,NULL,NULL}; /*GLOBAL BIQUAD FRAME.*/
 
+
 LRESULT CALLBACK WindowProcedureMain(HWND,UINT,WPARAM,LPARAM);
 LRESULT CALLBACK WindowProcedureSheet(HWND,UINT,WPARAM,LPARAM);
 LRESULT CALLBACK WindowProcedureBack(HWND,UINT,WPARAM,LPARAM);
@@ -2265,9 +2266,9 @@ LRESULT CALLBACK WindowProcedureMain(HWND hwnd,
 			//conjugategradientcurve(&((wdraw.childs+1)->org));
 		  }
 		  else if(wdraw.nchilds>=2 && (wdraw.childs+1)->hwnd!=NULL &&
-				  (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM &&)
+				  (wmenu.childs+2)->vparam.vflag.mv.ftype==F_ARCLM)
 		  {
-			conjugategradientaf(&((wdraw.childs+1)->af));
+			conjugategradientaf(&arc);
 		  }
 
 		  break;

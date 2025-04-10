@@ -164,8 +164,37 @@ int arclmDynamic(struct arclmframe* af)
 	  errormessage("ACCESS IMPOSSIBLE.");
 	  return 1;
 	}
-
 	inputinitII(fin, &nnode, &nelem, &nshell, &nsect, &nconstraint); /*INPUT INITIAL.*/
+
+	/*MEMORY NOT ALLOCATED*/
+	free(af->sects);
+	free(af->nodes);
+	free(af->elems);
+	free(af->shells);
+	free(af->confs);
+	free(af->constraintmain);
+
+	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
+	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
+	ninit = (struct onode*)malloc(nnode * sizeof(struct onode));
+	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
+	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
+	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
+	constraintmain = (long int*)malloc(msize * sizeof(long int));
+	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
+
+	af->sects = sects;
+	af->nodes = nodes;
+	af->ninit = ninit;
+	af->elems = elems;
+	af->shells = shells;
+	af->confs = confs;
+	af->constraintmain = constraintmain;
+	af->constraints = constraints;
+	af->nmass = nmass;
+
+	inputtexttomemory(fin, af);
+	fclose(fin);
 #endif
 #if 1
 	nnode=af->nnode;
@@ -173,9 +202,25 @@ int arclmDynamic(struct arclmframe* af)
 	nshell=af->nshell;
 	nsect=af->nsect;
 	nconstraint=af->nconstraint;
+
+	/*MEMORY ALREADY ALLOCATED*/
+	sects = af->sects;
+	nodes = af->nodes;
+	ninit = af->ninit;
+	elems = af->elems;
+	shells = af->shells;
+	confs = af->confs;
+	constraintmain = af->constraintmain;
+	constraints = af->constraints;
+	nmass = af->nmass;
 #endif
 
 	msize = 6 * nnode;                                      /*SIZE OF GLOBAL MATRIX.*/
+	csize = 0;
+	for (i = 0; i < nconstraint; i++)
+	{
+		csize += (constraints+i)->neq;
+	}
 
 
 
@@ -319,8 +364,6 @@ int arclmDynamic(struct arclmframe* af)
 	}
     fclose(fdata);
 
-
-
 	sprintf(string,"FILENAME : %s\n LAPS = %d\n TIME INCREMENT = %lf\n", filename, laps, ddt);
 	errormessage(string);
 
@@ -359,10 +402,6 @@ int arclmDynamic(struct arclmframe* af)
 	}
 	sprintf(string,"alpham=%.3f alphaf=%.3f beta=%.3f gamma=%.3f ",alpham,alphaf,beta,gamma);
 	errormessage(string);
-
-
-
-	///INPUT FILE OPEN & OUTPUT FILE SETTING///
 
 	if(STATDYNAFLAG == 1 && af->nlaps != NULL)
 	{
@@ -433,62 +472,6 @@ int arclmDynamic(struct arclmframe* af)
 		facc = fopen(fname, "w");
 		snprintf(fname, sizeof(fname), "%s.%s", filename, "plst");
 		fplst = fopen(fname, "w");
-	}
-
-	t0 = clock();                                                   /*CLOCK BEGIN.*/
-
-
-
-
-#if 0
-	/*MEMORY NOT ALLOCATED*/
-	free(af->sects);
-	free(af->nodes);
-	free(af->elems);
-	free(af->shells);
-	free(af->confs);
-	free(af->constraintmain);
-
-	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
-	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
-	ninit = (struct onode*)malloc(nnode * sizeof(struct onode));
-	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
-	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
-	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
-	constraintmain = (long int*)malloc(msize * sizeof(long int));
-	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
-
-	af->sects = sects;
-	af->nodes = nodes;
-	af->ninit = ninit;
-	af->elems = elems;
-	af->shells = shells;
-	af->confs = confs;
-	af->constraintmain = constraintmain;
-	af->constraints = constraints;
-	af->nmass = nmass;
-
-	inputtexttomemory(fin, af);
-	fclose(fin);
-#endif
-#if 1
-	/*MEMORY ALREADY ALLOCATED*/
-	sects = af->sects;
-	nodes = af->nodes;
-	ninit = af->ninit;
-	elems = af->elems;
-	shells = af->shells;
-	confs = af->confs;
-	constraintmain = af->constraintmain;
-	constraints = af->constraints;
-	nmass = af->nmass;
-#endif
-
-
-	csize = 0;
-	for (i = 0; i < nconstraint; i++)
-	{
-		csize += (constraints+i)->neq;
 	}
 
 
@@ -592,8 +575,9 @@ int arclmDynamic(struct arclmframe* af)
 	GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
 	if(globaldrawflag==1)
 	{
-	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);  /*DRAW GLOBAL AXIS.*/
+	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);/*DRAW GLOBAL AXIS.*/
 	}
+	t0 = clock();                                                   /*CLOCK BEGIN.*/
 
 
 	if(af->nlaps != NULL)

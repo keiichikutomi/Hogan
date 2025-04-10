@@ -333,7 +333,8 @@ int arclmStatic(struct arclmframe* af)
 	int beginingarclap = 0;
 
 	double *weight;/*WEIGHT*/
-	int node;
+	double weightload;
+	int node,dof;
 
 	/*ANALYSIS MODE*/
 	int neig = 0;/*TWO-POINT BUCKLING ANALYSIS*/
@@ -437,6 +438,36 @@ int arclmStatic(struct arclmframe* af)
 	  return 1;
 	}
 	inputinitII(fin, &nnode, &nelem, &nshell, &nsect, &nconstraint); /*INPUT INITIAL.*/
+
+	/*MEMORY NOT ALLOCATED*/
+	free(af->sects);
+	free(af->nodes);
+	free(af->elems);
+	free(af->shells);
+	free(af->confs);
+	free(af->constraintmain);
+	free(af->constraints);
+
+	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
+	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
+	ninit = (struct onode*)malloc(nnode * sizeof(struct onode));
+	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
+	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
+	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
+	constraintmain = (long int*)malloc(msize * sizeof(long int));
+	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
+
+	af->sects = sects;
+	af->nodes = nodes;
+	af->ninit = ninit;
+	af->elems = elems;
+	af->shells = shells;
+	af->confs = confs;
+	af->constraintmain = constraintmain;
+	af->constraints = constraints;
+
+	inputtexttomemory(fin, af);
+	fclose(fin);
 #endif
 #if 1
 	nnode=af->nnode;
@@ -444,16 +475,31 @@ int arclmStatic(struct arclmframe* af)
 	nshell=af->nshell;
 	nsect=af->nsect;
 	nconstraint=af->nconstraint;
+
+	/*MEMORY ALREADY ALLOCATED*/
+	sects = af->sects;
+	nodes = af->nodes;
+	ninit = af->ninit;
+	elems = af->elems;
+	shells = af->shells;
+	confs = af->confs;
+	constraintmain = af->constraintmain;
+	constraints = af->constraints;
 #endif
 
 	msize = 6 * nnode;                                      /*SIZE OF GLOBAL MATRIX.*/
+	csize = 0;
+	for (i = 0; i < nconstraint; i++)
+	{
+		csize += (constraints+i)->neq;
+	}
 
-	weight = (double *)malloc((msize + 1) * sizeof(double));
-	for (i=0;i<6*nnode;i++)
+	weight = (double *)malloc(msize * sizeof(double));
+	for (i=0;i<msize;i++)
 	{
 		*(weight + i) = 0.0;
 	}
-	*(weight + msize) = 1.0;
+	weightload = 1.0;
 
 	strcpy(filename, (wdraw.childs+1)->inpfile);
 	dot = strrchr(filename, '.');
@@ -551,7 +597,7 @@ int arclmStatic(struct arclmframe* af)
 							if (!strcmp(*(data + pstr), "LOAD"))
 							{
 								pstr++;
-								*(weight + 6*nnode) = (double)strtod(*(data + pstr), NULL);
+								weightload = (double)strtod(*(data + pstr), NULL);
 							}
 							if (!strcmp(*(data + pstr), "NODE"))
 							{
@@ -559,9 +605,9 @@ int arclmStatic(struct arclmframe* af)
 								node= (int)strtol(*(data + pstr), NULL, 10);
 								node -= 101;
 								pstr++;
-								i = (int)strtol(*(data + pstr), NULL, 10);
+								dof = (int)strtol(*(data + pstr), NULL, 10);
 								pstr++;
-								*(weight+6*node+i) = (double)strtod(*(data + pstr), NULL);
+								*(weight+6*node+dof) = (double)strtod(*(data + pstr), NULL);
 							}
 						}
 						if (!strcmp(*(data + pstr), "OUTPUTMODE"))
@@ -631,8 +677,6 @@ int arclmStatic(struct arclmframe* af)
 	//sprintf(string, "%d THREADS USING.\n", n);
 	//errormessage(string);
 
-
-
 	if(STATDYNAFLAG == 1 && af->nlaps != NULL)
 	{
 		snprintf(fname, sizeof(fname), "%s.%s", filename, "dsp");
@@ -690,58 +734,6 @@ int arclmStatic(struct arclmframe* af)
 		fout = fopen(fname, "w");
 		snprintf(fname, sizeof(fname), "%s.%s", filename, "plst");
 		fplst = fopen(fname, "w");
-	}
-	t0 = clock();                                                   /*CLOCK BEGIN.*/
-
-
-#if 0
-	/*MEMORY NOT ALLOCATED*/
-	free(af->sects);
-	free(af->nodes);
-	free(af->elems);
-	free(af->shells);
-	free(af->confs);
-	free(af->constraintmain);
-	free(af->constraints);
-
-	sects = (struct osect*)malloc(nsect * sizeof(struct osect));
-	nodes = (struct onode*)malloc(nnode * sizeof(struct onode));
-	ninit = (struct onode*)malloc(nnode * sizeof(struct onode));
-	elems = (struct owire*)malloc(nelem * sizeof(struct owire));
-	shells = (struct oshell*)malloc(nshell * sizeof(struct oshell));
-	confs = (struct oconf*)malloc(msize * sizeof(struct oconf));
-	constraintmain = (long int*)malloc(msize * sizeof(long int));
-	constraints = (struct oconstraint*)malloc(nconstraint * sizeof(struct oconstraint));
-
-	af->sects = sects;
-	af->nodes = nodes;
-	af->ninit = ninit;
-	af->elems = elems;
-	af->shells = shells;
-	af->confs = confs;
-	af->constraintmain = constraintmain;
-	af->constraints = constraints;
-
-	inputtexttomemory(fin, af);
-	fclose(fin);
-#endif
-#if 1
-	/*MEMORY ALREADY ALLOCATED*/
-	sects = af->sects;
-	nodes = af->nodes;
-	ninit = af->ninit;
-	elems = af->elems;
-	shells = af->shells;
-	confs = af->confs;
-	constraintmain = af->constraintmain;
-	constraints = af->constraints;
-#endif
-
-
-	csize = 0;
-	for (i = 0; i < nconstraint; i++)
-	{
-		csize += (constraints+i)->neq;
 	}
 
 
@@ -843,8 +835,9 @@ int arclmStatic(struct arclmframe* af)
 	GetAsyncKeyState(VK_RBUTTON);                  /*CLEAR KEY RIGHT.*/
 	if(globaldrawflag==1)
 	{
-	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255);                     /*DRAW GLOBAL AXIS.*/
+	  drawglobalaxis((wdraw.childs+1)->hdcC,(wdraw.childs+1)->vparam,0,0,255); /*DRAW GLOBAL AXIS.*/
 	}
+	t0 = clock();                                                   /*CLOCK BEGIN.*/
 
 
 	if(af->nlaps != NULL)
@@ -1585,7 +1578,7 @@ int arclmStatic(struct arclmframe* af)
 				}
 				else
 				{
-					predictorsign = *(weight + msize) * *(weight + msize) * lastlaploadfactor * 1.0;
+					predictorsign = weightload * weightload * lastlaploadfactor * 1.0;
 					for (ii = 0; ii < msize; ii++)
 					{
 						predictorsign += *(weight + ii) * *(weight + ii) * *(lastlapddisp + ii) * *(dup + ii);
@@ -1602,7 +1595,7 @@ int arclmStatic(struct arclmframe* af)
 				}
 
 				/*INCREMENTAL CALCULATION*/
-				arcsum = *(weight + msize) * *(weight + msize);
+				arcsum = weightload * weightload;
 				for (ii = 0; ii < msize; ii++)
 				{
 					arcsum += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);/*SCALED DISPLACEMENT.*/
@@ -1661,7 +1654,7 @@ int arclmStatic(struct arclmframe* af)
 					#if 1
 					/*MINIMUM RESIDUAL QUANTITIES METHOD*/
 					dupdue = 0.0;
-					dupdup = *(weight + msize) * *(weight + msize);
+					dupdup = weightload * weightload;
 					for (ii = 0; ii < msize; ii++)
 					{
 						dupdue += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(due + ii);
@@ -1682,7 +1675,7 @@ int arclmStatic(struct arclmframe* af)
 					/*HYPERSPHERE CONSTRAINT WITH RADIAL RETURN*/
 					/*USING PREDICTOR DATA*/
 					dupdue = 0.0;
-					dupdup = *(weight + msize) * *(weight + msize) * loadlambda;
+					dupdup = weightload * weightload * loadlambda;
 					for (ii = 0; ii < msize; ii++)
 					{
 						dupdue += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(due + ii);
@@ -1694,7 +1687,7 @@ int arclmStatic(struct arclmframe* af)
 					{
 						*(gvct + ii) += -(dupdue / dupdup) * *(dup + ii) + *(due + ii);
 					}
-					arcsum = *(weight + msize) * *(weight + msize) * loadlambda * loadlambda;
+					arcsum = weightload * weightload * loadlambda * loadlambda;
 					for (ii = 0; ii < msize; ii++)
 					{
 						arcsum += *(weight + ii) * *(weight + ii) * *(gvct + ii) * *(gvct + ii);
@@ -2524,7 +2517,7 @@ int bisecPinpoint(struct arclmframe* af, struct memoryelem* melem, struct memory
 
 
 		/*INCREMENTAL CALCULATION*/
-		arcsum = *(weight + msize) * *(weight + msize);
+		arcsum = weightload * weightload;
 		for (ii = 0; ii < msize; ii++)
 		{
 			arcsum += *(weight + ii) * *(weight + ii) * *(dup + ii) * *(dup + ii);/*SCALED DISPLACEMENT.*/
@@ -2545,7 +2538,7 @@ int bisecPinpoint(struct arclmframe* af, struct memoryelem* melem, struct memory
 		nline = forwardbackwardII(gmtx, due, confs, msize, csize, gcomp1);
 		/*MINIMUM RESIDUAL QUANTITIES METHOD*/
 		dupdue = 0.0;
-		dupdup = *(weight + msize) * *(weight + msize);
+		dupdup = weightload * weightload;
 		for (ii = 0; ii < msize; ii++)
 		{
 			if ((confs + ii)->iconf != 1)
