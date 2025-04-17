@@ -20,6 +20,7 @@ extern int beziersurfaceII(int m,int n,double *x,double *y,double *z,
 
 
 
+
 struct outputdata
 {
 
@@ -39,21 +40,25 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 
   double dfact; /*COORDINATES*/
   double *u1,*u2,*ua,*fgrad1,*fgrad2; /*GRADIENT VECTOR*/
-
   double xi,tau,test; /*FOR LINE SEARCH(ARMIJO RULE)*/
 
   /*BEZIER SURFACE*/
   FILE *fbezier;
-  char **data/*,str[256]="\0"*/;
+  char **data;
   double ddata;
   int ndata;
   long int ncode;
 
+
+
+  /*VARIABLES*/
+  int nvariable;
+  double** variable;
+  double** variableinit;
+
   /*CONTROL POINTS*/
-  int ncontrol;
   int n1,n2;
   double *x,*y,*z;              /*CURRENT CONTROLE POINTS*/
-  double *xini,*yini,*zini;     /*INITIAL CONTROLE POINTS*/
   int *fp;                      /*ICONF OF CONTROLE POINTS*/
 
   /*ALL NODES*/
@@ -85,32 +90,28 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
   n2=strtol(*(data+1),NULL,10);
   if(nnode!=strtol(*(data+2),NULL,10)) return;
 
+  fgrad1=(double *)malloc(nvariable*sizeof(double));
+  fgrad2=(double *)malloc(nvariable*sizeof(double));
+  u1=(double *)malloc(nvariable*sizeof(double));
+  u2=(double *)malloc(nvariable*sizeof(double));
+  ua=(double *)malloc(nvariable*sizeof(double));
+
+
   /*CONTROLE POINTS*/
   ncontrol=(n1+1)*(n2+1);
   fp=(int *)malloc(ncontrol*sizeof(int));
   x=(double *)malloc(ncontrol*sizeof(double));
   y=(double *)malloc(ncontrol*sizeof(double));
   z=(double *)malloc(ncontrol*sizeof(double));
-  zini=(double *)malloc(ncontrol*sizeof(double));
-
-  fgrad1=(double *)malloc(ncontrol*sizeof(double));
-  fgrad2=(double *)malloc(ncontrol*sizeof(double));
-  u1=(double *)malloc(ncontrol*sizeof(double));
-  u2=(double *)malloc(ncontrol*sizeof(double));
-  ua=(double *)malloc(ncontrol*sizeof(double));
-
-
   for(i=0;i<ncontrol;i++)
   {
 	data=fgetsbrk(fbezier,&ndata);
 	if(ndata!=3) return;
 	fp[i]=0;
 	x[i]=strtod(*(data+0),NULL);
-    y[i]=strtod(*(data+1),NULL);
+	y[i]=strtod(*(data+1),NULL);
 	z[i]=strtod(*(data+2),NULL);
-	zini[i]=z[i];
-
-    for(;ndata>0;ndata--) free(*(data+ndata-1));
+	for(;ndata>0;ndata--) free(*(data+ndata-1));
 	free(data);
   }
 
@@ -134,8 +135,6 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
   fclose(fbezier);
 
 
-
-
   ///*INITIAL*///
   for(ii=0;ii<nnode;ii++)
   {
@@ -150,24 +149,32 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
   ///*INITIAL*///
 
   ///*SENSITIVITY*///
-  for(i=0;i<ncontrol;i++)
+  for(i=0;i<nvariable;i++)
   {
-	if(*(fp+i)==0)
-	{
-	  for(j=0;j<ncontrol;j++)
+	  for(j=0;j<nvariable;j++)
 	  {
 		if(i==j)
 		{
-		  z[j]=zini[j]+dfact;
+		  *(variable+j)=*(variableinit+j)+dfact;
 		}
 		else
 		{
-		  z[j]=zini[j];
+		  *(variable+j)=*(variableinit+j);
 		}
 	  }
 
+	  /*UPDATE*/
+	  k=0;
+	  for(j=0;j<ncontrol;j++)
+	  {
+		if(*(fp+j)==0)
+		{
+		  *(z+j)=*(varible+k);
+		  k++;
+		}
+	  }
 	  for(ii=0;ii<nnode;ii++)
-      {
+	  {
 		node=*(af->nodes+ii);
 		beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
 
@@ -176,16 +183,13 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 		(af->nodes+ii)->d[2]=node.d[2];
 	  }
 	  df=arclmStatic(af);
-	}
-	else
-	{
-	  df=f1;
-	}
-	*(fgrad1+i)=gamma*(f1-df)/dfact;/*NEGATIVE GRADIENT*/
-	fprintf(ftxt,"CONTROLE POINT[%d] NEGATIVE GRADIENT=%9.5f\n",i,(f1-df)/dfact);
+	  /*UPDATE*/
+
+	  *(fgrad1+i)=gamma*(f1-df)/dfact;/*NEGATIVE GRADIENT*/
+	  fprintf(ftxt,"CONTROLE POINT[%d] NEGATIVE GRADIENT=%9.5f\n",i,(f1-df)/dfact);
   }
   ///*SENSITIVITY*///
-  for(i=0;i<ncontrol;i++)
+  for(i=0;i<nvariable;i++)
   {
 	*(u1+i)=*(fgrad1+i);
   }
@@ -199,10 +203,19 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	SetDlgItemText((wmenu.childs+2)->hwnd,ID_LAPS,str);
 	/*BACKTRACKING LINE SEARCH : TEST STEP*/
 
-	///*UPDATE*///
-	for(i=0;i<ncontrol;i++)
+	for(i=0;i<nvariable;i++)
 	{
-	  z[i]=zini[i]+*(u1+i);
+	  *(variable+i)=*(variableinit+i)+*(u1+i);
+	}
+	///*UPDATE*///
+	k=0;
+	for(j=0;j<ncontrol;j++)
+	{
+		if(*(fp+j)==0)
+		{
+		  *(z+j)=*(varible+k);
+		  k++;
+		}
 	}
 	for(ii=0;ii<nnode;ii++)
 	{
@@ -217,41 +230,48 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	///*UPDATE*///
 
 	///*SENSITIVITY*///
-	for(i=0;i<ncontrol;i++)
+	for(i=0;i<nvariable;i++)
 	{
-	  if(*(fp+i)==0)
+	  for(j=0;j<nvariable;j++)
 	  {
-		for(j=0;j<ncontrol;j++)
+		if(i==j)
 		{
-		  if(i==j)
-		  {
-			z[j]=zini[j]+*(u1+i)+dfact;
-		  }
-		  else
-		  {
-			z[j]=zini[j]+*(u1+i);
-		  }
+		  *(variable+j)=*(variableinit+j)+*(u1+i)+dfact;
 		}
-		for(ii=0;ii<nnode;ii++)
+		else
 		{
-		  node=*(af->nodes+ii);
-		  beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+		  *(variable+j)=*(variableinit+j)+*(u1+i);
+		}
+	  }
 
-		  (af->nodes+ii)->d[0]=node.d[0];
-		  (af->nodes+ii)->d[1]=node.d[1];
-		  (af->nodes+ii)->d[2]=node.d[2];
-		}
-		df=arclmStatic(af);
-	  }
-	  else
+	  ///*UPDATE*///
+	  k=0;
+	  for(j=0;j<ncontrol;j++)
 	  {
-		df=fa;
+		if(*(fp+j)==0)
+		{
+		  *(z+j)=*(varible+k);
+		  k++;
+		}
 	  }
+	  for(ii=0;ii<nnode;ii++)
+	  {
+		node=*(af->nodes+ii);
+		beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+
+		(af->nodes+ii)->d[0]=node.d[0];
+		(af->nodes+ii)->d[1]=node.d[1];
+		(af->nodes+ii)->d[2]=node.d[2];
+	  }
+	  df=arclmStatic(af);
+	  ///*UPDATE*///
+
 	  *(fgrad2+i)=gamma*(fa-df)/dfact;/*NEGATIVE GRADIENT*/
 	  fprintf(ftxt,"CONTROLE POINT[%d] NEGATIVE GRADIENT=%9.5f\n",i,(fa-df)/dfact);
 	}
 	///*SENSITIVITY*///
-	for(i=0;i<ncontrol;i++)
+
+	for(i=0;i<nvariable;i++)
 	{
 	  *(ua+i)=-*(fgrad2+i)+*(fgrad1+i); /*DIRECTION DERIVATIVE OF GRADIENT*/
 	}
@@ -260,10 +280,10 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	/*BACKTRACKING LINE SEARCH : INITIAL STEP SIZE*/
 	c1=0.0;
 	c2=0.0;
-	for(i=0; i<m; i++)
+	for(i=0; i<nvariable; i++)
 	{
-	  c1+=(*(fgrad1+i))*(*(fgrad1+i));
-	  c2+=(*(u1+i))*(*(ua+i));
+	  c1+=*(fgrad1+i)**(fgrad1+i);
+	  c2+=*(u1+i)**(ua+i);
 	}
 	alpha=c1/c2;
 
@@ -272,9 +292,20 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	{
 
 	  ///*UPDATE*///
-	  for(i=0;i<ncontrol;i++)
+	  for(i=0;i<nvariable;i++)
 	  {
-		z[i]=zini[i]+alpha**(u1+i);
+		*(variable+j)=*(variableinit+j)+alpha**(u1+i);
+	  }
+
+	  ///*UPDATE*///
+	  k=0;
+	  for(j=0;j<ncontrol;j++)
+	  {
+		if(*(fp+j)==0)
+		{
+		  *(z+j)=*(varible+k);
+		  k++;
+		}
 	  }
 	  for(ii=0;ii<nnode;ii++)
 	  {
@@ -290,7 +321,7 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 
 	  /*ARMIJO END.*/
 	  test=0.0;
-	  for(i=0;i<ncontrol;i++)
+	  for(i=0;i<nvariable;i++)
 	  {
 		*(fgrad2+i)=*(fgrad1+i)-alpha**(ua+i);
 		test+=*(fgrad2+i)**(u1+i);
@@ -310,49 +341,55 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	  }
 	}
 
-	///*SENSITIVITY*///
-	for(i=0;i<ncontrol;i++)
-	{
-	  if(*(fp+i)==0)
-	  {
-		for(j=0;j<ncontrol;j++)
-		{
-		  if(i==j)
-		  {
-			z[j]=zini[j]+alpha**(u1+i)+dfact;
-		  }
-		  else
-		  {
-			z[j]=zini[j]+alpha**(u1+i);
-		  }
-		}
-		for(ii=0;ii<nnode;ii++)
-		{
-		  node=*(af->nodes+ii);
-		  beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
 
-		  (af->nodes+ii)->d[0]=node.d[0];
-		  (af->nodes+ii)->d[1]=node.d[1];
-		  (af->nodes+ii)->d[2]=node.d[2];
-		}
-		df=arclmStatic(af);
-	  }
-	  else
+	///*SENSITIVITY*///
+	for(i=0;i<nvariable;i++)
+	{
+	  for(j=0;j<nvariable;j++)
 	  {
-		df=f2;
+		if(i==j)
+		{
+		  *(variable+j)=*(variableinit+j)+alpha**(u1+i)+dfact;
+		}
+		else
+		{
+		  *(variable+j)=*(variableinit+j)+alpha**(u1+i);
+		}
 	  }
+
+	  ///*UPDATE*///
+	  k=0;
+	  for(j=0;j<ncontrol;j++)
+	  {
+		if(*(fp+j)==0)
+		{
+		  *(z+j)=*(varible+k);
+		  k++;
+		}
+	  }
+	  for(ii=0;ii<nnode;ii++)
+	  {
+		node=*(af->nodes+ii);
+		beziersurfaceII(n1,n2,x,y,z,*(u+ii),*(v+ii),&node);
+
+		(af->nodes+ii)->d[0]=node.d[0];
+		(af->nodes+ii)->d[1]=node.d[1];
+		(af->nodes+ii)->d[2]=node.d[2];
+	  }
+	  df=arclmStatic(af);
+	  ///*UPDATE*///
+
 	  *(fgrad2+i)=gamma*(f2-df)/dfact;/*NEGATIVE GRADIENT*/
 	  fprintf(ftxt,"CONTROLE POINT[%d] NEGATIVE GRADIENT=%9.5f\n",i,(f2-df)/dfact);
 	}
 	///*SENSITIVITY*///
 
 
-
 	sprintf(str,"STEP= %d OBJECTIVE FUNCTION= %.5f GRADIENT SIZE= %.5f\n",k,f2,vsize);
 	fprintf(ftxt,"%s",str);
 
 	/*OPTIMIZATION END.*/
-	vsize=vectorlength(fgrad2,ncontrol);
+	vsize=vectorlength(fgrad2,nvariable);
 	if(vsize<eps || f2<=ftarget)
 	{
 	  sprintf(str,"COMPLETED\n");
@@ -362,33 +399,33 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 
 	/*UPDATE CONJUGATE GRADIENT DIRECTION*/
 	c3=0.0;
-	for(i=0; i<m; i++)
+	for(i=0;i<nvariable;i++)
 	{
 	  c3+=*(fgrad2+i)**(fgrad2+i);
 	}
 	beta=c3/c1;/*FLETCHER-REEVES*/
-	for(i=0;i<ncontrol;i++)
+	for(i=0;i<nvariable;i++)
 	{
 	  *(u2+i)=*(fgrad2+i)+beta**(u1+i);
 	}
 
 	/*GO TO NEXT LAP*/
-	for(i=0;i<ncontrol;i++)
+	for(i=0;i<nvariable;i++)
 	{
-	  zini[i]=z[i];
+	  *(variableinit+i)+=alpha**(u1+i);
 	  *(u1+i)=*(u2+i);
 	  *(fgrad1+i)=*(fgrad2+i);
 	}
 	f1=f2;
 
 	test=0.0;
-	for(i=0;i<ncontrol;i++)
+	for(i=0;i<nvariable;i++)
 	{
 	  test+=*(u1+i)**(fgrad1+i);/*CHECK DIRECTION : COMPARE CONJUGATE GRADIENT WITH STEEPEST GRADIENT*/
 	}
 	if(test<=0)/*CONJUGATE GRADIENT IS NOT DESCENT DIRECTION*/
 	{
-	  for(i=0;i<ncontrol;i++)
+	  for(i=0;i<nvariable;i++)
 	  {
 		 *(u1+i)=*(fgrad1+i);/*THE STEEPEST DESCENT METHOD*/
 	  }
