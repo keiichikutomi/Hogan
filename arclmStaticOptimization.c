@@ -53,11 +53,12 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 
   /*VARIABLES*/
   int nvariable;
-  double** variable;
-  double** variableinit;
+  double* variable;
+  double* variableinit;
 
   /*CONTROL POINTS*/
   int n1,n2;
+  int ncontrol;
   double *x,*y,*z;              /*CURRENT CONTROLE POINTS*/
   int *fp;                      /*ICONF OF CONTROLE POINTS*/
 
@@ -169,7 +170,7 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	  {
 		if(*(fp+j)==0)
 		{
-		  *(z+j)=*(varible+k);
+		  *(z+j)=*(variable+k);
 		  k++;
 		}
 	  }
@@ -213,7 +214,7 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	{
 		if(*(fp+j)==0)
 		{
-		  *(z+j)=*(varible+k);
+		  *(z+j)=*(variable+k);
 		  k++;
 		}
 	}
@@ -250,7 +251,7 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	  {
 		if(*(fp+j)==0)
 		{
-		  *(z+j)=*(varible+k);
+		  *(z+j)=*(variable+k);
 		  k++;
 		}
 	  }
@@ -303,7 +304,7 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	  {
 		if(*(fp+j)==0)
 		{
-		  *(z+j)=*(varible+k);
+		  *(z+j)=*(variable+k);
 		  k++;
 		}
 	  }
@@ -363,7 +364,7 @@ void conjugategradientaf(struct arclmframe *af)     /*CONJUGATE*/
 	  {
 		if(*(fp+j)==0)
 		{
-		  *(z+j)=*(varible+k);
+		  *(z+j)=*(variable+k);
 		  k++;
 		}
 	  }

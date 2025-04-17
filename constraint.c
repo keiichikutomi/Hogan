@@ -44,6 +44,7 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 
 		if(type == 1)/*REVOLUTE*/
 		{
+			/*Jacobian*/
 			cmtx = (double**)malloc(neq * sizeof(double*));
 			for(ii = 0 ; ii < neq ; ii++)
 			{
@@ -53,6 +54,8 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 					*(*(cmtx+ii)+jj) = 0.0;
 				}
 			}
+
+			/*Hessian*/
 			H = (double**)malloc(6 * nnod * sizeof(double*));
 			for(ii = 0 ; ii < 6 * nnod ; ii++)/*HESSIAN OF CONSTRAINT*/
 			{
@@ -72,6 +75,7 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 				}
 			}
 
+			/*Rotation Vector*/
 			rvct1 = (double*)malloc(3 * sizeof(double));
 			rvct2 = (double*)malloc(3 * sizeof(double));
 			for (ii = 0; ii < 3; ii++)
@@ -115,6 +119,7 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 
 			dot1 = dotproduct(axis1,axis3,3);
 			dot2 = dotproduct(axis2,axis3,3);
+
 			/*
 			for (ii = 0; ii < 3; ii++)
 			{
@@ -134,7 +139,8 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 				}
 			}
 			*/
-			symmetricmtx(H, 6);
+
+			symmetricmtx(H, 6*nnod);
 
 			for (ii = 0; ii < neq; ii++)
 			{
@@ -236,9 +242,6 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 				}
 			}
 
-			//sprintf(str,"%d %d %d %d %d %d\n", *(loffset + 0),*(loffset + 1),*(loffset + 2),*(loffset + 6),*(loffset + 7),*(loffset + 8));
-			//errormessage(str);
-
 			rvct1 = (double*)malloc(3 * sizeof(double));
 			rvct2 = (double*)malloc(3 * sizeof(double));
 			for (ii = 0; ii < 3; ii++)
@@ -293,7 +296,7 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 
 			for (ii = 0; ii < neq; ii++)
 			{
-				*(constraintvct+leq+ii) -= *(cvct+ii);
+				*(constraintvct+leq+ii) += *(cvct+ii);
 			}
 
 

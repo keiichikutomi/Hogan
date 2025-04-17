@@ -302,7 +302,8 @@ int arclmStatic(struct arclmframe* af)
 	int laps = 1000;
 	int iteration = 1;
 	int maxiteration = 20;
-	double tolerance = 1.0e-2;
+	//double tolerance = 1.0e-2;
+	double tolerance = 1.0e-4;
 
 	double residual = 0.0;
 	double constraintresidual = 0.0;
@@ -342,7 +343,7 @@ int arclmStatic(struct arclmframe* af)
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
-	int USINGEIGENFLAG = 1;
+	int USINGEIGENFLAG = 0;
 
 
 	/*INITIAL CONFIG*/
@@ -383,7 +384,8 @@ int arclmStatic(struct arclmframe* af)
 	int m;/*BUCKLING DETECTED LINE*/
 	double dm;/*DIAGONAL PIVOT VALUE*/
 	double* evct_L, * evct_R;
-	double dotLR, lenR, eigen;/*NORM OF LDL MODE*/
+	double dotLR, lenR;
+	double eigen = 0.0;/*NORM OF LDL MODE*/
 	int EXTENDEDFLAG = 0;
 	int ESMODE = 0;
 
@@ -917,7 +919,7 @@ int arclmStatic(struct arclmframe* af)
 	for (i = 0; i < csize; i++)
 	{
 		*(dup + msize + i) = 0.0;
-		*(due + msize + i) = *(constraintvct + i);
+		*(due + msize + i) = -*(constraintvct + i);
 	}
 	residual = vectorlength(funbalance,msize);
 	constraintresidual = vectorlength(constraintvct,csize);
@@ -1025,6 +1027,7 @@ int arclmStatic(struct arclmframe* af)
 		}
 		//dbggcomp(gmtx,msize+csize,"GMTX");
 
+		/*
 		if(iteration==1 && USINGEIGENFLAG==0)
 		{
 			for (i = 0; i < msize; i++)
@@ -1038,6 +1041,7 @@ int arclmStatic(struct arclmframe* af)
 				*(dup + i) += *(fgivendisp + i);
 			}
 		}
+		*/
 
 
 		/*SOLVE [K]*/
@@ -1773,7 +1777,7 @@ int arclmStatic(struct arclmframe* af)
 		for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
 		{
 			*(dup + msize + i) = 0.0;
-			*(due + msize + i) = *(constraintvct  + i);
+			*(due + msize + i) = - *(constraintvct  + i);
 		}
 
 		/*CONVERGENCE JUDGEMENT.*/
@@ -1805,7 +1809,7 @@ int arclmStatic(struct arclmframe* af)
 					if(ESMODE==0)
 					{
 
-                    }
+					}
 
 					nlap++;
 					iteration = 0;
@@ -2018,7 +2022,7 @@ int arclmStatic(struct arclmframe* af)
 			for (i = 0; i < csize; i++)	 /*GLOBAL VECTOR INITIALIZATION.*/
 			{
 				*(dup + msize + i) = 0.0;
-				*(due + msize + i) = *(constraintvct  + i);
+				*(due + msize + i) = -*(constraintvct  + i);
 			}
 
 		}

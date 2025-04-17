@@ -1375,6 +1375,8 @@ double **assemshellmmtx(struct oshell shell)
 double *assemshellpvct(struct oshell shell,double **drccos)
 {/*nodal force equivalent to surface force*/
   int i,j,k,ii;
+  int nnod = shell.nnod;
+  int ngp = shell.ngp;
   double *q,*p,**exy,**Nt,**L;
   double t;
   double *b,*c;
@@ -1457,8 +1459,8 @@ double *assemshellpvct(struct oshell shell,double **drccos)
   }
 
 
-  p=(double *)malloc(18*sizeof(double));
-  for(i=0;i<18;i++)
+  p=(double *)malloc(6*nnod*sizeof(double));
+  for(i=0;i<6*nnod;i++)
   {
 	*(p+i)=0.0;
   }
@@ -2143,6 +2145,9 @@ double** shellCconsistentmises(struct oshell shell, int ii)
   poi=shell.sect->poi;
   yinit = shell.sect->yieldinit;
 
+  double prate = shell.prate;
+  double brate = shell.brate;
+
   v[0]=E/(1-poi);
   v[1]=E/(1+poi);
   v[2]=E/(2.0*(1+poi));
@@ -2259,10 +2264,10 @@ double** shellCconsistentmises(struct oshell shell, int ii)
 	  {
 		for (j = 0; j < 3; j++)
 		{
-		  *(*(consistentC+  i)  +j) += *(*(C+i)+j)*(gp2->w)*t/2.0;
-		  *(*(consistentC+3+i)  +j) += *(*(C+i)+j)*(gp2->z)*(gp2->w)*pow(t/2.0,2);
-		  *(*(consistentC  +i)+3+j) += *(*(C+i)+j)*(gp2->z)*(gp2->w)*pow(t/2.0,2);
-		  *(*(consistentC+3+i)+3+j) += *(*(C+i)+j)*(gp2->z)*(gp2->z)*(gp2->w)*pow(t/2.0,3);
+		  *(*(consistentC+  i)  +j) +=  *(*(C+i)+j)*(gp2->w)*t/2.0;
+		  *(*(consistentC+3+i)  +j) +=  *(*(C+i)+j)*(gp2->z)*(gp2->w)*pow(t/2.0,2);
+		  *(*(consistentC  +i)+3+j) +=  *(*(C+i)+j)*(gp2->z)*(gp2->w)*pow(t/2.0,2);
+		  *(*(consistentC+3+i)+3+j) +=  *(*(C+i)+j)*(gp2->z)*(gp2->z)*(gp2->w)*pow(t/2.0,3);
 		}
 	  }
 	  freematrix(C,3);
