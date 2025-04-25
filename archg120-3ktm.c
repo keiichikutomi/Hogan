@@ -284,7 +284,7 @@ struct oconstraint{long int code,loff;
 				   int type;
 				   int neq,leq;
 				   //double *lambda;
-				   struct onode *(node[2]);
+				   struct onode *(node[3]);
 				   double axis[3][3];
 				  };
 
@@ -20683,6 +20683,35 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		(af->constraints+i-1)->neq=3;
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
+	}
+	else if((af->constraints+i-1)->type==6)/*PERIODIC BOUNDARY.*/
+	{
+		(af->constraints+i-1)->nnod=3;
+		(af->constraints+i-1)->neq=6;
+		code1=strtol(*(data+2),NULL,10);
+		code2=strtol(*(data+3),NULL,10);
+		code3=strtol(*(data+4),NULL,10);
+
+		j=0;
+		for(k=0;k<3;)
+		{
+			if((af->nodes+j)->code==code1)/*MASTER POINT.*/
+			{
+				(af->constraints+i-1)->node[0]=af->nodes+j;
+				k++;
+			}
+			if((af->nodes+j)->code==code2)/*SLAVE POINT.*/
+			{
+				(af->constraints+i-1)->node[1]=af->nodes+j;
+				k++;
+			}
+			if((af->nodes+j)->code==code3)/*CONTROL POINT.*/
+			{
+				(af->constraints+i-1)->node[2]=af->nodes+j;
+				k++;
+			}
+			j++;
+		}
 	}
 	else/*MPC.*/
 	{

@@ -244,6 +244,8 @@ double* extractshelldisplacement(struct oshell shell, double* ddisp)
 	return d;
 }/*extractshelldisplacement*/
 
+
+
 double** shelllocalcoord(struct oshell shell)
 {
   int i,j;
