@@ -284,7 +284,7 @@ struct oconstraint{long int code,loff;
 				   int type;
 				   int neq,leq;
 				   //double *lambda;
-				   struct onode *(node[3]);
+				   struct onode *(node[4]);
 				   double axis[3][3];
 				  };
 
@@ -20684,7 +20684,79 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		code1=strtol(*(data+2),NULL,10);
 		code2=strtol(*(data+3),NULL,10);
 	}
-	else if((af->constraints+i-1)->type==6)/*PERIODIC BOUNDARY.*/
+	else if((af->constraints+i-1)->type==10)/*PERIODIC BOUNDARY 2D.*/
+	{
+		if (n==5)
+		{
+			(af->constraints+i-1)->nnod=3;
+			(af->constraints+i-1)->neq=3;
+			code1=strtol(*(data+2),NULL,10);
+			code2=strtol(*(data+3),NULL,10);
+			code3=strtol(*(data+4),NULL,10);
+
+
+			j=0;
+			for(k=0;k<3;)
+			{
+				if((af->nodes+j)->code==code1)/*MASTER POINT.*/
+				{
+					(af->constraints+i-1)->node[0]=af->nodes+j;
+					k++;
+				}
+				if((af->nodes+j)->code==code2)/*SLAVE POINT.*/
+				{
+					(af->constraints+i-1)->node[1]=af->nodes+j;
+					k++;
+				}
+				if((af->nodes+j)->code==code3)/*CONTROL POINT.*/
+				{
+					(af->constraints+i-1)->node[2]=af->nodes+j;
+					k++;
+				}
+				j++;
+			}
+		}
+		else if(n==6)
+		{
+			(af->constraints+i-1)->nnod=4;
+			(af->constraints+i-1)->neq=3;
+			code1=strtol(*(data+2),NULL,10);
+			code2=strtol(*(data+3),NULL,10);
+			code3=strtol(*(data+4),NULL,10);
+			code4=strtol(*(data+5),NULL,10);
+
+			j=0;
+			for(k=0;k<4;)
+			{
+				if((af->nodes+j)->code==code1)/*MASTER POINT.*/
+				{
+					(af->constraints+i-1)->node[0]=af->nodes+j;
+					k++;
+				}
+				if((af->nodes+j)->code==code2)/*SLAVE POINT.*/
+				{
+					(af->constraints+i-1)->node[1]=af->nodes+j;
+					k++;
+				}
+				if((af->nodes+j)->code==code3)/*CONTROL POINT.*/
+				{
+					(af->constraints+i-1)->node[2]=af->nodes+j;
+					k++;
+				}
+				if((af->nodes+j)->code==code4)/*CONTROL POINT.*/
+				{
+					(af->constraints+i-1)->node[3]=af->nodes+j;
+					k++;
+				}
+				j++;
+			}
+
+		}
+
+
+
+	}
+	else if((af->constraints+i-1)->type==11)/*PERIODIC BOUNDARY 3D.*/
 	{
 		(af->constraints+i-1)->nnod=3;
 		(af->constraints+i-1)->neq=6;
@@ -20712,7 +20784,9 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			}
 			j++;
 		}
+
 	}
+
 	else/*MPC.*/
 	{
 		(af->constraints+i-1)->nnod=0;
