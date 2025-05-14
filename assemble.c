@@ -16,6 +16,7 @@
 ##########################################################################################################################################
 */
 void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,
+			   double* dirichletdisp, double* dirichletvct,
 			   struct gcomponent* mmtx, struct gcomponent* gmtx,
 			   double* iform, double* ddisp)
 {
@@ -65,7 +66,7 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
 
 		Kp = assememtx(elem);
-		//Kp = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
+		//Kp = modifyhinge(elem,Kp);             /*MODIFY MATRIX.*/
 
 		/*DEFORMED CONFIDURATION*/
 		for (ii = 0; ii < nnod; ii++)
@@ -74,24 +75,14 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 		}
 		gform = extractdisplacement(elem, ddisp);
 		drccos = updatedrccos(drccosinit, gforminit, gform);
-		/*drccos = directioncosine(elem.node[0]->d[0],
-							elem.node[0]->d[1],
-							elem.node[0]->d[2],
-							elem.node[1]->d[0],
-							elem.node[1]->d[1],
-							elem.node[1]->d[2],
-							elem.cangle);*/
 		eform = extractlocalcoord(gform,drccos,nnod);
 
-		edisp = extractdeformation(eforminit, eform, nnod);                	/*{Ue}*/
-
-
+		edisp = extractdeformation(eforminit, eform, nnod);
 
 		T = transmatrixIII(drccos, nnod);
 		HPT = transmatrixHPT(eform, edisp, T, nnod);
 
 		einternal = matrixvector(Kp, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
-
 
 		//Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
 		Kp = transformationIII(Kp, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
@@ -103,9 +94,29 @@ void assemelem(struct owire* elems, struct memoryelem* melem, int nelem, long in
 				*(*(Kt + ii) + jj) += *(*(Kp + ii) + jj);/*[Kt]=[Ke]+[Kg]*/
 			}
 		}
+
 		symmetricmtx(Kt, 6 * nnod);/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 
 		assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractdisplacement(elem, dirichletdisp);
+			ginternal = matrixvector(Kt,gdirichlet,6*nnod);
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			free(gdirichlet);
+			free(ginternal);
+        }
+
+
 
 		/*
 		if(i==1)
@@ -286,6 +297,7 @@ void elemstress(struct owire* elems, struct memoryelem* melem, int nelem, long i
 */
 
 void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,
+				double* dirichletdisp, double* dirichletvct,
 				struct gcomponent* mmtx, struct gcomponent* gmtx,
 				double* iform, double* ddisp)
 {
@@ -376,6 +388,25 @@ void assemshell(struct oshell* shells, struct memoryshell* mshell, int nshell, l
 		  M = transformationIII(M, T, 6*nnod);
 		  assemgstiffnessIIwithDOFelimination(mmtx, M, &shell, constraintmain);
 		}
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractshelldisplacement(shell, dirichletdisp);
+			ginternal = matrixvector(Kt,gdirichlet,6*nnod);
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			free(gdirichlet);
+			free(ginternal);
+		}
+
+
 
 
 		for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
@@ -531,10 +562,11 @@ void shellstress(struct oshell* shells, struct memoryshell* mshell, int nshell, 
 
 
 void assemelem_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,
-					 struct gcomponent* gmtx,struct gcomponent* gmtx2,
-					 double* iform, double* lastddisp, double* ddisp,
-					 double* ud_m, double* udd_m,
-					 double alpham, double alphaf, double xi, double beta, double ddt)
+					double* dirichletdisp, double* dirichletvct,
+					struct gcomponent* gmtx,struct gcomponent* gmtx2,
+					double* iform, double* lastddisp, double* ddisp,
+					double* ud_m, double* udd_m,
+					double alpham, double alphaf, double xi, double beta, double ddt)
 {
 	char str[500];
 	struct owire elem;
@@ -594,7 +626,7 @@ void assemelem_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		//K = assememtx(elem);
 		//M = assemmmtx(elem, drccosinit);          					/*[Me]*/
 
-		/*DEFORMED CONFIGURATION OF LAST LAP.*/
+
 		/*DEFORMED CONFIGURATION OF LAST LAP.*/
 		for (ii = 0; ii < nnod; ii++)
 		{
@@ -659,6 +691,27 @@ void assemelem_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, lo
 								alpham, beta, ddt, nnod);
 		symmetricmtx(Keff, 6*nnod);
 		assemgstiffnesswithDOFelimination(gmtx, Keff, &elem, constraintmain);
+
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractdisplacement(elem, dirichletdisp);
+			ginternal = matrixvector(Keff,gdirichlet,6*nnod);
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			free(gdirichlet);
+			free(ginternal);
+
+        }
+
+
 
 		//freematrix(M, 6 * nnod);
 		//freematrix(Kp, 6 * nnod);
@@ -940,6 +993,7 @@ void elemstress_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, l
 ##########################################################################################################################################################################################
 */
 void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,
+					 double* dirichletdisp, double* dirichletvct,
 					 struct gcomponent* gmtx,struct gcomponent* gmtx2,
 					 double* iform, double* lastddisp, double* ddisp,
 					 double* ud_m, double* udd_m,
@@ -1064,6 +1118,25 @@ void assemshell_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshe
 								alpham, beta, ddt, nnod);
 		symmetricmtx(Keff, 6*nnod);
 		assemgstiffnessIIwithDOFelimination(gmtx, Keff, &shell, constraintmain);
+
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractshelldisplacement(shell, dirichletdisp);
+			ginternal = matrixvector(Keff,gdirichlet,6*nnod);
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			free(gdirichlet);
+			free(ginternal);
+		}
+
 
 		for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
 		free(C);
@@ -1409,15 +1482,6 @@ void kineticenergy(struct arclmframe* af, double* ud_m, double* Wkt)
 
 	return;
 }
-
-
-
-
-
-
-
-
-
 
 
 

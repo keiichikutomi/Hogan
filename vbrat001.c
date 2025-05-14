@@ -250,8 +250,8 @@ int vbrat001(struct arclmframe* af)
 	/*STIFFNESS ASSEMBLAGE*/
 	if(USINGEIGENFLAG==1)
 	{
-	  //assemelemEx(elems, melem, nelem, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
-	  //assemshellEx(shells, mshell, nshell, constraintmain, confs, NULL, Ktriplet, iform, ddisp, NULL, NULL);
+	  //assemelemEx(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, NULL, NULL);
+	  //assemshellEx(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, NULL, NULL);
 
 	  /*GLOBAL MATRIX USING EIGEN*/
 	  Kglobal.reserve(msize*msize);
@@ -259,8 +259,8 @@ int vbrat001(struct arclmframe* af)
 	}
 	else
 	{
-	  assemelem(elems, melem, nelem, constraintmain, mmtx, kmtx, iform, ddisp);
-	  assemshell(shells, mshell, nshell, constraintmain, mmtx, kmtx, iform, ddisp);
+	  assemelem(elems, melem, nelem, constraintmain, NULL, NULL, mmtx, kmtx, iform, ddisp);
+	  assemshell(shells, mshell, nshell, constraintmain, NULL, NULL, mmtx, kmtx, iform, ddisp);
 	}
 
 

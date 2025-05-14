@@ -15,6 +15,7 @@
 ##########################################################################################################################################
 */
 void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,struct oconf* confs,
+					double* dirichletdisp, double* dirichletvct,
 					std::vector<Triplet>& Mtriplet,std::vector<Triplet>& Ktriplet,
 					double* iform, double* ddisp,
 					int SYMFLAG)
@@ -28,12 +29,11 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 	double* gform, * eform, * edisp;
 
 	double* ginternal, * einternal;
-	//double* gexternal, * eexternal;
 
 	double** drccosinit;
-	double** drccos, ** T, ** Tt, **HPT, **TtPtHt;
+	double** drccos, ** T, **HPT;
 
-	double** M,** Ke,** Kp,** Kt;
+	double** Kp,** Kt;
 
 
 
@@ -65,9 +65,9 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		gforminit = extractdisplacement(elem, iform);
 		eforminit = extractlocalcoord(gforminit,drccosinit,nnod);
 
-		Ke = assememtx(elem);
-		//Ke = modifyhinge(elem,Ke);             /*MODIFY MATRIX.*/
-		dbgmtx(Ke,12,12,NULL);
+		Kp = assememtx(elem);
+		//Kp = modifyhinge(elem,Kp);             /*MODIFY MATRIX.*/
+
 		/*DEFORMED CONFIDURATION*/
 		for (ii = 0; ii < nnod; ii++)
 		{
@@ -77,30 +77,51 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		drccos = updatedrccos(drccosinit, gforminit, gform);
 		eform = extractlocalcoord(gform,drccos,nnod);
 
-		edisp = extractdeformation(eforminit, eform, nnod);                	/*{Ue}*/
+		edisp = extractdeformation(eforminit, eform, nnod);
 
-		T = transmatrixIII(drccos, nnod);									/*[T].*/
+		T = transmatrixIII(drccos, nnod);
 		HPT = transmatrixHPT(eform, edisp, T, nnod);
-		dbgmtx(T,12,12,NULL);
-		dbgmtx(HPT,12,12,NULL);
 
-		einternal = matrixvector(Ke, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
+		einternal = matrixvector(Kp, edisp, 6 * nnod);          			/*{Fe}=[Ke]{Ue}.*/
 
-		Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
+		//Kt = assemtmtxCR(Ke, eform, edisp, einternal, T, HPT, nnod);	/*TANGENTIAL MATRIX[Kt].*/
+		Kp = transformationIII(Kp, HPT, 6*nnod);/*[Ke]=[Tt][Pt][Ht][K][H][P][T]*/
+		Kt = assemgmtxCR(eform, edisp, einternal, T, nnod);/*[Kg]=[Kgr]+[Kgp]+[Kgm]*/
+		for (ii = 0; ii < 6*nnod; ii++)
+		{
+			for (jj = 0; jj < 6*nnod; jj++)
+			{
+				*(*(Kt + ii) + jj) += *(*(Kp + ii) + jj);/*[Kt]=[Ke]+[Kg]*/
+			}
+		}
+
 
 		if(SYMFLAG==1)
 		{
 		  symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		}
 
-		dbgmtx(Ke,12,12,NULL);
-		dbgmtx(Kt,12,12,NULL);
-
-		//assemgstiffnesswithDOFelimination(gmtx, Kt, &elem, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
 		assemtripletelem(Ktriplet, Kt, &elem, constraintmain, confs);
 
-		freematrix(Ke, 6 * nnod);
-		freematrix(Kt, 6 * nnod);
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractdisplacement(elem, dirichletdisp);
+			ginternal = matrixvector(Kt,gdirichlet,6*nnod);
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			free(gdirichlet);
+			free(ginternal);
+		}
+
+
 
 		free(loffset);
 		free(eforminit);
@@ -115,6 +136,8 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 		freematrix(drccos, 3);
 		freematrix(T, 6 * nnod);
 		freematrix(HPT, 6 * nnod);
+		freematrix(Kp, 6 * nnod);
+		freematrix(Kt, 6 * nnod);
 
 
 	}
@@ -139,6 +162,7 @@ void assemelemEigen(struct owire* elems, struct memoryelem* melem, int nelem, lo
 */
 
 void assemshellEigen(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,struct oconf* confs,
+					 double* dirichletdisp, double* dirichletvct,
 					 std::vector<Triplet>& Mtriplet,std::vector<Triplet>& Ktriplet,
 					 double* iform, double* ddisp,
 					 int SYMFLAG)
@@ -225,12 +249,31 @@ void assemshellEigen(struct oshell* shells, struct memoryshell* mshell, int nshe
 		{
 		  symmetricmtx(Kt, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		}
-		//assemgstiffnessIIwithDOFelimination(gmtx, Kt, &shell, constraintmain); /*ASSEMBLAGE TANGENTIAL STIFFNESS MATRIX.*/
+
 		assemtripletshell(Ktriplet, Kt, &shell, constraintmain, confs);
 
 		M = transformationIII(M, T, 6*nnod);
-		//assemgstiffnessIIwithDOFelimination(mmtx, M, &shell, constraintmain);
 		assemtripletshell(Mtriplet, M, &shell, constraintmain, confs);
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractshelldisplacement(shell, dirichletdisp);
+			ginternal = matrixvector(Kt,gdirichlet,6*nnod);
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			free(gdirichlet);
+			free(ginternal);
+		}
+
+
+
 
 
 		for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
@@ -262,6 +305,7 @@ void assemshellEigen(struct oshell* shells, struct memoryshell* mshell, int nshe
 
 
 void assemelemEigen_DYNA(struct owire* elems, struct memoryelem* melem, int nelem, long int* constraintmain,struct oconf* confs,
+						 double* dirichletdisp, double* dirichletvct,
 						 std::vector<Triplet>& Ktriplet,std::vector<Triplet>& Ktriplet2,
 						 double* iform, double* lastddisp, double* ddisp,
 						 double* ud_m, double* udd_m,
@@ -325,7 +369,7 @@ void assemelemEigen_DYNA(struct owire* elems, struct memoryelem* melem, int nele
 		//K = assememtx(elem);
 		//M = assemmmtx(elem, drccosinit);          					/*[Me]*/
 
-		/*DEFORMED CONFIGURATION OF LAST LAP.*/
+
 		/*DEFORMED CONFIGURATION OF LAST LAP.*/
 		for (ii = 0; ii < nnod; ii++)
 		{
@@ -382,8 +426,7 @@ void assemelemEigen_DYNA(struct owire* elems, struct memoryelem* melem, int nele
 		mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);
 
 		Kint = assemtmtxCR_MID(Kp, eform, edisp, mideinternal, T, midTtPtHt, HPT, alphaf, xi, nnod);
-		//symmetricmtx(Kint, 6*nnod);
-		//if(gmtx2!=NULL)assemgstiffnesswithDOFelimination(gmtx2, Kint, &elem, constraintmain);
+
 		assemtripletelem(Ktriplet2, Kint, &elem, constraintmain, confs);
 
 		Keff = assemtmtxCR_DYNA(Kint,
@@ -393,8 +436,25 @@ void assemelemEigen_DYNA(struct owire* elems, struct memoryelem* melem, int nele
 		{
 		  symmetricmtx(Keff, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		}
-		//assemgstiffnesswithDOFelimination(gmtx, Keff, &elem, constraintmain);
 		assemtripletelem(Ktriplet, Keff, &elem, constraintmain, confs);
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractdisplacement(elem, dirichletdisp);
+			ginternal = matrixvector(Keff,gdirichlet,6*nnod);
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			free(gdirichlet);
+			free(ginternal);
+		}
+
 
 		//freematrix(M, 6 * nnod);
 		//freematrix(Kp, 6 * nnod);
@@ -467,6 +527,7 @@ void assemelemEigen_DYNA(struct owire* elems, struct memoryelem* melem, int nele
 ##########################################################################################################################################################################################
 */
 void assemshellEigen_DYNA(struct oshell* shells, struct memoryshell* mshell, int nshell, long int* constraintmain,struct oconf* confs,
+						  double* dirichletdisp, double* dirichletvct,
 						  std::vector<Triplet>& Ktriplet,std::vector<Triplet>& Ktriplet2,
 						  double* iform, double* lastddisp, double* ddisp,
 						  double* ud_m, double* udd_m,
@@ -583,8 +644,7 @@ void assemshellEigen_DYNA(struct oshell* shells, struct memoryshell* mshell, int
 		mideinternal = midpointvct(einternal, lasteinternal, alphaf-xi, 6*nnod);//
 
 		Kint = assemtmtxCR_MID(Kp, eform, edisp, mideinternal, T, midTtPtHt, HPT, alphaf, xi, nnod);
-		//symmetricmtx(Kint, 6*nnod);
-		//if(gmtx2!=NULL)assemgstiffnessIIwithDOFelimination(gmtx2, Kint, &shell, constraintmain);
+
 		assemtripletshell(Ktriplet2, Kint, &shell, constraintmain, confs);
 
 
@@ -595,8 +655,24 @@ void assemshellEigen_DYNA(struct oshell* shells, struct memoryshell* mshell, int
 		{
 		  symmetricmtx(Keff, 6*nnod);											/*SYMMETRIC TANGENTIAL MATRIX[Ksym].*/
 		}
-		//assemgstiffnessIIwithDOFelimination(gmtx, Keff, &shell, constraintmain);
 		assemtripletshell(Ktriplet, Keff, &shell, constraintmain, confs);
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractshelldisplacement(shell, dirichletdisp);
+			ginternal = matrixvector(Keff,gdirichlet,6*nnod);
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			free(gdirichlet);
+			free(ginternal);
+		}
 
 		for(ii=0;ii<ngp;ii++)freematrix(*(C+ii), nstress);
 		free(C);
@@ -651,18 +727,6 @@ void assemshellEigen_DYNA(struct oshell* shells, struct memoryshell* mshell, int
 
 	return;
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

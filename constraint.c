@@ -32,6 +32,7 @@ double* extractconstraintdisplacement(struct oconstraint constraint, double* ddi
 }/*extractconstraintdisplacement*/
 
 void assemconstraint(struct oconstraint* constraints, int nconstraint, long int* constraintmain,
+					 double* dirichletdisp, double* dirichletvct,/*DIRICHLET PROBLEM*/
 					 struct gcomponent* gmtx,
 					 double* iform, double* ddisp, double* lambda, int msize)
 {
@@ -67,45 +68,40 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 		type = (constraints+i-1)->type;
 		nnod = (constraints+i-1)->nnod;
 
+		/*Jacobian*/
+		cmtx = (double**)malloc(neq * sizeof(double*));
+		for(ii = 0 ; ii < neq ; ii++)
+		{
+			*(cmtx+ii) = (double*)malloc(6 * nnod * sizeof(double));
+			for (jj = 0; jj < 6*nnod; jj++)
+			{
+				*(*(cmtx+ii)+jj) = 0.0;
+			}
+		}
+		/*Hessian*/
+		cmtxH = (double**)malloc(6 * nnod * sizeof(double*));
+		for(ii = 0 ; ii < 6 * nnod ; ii++)/*HESSIAN OF CONSTRAINT*/
+		{
+			*(cmtxH+ii) = (double*)malloc(6 * nnod * sizeof(double));
+			for (jj = 0; jj < 6 * nnod; jj++)
+			{
+				*(*(cmtxH+ii)+jj) = 0.0;
+			}
+		}
+		loffset = (int*)malloc(6 * nnod * sizeof(int));
+		for (ii = 0; ii < nnod; ii++)
+		{
+			for (jj = 0; jj < 6; jj++)
+			{
+				*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
+			}
+		}
+		gforminit = extractconstraintdisplacement(*(constraints+i-1), iform);
+		gform = extractconstraintdisplacement(*(constraints+i-1), ddisp);
+		gdisp = extractdeformation(gforminit, gform, nnod);
 
 		if(type == 1)/*REVOLUTE*/
 		{
-			/*Jacobian*/
-			cmtx = (double**)malloc(neq * sizeof(double*));
-			for(ii = 0 ; ii < neq ; ii++)
-			{
-				*(cmtx+ii) = (double*)malloc(6 * nnod * sizeof(double));
-				for (jj = 0; jj < 6*nnod; jj++)
-				{
-					*(*(cmtx+ii)+jj) = 0.0;
-				}
-			}
-
-			/*Hessian*/
-			cmtxH = (double**)malloc(6 * nnod * sizeof(double*));
-			for(ii = 0 ; ii < 6 * nnod ; ii++)/*HESSIAN OF CONSTRAINT*/
-			{
-				*(cmtxH+ii) = (double*)malloc(6 * nnod * sizeof(double));
-				for (jj = 0; jj < 6 * nnod; jj++)
-				{
-					*(*(cmtxH+ii)+jj) = 0.0;
-				}
-			}
-
-			loffset = (int*)malloc(6 * nnod * sizeof(int));
-			for (ii = 0; ii < nnod; ii++)
-			{
-				for (jj = 0; jj < 6; jj++)
-				{
-					*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
-				}
-			}
-
-			gforminit = extractconstraintdisplacement(*(constraints+i-1), iform);
-			gform = extractconstraintdisplacement(*(constraints+i-1), ddisp);
-			gdisp = extractdeformation(gforminit, gform, nnod);
-
-
 			/*Rotation Vector*/
 			rvct_m = (double*)malloc(3 * sizeof(double));
 			rvct_s = (double*)malloc(3 * sizeof(double));
@@ -167,35 +163,6 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 			symmetricmtx(cmtxH, 6*nnod);
 			*/
 
-
-
-			for (ii = 0; ii < neq; ii++)
-			{
-				for (jj = 0; jj < 6 * nnod; jj++)
-				{
-					if(*(*(cmtx+ii)+jj) != 0)
-					{
-						gwrite(gmtx , msize+leq+ii+1, *(constraintmain + *(loffset + jj)) + 1, *(*(cmtx+ii)+jj));
-					}
-				}
-			}
-			for (ii = 0; ii < 6 * nnod; ii++)
-			{
-				for (jj = 0; jj < 6 * nnod; jj++)
-				{
-					if(*(*(cmtxH+ii)+jj)!=0.0)
-					{
-						gread(gmtx , *(constraintmain + *(loffset + ii)) + 1, *(constraintmain + *(loffset + jj)) + 1, &gdata);
-						gwrite(gmtx , *(constraintmain + *(loffset + ii)) + 1, *(constraintmain + *(loffset + jj)) + 1, gdata + *(*(cmtxH+ii)+jj));
-					}
-				}
-			}
-
-			free(loffset);
-			free(gforminit);
-			free(gform);
-			free(gdisp);
-
 			free(rvct_m);
 			free(rvct_s);
 			freematrix(R_m,3);
@@ -209,141 +176,32 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 			free(axis3);
 			free(cross1);
 			free(cross2);
-			freematrix(cmtx,neq);
-			freematrix(cmtxH,6*nnod);
-		}
 
+		}
 		if(type == 10)/*PERIODIC BOUNDARY.*/
 		{
-			/*Jacobian*/
-			cmtx = (double**)malloc(neq * sizeof(double*));
-			for(ii = 0 ; ii < neq ; ii++)
-			{
-				*(cmtx+ii) = (double*)malloc(6 * nnod * sizeof(double));
-				for (jj = 0; jj < 6*nnod; jj++)
-				{
-					*(*(cmtx+ii)+jj) = 0.0;
-				}
-			}
-
-			loffset = (int*)malloc(6 * nnod * sizeof(int));
-			for (ii = 0; ii < nnod; ii++)
-			{
-				for (jj = 0; jj < 6; jj++)
-				{
-					*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
-				}
-			}
-
-			gforminit = extractconstraintdisplacement(*(constraints+i-1), iform);
-			gform = extractconstraintdisplacement(*(constraints+i-1), ddisp);
-			gdisp = extractdeformation(gforminit, gform, nnod);
-
-
-
 			if(nnod==3)
 			{
 				for (ii = 0; ii < 3; ii++)
 				{
-					for (jj = 0; jj < 3; jj++)
-					{
-						if(ii==jj)
-						{
-							*(*(cmtx+ii)   +jj) =  1.0;
-							*(*(cmtx+ii)+6 +jj) = -1.0;
-							*(*(cmtx+ii)+12+jj) =  1.0;
-						}
-					}
+					*(*(cmtx+ii)   +ii) =  1.0;
+					*(*(cmtx+ii)+6 +ii) = -1.0;
+					*(*(cmtx+ii)+12+ii) =  1.0;
 				}
 			}
 			if(nnod==4)
 			{
 				for (ii = 0; ii < 3; ii++)
 				{
-					for (jj = 0; jj < 3; jj++)
-					{
-						if(ii==jj)
-						{
-							*(*(cmtx+ii)   +jj) =  1.0;
-							*(*(cmtx+ii)+6 +jj) = -1.0;
-							*(*(cmtx+ii)+12+jj) =  1.0;
-							*(*(cmtx+ii)+18+jj) =  1.0;
-						}
-					}
+					*(*(cmtx+ii)   +ii) =  1.0;
+					*(*(cmtx+ii)+6 +ii) = -1.0;
+					*(*(cmtx+ii)+12+ii) =  1.0;
+					*(*(cmtx+ii)+18+ii) =  1.0;
 				}
 			}
-
-
-			for (ii = 0; ii < neq; ii++)
-			{
-				for (jj = 0; jj < 6 * nnod; jj++)
-				{
-					if(*(*(cmtx+ii)+jj) != 0)
-					{
-						gwrite(gmtx , msize+leq+ii+1, *(constraintmain + *(loffset + jj)) + 1, *(*(cmtx+ii)+jj));
-					}
-				}
-			}
-			for (ii = 0; ii < 6 * nnod; ii++)
-			{
-				for (jj = 0; jj < 6 * nnod; jj++)
-				{
-					if(*(*(cmtxH+ii)+jj)!=0.0)
-					{
-						gread(gmtx , *(constraintmain + *(loffset + ii)) + 1, *(constraintmain + *(loffset + jj)) + 1, &gdata);
-						gwrite(gmtx , *(constraintmain + *(loffset + ii)) + 1, *(constraintmain + *(loffset + jj)) + 1, gdata + *(*(cmtxH+ii)+jj));
-					}
-				}
-			}
-
-
-			free(loffset);
-			free(gforminit);
-			free(gform);
-			free(gdisp);
-
-			freematrix(cmtx,neq);
 		}
-
-
 		if(type == 11)/*PERIODIC BOUNDARY.*/
 		{
-			/*Jacobian*/
-			cmtx = (double**)malloc(neq * sizeof(double*));
-			for(ii = 0 ; ii < neq ; ii++)
-			{
-				*(cmtx+ii) = (double*)malloc(6 * nnod * sizeof(double));
-				for (jj = 0; jj < 6*nnod; jj++)
-				{
-					*(*(cmtx+ii)+jj) = 0.0;
-				}
-			}
-
-			/*Hessian*/
-			cmtxH = (double**)malloc(6 * nnod * sizeof(double*));
-			for(ii = 0 ; ii < 6 * nnod ; ii++)/*HESSIAN OF CONSTRAINT*/
-			{
-				*(cmtxH+ii) = (double*)malloc(6 * nnod * sizeof(double));
-				for (jj = 0; jj < 6 * nnod; jj++)
-				{
-					*(*(cmtxH+ii)+jj) = 0.0;
-				}
-			}
-
-			loffset = (int*)malloc(6 * nnod * sizeof(int));
-			for (ii = 0; ii < nnod; ii++)
-			{
-				for (jj = 0; jj < 6; jj++)
-				{
-					*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
-				}
-			}
-
-			gforminit = extractconstraintdisplacement(*(constraints+i-1), iform);
-			gform = extractconstraintdisplacement(*(constraints+i-1), ddisp);
-			gdisp = extractdeformation(gforminit, gform, nnod);
-
-
 			/*Rotation Vector*/
 			rvct_m = (double*)malloc(3 * sizeof(double));
 			rvct_s = (double*)malloc(3 * sizeof(double));
@@ -371,17 +229,15 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 
 			for (ii = 0; ii < 3; ii++)
 			{
+				*(*(cmtx+ii)   +ii) =  1.0;
+				*(*(cmtx+ii)+6 +ii) = -1.0;
+				*(*(cmtx+ii)+12+ii) =  1.0;
+
 				for (jj = 0; jj < 3; jj++)
 				{
 					*(*(cmtx+3+ii)+ 3+jj) =  *(*(HR_c+ii)+jj);
 					*(*(cmtx+3+ii)+ 9+jj) = -*(*(HR_cmst+ii)+jj);
 					*(*(cmtx+3+ii)+15+jj) =  *(*(H+ii)+jj);
-					if(ii==jj)
-					{
-						*(*(cmtx+ii)   +jj) =  1.0;
-						*(*(cmtx+ii)+6 +jj) = -1.0;
-						*(*(cmtx+ii)+12+jj) =  1.0;
-					}
 				}
 			}
 
@@ -395,34 +251,6 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 			symmetricmtx(cmtxH, 6*nnod);
 			*/
 
-
-			for (ii = 0; ii < neq; ii++)
-			{
-				for (jj = 0; jj < 6 * nnod; jj++)
-				{
-					if(*(*(cmtx+ii)+jj) != 0)
-					{
-						gwrite(gmtx , msize+leq+ii+1, *(constraintmain + *(loffset + jj)) + 1, *(*(cmtx+ii)+jj));
-					}
-				}
-			}
-			for (ii = 0; ii < 6 * nnod; ii++)
-			{
-				for (jj = 0; jj < 6 * nnod; jj++)
-				{
-					if(*(*(cmtxH+ii)+jj)!=0.0)
-					{
-						gread(gmtx , *(constraintmain + *(loffset + ii)) + 1, *(constraintmain + *(loffset + jj)) + 1, &gdata);
-						gwrite(gmtx , *(constraintmain + *(loffset + ii)) + 1, *(constraintmain + *(loffset + jj)) + 1, gdata + *(*(cmtxH+ii)+jj));
-					}
-				}
-			}
-
-
-			free(loffset);
-			free(gforminit);
-			free(gform);
-			free(gdisp);
 
 			free(rvct_m);
 			free(rvct_s);
@@ -439,9 +267,68 @@ void assemconstraint(struct oconstraint* constraints, int nconstraint, long int*
 			freematrix(HR_cmst,3);
 			freematrix(HR_c,3);
 
-			freematrix(cmtx,neq);
-			freematrix(cmtxH,6*nnod);
 		}
+
+
+		/*DIRICHLET*/
+		double* gdirichlet,* ginternal;
+		if(dirichletdisp!=NULL && dirichletvct!=NULL)
+		{
+			gdirichlet = extractconstraintdisplacement(*(constraints+i-1), dirichletdisp);
+			//ginternal = matrixvector(cmtxH,gdirichlet,6*nnod);
+			ginternal = matrixvectorIII(cmtx,gdirichlet,neq,6*nnod);
+
+
+			for (ii = 0; ii < neq; ii++)
+			{
+				*(dirichletvct + msize + leq + ii) += *(ginternal + ii);
+			}
+			/*
+			for (ii = 0; ii < nnod; ii++)
+			{
+				for (jj = 0; jj < 6; jj++)
+				{
+					if(dirichletvct!=NULL)*(dirichletvct + *(constraintmain + *(loffset + (6 * ii + jj)))) += *(ginternal + 6 * ii + jj);
+				}
+			}
+			*/
+			free(gdirichlet);
+			free(ginternal);
+		}
+
+
+
+
+
+		for (ii = 0; ii < neq; ii++)
+		{
+			for (jj = 0; jj < 6 * nnod; jj++)
+			{
+				if(*(*(cmtx+ii)+jj) != 0)
+				{
+					gwrite(gmtx , msize+leq+ii+1, *(constraintmain + *(loffset + jj)) + 1, *(*(cmtx+ii)+jj));
+				}
+			}
+		}
+		for (ii = 0; ii < 6 * nnod; ii++)
+		{
+			for (jj = 0; jj < 6 * nnod; jj++)
+			{
+				if(*(*(cmtxH+ii)+jj)!=0.0)
+				{
+					gread(gmtx , *(constraintmain + *(loffset + ii)) + 1, *(constraintmain + *(loffset + jj)) + 1, &gdata);
+					gwrite(gmtx , *(constraintmain + *(loffset + ii)) + 1, *(constraintmain + *(loffset + jj)) + 1, gdata + *(*(cmtxH+ii)+jj));
+				}
+			}
+		}
+
+
+		free(loffset);
+		free(gforminit);
+		free(gform);
+		free(gdisp);
+		freematrix(cmtx,neq);
+		freematrix(cmtxH,6*nnod);
 
 
 	}
@@ -488,35 +375,37 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 		type = (constraints+i-1)->type;
 		nnod = (constraints+i-1)->nnod;
 
+		cvct = (double*)malloc(neq * sizeof(double));
+		cmtx = (double**)malloc(neq * sizeof(double*));
+		for(ii = 0 ; ii < neq ; ii++)
+		{
+			*(cmtx+ii) = (double*)malloc(6 * nnod * sizeof(double));
+			for (jj = 0; jj < 6*nnod; jj++)
+			{
+				*(*(cmtx+ii)+jj) = 0.0;
+			}
+		}
+		loffset = (int*)malloc(6 * nnod * sizeof(int));
+		for (ii = 0; ii < nnod; ii++)
+		{
+			for (jj = 0; jj < 6; jj++)
+			{
+				*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
+			}
+		}
+		gforminit = extractconstraintdisplacement(*(constraints+i-1), iform);
+		gform = extractconstraintdisplacement(*(constraints+i-1), ddisp);
+		gdisp = extractdeformation(gforminit, gform, nnod);
+
+
+
+
+
+
+
 
 		if(type == 1)
 		{
-			cvct = (double*)malloc(neq * sizeof(double));
-			cmtx = (double**)malloc(neq * sizeof(double*));
-			for(ii = 0 ; ii < neq ; ii++)
-			{
-				*(cmtx+ii) = (double*)malloc(6 * nnod * sizeof(double));
-				for (jj = 0; jj < 6*nnod; jj++)
-				{
-					*(*(cmtx+ii)+jj) = 0.0;
-				}
-			}
-
-
-			loffset = (int*)malloc(6 * nnod * sizeof(int));
-			for (ii = 0; ii < nnod; ii++)
-			{
-				for (jj = 0; jj < 6; jj++)
-				{
-					*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
-				}
-			}
-
-			gforminit = extractconstraintdisplacement(*(constraints+i-1), iform);
-			gform = extractconstraintdisplacement(*(constraints+i-1), ddisp);
-			gdisp = extractdeformation(gforminit, gform, nnod);
-
-
 			rvct_m = (double*)malloc(3 * sizeof(double));
 			rvct_s = (double*)malloc(3 * sizeof(double));
 			for (ii = 0; ii < 3; ii++)
@@ -555,30 +444,6 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 				*(*(cmtx+1)+9+ii) = -*(cross2+ii);
 			}
 
-
-			gconstraint = (double*)malloc(6*nnod * sizeof(double));
-			for (ii = 0; ii < 6*nnod; ii++)
-			{
-				*(gconstraint + ii) = 0.0;
-				for (jj = 0; jj < neq; jj++)
-				{
-					*(gconstraint + ii) += *(lambda+leq+jj)**(*(cmtx+jj)+ii);
-				}
-				*(fconstraint + *(constraintmain + *(loffset + ii))) += *(gconstraint + ii);
-			}
-
-			for (ii = 0; ii < neq; ii++)
-			{
-				*(constraintvct+leq+ii) += *(cvct+ii);
-			}
-
-
-			free(loffset);
-			free(gforminit);
-			free(gform);
-			free(gdisp);
-			free(gconstraint);
-
 			free(rvct_m);
 			free(rvct_s);
 			freematrix(R_m,3);
@@ -592,137 +457,39 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 			free(axis3);
 			free(cross1);
 			free(cross2);
-
-			free(cvct);
-			freematrix(cmtx,neq);
-
 		}
-
-
-
 		if(type == 10)/*PERIODIC BOUNDARY 2D.*/
 		{
-			/*Jacobian*/
-			cvct = (double*)malloc(neq * sizeof(double));
-			cmtx = (double**)malloc(neq * sizeof(double*));
-			for(ii = 0 ; ii < neq ; ii++)
+			if(nnod==3)
 			{
-				*(cmtx+ii) = (double*)malloc(6 * nnod * sizeof(double));
-				for (jj = 0; jj < 6*nnod; jj++)
+				for (ii = 0; ii < 3; ii++)
 				{
-					*(*(cmtx+ii)+jj) = 0.0;
+					*(cvct+  ii) = *(gdisp+12+ii) + *(gdisp+ii) - *(gdisp+6+ii);
+				}
+				for (ii = 0; ii < 3; ii++)
+				{
+					*(*(cmtx+ii)   +ii) =  1.0;
+					*(*(cmtx+ii)+6 +ii) = -1.0;
+					*(*(cmtx+ii)+12+ii) =  1.0;
 				}
 			}
-
-			loffset = (int*)malloc(6 * nnod * sizeof(int));
-			for (ii = 0; ii < nnod; ii++)
+			if(nnod==4)
 			{
-				for (jj = 0; jj < 6; jj++)
+				for (ii = 0; ii < 3; ii++)
 				{
-					*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
+					*(cvct+  ii) = *(gdisp+12+ii) + *(gdisp+18+ii) + *(gdisp+ii) - *(gdisp+6+ii);
+				}
+				for (ii = 0; ii < 3; ii++)
+				{
+					*(*(cmtx+ii)   +ii) =  1.0;
+					*(*(cmtx+ii)+6 +ii) = -1.0;
+					*(*(cmtx+ii)+12+ii) =  1.0;
+					*(*(cmtx+ii)+18+ii) =  1.0;
 				}
 			}
-
-			gforminit = extractconstraintdisplacement(*(constraints+i-1), iform);
-			gform = extractconstraintdisplacement(*(constraints+i-1), ddisp);
-			gdisp = extractdeformation(gforminit, gform, nnod);
-
-
-
-
-			for (ii = 0; ii < 3; ii++)
-			{
-			  *(cvct+  ii) = *(gdisp+12+ii) + *(gdisp+ii) - *(gdisp+6+ii);
-			}
-
-
-			for (ii = 0; ii < 3; ii++)
-			{
-				for (jj = 0; jj < 3; jj++)
-				{
-					if(ii==jj)
-					{
-						*(*(cmtx+ii)   +jj) =  1.0;
-						*(*(cmtx+ii)+6 +jj) = -1.0;
-						*(*(cmtx+ii)+12+jj) =  1.0;
-					}
-				}
-			}
-
-
-
-			gconstraint = (double*)malloc(6*nnod * sizeof(double));
-			for (ii = 0; ii < 6*nnod; ii++)
-			{
-				*(gconstraint + ii) = 0.0;
-				for (jj = 0; jj < neq; jj++)
-				{
-					*(gconstraint + ii) += *(lambda+leq+jj)**(*(cmtx+jj)+ii);
-				}
-				*(fconstraint + *(constraintmain + *(loffset + ii))) += *(gconstraint + ii);
-			}
-
-			for (ii = 0; ii < neq; ii++)
-			{
-				*(constraintvct+leq+ii) += *(cvct+ii);
-			}
-
-
-			free(loffset);
-			free(gforminit);
-			free(gform);
-			free(gdisp);
-			free(gconstraint);
-
-			free(rvct_m);
-			free(rvct_s);
-			free(rvct_c);
-			free(rvct_cmst);
-			freematrix(R_m,3);
-			freematrix(R_s,3);
-			freematrix(R_c,3);
-			freematrix(R_st,3);
-			freematrix(R_cm,3);
-			freematrix(R_cmst,3);
-
-			freematrix(H,3);
-			freematrix(HR_cmst,3);
-			freematrix(HR_c,3);
-
-			free(cvct);
-			freematrix(cmtx,neq);
 		}
-
-
-
 		if(type == 11)/*PERIODIC BOUNDARY 2D.*/
 		{
-			/*Jacobian*/
-			cvct = (double*)malloc(neq * sizeof(double));
-			cmtx = (double**)malloc(neq * sizeof(double*));
-			for(ii = 0 ; ii < neq ; ii++)
-			{
-				*(cmtx+ii) = (double*)malloc(6 * nnod * sizeof(double));
-				for (jj = 0; jj < 6*nnod; jj++)
-				{
-					*(*(cmtx+ii)+jj) = 0.0;
-				}
-			}
-
-			loffset = (int*)malloc(6 * nnod * sizeof(int));
-			for (ii = 0; ii < nnod; ii++)
-			{
-				for (jj = 0; jj < 6; jj++)
-				{
-					*(loffset + (6 * ii + jj)) = 6 * ((constraints+i-1)->node[ii]->loff) + jj;
-				}
-			}
-
-			gforminit = extractconstraintdisplacement(*(constraints+i-1), iform);
-			gform = extractconstraintdisplacement(*(constraints+i-1), ddisp);
-			gdisp = extractdeformation(gforminit, gform, nnod);
-
-
 			/*Rotation Vector*/
 			rvct_m = (double*)malloc(3 * sizeof(double));
 			rvct_s = (double*)malloc(3 * sizeof(double));
@@ -755,44 +522,16 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 
 			for (ii = 0; ii < 3; ii++)
 			{
+				*(*(cmtx+ii)   +ii) =  1.0;
+				*(*(cmtx+ii)+6 +ii) = -1.0;
+				*(*(cmtx+ii)+12+ii) =  1.0;
 				for (jj = 0; jj < 3; jj++)
 				{
 					*(*(cmtx+3+ii)+ 3+jj) =  *(*(HR_c+ii)+jj);
 					*(*(cmtx+3+ii)+ 9+jj) = -*(*(HR_cmst+ii)+jj);
 					*(*(cmtx+3+ii)+15+jj) =  *(*(H+ii)+jj);
-					if(ii==jj)
-					{
-						*(*(cmtx+ii)   +jj) =  1.0;
-						*(*(cmtx+ii)+6 +jj) = -1.0;
-						*(*(cmtx+ii)+12+jj) =  1.0;
-					}
 				}
 			}
-
-
-
-			gconstraint = (double*)malloc(6*nnod * sizeof(double));
-			for (ii = 0; ii < 6*nnod; ii++)
-			{
-				*(gconstraint + ii) = 0.0;
-				for (jj = 0; jj < neq; jj++)
-				{
-					*(gconstraint + ii) += *(lambda+leq+jj)**(*(cmtx+jj)+ii);
-				}
-				*(fconstraint + *(constraintmain + *(loffset + ii))) += *(gconstraint + ii);
-			}
-
-			for (ii = 0; ii < neq; ii++)
-			{
-				*(constraintvct+leq+ii) += *(cvct+ii);
-			}
-
-
-			free(loffset);
-			free(gforminit);
-			free(gform);
-			free(gdisp);
-			free(gconstraint);
 
 			free(rvct_m);
 			free(rvct_s);
@@ -808,11 +547,33 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 			freematrix(H,3);
 			freematrix(HR_cmst,3);
 			freematrix(HR_c,3);
-
-			free(cvct);
-			freematrix(cmtx,neq);
 		}
 
+
+		gconstraint = (double*)malloc(6*nnod * sizeof(double));
+		for (ii = 0; ii < 6*nnod; ii++)
+		{
+			*(gconstraint + ii) = 0.0;
+			for (jj = 0; jj < neq; jj++)
+			{
+				*(gconstraint + ii) += *(lambda+leq+jj)**(*(cmtx+jj)+ii);
+			}
+			*(fconstraint + *(constraintmain + *(loffset + ii))) += *(gconstraint + ii);
+		}
+
+		for (ii = 0; ii < neq; ii++)
+		{
+			*(constraintvct+leq+ii) += *(cvct+ii);
+		}
+
+		free(loffset);
+		free(gforminit);
+		free(gform);
+		free(gdisp);
+		free(gconstraint);
+
+		free(cvct);
+		freematrix(cmtx,neq);
 
 	}
 	return;
@@ -822,7 +583,16 @@ void constraintstress(struct oconstraint* constraints, int nconstraint, long int
 
 
 
+
+
+
+
+
+
+
+
 void assemconstraint_DYNA(struct oconstraint* constraints, int nconstraint, long int* constraintmain,
+						  double* dirichletdisp, double* dirichletvct,/*DIRICHLET PROBLEM*/
 						  struct gcomponent* gmtx,
 						  double* iform, double* lastddisp, double* ddisp, double*lastlambda, double* lambda,
 						  double alphaf, int msize)

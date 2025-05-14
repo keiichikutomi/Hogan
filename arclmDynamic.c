@@ -69,10 +69,10 @@ int arclmDynamic(struct arclmframe* af)
 	int USINGEIGENFLAG = 1;
 
 	/*GLOBAL VECTOR*/
-	double* iform,* ddisp,* lastddisp,* lapddisp,* lapddisp_m,*givendisp;
+	double* iform,* ddisp,* lastddisp,* lapddisp,* lapddisp_m,*dirichletdisp;
 	double* lambda, * lastlambda;
 	double* funbalance, * fexternal, * finternal, * freaction;
-	double* fbaseload, * fdeadload, * fpressure,* finertial,* fdamping, * fgivendisp;
+	double* fbaseload, * fdeadload, * fpressure,* finertial,* fdamping, * dirichletvct;
 	double* fconstraint;
 	double* constraintvct;
 
@@ -486,6 +486,7 @@ int arclmDynamic(struct arclmframe* af)
 
 	/*GLOBAL VECTOR*/
 	gvct = (double *)malloc((msize+csize) * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
+	dirichletvct = (double*)malloc((msize+csize)  * sizeof(double));
 
 
 	/*FORCE VECTOR INITIALIZATION*/
@@ -498,7 +499,6 @@ int arclmDynamic(struct arclmframe* af)
 	fbaseload = (double*)malloc(msize * sizeof(double));           /*BASE LOAD VECTOR.*/
 	fdeadload = (double*)malloc(msize * sizeof(double));           /*DEAD LOAD VECTOR.*/
 	fpressure = (double*)malloc(msize * sizeof(double));         /*BASE PRESSURE FORCE VECTOR.*/
-	fgivendisp = (double*)malloc(msize * sizeof(double));
 	fconstraint = (double*)malloc(msize * sizeof(double));
 	constraintvct = (double*)malloc(csize * sizeof(double));
 
@@ -509,7 +509,7 @@ int arclmDynamic(struct arclmframe* af)
 	ddisp = (double*)malloc(msize * sizeof(double));
 	ud_m = (double*)malloc(msize * sizeof(double));
 	udd_m = (double*)malloc(msize * sizeof(double));
-	givendisp = (double*)malloc(msize * sizeof(double));
+	dirichletdisp = (double*)malloc(msize * sizeof(double));
 	/*LAST CONFIGULATION*/
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
@@ -566,7 +566,7 @@ int arclmDynamic(struct arclmframe* af)
 	initialshell(shells, mshell, nshell);         /*ASSEMBLAGE ELEMENTS.*/
 
 	assemconf(confs,fdeadload,1.0,nnode);
-	assemgivend(confs,givendisp,1.0,nnode);
+	assemgivend(confs,dirichletdisp,1.0,nnode);
 
 	setviewpoint((wdraw.childs+0)->hwnd,arc,&((wdraw.childs+1)->vparam));
 	setviewparam((wmenu.childs+2)->hwnd,(wdraw.childs+1)->vparam);
@@ -781,10 +781,16 @@ int arclmDynamic(struct arclmframe* af)
 		}
 		//comps = msize;
 
+		for(i = 0; i < msize+csize; i++)
+		{
+			*(dirichletvct + i) = 0.0;
+		}
+
 		/*MATRIX ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
 		{
 		  assemshellEigen_DYNA(shells, mshell, nshell, constraintmain, confs,
+							   dirichletdisp, dirichletvct,
 							   Ktriplet,Ktriplet2,
 							   iform, lastddisp, ddisp,
 							   ud_m, udd_m,
@@ -802,16 +808,24 @@ int arclmDynamic(struct arclmframe* af)
 		else
 		{
 		  assemshell_DYNA(shells, mshell, nshell, constraintmain,
+						  dirichletdisp, dirichletvct,
 						  gmtx,gmtx2,
 						  iform, lastddisp, ddisp,
 						  ud_m, udd_m,
 						  alpham, alphaf, xi, beta, ddt);
 
-		  assemconstraint_DYNA(constraints, nconstraint, constraintmain,
+		  /*assemconstraint_DYNA(constraints, nconstraint, constraintmain,
 							   gmtx,
 							   iform, lastddisp, ddisp, lastlambda, lambda,
-							   alphaf, msize);
+							   alphaf, msize); */
 		}
+
+		for (i = 0; i < msize+csize; i++)
+		{
+			*(gvct + i) -= *(dirichletvct + i);
+		}
+
+
 
 		/*SOLVE [K]*/
 		if(USINGEIGENFLAG==1)
@@ -1329,7 +1343,7 @@ int arclmDynamic(struct arclmframe* af)
 	free(lastlambda);
 	free(lastddisp);
 	free(lapddisp);
-	free(givendisp);
+	free(dirichletdisp);
 
 	free(lastlastudd_m);
 	free(lastud_m);
@@ -1346,7 +1360,7 @@ int arclmDynamic(struct arclmframe* af)
 	free(fbaseload);
 	free(fdeadload);
 	free(fpressure);
-	free(fgivendisp);
+	free(dirichletvct);
 	free(fconstraint);
 
 	free(iform);

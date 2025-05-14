@@ -17,8 +17,6 @@
 using Vector = Eigen::VectorXd;
 using Triplet = Eigen::Triplet<double>;
 
-
-
 void assemtripletelem(std::vector<Triplet>& triplets,
 				  double** estiff,
 				  struct owire *elem,
@@ -98,6 +96,24 @@ void assemtripletshell(std::vector<Triplet>& triplets,
 
 }
 
+
+void modifytriplet(std::vector<Triplet>& triplets,
+				   struct oconf *confs,long int msize)
+{
+  long int i;
+
+  for(i=0;i<msize;i++)
+  {
+	if((confs+i)->iconf==1)
+	{
+		triplets.emplace_back(i, i, 1.0);
+	}
+  }
+}
+
+
+
+
 /*
 void boundary(SparseMatrix& gmtx, struct oconf* confs)
 {
@@ -118,15 +134,6 @@ void boundary(SparseMatrix& gmtx, struct oconf* confs)
 		}
 	}
 }
-*/
-
-
-
-
-
-
-
-/*
 
 
 SparseMatrix& K_global,
@@ -139,25 +146,6 @@ gmtx.prune([](int i, int j, double) { return i != j; });
 
 
 */
-
-
-
-
-void modifytriplet(std::vector<Triplet>& triplets,
-				   struct oconf *confs,long int msize)
-{
-  long int i;
-
-  for(i=0;i<msize;i++)
-  {
-	if((confs+i)->iconf==1)
-	{
-		triplets.emplace_back(i, i, 1.0);
-	}
-  }
-}
-
-
 
 
 

@@ -20694,7 +20694,6 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 			code2=strtol(*(data+3),NULL,10);
 			code3=strtol(*(data+4),NULL,10);
 
-
 			j=0;
 			for(k=0;k<3;)
 			{
@@ -20715,8 +20714,9 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 				}
 				j++;
 			}
+
 		}
-		else if(n==6)
+		if(n==6)
 		{
 			(af->constraints+i-1)->nnod=4;
 			(af->constraints+i-1)->neq=3;
@@ -20786,7 +20786,6 @@ void inputtexttomemory(FILE *ftext,struct arclmframe *af)
 		}
 
 	}
-
 	else/*MPC.*/
 	{
 		(af->constraints+i-1)->nnod=0;

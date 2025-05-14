@@ -89,7 +89,7 @@ void dbgmtxEigen(const Eigen::SparseMatrix<double>& mtx, const char* str)
     if (fout == nullptr)
         return;
 
-    if (str != nullptr)
+	if (str != nullptr)
     {
         fprintf(fout, "%s\n", str);
     }
@@ -126,9 +126,11 @@ void dbggcomp(struct gcomponent* gmtx, int size, const char* str)
 		for (int j = 0; j < size; j++)
 		{
 			gread(gmtx,i+1,j+1,&gdata);
-
+			fprintf(fout, "%8.5f ", gdata);
+			/*
 			if(fabs(gdata)>1e-5)fprintf(fout, "1 ");
 			else fprintf(fout, "0 ");
+			*/
 		}
 		fprintf(fout, "\n");
 	}
@@ -285,14 +287,14 @@ int arclmStatic(struct arclmframe* af)
 	/*COPY FOR TWO-POINT BUCKLING ANALYSIS*/
 	struct gcomponent *gmtxcpy;
 
-	double* givendisp;
+	double* dirichletdisp;
 	double* gvct;
 
 	/*GLOBAL FORCE VECTOR*/
 	double* funbalance, * fexternal, * finternal, * freaction;
-	double* fbaseload, * fdeadload, * fpressure,* fgivendisp;
+	double* fbaseload, * fdeadload, * fpressure,* dirichletvct;
 	double* fconstraint;
-	double* constraintvct;
+	double* constraintvct, * dirichletconstraintvct;
 
 
 	///FOR ARC-LENGTH PARAMETER///
@@ -302,8 +304,8 @@ int arclmStatic(struct arclmframe* af)
 	int laps = 1000;
 	int iteration = 1;
 	int maxiteration = 20;
-	//double tolerance = 1.0e-2;
-	double tolerance = 1.0e-4;
+	double tolerance = 1.0e-2;
+	//double tolerance = 1.0e-4;
 
 	double residual = 0.0;
 	double constraintresidual = 0.0;
@@ -343,7 +345,7 @@ int arclmStatic(struct arclmframe* af)
 	int pinpointmode = 0;/*0:NotPinpointing.1:BisecPinpointing.2:ExtendedSystemPinpointing.*/
 	int UNLOADFLAG = 0;
 	int STATDYNAFLAG = 0;
-	int USINGEIGENFLAG = 1;
+	int USINGEIGENFLAG = 0;
 
 
 	/*INITIAL CONFIG*/
@@ -750,6 +752,7 @@ int arclmStatic(struct arclmframe* af)
 	gvct = (double *)malloc((msize+csize) * sizeof(double));/*INCREMENTAL GLOBAL VECTOR.*/
 	due = (double*)malloc((msize+csize) * sizeof(double));
 	dup = (double*)malloc((msize+csize) * sizeof(double));
+	dirichletvct = (double*)malloc((msize+csize)  * sizeof(double));
 
 
 	/*FORCE VECTOR INITIALIZATION*/
@@ -760,9 +763,9 @@ int arclmStatic(struct arclmframe* af)
 	fbaseload = (double*)malloc(msize * sizeof(double));           /*BASE LOAD VECTOR.*/
 	fdeadload = (double*)malloc(msize * sizeof(double));           /*DEAD LOAD VECTOR.*/
 	fpressure = (double*)malloc(msize * sizeof(double));           /*PRESSURE VECTOR.*/
-	fgivendisp = (double*)malloc(msize * sizeof(double));
 	fconstraint = (double*)malloc(msize * sizeof(double));
 	constraintvct = (double*)malloc(csize * sizeof(double));
+
 
 	/*POSITION VECTOR INITIALIZATION*/
 
@@ -770,7 +773,7 @@ int arclmStatic(struct arclmframe* af)
 	iform = (double*)malloc(msize * sizeof(double));
 	/*CURRENT CONFIGULATION*/
 	ddisp = (double*)malloc(msize * sizeof(double));
-	givendisp = (double*)malloc(msize * sizeof(double));
+	dirichletdisp = (double*)malloc(msize * sizeof(double));
 	/*LAST CONFIGULATION*/
 	melem = (struct memoryelem*)malloc(nelem * sizeof(struct memoryelem));
 	mshell = (struct memoryshell*)malloc(nshell * sizeof(struct memoryshell));
@@ -828,7 +831,7 @@ int arclmStatic(struct arclmframe* af)
 
 
 	assemconf(confs,fdeadload,1.0,nnode);
-	assemgivend(confs,givendisp,1.0,nnode);
+	assemgivend(confs,dirichletdisp,1.0,nnode);
 
 	setviewpoint((wdraw.childs+0)->hwnd,*af,&((wdraw.childs+1)->vparam));
 	setviewparam((wmenu.childs+2)->hwnd,(wdraw.childs+1)->vparam);
@@ -1008,44 +1011,36 @@ int arclmStatic(struct arclmframe* af)
 		}
 		//comps = msize; /*INITIAL COMPONENTS = DIAGONALS.*/
 
+		for(i = 0; i < msize+csize; i++)
+		{
+			*(dirichletvct + i) = 0.0;
+		}
 
 		/*STIFFNESS ASSEMBLAGE*/
 		if(USINGEIGENFLAG==1)
 		{
-		  assemelemEigen(elems, melem, nelem, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 1);
-		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, Mtriplet, Ktriplet, iform, ddisp, 1);
+		  assemelemEigen(elems, melem, nelem, constraintmain, confs, dirichletdisp, dirichletvct, Mtriplet, Ktriplet, iform, ddisp, 1);
+		  assemshellEigen(shells, mshell, nshell, constraintmain, confs, dirichletdisp, dirichletvct, Mtriplet, Ktriplet, iform, ddisp, 1);
 
-		  /*GLOBAL MATRIX USING EIGEN*/
+
 		  modifytriplet(Ktriplet,confs,msize);
 
-		  /*GLOBAL MATRIX USING EIGEN*/
 		  Kglobal.reserve((msize+csize)*(msize+csize));
 		  Kglobal.setFromTriplets(Ktriplet.begin(), Ktriplet.end());//SPARSE MATRIX FROM TRIPLET
 		}
 		else
 		{
-		  assemelem(elems, melem, nelem, constraintmain, NULL, gmtx, iform, ddisp);
-		  assemshell(shells, mshell, nshell, constraintmain, NULL, gmtx, iform, ddisp);
-		  assemconstraint(constraints, nconstraint, constraintmain, gmtx, iform, ddisp, lambda, msize);
+		  assemelem(elems, melem, nelem, constraintmain, dirichletdisp, dirichletvct, NULL, gmtx, iform, ddisp);
+		  assemshell(shells, mshell, nshell, constraintmain, dirichletdisp, dirichletvct, NULL, gmtx, iform, ddisp);
+		  assemconstraint(constraints, nconstraint, constraintmain, dirichletdisp, dirichletvct, gmtx, iform, ddisp, lambda, msize);
 		}
 		//dbggcomp(gmtx,msize+csize,"GMTX");
 
-		/*
-		if(iteration==1 && USINGEIGENFLAG==0)
+
+		for (i = 0; i < msize+csize; i++)
 		{
-			for (i = 0; i < msize; i++)
-			{
-				*(fgivendisp + i) = *(givendisp + i);
-			}
-			modifygivend(gmtx,fgivendisp,confs,nnode);
-
-			for (i = 0; i < msize; i++)
-			{
-				*(dup + i) += *(fgivendisp + i);
-			}
+			*(dup + i) -= *(dirichletvct + i);
 		}
-		*/
-
 
 		/*SOLVE [K]*/
 		if(USINGEIGENFLAG==1)
@@ -1138,7 +1133,7 @@ int arclmStatic(struct arclmframe* af)
 			{
 			  EXTENDEDFLAG=1;
 			}*/
-
+		//dbggcomp(gmtx,msize+csize,"GMTX");
 
 		if(iteration == 1 && (sign - lastsign) != 0 && nlap != beginlap)
 		{
@@ -1610,7 +1605,7 @@ int arclmStatic(struct arclmframe* af)
 				loadlambda = predictorsign * scaledarclength / sqrt(arcsum);/*INCREMANTAL LOAD FACTOR.*/
 				for (ii = 0; ii < (msize+csize); ii++)
 				{
-					*(gvct + ii) = loadlambda * (*(dup + ii)+*(givendisp + ii));/*INCREMANTAL DISPLACEMENT.*/
+					*(gvct + ii) = loadlambda * (*(dup + ii)+*(dirichletdisp + ii));/*INCREMANTAL DISPLACEMENT.*/
 				}
 				fprintf(fonl, "LAP: %4d ITER: %2d {LOADLAMBDA}= % 5.8f {TOP}= % 5.8f {BOTTOM}= % 5.8f\n", nlap, iteration, loadlambda, scaledarclength, sqrt(arcsum));
 
@@ -2072,7 +2067,7 @@ int arclmStatic(struct arclmframe* af)
 			free(fpressure);
 			free(fbaseload);
 			free(fdeadload);
-			free(fgivendisp);
+			free(dirichletvct);
 			free(fconstraint);
 
 			free(due);
@@ -2146,11 +2141,11 @@ int arclmStatic(struct arclmframe* af)
 	free(fpressure);
 	free(fbaseload);
 	free(fdeadload);
-	free(fgivendisp);
+	free(dirichletvct);
 	free(fconstraint);
 	free(constraintvct);
 
-	free(givendisp);
+	free(dirichletdisp);
 
 	free(lastddisp);
 	free(lastpivot);
@@ -2384,8 +2379,8 @@ int bisecPinpoint(struct arclmframe* af, struct memoryelem* melem, struct memory
 		shellstress(af->shells, mshell, af->nshell,  af->constraintmain,  af->iform, ddisp, NULL, NULL);
 		//constraintstress( af->constraints,  af->nconstraint,  af->constraintmain,  af->iform, ddisp, lambda, NULL,NULL);
 
-		assemelem(af->elems, melem, af->nelem,  af->constraintmain, NULL, gmtx,  af->iform, ddisp);
-		assemshell(af->shells, mshell, af->nshell,  af->constraintmain, NULL, gmtx,  af->iform, ddisp);
+		assemelem(af->elems, melem, af->nelem,  af->constraintmain, NULL, NULL, NULL, gmtx,  af->iform, ddisp);
+		assemshell(af->shells, mshell, af->nshell,  af->constraintmain, NULL, NULL, NULL, gmtx,  af->iform, ddisp);
 		//assemconstraint( af->constraints,  af->nconstraint,  af->constraintmain, gmtx,  af->iform, ddisp, lambda, msize);
 
 		/*SOLVE*/
